@@ -70,7 +70,7 @@ def analyze_poem(poem: str) -> PoemAnalysis:
                 },
             ],
             response_format={"type": "json_object"},
-            max_tokens=2000,
+            # max_tokens=2000,
         )
     except APIError as exc:
         raise RuntimeError("DeepSeek API 调用失败") from exc
@@ -88,14 +88,8 @@ def analyze_poem(poem: str) -> PoemAnalysis:
 
 if __name__ == "__main__":
     try:
-        parse_analysis('{"translation": "测试"}')
-    except ValueError:
-        print("模拟测试通过：非法输出已被拦截")
-
-    try:
         analysis = analyze_poem(
-            """水面清圆，一一风荷举。
-            """
+            "风卷珠帘自上钩，萧萧乱叶报新秋。独携纤手上高楼。\n缺月向人舒窈窕，三星当户照绸缪。香生雾縠见纤柔。"
         )
     except (ValueError, RuntimeError) as exc:
         print(f"赏析失败：{exc}")
