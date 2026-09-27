@@ -87,12 +87,17 @@ def analyze_poem(poem: str) -> PoemAnalysis:
 
 
 if __name__ == "__main__":
-    # 先测试：缺少必要字段的输出应当被拦截
     try:
         parse_analysis('{"translation": "测试"}')
     except ValueError:
         print("模拟测试通过：非法输出已被拦截")
 
-    # 再进行一次真实调用
-    analysis = analyze_poem("水面清圆，一一风荷举。")
-    print(analysis.model_dump_json(indent=2))
+    try:
+        analysis = analyze_poem(
+            """水面清圆，一一风荷举。
+            """
+        )
+    except (ValueError, RuntimeError) as exc:
+        print(f"赏析失败：{exc}")
+    else:
+        print(analysis.model_dump_json(indent=2))
