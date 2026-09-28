@@ -4,6 +4,7 @@ import {
   Check,
   Copy,
   LoaderCircle,
+  Pencil,
   RotateCcw,
   Sparkles,
   X,
@@ -36,6 +37,7 @@ type ChatPanelProps = {
   onSend: () => void;
   onRetry: (id: number) => void;
   onRegenerate: (id: number) => void;
+  onEdit: (id: number, nextQuestion: string) => void;
 };
 
 export function ChatPanel({
@@ -48,6 +50,7 @@ export function ChatPanel({
   onSend,
   onRetry,
   onRegenerate,
+  onEdit,
 }: ChatPanelProps) {
   const chatListRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +58,10 @@ export function ChatPanel({
     key: string;
     status: "success" | "error";
   } | null>(null);
+
+  const [editingTurnId, setEditingTurnId] = useState<number | null>(null);
+
+  const [editDraft, setEditDraft] = useState("");
 
   async function handleCopy(key: string, content: string) {
     try {
@@ -127,55 +134,131 @@ export function ChatPanel({
             {/* 用户消息：发送后立即出现 */}
             <div className="flex justify-end">
               <div className="group flex max-w-[90%] flex-col items-end gap-1">
-                {/* 原有的用户消息气泡 */}
-                <div className="w-full space-y-3 rounded-2xl rounded-tr-md bg-secondary px-4 py-3">
-                  {turn.selection && (
-                    <div className="rounded-lg border-l-2 border-violet-400 bg-background/60 px-3 py-2 text-sm leading-6 text-muted-foreground">
-                      {turn.selection.text}
+                {editingTurnId === turn.id ? (
+                  /* 编辑模式 */
+                  <div className="w-full min-w-64 space-y-3 rounded-2xl border border-violet-400/40 bg-secondary p-3">
+                    {/* 原来的引用保持不变 */}
+                    {turn.selection && (
+                      <div className="rounded-lg border-l-2 border-violet-400 bg-background/60 px-3 py-2 text-sm leading-6 text-muted-foreground">
+                        {turn.selection.text}
+                      </div>
+                    )}
+
+                    <Textarea
+                      autoFocus
+                      value={editDraft}
+                      onChange={(event) => setEditDraft(event.target.value)}
+                      className="min-h-24 resize-y bg-background"
+                      aria-label="修改用户问题"
+                    />
+
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setEditingTurnId(null);
+                          setEditDraft("");
+                        }}
+                      >
+                        取消
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={
+                          !editDraft.trim() ||
+                          editDraft.trim() === turn.question ||
+                          loading
+                        }
+                        onClick={() => {
+                          onEdit(turn.id, editDraft.trim());
+                          setEditingTurnId(null);
+                          setEditDraft("");
+                        }}
+                      >
+                        保存并发送
+                      </Button>
                     </div>
-                  )}
+                  </div>
+                ) : (
+                  /* 普通消息模式 */
+                  <>
+                    <div className="w-full space-y-3 rounded-2xl rounded-tr-md bg-secondary px-4 py-3">
+                      {turn.selection && (
+                        <div className="rounded-lg border-l-2 border-violet-400 bg-background/60 px-3 py-2 text-sm leading-6 text-muted-foreground">
+                          {turn.selection.text}
+                        </div>
+                      )}
 
-                  <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7">
-                    {turn.question}
-                  </p>
-                </div>
+                      <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7">
+                        {turn.question}
+                      </p>
+                    </div>
 
-                {/* 新增：用户消息下方的操作栏 */}
-                <div className="flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 text-muted-foreground/60 hover:text-foreground"
-                    aria-label="复制用户消息"
-                    title="复制用户消息"
-                    onClick={() =>
-                      void handleCopy(
-                        `${turn.id}:user`,
-                        turn.selection
-                          ? `引用原文：${turn.selection.text}
+                    {/* 鼠标移入后显示的图标工具栏 */}
+                    <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+                      {/* 原有的复制按钮 */}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground/60 hover:text-foreground"
+                        aria-label="复制用户消息"
+                        title="复制用户消息"
+                        onClick={() =>
+                          void handleCopy(
+                            `${turn.id}:user`,
+                            turn.selection
+                              ? `引用原文：${turn.selection.text}
 
 问题：${turn.question}`
-                          : turn.question,
-                      )
-                    }
-                  >
-                    {copyStatus?.key === `${turn.id}:user` &&
-                    copyStatus.status === "success" ? (
-                      <Check className="size-4" />
-                    ) : (
-                      <Copy className="size-4" />
-                    )}
-                  </Button>
+                              : turn.question,
+                          )
+                        }
+                      >
+                        {copyStatus?.key === `${turn.id}:user` &&
+                        copyStatus.status === "success" ? (
+                          <Check className="size-4" />
+                        ) : (
+                          <Copy className="size-4" />
+                        )}
+                      </Button>
 
-                  {/* 只有当前用户消息复制失败时才显示提示 */}
-                  {copyStatus?.key === `${turn.id}:user` &&
-                    copyStatus.status === "error" && (
-                      <span role="alert" className="text-xs text-destructive">
-                        复制失败，请手动选择文字复制
-                      </span>
-                    )}
-                </div>
+                      {/* 新增：只有最近一条消息显示编辑图标 */}
+                      {turn.id === turns[turns.length - 1]?.id && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 text-muted-foreground/60 hover:text-foreground"
+                          disabled={loading}
+                          aria-label="编辑用户消息"
+                          title="编辑"
+                          onClick={() => {
+                            setEditingTurnId(turn.id);
+                            setEditDraft(turn.question);
+                          }}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                      )}
+
+                      {/* 复制失败提示 */}
+                      {copyStatus?.key === `${turn.id}:user` &&
+                        copyStatus.status === "error" && (
+                          <span
+                            role="alert"
+                            className="text-xs text-destructive"
+                          >
+                            复制失败，请手动选择文字复制
+                          </span>
+                        )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

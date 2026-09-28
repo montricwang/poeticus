@@ -182,6 +182,35 @@ function App() {
     void requestReply(turn, true);
   }
 
+  function handleEdit(id: number, nextQuestion: string) {
+    if (inFlightRef.current || !nextQuestion.trim()) return;
+
+    // 首版只允许编辑最近一条用户消息。
+    const turn = turns[turns.length - 1];
+
+    if (!turn || turn.id !== id) return;
+
+    // 保留原来的消息编号和诗句引用，
+    // 修改问题，并清除已经失效的旧回答。
+    const editedTurn: ChatTurn = {
+      ...turn,
+      question: nextQuestion.trim(),
+      answer: null,
+      status: "pending",
+      error: null,
+      regenerating: false,
+      regenerateError: null,
+    };
+
+    // 修改原来的消息，不新增一条。
+    setTurns((previous) =>
+      previous.map((item) => (item.id === id ? editedTurn : item)),
+    );
+
+    // 使用修改后的问题重新请求 AI。
+    void requestReply(editedTurn);
+  }
+
   async function handleAnalyze() {
     setActiveView("analysis");
     setAnalyzing(true);
@@ -302,6 +331,7 @@ function App() {
                 onSend={handleSend}
                 onRetry={handleRetry}
                 onRegenerate={handleRegenerate}
+                onEdit={handleEdit}
               />
             ) : (
               <AnalysisPanel
