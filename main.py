@@ -39,6 +39,8 @@ def analyze_poem(poem: str) -> PoemAnalysis:
 你是一位专业的文学阅读助手。
 请分析用户提供的诗歌，只返回以下结构的 JSON，
 不要输出 Markdown 或其他文字。
+中文叙述需要使用引号时，第一层使用「」，嵌套引用使用『』。
+保留诗歌原文的标点，不修改代码、URL 或 JSON 语法。
 
 {
     "translation": "完整、自然的现代汉语译文",
@@ -97,6 +99,8 @@ def _chat_messages(poem: str, question: str, selection: str | None) -> list[dict
                 "不要编造文献出处、作者信息或历史事实。"
                 "如果问题需要外部文献核实，而你无法确认，"
                 "应明确说明不确定性。"
+                "中文叙述需要使用引号时，第一层使用「」，嵌套引用使用『』。"
+                "保留诗歌原文的标点，不修改代码、URL 或 JSON 语法。"
             ),
         },
         {"role": "user", "content": context},
