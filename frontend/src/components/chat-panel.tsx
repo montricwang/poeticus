@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
-
 import { Card } from "@/components/ui/card";
-
-import type { SelectedText } from "@/components/poem-reader";
-import type { ChatTurn } from "@/components/chat-types";
 import { UserMessage } from "@/components/user-message";
 import { AssistantMessage } from "@/components/assistant-message";
 import { ChatComposer } from "@/components/chat-composer";
+import type { SelectedText } from "@/components/poem-reader";
+import type { ChatTurn } from "@/components/chat-types";
 
 type ChatPanelProps = {
   selected: SelectedText | null;

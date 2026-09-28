@@ -1,8 +1,7 @@
 import { Check, Copy, Pencil } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-
+import { AssistantMarkdown } from "@/components/assistant-markdown";
 import type { ChatTurn } from "@/components/chat-types";
 
 type CopyStatus = {
@@ -102,9 +101,7 @@ export function UserMessage({
                 </div>
               )}
 
-              <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7">
-                {turn.question}
-              </p>
+              <AssistantMarkdown content={turn.question} variant="user" />
             </div>
 
             <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">

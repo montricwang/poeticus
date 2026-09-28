@@ -1,19 +1,38 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 
 type AssistantMarkdownProps = {
   content: string;
+  variant?: "assistant" | "user";
 };
 
-export function AssistantMarkdown({ content }: AssistantMarkdownProps) {
+export function AssistantMarkdown({
+  content,
+  variant = "assistant",
+}: AssistantMarkdownProps) {
+  const isUser = variant === "user";
+
   return (
-    <div className="min-w-0 wrap-break-word text-sm leading-7 text-foreground/90">
+    <div
+      className={
+        isUser
+          ? "min-w-0 wrap-break-word text-sm leading-6 text-foreground/90"
+          : "min-w-0 wrap-break-word text-sm leading-7 text-foreground/90"
+      }
+    >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={isUser ? [remarkGfm, remarkBreaks] : [remarkGfm]}
         skipHtml
         components={{
           p: ({ children }) => (
-            <p className="my-3 first:mt-0 last:mb-0">
+            <p
+              className={
+                isUser
+                  ? "my-1 first:mt-0 last:mb-0"
+                  : "my-3 first:mt-0 last:mb-0"
+              }
+            >
               {children}
             </p>
           ),
@@ -43,20 +62,42 @@ export function AssistantMarkdown({ content }: AssistantMarkdownProps) {
           ),
 
           ul: ({ children }) => (
-            <ul className="my-3 list-disc space-y-1 pl-6">{children}</ul>
+            <ul
+              className={
+                isUser
+                  ? "my-1 list-disc space-y-0 pl-5"
+                  : "my-3 list-disc space-y-1 pl-6"
+              }
+            >
+              {children}
+            </ul>
           ),
 
           ol: ({ children }) => (
-            <ol className="my-3 list-decimal space-y-1 pl-6">{children}</ol>
+            <ol
+              className={
+                isUser
+                  ? "my-1 list-decimal space-y-0 pl-5"
+                  : "my-3 list-decimal space-y-1 pl-6"
+              }
+            >
+              {children}
+            </ol>
           ),
 
-          li: ({ children }) => <li className="pl-1">{children}</li>,
-
           blockquote: ({ children }) => (
-            <blockquote className="my-4 border-l-2 border-violet-400/70 pl-4 text-muted-foreground">
+            <blockquote
+              className={
+                isUser
+                  ? "my-2 border-l-2 border-violet-400/70 pl-3 text-muted-foreground"
+                  : "my-4 border-l-2 border-violet-400/70 pl-4 text-muted-foreground"
+              }
+            >
               {children}
             </blockquote>
           ),
+
+          li: ({ children }) => <li className="pl-1">{children}</li>,
 
           a: ({ href, children }) => (
             <a
@@ -78,7 +119,13 @@ export function AssistantMarkdown({ content }: AssistantMarkdownProps) {
           ),
 
           pre: ({ children }) => (
-            <pre className="my-3 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs leading-6 [&_code]:bg-transparent [&_code]:p-0">
+            <pre
+              className={
+                isUser
+                  ? "my-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs leading-5 [&_code]:bg-transparent [&_code]:p-0"
+                  : "my-3 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs leading-6 [&_code]:bg-transparent [&_code]:p-0"
+              }
+            >
               {children}
             </pre>
           ),
