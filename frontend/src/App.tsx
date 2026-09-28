@@ -31,19 +31,35 @@ function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
 
-  async function requestReply(turn: ChatTurn) {
+  async function requestReply(turn: ChatTurn, regenerate = false) {
     if (inFlightRef.current) return;
 
     inFlightRef.current = true;
     setChatLoading(true);
 
-    // 重试时恢复等待状态，不创建新的用户消息。
+    // 根据是不是重新生成，采用不同的等待状态。
     setTurns((previous) =>
-      previous.map((item) =>
-        item.id === turn.id
-          ? { ...item, status: "pending", error: null }
-          : item,
-      ),
+      previous.map((item) => {
+        if (item.id !== turn.id) return item;
+
+        if (regenerate) {
+          // 保留原来的回答和 done 状态。
+          return {
+            ...item,
+            regenerating: true,
+            regenerateError: null,
+          };
+        }
+
+        // 普通发送或失败重试。
+        return {
+          ...item,
+          status: "pending",
+          error: null,
+          regenerating: false,
+          regenerateError: null,
+        };
+      }),
     );
 
     try {
@@ -75,7 +91,7 @@ function App() {
         throw new Error("AI 返回了空回答");
       }
 
-      // 把回答放回原来的对话轮次。
+      // 成功：把新回答放回原来的消息。
       setTurns((previous) =>
         previous.map((item) =>
           item.id === turn.id
@@ -84,6 +100,8 @@ function App() {
                 answer: result.answer,
                 status: "done",
                 error: null,
+                regenerating: false,
+                regenerateError: null,
               }
             : item,
         ),
@@ -92,15 +110,26 @@ function App() {
       const message = error instanceof Error ? error.message : "消息发送失败";
 
       setTurns((previous) =>
-        previous.map((item) =>
-          item.id === turn.id
-            ? {
-                ...item,
-                status: "failed",
-                error: message,
-              }
-            : item,
-        ),
+        previous.map((item) => {
+          if (item.id !== turn.id) return item;
+
+          if (regenerate) {
+            // 重新生成失败：保留原来的回答。
+            return {
+              ...item,
+              regenerating: false,
+              regenerateError: message,
+            };
+          }
+
+          // 普通请求失败：维持原有的重试行为。
+          return {
+            ...item,
+            status: "failed",
+            error: message,
+            regenerating: false,
+          };
+        }),
       );
     } finally {
       inFlightRef.current = false;
@@ -118,6 +147,9 @@ function App() {
       answer: null,
       status: "pending",
       error: null,
+
+      regenerating: false,
+      regenerateError: null,
     };
 
     // 关键修改：先更新页面，再等待 API。
@@ -136,6 +168,18 @@ function App() {
     if (!turn || turn.status !== "failed") return;
 
     void requestReply(turn);
+  }
+
+  function handleRegenerate(id: number) {
+    if (inFlightRef.current) return;
+
+    const turn = turns.find((item) => item.id === id);
+
+    if (!turn || turn.status !== "done" || !turn.answer || turn.regenerating) {
+      return;
+    }
+
+    void requestReply(turn, true);
   }
 
   async function handleAnalyze() {
@@ -257,6 +301,7 @@ function App() {
                 onClearQuote={() => setSelected(null)}
                 onSend={handleSend}
                 onRetry={handleRetry}
+                onRegenerate={handleRegenerate}
               />
             ) : (
               <AnalysisPanel

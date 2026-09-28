@@ -22,6 +22,8 @@ export type ChatTurn = {
   answer: string | null;
   status: "pending" | "done" | "failed";
   error: string | null;
+  regenerating: boolean;
+  regenerateError: string | null;
 };
 
 type ChatPanelProps = {
@@ -33,6 +35,7 @@ type ChatPanelProps = {
   onClearQuote: () => void;
   onSend: () => void;
   onRetry: (id: number) => void;
+  onRegenerate: (id: number) => void;
 };
 
 export function ChatPanel({
@@ -44,6 +47,7 @@ export function ChatPanel({
   onClearQuote,
   onSend,
   onRetry,
+  onRegenerate,
 }: ChatPanelProps) {
   const chatListRef = useRef<HTMLDivElement>(null);
 
@@ -189,15 +193,19 @@ export function ChatPanel({
             {/* 正常回答 */}
             {turn.status === "done" && turn.answer && (
               <div className="flex items-start gap-3">
+                {/* AI 头像 */}
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
                   <Sparkles className="size-4" />
                 </div>
 
+                {/* AI 回答正文与操作区 */}
                 <div className="group min-w-0 flex-1 select-text pt-1">
+                  {/* 重新生成期间，旧回答仍然显示 */}
                   <AssistantMarkdown content={turn.answer} />
 
-                  {/* AI 回答的操作工具栏 */}
+                  {/* 复制与重新生成按钮 */}
                   <div className="mt-2 flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+                    {/* 复制按钮 */}
                     <Button
                       type="button"
                       variant="ghost"
@@ -220,6 +228,25 @@ export function ChatPanel({
                       )}
                     </Button>
 
+                    {/* 重新生成按钮 */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground/60 hover:text-foreground"
+                      onClick={() => onRegenerate(turn.id)}
+                      disabled={loading || turn.regenerating}
+                      aria-label="重新生成 AI 回答"
+                      title="重新生成"
+                    >
+                      {turn.regenerating ? (
+                        <LoaderCircle className="size-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="size-4" />
+                      )}
+                    </Button>
+
+                    {/* 复制失败提示 */}
                     {copyStatus?.key === `${turn.id}:assistant` &&
                       copyStatus.status === "error" && (
                         <span role="alert" className="text-xs text-destructive">
@@ -227,6 +254,25 @@ export function ChatPanel({
                         </span>
                       )}
                   </div>
+
+                  {/* 正在重新生成 */}
+                  {turn.regenerating && (
+                    <div
+                      role="status"
+                      className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"
+                    >
+                      <LoaderCircle className="size-3 animate-spin" />
+                      正在重新生成……
+                    </div>
+                  )}
+
+                  {/* 重新生成失败，但不删除旧回答 */}
+                  {turn.regenerateError && (
+                    <div role="alert" className="mt-2 text-xs text-destructive">
+                      重新生成失败：{turn.regenerateError}
+                      <span> 可再次点击重新生成。</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
