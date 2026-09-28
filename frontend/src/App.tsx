@@ -10,7 +10,7 @@ import { AnalysisPanel } from "@/components/analysis-panel";
 import { poem } from "@/data/sample-poem";
 
 import type { SelectedText } from "@/components/poem-reader";
-import type { ChatTurn } from "@/components/chat-types";
+import type { ChatTurn, ChatViewport } from "@/components/chat-types";
 import type { PoemAnalysis } from "@/components/analysis-panel";
 
 type ActiveView = "chat" | "analysis";
@@ -20,13 +20,15 @@ function App() {
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
-
-  // 确保重复点击不会同时发出两个请求。
   const inFlightRef = useRef(false);
   const nextTurnId = useRef(0);
-
+  const seenAnimationsRef = useRef(new Set<string>());
+  const chatViewportRef = useRef<ChatViewport>({
+    scrollTop: 0,
+    atBottom: true,
+  });
+  const [hasUnreadReply, setHasUnreadReply] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>("chat");
-
   const [analysis, setAnalysis] = useState<PoemAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
@@ -89,6 +91,11 @@ function App() {
 
       if (typeof result.answer !== "string" || !result.answer.trim()) {
         throw new Error("AI 返回了空回答");
+      }
+
+      // 阅读旧消息时不强制滚动，而是在聊天面板显示新回复提醒。
+      if (!chatViewportRef.current.atBottom) {
+        setHasUnreadReply(true);
       }
 
       // 成功：把新回答放回原来的消息。
@@ -184,14 +191,17 @@ function App() {
 
   function handleEdit(id: number, nextQuestion: string) {
     if (inFlightRef.current || !nextQuestion.trim()) return;
-  
+
     // 找到用户正在编辑的那一轮。
     const index = turns.findIndex((item) => item.id === id);
-  
+
     if (index === -1) return;
-  
+
     const turn = turns[index];
-  
+
+    // 编辑后的新回答应重新播放一次入场动画。
+    seenAnimationsRef.current.delete(`assistant:${id}:done`);
+
     // 保留原来的引用，更新问题。
     const editedTurn: ChatTurn = {
       ...turn,
@@ -202,14 +212,11 @@ function App() {
       regenerating: false,
       regenerateError: null,
     };
-  
+
     // 保留编辑位置之前的记录，
     // 移除后续记录，并放入修改后的消息。
-    setTurns([
-      ...turns.slice(0, index),
-      editedTurn,
-    ]);
-  
+    setTurns([...turns.slice(0, index), editedTurn]);
+
     // 使用新问题请求 AI。
     void requestReply(editedTurn);
   }
@@ -335,6 +342,10 @@ function App() {
                 onRetry={handleRetry}
                 onRegenerate={handleRegenerate}
                 onEdit={handleEdit}
+                seenAnimationsRef={seenAnimationsRef}
+                viewportRef={chatViewportRef}
+                hasUnreadReply={hasUnreadReply}
+                onClearUnreadReply={() => setHasUnreadReply(false)}
               />
             ) : (
               <AnalysisPanel

@@ -10,3 +10,9 @@ export type ChatTurn = {
   regenerating: boolean;
   regenerateError: string | null;
 };
+
+// 离开聊天视图时仍保留滚动位置与是否在底部的信息。
+export type ChatViewport = {
+  scrollTop: number;
+  atBottom: boolean;
+};
