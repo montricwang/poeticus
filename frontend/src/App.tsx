@@ -10,7 +10,7 @@ import { AnalysisPanel } from "@/components/analysis-panel";
 import { poem } from "@/data/sample-poem";
 
 import type { SelectedText } from "@/components/poem-reader";
-import type { ChatTurn } from "@/components/chat-panel";
+import type { ChatTurn } from "@/components/chat-types";
 import type { PoemAnalysis } from "@/components/analysis-panel";
 
 type ActiveView = "chat" | "analysis";

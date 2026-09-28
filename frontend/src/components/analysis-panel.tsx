@@ -49,7 +49,7 @@ export function AnalysisPanel({
             <div>
               <p className="font-medium">正在阅读这首诗……</p>
               <p className="mt-2 text-sm text-muted-foreground">
-                AI 正在生成译文、注释和文学赏析
+                正在生成译文、注释和文学赏析
               </p>
             </div>
           </div>
@@ -129,8 +129,7 @@ export function AnalysisPanel({
               <h3 className="font-medium">尚未生成赏析</h3>
 
               <p className="text-sm leading-7 text-muted-foreground">
-                点击页面上方的「整首赏析」，
-                即可生成这首诗的译文、注释和文学赏析。
+                点击「整首赏析」即可生成这首诗的译文、注释和文学赏析。
               </p>
             </div>
           </div>
