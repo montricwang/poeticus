@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI, APIError
 from pydantic import BaseModel
+from langsmith.wrappers import wrap_openai
 
 
 class Gloss(BaseModel):
@@ -19,7 +20,7 @@ load_dotenv()
 
 api_key = os.environ["LLM_API_KEY"]
 base_url = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
-client = OpenAI(api_key=api_key, base_url=base_url)
+client = wrap_openai(OpenAI(api_key=api_key, base_url=base_url))
 
 
 def analyze_poem(poem: str) -> PoemAnalysis:

@@ -1,11 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from main import (
-    PoemAnalysis,
-    analyze_poem,
-    chat_about_poem,
-)
+from main import PoemAnalysis, analyze_poem
 from intent_router import graph
 
 app = FastAPI(title="Poeticus")
