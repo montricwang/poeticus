@@ -15,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 
 import type { SelectedText } from "@/components/poem-reader";
 
+type CopyTarget = "user" | "assistant";
+
 export type ChatTurn = {
   id: number;
   question: string;
@@ -49,15 +51,16 @@ export function ChatPanel({
 
   const [copyStatus, setCopyStatus] = useState<{
     id: number;
+    target: CopyTarget;
     status: "success" | "error";
   } | null>(null);
 
-  async function handleCopy(id: number, content: string) {
+  async function handleCopy(id: number, target: CopyTarget, content: string) {
     try {
       await navigator.clipboard.writeText(content);
-      setCopyStatus({ id, status: "success" });
+      setCopyStatus({ id, target, status: "success" });
     } catch {
-      setCopyStatus({ id, status: "error" });
+      setCopyStatus({ id, target, status: "error" });
     }
   }
 
@@ -132,6 +135,40 @@ export function ChatPanel({
                 <p className="whitespace-pre-wrap break-words text-sm leading-7">
                   {turn.question}
                 </p>
+                <div className="flex items-center justify-end gap-2">
+                  {copyStatus?.id === turn.id &&
+                    copyStatus.target === "user" &&
+                    copyStatus.status === "error" && (
+                      <span role="alert" className="text-xs text-destructive">
+                        复制失败，请手动复制
+                      </span>
+                    )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-muted-foreground/60 hover:text-foreground"
+                    onClick={() =>
+                      void handleCopy(
+                        turn.id,
+                        "user",
+                        turn.selection
+                          ? `引用原文：\n${turn.selection.text}\n\n问题：\n${turn.question}`
+                          : turn.question,
+                      )
+                    }
+                    aria-label="复制用户消息"
+                    title="复制用户消息"
+                  >
+                    {copyStatus?.id === turn.id &&
+                    copyStatus.target === "user" &&
+                    copyStatus.status === "success" ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -160,13 +197,16 @@ export function ChatPanel({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon"
+                      className="size-7 text-muted-foreground/60 hover:text-foreground"
                       onClick={() =>
-                        void handleCopy(turn.id, turn.answer ?? "")
+                        void handleCopy(turn.id, "assistant", turn.answer ?? "")
                       }
                       aria-label="复制 AI 回答"
+                      title="复制 AI 回答"
                     >
                       {copyStatus?.id === turn.id &&
+                      copyStatus.target === "assistant" &&
                       copyStatus.status === "success" ? (
                         <Check className="size-4" />
                       ) : (
@@ -175,6 +215,7 @@ export function ChatPanel({
                     </Button>
 
                     {copyStatus?.id === turn.id &&
+                      copyStatus.target === "assistant" &&
                       copyStatus.status === "error" && (
                         <span role="alert" className="text-xs text-destructive">
                           复制失败，请手动选择文字复制
