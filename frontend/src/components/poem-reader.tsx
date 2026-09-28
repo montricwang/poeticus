@@ -1,12 +1,7 @@
 import { useRef } from "react";
 import { BookOpen } from "lucide-react";
 import { Card } from "@/components/ui/card";
-
-const poem = `风卷珠帘自上钩，萧萧乱叶报新秋。
-独携纤手上高楼。
-
-缺月向人舒窈窕，三星当户照绸缪。
-香生雾縠见纤柔。`;
+import { poem } from "@/data/sample-poem";
 
 export type SelectedText = {
   text: string;
