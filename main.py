@@ -76,6 +76,60 @@ def analyze_poem(poem: str) -> PoemAnalysis:
     return PoemAnalysis.model_validate_json(choice.message.content)
 
 
+def chat_about_poem(
+    poem: str,
+    question: str,
+    selection: str | None = None,
+) -> str:
+    """结合完整诗歌和可选的原文引用，回答用户的问题。"""
+
+    context = f"诗歌原文：\n{poem}"
+
+    if selection:
+        context += f"\n\n用户选中的原文：\n{selection}"
+
+    context += f"\n\n用户的问题：\n{question}"
+
+    try:
+        response = client.chat.completions.create(
+            model="deepseek-flash",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "你是一位专业的文学阅读助手。"
+                        "请结合用户提供的完整诗歌，直接回答具体问题。"
+                        "如果用户引用了某段原文，应优先围绕该段解释，"
+                        "但不能脱离整首诗的上下文。"
+                        "回答应自然、准确，避免无关的长篇介绍。"
+                        "不要编造文献出处、作者信息或历史事实。"
+                        "如果问题需要外部文献核实，而你无法确认，"
+                        "应明确说明不确定性。"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": context,
+                },
+            ],
+        )
+    except APIError as exc:
+        raise RuntimeError("DeepSeek API 调用失败") from exc
+
+    if not response.choices:
+        raise ValueError("模型没有返回任何候选结果")
+
+    choice = response.choices[0]
+
+    if choice.finish_reason != "stop":
+        raise ValueError(f"模型未正常完成生成：{choice.finish_reason}")
+
+    if not choice.message.content:
+        raise ValueError("模型返回了空内容")
+
+    return choice.message.content
+
+
 if __name__ == "__main__":
     try:
         analysis = analyze_poem(

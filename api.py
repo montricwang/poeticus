@@ -1,10 +1,17 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from main import analyze_poem, PoemAnalysis
+
+from main import (
+    PoemAnalysis,
+    analyze_poem,
+    chat_about_poem,
+)
 
 
 app = FastAPI(title="Poeticus")
 
+
+# 整首赏析
 
 class AnalyzeRequest(BaseModel):
     poem: str
@@ -20,6 +27,69 @@ def analyze(request: AnalyzeRequest):
 
     try:
         return analyze_poem(request.poem)
+
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=str(exc),
+        ) from exc
+
+
+# 诗歌对话
+
+
+class QuoteSelection(BaseModel):
+    text: str
+    start: int
+    end: int
+
+
+class ChatRequest(BaseModel):
+    poem: str
+    question: str
+    selection: QuoteSelection | None = None
+
+
+class ChatResponse(BaseModel):
+    answer: str
+
+
+@app.post("/chat", response_model=ChatResponse)
+def chat(request: ChatRequest):
+    if not request.poem.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="诗歌原文不能为空",
+        )
+
+    if not request.question.strip():
+        raise HTTPException(
+            status_code=422,
+            detail="问题不能为空",
+        )
+
+    selection = request.selection
+
+    if selection is not None:
+        if (
+            selection.start < 0
+            or selection.end > len(request.poem)
+            or selection.start >= selection.end
+            or request.poem[selection.start : selection.end] != selection.text
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="引用位置与原文不一致",
+            )
+
+    try:
+        answer = chat_about_poem(
+            poem=request.poem,
+            question=request.question,
+            selection=selection.text if selection else None,
+        )
+
+        return ChatResponse(answer=answer)
 
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(
