@@ -15,6 +15,8 @@ type SelectedText = {
 function App() {
   const poemRef = useRef<HTMLParagraphElement>(null);
   const [selected, setSelected] = useState<SelectedText | null>(null);
+  // 【位置 1】：新增 askedText 状态
+  const [askedText, setAskedText] = useState("");
 
   function handleSelection() {
     const selection = window.getSelection();
@@ -26,7 +28,6 @@ function App() {
     const range = selection.getRangeAt(0);
     const textNode = poemRef.current?.firstChild;
 
-    // 目前原文只有一个文本节点
     if (range.startContainer !== textNode || range.endContainer !== textNode) {
       return;
     }
@@ -39,6 +40,8 @@ function App() {
       start,
       end,
     });
+
+    setAskedText("");
 
     console.log("选中范围：", start, end);
   }
@@ -62,6 +65,10 @@ function App() {
         <section>
           <h3>当前选中的文字</h3>
           <p>{selected.text}</p>
+
+          <button onClick={() => setAskedText(selected.text)}>问 AI</button>
+
+          {askedText && <p>你选择了：「{askedText}」</p>}
         </section>
       )}
     </main>
