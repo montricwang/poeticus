@@ -1,5 +1,13 @@
-import { useEffect, useRef } from "react";
-import { ArrowUp, LoaderCircle, RotateCcw, Sparkles, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  ArrowUp,
+  Check,
+  Copy,
+  LoaderCircle,
+  RotateCcw,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { AssistantMarkdown } from "@/components/assistant-markdown";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -38,6 +46,30 @@ export function ChatPanel({
   onRetry,
 }: ChatPanelProps) {
   const chatListRef = useRef<HTMLDivElement>(null);
+
+  const [copyStatus, setCopyStatus] = useState<{
+    id: number;
+    status: "success" | "error";
+  } | null>(null);
+
+  async function handleCopy(id: number, content: string) {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopyStatus({ id, status: "success" });
+    } catch {
+      setCopyStatus({ id, status: "error" });
+    }
+  }
+
+  useEffect(() => {
+    if (copyStatus?.status !== "success") return;
+
+    const timer = window.setTimeout(() => {
+      setCopyStatus(null);
+    }, 2000);
+
+    return () => window.clearTimeout(timer);
+  }, [copyStatus]);
 
   useEffect(() => {
     const list = chatListRef.current;
@@ -121,8 +153,34 @@ export function ChatPanel({
                   <Sparkles className="size-4" />
                 </div>
 
-                <div className="min-w-0 flex-1 pt-1">
+                <div className="min-w-0 flex-1 select-text pt-1">
                   <AssistantMarkdown content={turn.answer} />
+
+                  <div className="mt-2 flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        void handleCopy(turn.id, turn.answer ?? "")
+                      }
+                      aria-label="复制 AI 回答"
+                    >
+                      {copyStatus?.id === turn.id &&
+                      copyStatus.status === "success" ? (
+                        <Check className="size-4" />
+                      ) : (
+                        <Copy className="size-4" />
+                      )}
+                    </Button>
+
+                    {copyStatus?.id === turn.id &&
+                      copyStatus.status === "error" && (
+                        <span role="alert" className="text-xs text-destructive">
+                          复制失败，请手动选择文字复制
+                        </span>
+                      )}
+                  </div>
                 </div>
               </div>
             )}
