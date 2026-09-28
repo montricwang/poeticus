@@ -13,7 +13,7 @@ export function AssistantMarkdown({ content }: AssistantMarkdownProps) {
         skipHtml
         components={{
           p: ({ children }) => (
-            <p className="my-3 whitespace-pre-wrap first:mt-0 last:mb-0">
+            <p className="my-3 first:mt-0 last:mb-0">
               {children}
             </p>
           ),
