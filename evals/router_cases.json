@@ -1,0 +1,98 @@
+{
+  "poem": "风卷珠帘自上钩，萧萧乱叶报新秋。\n独携纤手上高楼。\n\n缺月向人舒窈窕，三星当户照绸缪。\n香生雾縠见纤柔。",
+  "cases": [
+    {
+      "id": "R001",
+      "question": "这首词整体表达了什么情绪？",
+      "expected_route": "text_reading"
+    },
+    {
+      "id": "R002",
+      "question": "“报新秋”的“报”字用得有什么妙处？",
+      "expected_route": "text_reading"
+    },
+    {
+      "id": "R003",
+      "question": "上片和下片之间有什么联系？",
+      "expected_route": "text_reading"
+    },
+    {
+      "id": "R004",
+      "question": "“缺月”与“纤柔”在表达上有什么关系？",
+      "expected_route": "text_reading"
+    },
+    {
+      "id": "R005",
+      "question": "请将这首词翻译成现代汉语。",
+      "expected_route": "text_reading"
+    },
+    {
+      "id": "R006",
+      "question": "这首词的作者是谁？",
+      "expected_route": "source_lookup"
+    },
+    {
+      "id": "R007",
+      "question": "“三星当户”是否化用了更早的文献？请给出出处。",
+      "expected_route": "source_lookup"
+    },
+    {
+      "id": "R008",
+      "question": "“绸缪”在古代汉语中有哪些义项？请给出文献依据。",
+      "expected_route": "source_lookup"
+    },
+    {
+      "id": "R009",
+      "question": "这首词有哪些不同的文本版本或异文？",
+      "expected_route": "source_lookup"
+    },
+    {
+      "id": "R010",
+      "question": "历代词论家有没有评论过这首词？",
+      "expected_route": "source_lookup"
+    },
+    {
+      "id": "R011",
+      "question": "这个字怎么读？",
+      "selection": "縠",
+      "expected_route": "source_lookup"
+    },
+    {
+      "id": "R012",
+      "question": "这个字怎么读？",
+      "selection": null,
+      "expected_route": "needs_clarification"
+    },
+    {
+      "id": "R013",
+      "question": "这首词讲什么？",
+      "selection": null,
+      "expected_route": "text_reading"
+    },
+    {
+      "id": "R014",
+      "question": "这是苏轼写的吗？",
+      "selection": null,
+      "expected_route": "source_lookup"
+    },
+    {
+      "id": "R015",
+      "question": "这个意象表达什么？",
+      "selection": "缺月",
+      "expected_route": "text_reading"
+    },
+    {
+      "id": "R016",
+      "question": "我还是不太明白。",
+      "selection": null,
+      "expected_route": "needs_clarification"
+    },
+    {
+      "id": "R017",
+      "question": "这是什么意思？",
+      "selection": null,
+      "expected_route": "text_reading",
+      "allowed_routes": ["text_reading", "needs_clarification"]
+    }
+  ]
+}

@@ -6,12 +6,13 @@ from main import (
     analyze_poem,
     chat_about_poem,
 )
-
+from intent_router import graph
 
 app = FastAPI(title="Poeticus")
 
 
 # 整首赏析
+
 
 class AnalyzeRequest(BaseModel):
     poem: str
@@ -83,11 +84,18 @@ def chat(request: ChatRequest):
             )
 
     try:
-        answer = chat_about_poem(
-            poem=request.poem,
-            question=request.question,
-            selection=selection.text if selection else None,
+        result = graph.invoke(
+            {
+                "poem": request.poem,
+                "question": request.question,
+                "selection": selection.text if selection else None,
+            }
         )
+
+        answer = result.get("reply")
+
+        if not answer:
+            raise RuntimeError("工作流没有返回答案")
 
         return ChatResponse(answer=answer)
 
