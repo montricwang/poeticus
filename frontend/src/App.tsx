@@ -12,9 +12,16 @@ type SelectedText = {
   end: number;
 };
 
+type ChatMessage = {
+  question: string;
+  quote: string | null;
+};
+
 function App() {
   const poemRef = useRef<HTMLParagraphElement>(null);
   const [selected, setSelected] = useState<SelectedText | null>(null);
+  const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   function handleSelection() {
     const selection = window.getSelection();
@@ -38,6 +45,21 @@ function App() {
       start,
       end,
     });
+  }
+
+  function handleSend() {
+    if (!question.trim()) return;
+
+    setMessages((previous) => [
+      ...previous,
+      {
+        question: question.trim(),
+        quote: selected?.text ?? null,
+      },
+    ]);
+
+    setQuestion("");
+    setSelected(null);
   }
 
   return (
@@ -81,7 +103,36 @@ function App() {
         <h2>AI 阅读助手</h2>
 
         <div style={{ flex: 1 }}>
-          <p style={{ opacity: 0.6 }}>选中左侧的诗句，开始讨论。</p>
+          {messages.length === 0 && (
+            <p style={{ opacity: 0.6 }}>选中左侧的诗句，开始讨论。</p>
+          )}
+
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              style={{
+                padding: 12,
+                marginBottom: 16,
+                borderRadius: 8,
+                background: "rgba(120, 140, 160, 0.15)",
+              }}
+            >
+              {message.quote && (
+                <blockquote
+                  style={{
+                    margin: "0 0 12px",
+                    paddingLeft: 12,
+                    borderLeft: "3px solid #888",
+                    opacity: 0.7,
+                  }}
+                >
+                  {message.quote}
+                </blockquote>
+              )}
+
+              <p>{message.question}</p>
+            </div>
+          ))}
         </div>
 
         <div>
@@ -120,7 +171,17 @@ function App() {
               padding: 12,
               resize: "vertical",
             }}
+            value={question}
+            onChange={(event) => setQuestion(event.target.value)}
           />
+
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!question.trim()}
+          >
+            发送
+          </button>
         </div>
       </aside>
     </main>
