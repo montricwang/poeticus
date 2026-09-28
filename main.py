@@ -1,8 +1,7 @@
 import os
-
 from dotenv import load_dotenv
 from openai import OpenAI, APIError
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 
 class Gloss(BaseModel):
@@ -21,17 +20,6 @@ load_dotenv()
 api_key = os.environ["LLM_API_KEY"]
 base_url = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
 client = OpenAI(api_key=api_key, base_url=base_url)
-
-
-def parse_analysis(raw: str | None) -> PoemAnalysis:
-    """将模型返回的 JSON 字符串解析为业务对象。"""
-    if not raw:
-        raise ValueError("模型返回了空内容")
-
-    try:
-        return PoemAnalysis.model_validate_json(raw)
-    except ValidationError as exc:
-        raise ValueError("模型输出不符合 PoemAnalysis 结构") from exc
 
 
 def analyze_poem(poem: str) -> PoemAnalysis:
@@ -70,7 +58,6 @@ def analyze_poem(poem: str) -> PoemAnalysis:
                 },
             ],
             response_format={"type": "json_object"},
-            # max_tokens=2000,
         )
     except APIError as exc:
         raise RuntimeError("DeepSeek API 调用失败") from exc
@@ -83,7 +70,10 @@ def analyze_poem(poem: str) -> PoemAnalysis:
     if choice.finish_reason != "stop":
         raise ValueError(f"模型未正常完成生成：{choice.finish_reason}")
 
-    return parse_analysis(choice.message.content)
+    if not choice.message.content:
+        raise ValueError("模型返回了空内容")
+
+    return PoemAnalysis.model_validate_json(choice.message.content)
 
 
 if __name__ == "__main__":
