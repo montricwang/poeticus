@@ -1,53 +1,17 @@
-import { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { BookOpenText } from "lucide-react";
+
 import { ThemeSwitcher } from "@/components/theme-switcher";
+import { PoemReader } from "@/components/poem-reader";
+import { ChatPanel } from "@/components/chat-panel";
 
-const poem = `风卷珠帘自上钩，萧萧乱叶报新秋。
-独携纤手上高楼。
-
-缺月向人舒窈窕，三星当户照绸缪。
-香生雾縠见纤柔。`;
-
-type SelectedText = {
-  text: string;
-  start: number;
-  end: number;
-};
-
-type ChatMessage = {
-  question: string;
-  quote: string | null;
-};
+import type { SelectedText } from "@/components/poem-reader";
+import type { ChatMessage } from "@/components/chat-panel";
 
 function App() {
-  const poemRef = useRef<HTMLParagraphElement>(null);
   const [selected, setSelected] = useState<SelectedText | null>(null);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-
-  function handleSelection() {
-    const selection = window.getSelection();
-
-    if (!selection || selection.isCollapsed) {
-      return;
-    }
-
-    const range = selection.getRangeAt(0);
-    const textNode = poemRef.current?.firstChild;
-
-    if (range.startContainer !== textNode || range.endContainer !== textNode) {
-      return;
-    }
-
-    const start = range.startOffset;
-    const end = range.endOffset;
-
-    setSelected({
-      text: poem.slice(start, end),
-      start,
-      end,
-    });
-  }
 
   function handleSend() {
     if (!question.trim()) return;
@@ -65,133 +29,61 @@ function App() {
   }
 
   return (
-    <main
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) minmax(320px, 0.9fr)",
-        gap: 40,
-        width: "calc(100vw - 64px)",
-        maxWidth: 1100,
-        minHeight: 600,
-        margin: "32px auto",
-      }}
-    >
-      <article>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-semibold text-foreground">Poeticus</h1>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* 顶部导航 */}
+      <header className="border-b border-border/50 bg-background/70 backdrop-blur-xl">
+        <div className="mx-auto flex min-h-20 max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4 md:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-foreground text-background shadow-lg shadow-black/10">
+              <BookOpenText className="size-6" />
+            </div>
+
+            <div>
+              <div className="text-xl font-semibold tracking-tight">
+                Poeticus
+              </div>
+
+              <div className="text-xs tracking-wide text-muted-foreground">
+                LITERATURE READING STUDIO
+              </div>
+            </div>
+          </div>
 
           <ThemeSwitcher />
         </div>
-        <h2>浣溪沙</h2>
+      </header>
 
-        <p
-          ref={poemRef}
-          onMouseUp={handleSelection}
-          style={{
-            whiteSpace: "pre-line",
-            lineHeight: 2.5,
-            fontSize: 20,
-          }}
-        >
-          {poem}
-        </p>
-      </article>
+      {/* 页面主体 */}
+      <main className="mx-auto w-full max-w-7xl px-5 pb-10 pt-10 md:px-8">
+        <div className="mb-8">
+          <div className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-violet-600 dark:text-violet-300">
+            Your reading space
+          </div>
 
-      <aside
-        style={{
-          border: "1px solid #8886",
-          borderRadius: 12,
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <h2>AI 阅读助手</h2>
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            让阅读成为一场对话
+          </h1>
 
-        <div style={{ flex: 1 }}>
-          {messages.length === 0 && (
-            <p style={{ opacity: 0.6 }}>选中左侧的诗句，开始讨论。</p>
-          )}
-
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              style={{
-                padding: 12,
-                marginBottom: 16,
-                borderRadius: 8,
-                background: "rgba(120, 140, 160, 0.15)",
-              }}
-            >
-              {message.quote && (
-                <blockquote
-                  style={{
-                    margin: "0 0 12px",
-                    paddingLeft: 12,
-                    borderLeft: "3px solid #888",
-                    opacity: 0.7,
-                  }}
-                >
-                  {message.quote}
-                </blockquote>
-              )}
-
-              <p>{message.question}</p>
-            </div>
-          ))}
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
+            阅读、思考、提问，在诗歌中发现更多可能。
+          </p>
         </div>
 
-        <div>
-          {selected && (
-            <div
-              style={{
-                padding: 12,
-                marginBottom: 12,
-                borderRadius: 8,
-                background: "rgba(120, 140, 160, 0.15)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                }}
-              >
-                <small>引用原文</small>
-                <button type="button" onClick={() => setSelected(null)}>
-                  ×
-                </button>
-              </div>
+        {/* 阅读器与聊天框 */}
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+          <PoemReader onSelect={setSelected} />
 
-              <p>{selected.text}</p>
-            </div>
-          )}
-
-          <textarea
-            placeholder="针对诗句提出你的问题……"
-            rows={3}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: 12,
-              resize: "vertical",
-            }}
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
+          <ChatPanel
+            selected={selected}
+            question={question}
+            messages={messages}
+            onQuestionChange={setQuestion}
+            onClearQuote={() => setSelected(null)}
+            onSend={handleSend}
           />
-
-          <Button
-            type="button"
-            onClick={handleSend}
-            disabled={!question.trim()}
-            className="mt-3 w-full rounded-xl"
-          >
-            发送
-          </Button>
         </div>
-      </aside>
-    </main>
+      </main>
+    </div>
   );
 }
 
