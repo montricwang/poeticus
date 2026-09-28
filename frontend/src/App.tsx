@@ -184,14 +184,15 @@ function App() {
 
   function handleEdit(id: number, nextQuestion: string) {
     if (inFlightRef.current || !nextQuestion.trim()) return;
-
-    // 首版只允许编辑最近一条用户消息。
-    const turn = turns[turns.length - 1];
-
-    if (!turn || turn.id !== id) return;
-
-    // 保留原来的消息编号和诗句引用，
-    // 修改问题，并清除已经失效的旧回答。
+  
+    // 找到用户正在编辑的那一轮。
+    const index = turns.findIndex((item) => item.id === id);
+  
+    if (index === -1) return;
+  
+    const turn = turns[index];
+  
+    // 保留原来的引用，更新问题。
     const editedTurn: ChatTurn = {
       ...turn,
       question: nextQuestion.trim(),
@@ -201,13 +202,15 @@ function App() {
       regenerating: false,
       regenerateError: null,
     };
-
-    // 修改原来的消息，不新增一条。
-    setTurns((previous) =>
-      previous.map((item) => (item.id === id ? editedTurn : item)),
-    );
-
-    // 使用修改后的问题重新请求 AI。
+  
+    // 保留编辑位置之前的记录，
+    // 移除后续记录，并放入修改后的消息。
+    setTurns([
+      ...turns.slice(0, index),
+      editedTurn,
+    ]);
+  
+    // 使用新问题请求 AI。
     void requestReply(editedTurn);
   }
 

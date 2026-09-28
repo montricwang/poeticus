@@ -174,6 +174,17 @@ export function ChatPanel({
                           loading
                         }
                         onClick={() => {
+                          const isOlderMessage =
+                            turn.id !== turns[turns.length - 1]?.id;
+
+                          if (isOlderMessage) {
+                            const confirmed = window.confirm(
+                              "保存后将移除这条消息之后的对话，是否继续？",
+                            );
+
+                            if (!confirmed) return;
+                          }
+
                           onEdit(turn.id, editDraft.trim());
                           setEditingTurnId(null);
                           setEditDraft("");
@@ -227,24 +238,21 @@ export function ChatPanel({
                         )}
                       </Button>
 
-                      {/* 新增：只有最近一条消息显示编辑图标 */}
-                      {turn.id === turns[turns.length - 1]?.id && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-8 text-muted-foreground/60 hover:text-foreground"
-                          disabled={loading}
-                          aria-label="编辑用户消息"
-                          title="编辑"
-                          onClick={() => {
-                            setEditingTurnId(turn.id);
-                            setEditDraft(turn.question);
-                          }}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground/60 hover:text-foreground"
+                        disabled={loading}
+                        aria-label="编辑用户消息"
+                        title="编辑"
+                        onClick={() => {
+                          setEditingTurnId(turn.id);
+                          setEditDraft(turn.question);
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
 
                       {/* 复制失败提示 */}
                       {copyStatus?.key === `${turn.id}:user` &&
