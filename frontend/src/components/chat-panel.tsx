@@ -5,7 +5,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { ArrowDown, Sparkles } from "lucide-react";
+import { ArrowDown } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -148,21 +148,7 @@ export function ChatPanel({
   }
 
   return (
-    <Card className="flex h-165 min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card/90 py-0 shadow-xl shadow-black/5 backdrop-blur-xl dark:shadow-black/20">
-      <header className="flex shrink-0 items-center justify-between border-b border-border/60 px-5 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
-            <Sparkles className="size-5" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold">AI 阅读助手</h2>
-            <p className="text-xs text-muted-foreground">与诗歌自由对话</p>
-          </div>
-        </div>
-        <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-          AI 对话
-        </span>
-      </header>
+    <Card className="flex h-165 min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm">
 
       {/* 相对定位容器负责固定悬浮按钮，内部列表才允许滚动。 */}
       <div className="relative flex min-h-0 flex-1">
@@ -172,16 +158,10 @@ export function ChatPanel({
           className="flex min-h-0 w-full flex-1 flex-col gap-5 overflow-y-auto px-5 py-6"
         >
           {turns.length === 0 && (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-              <div className="flex size-14 items-center justify-center rounded-3xl bg-violet-500/10">
-                <Sparkles className="size-7 text-violet-500" />
-              </div>
-              <div className="max-w-xs space-y-2">
-                <h3 className="text-base font-medium">从一句诗开始</h3>
-                <p className="text-sm leading-7 text-muted-foreground">
-                  选中左侧感兴趣的字词或诗句， 然后在这里提出你的问题。
-                </p>
-              </div>
+            <div className="flex flex-1 items-center justify-center text-center">
+              <p className="max-w-xs text-sm leading-7 text-muted-foreground">
+                选中左侧诗句，或直接输入你想问的问题。
+              </p>
             </div>
           )}
 

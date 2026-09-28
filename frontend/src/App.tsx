@@ -1,5 +1,4 @@
 import { useRef, useState } from "react";
-import { BookOpenText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -259,46 +258,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border/50 bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex min-h-20 max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-4 md:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-foreground text-background shadow-lg shadow-black/10">
-              <BookOpenText className="size-6" />
-            </div>
-
-            <div>
-              <div className="text-xl font-semibold tracking-tight">
-                Poeticus
-              </div>
-              <div className="text-xs tracking-wide text-muted-foreground">
-                LITERATURE READING STUDIO
-              </div>
-            </div>
-          </div>
-
+      <header className="border-b border-border/50">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
+          <span className="text-lg font-semibold tracking-tight">Poeticus</span>
           <ThemeSwitcher />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-5 pb-10 pt-10 md:px-8">
-        <div className="mb-8">
-          <div className="mb-3 text-xs font-medium uppercase tracking-widest text-violet-600 dark:text-violet-300">
-            Your reading space
-          </div>
-
-          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-            让阅读成为一场对话
-          </h1>
-
-          <p className="mt-3 text-sm leading-7 text-muted-foreground">
-            阅读、思考、提问，在诗歌中发现更多可能。
-          </p>
-
-          <Button className="mt-5" onClick={handleAnalyze} disabled={analyzing}>
-            {analyzing ? "正在赏析……" : "整首赏析"}
-          </Button>
-        </div>
-
+      <main className="mx-auto w-full max-w-7xl px-5 pb-10 pt-7 md:px-8">
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
           <PoemReader
             onSelect={(value) => {
@@ -330,6 +297,16 @@ function App() {
                 onClick={() => setActiveView("analysis")}
               >
                 赏析
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-auto"
+                onClick={handleAnalyze}
+                disabled={analyzing}
+              >
+                {analyzing ? "正在生成……" : "生成整首赏析"}
               </Button>
             </div>
 
