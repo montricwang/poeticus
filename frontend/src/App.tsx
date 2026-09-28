@@ -8,6 +8,7 @@ import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
 
 import { poem } from "@/data/sample-poem";
+import { readChatStream } from "@/lib/chat-stream";
 
 import type { SelectedText } from "@/components/poem-reader";
 import type { ChatTurn, ChatViewport } from "@/components/chat-types";
@@ -38,38 +39,37 @@ function App() {
 
     inFlightRef.current = true;
     setChatLoading(true);
+    let received = "";
 
-    // 根据是不是重新生成，采用不同的等待状态。
     setTurns((previous) =>
       previous.map((item) => {
         if (item.id !== turn.id) return item;
-
         if (regenerate) {
-          // 保留原来的回答和 done 状态。
+          // 原回答继续留在 answer，增量的新回答单独保存在 streamDraft。
           return {
             ...item,
             regenerating: true,
             regenerateError: null,
+            streamDraft: "",
           };
         }
-
-        // 普通发送或失败重试。
+        // 普通发送 / 失败重试开始的是一次新的完整生成。
         return {
           ...item,
+          answer: null,
           status: "pending",
           error: null,
           regenerating: false,
           regenerateError: null,
+          streamDraft: null,
         };
       }),
     );
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("/api/chat/stream", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           poem,
           question: turn.question,
@@ -77,34 +77,33 @@ function App() {
         }),
       });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => null);
-
-        throw new Error(
-          typeof error?.detail === "string"
-            ? error.detail
-            : `请求失败：HTTP ${response.status}`,
+      await readChatStream(response, (token) => {
+        received += token;
+        setTurns((previous) =>
+          previous.map((item) => {
+            if (item.id !== turn.id) return item;
+            return regenerate
+              ? { ...item, streamDraft: received }
+              : { ...item, answer: received, status: "streaming" };
+          }),
         );
-      }
+      });
 
-      const result: { answer: string } = await response.json();
-
-      if (typeof result.answer !== "string" || !result.answer.trim()) {
+      if (!received.trim()) {
         throw new Error("AI 返回了空回答");
       }
 
-      // 阅读旧消息时不强制滚动，而是在聊天面板显示新回复提醒。
+      // 用户阅读旧消息期间不强制跳底部；仅在完成时标记新回复。
       if (!chatViewportRef.current.atBottom) {
         setHasUnreadReply(true);
       }
-
-      // 成功：把新回答放回原来的消息。
       setTurns((previous) =>
         previous.map((item) =>
           item.id === turn.id
             ? {
                 ...item,
-                answer: result.answer,
+                answer: received,
+                streamDraft: null,
                 status: "done",
                 error: null,
                 regenerating: false,
@@ -115,25 +114,24 @@ function App() {
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "消息发送失败";
-
       setTurns((previous) =>
         previous.map((item) => {
           if (item.id !== turn.id) return item;
-
           if (regenerate) {
-            // 重新生成失败：保留原来的回答。
+            // 保留原回答，也保留已经收到的新版本片段。
             return {
               ...item,
               regenerating: false,
               regenerateError: message,
+              streamDraft: received || null,
             };
           }
-
-          // 普通请求失败：维持原有的重试行为。
           return {
             ...item,
+            answer: received || null,
             status: "failed",
             error: message,
+            streamDraft: null,
             regenerating: false,
           };
         }),
@@ -157,6 +155,7 @@ function App() {
 
       regenerating: false,
       regenerateError: null,
+      streamDraft: null,
     };
 
     // 关键修改：先更新页面，再等待 API。
@@ -191,16 +190,16 @@ function App() {
 
   function handleEdit(id: number, nextQuestion: string) {
     if (inFlightRef.current || !nextQuestion.trim()) return;
-
+  
     // 找到用户正在编辑的那一轮。
     const index = turns.findIndex((item) => item.id === id);
-
+  
     if (index === -1) return;
-
+  
     const turn = turns[index];
 
     // 编辑后的新回答应重新播放一次入场动画。
-    seenAnimationsRef.current.delete(`assistant:${id}:done`);
+    seenAnimationsRef.current.delete(`assistant:${id}:answer`);
 
     // 保留原来的引用，更新问题。
     const editedTurn: ChatTurn = {
@@ -211,12 +210,16 @@ function App() {
       error: null,
       regenerating: false,
       regenerateError: null,
+      streamDraft: null,
     };
-
+  
     // 保留编辑位置之前的记录，
     // 移除后续记录，并放入修改后的消息。
-    setTurns([...turns.slice(0, index), editedTurn]);
-
+    setTurns([
+      ...turns.slice(0, index),
+      editedTurn,
+    ]);
+  
     // 使用新问题请求 AI。
     void requestReply(editedTurn);
   }

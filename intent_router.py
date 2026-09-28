@@ -1,13 +1,11 @@
 from typing import Literal, NotRequired, TypedDict
 
+from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, START, END
 from openai import APIError
 from pydantic import BaseModel, ValidationError
 
-from main import client, chat_about_poem
-
-
-# 1. 定义意图分类结果
+from main import client, chat_about_poem, stream_chat_about_poem
 
 
 class IntentResult(BaseModel):
@@ -19,22 +17,18 @@ class IntentResult(BaseModel):
     reason: str
 
 
-# 2. 定义 Graph 中共享的数据
 class RouterState(TypedDict):
     poem: str
     question: str
-
-    # 前端已经支持选区，Graph 现在也接受这份信息。
     selection: NotRequired[str | None]
-
-    # 以下字段由节点逐步产生。
     intent: NotRequired[str]
     reason: NotRequired[str]
     next_step: NotRequired[str]
     reply: NotRequired[str]
+    # 仅 /chat/stream 传入；原有 /chat 不受影响。
+    stream_reply: NotRequired[bool]
 
 
-# 3. 调用 DeepSeek 进行真实的意图识别
 def classify_intent(state: RouterState) -> dict:
     system_prompt = """
 你是古典诗歌阅读系统的意图分类器。
@@ -103,14 +97,12 @@ needs_clarification：
             messages=[
                 {"role": "system", "content": system_prompt},
                 {
-                    "role": "user",
-                    "content": (
+                    "role": "user", "content": (
                         f"当前诗歌：\n{state['poem']}\n\n"
                         f"当前选区：\n"
                         f"{state.get('selection') or '（未选择任何原文）'}\n\n"
                         f"用户问题：\n{state['question']}"
-                    ),
-                },
+                    )},
             ],
             response_format={"type": "json_object"},
             temperature=0,
@@ -124,60 +116,50 @@ needs_clarification：
         raise RuntimeError("模型没有返回分类结果")
 
     choice = response.choices[0]
-
     if choice.finish_reason != "stop":
         raise RuntimeError(
             f"模型提前停止：finish_reason={choice.finish_reason}，"
             f"content={choice.message.content!r}，"
             f"usage={response.usage}"
         )
-
     if not choice.message.content:
         raise RuntimeError(f"模型返回空内容：usage={response.usage}")
-
     try:
         decision = IntentResult.model_validate_json(choice.message.content)
     except ValidationError as exc:
         raise RuntimeError("意图分类结果不符合 Schema") from exc
-
-    return {
-        "intent": decision.intent,
-        "reason": decision.reason,
-    }
+    return {"intent": decision.intent, "reason": decision.reason}
 
 
-# 4. 根据分类结果选择后续节点
 def route_intent(
     state: RouterState,
-) -> Literal[
-    "text_reading",
-    "source_lookup",
-    "needs_clarification",
-]:
+) -> Literal["text_reading", "source_lookup", "needs_clarification"]:
     intent = state.get("intent")
-
-    if intent in (
-        "text_reading",
-        "source_lookup",
-        "needs_clarification",
-    ):
+    if intent in ("text_reading", "source_lookup", "needs_clarification"):
         return intent
-
     raise ValueError(f"缺少有效的意图分类结果：{intent!r}")
 
 
-# 5. 暂时只确认进入了哪个分支
 def direct_answer(state: RouterState) -> dict:
-    answer = chat_about_poem(
-        poem=state["poem"],
-        question=state["question"],
-        selection=state.get("selection"),
-    )
-
-    return {
-        "next_step": "direct_answer",
-        "reply": answer,
-    }
+    if state.get("stream_reply"):
+        # 只有流式端点走此分支；Graph 自定义事件直接转发 SDK 增量。
+        writer = get_stream_writer()
+        parts: list[str] = []
+        for token in stream_chat_about_poem(
+            poem=state["poem"],
+            question=state["question"],
+            selection=state.get("selection"),
+        ):
+            parts.append(token)
+            writer({"type": "token", "text": token})
+        answer = "".join(parts)
+    else:
+        answer = chat_about_poem(
+            poem=state["poem"],
+            question=state["question"],
+            selection=state.get("selection"),
+        )
+    return {"next_step": "direct_answer", "reply": answer}
 
 
 def source_lookup(state: RouterState) -> dict:
@@ -199,17 +181,12 @@ def clarify_user(state: RouterState) -> dict:
     }
 
 
-# 6. 构造并编译 LangGraph
 builder = StateGraph(RouterState)
-
 builder.add_node("classify_intent", classify_intent)
 builder.add_node("direct_answer", direct_answer)
 builder.add_node("source_lookup", source_lookup)
 builder.add_node("clarify_user", clarify_user)
-
 builder.add_edge(START, "classify_intent")
-
-
 builder.add_conditional_edges(
     "classify_intent",
     route_intent,
@@ -219,15 +196,12 @@ builder.add_conditional_edges(
         "needs_clarification": "clarify_user",
     },
 )
-
 builder.add_edge("direct_answer", END)
 builder.add_edge("source_lookup", END)
 builder.add_edge("clarify_user", END)
-
 graph = builder.compile()
 
 
-# 7. 用两个问题观察真实执行过程
 if __name__ == "__main__":
     poem = (
         "风卷珠帘自上钩，萧萧乱叶报新秋。"
@@ -235,48 +209,23 @@ if __name__ == "__main__":
         "缺月向人舒窈窕，三星当户照绸缪。"
         "香生雾縠见纤柔。"
     )
-
     cases = [
-        {
-            "question": "这个词从哪来的？",
-            "selection": "三星当户",
-            "expected": "source_lookup",
-        },
-        {
-            "question": "这个词从哪来的？",
-            "selection": None,
-            "expected": "needs_clarification",
-        },
-        {
-            "question": "这个词我没听说过。",
-            "selection": "绸缪",
-            "expected": "text_reading",
-        },
-        {
-            "question": "这是什么意思？",
-            "selection": None,
-            "expected": "needs_clarification",
-        },
+        {"question": "这个词从哪来的？", "selection": "三星当户", "expected": "source_lookup"},
+        {"question": "这个词从哪来的？", "selection": None, "expected": "needs_clarification"},
+        {"question": "这个词我没听说过。", "selection": "绸缪", "expected": "text_reading"},
+        {"question": "这是什么意思？", "selection": None, "expected": "needs_clarification"},
     ]
-
     for case in cases:
         result = graph.invoke(
-            {
-                "poem": poem,
-                "question": case["question"],
-                "selection": case["selection"],
-            }
+            {"poem": poem, "question": case["question"], "selection": case["selection"]}
         )
-
         actual = result["intent"]
         expected = case["expected"]
-
         print(f"\n问题：{case['question']}")
         print(f"选区：{case['selection']}")
         print(f"预期：{expected}")
         print(f"实际：{actual}")
         print(f"结果：{'PASS' if actual == expected else 'FAIL'}")
         print(f"理由：{result['reason']}")
-
         if result.get("reply"):
             print(f"澄清：{result['reply']}")

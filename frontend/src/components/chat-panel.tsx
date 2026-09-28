@@ -230,10 +230,10 @@ export function ChatPanel({
               </MessageEntrance>
 
               <MessageEntrance
-                key={`assistant:${turn.id}:${turn.status}`}
-                animationId={`assistant:${turn.id}:${turn.status}`}
+                key={`assistant:${turn.id}:${turn.status === "pending" ? "pending" : "answer"}`}
+                animationId={`assistant:${turn.id}:${turn.status === "pending" ? "pending" : "answer"}`}
                 seenAnimationsRef={seenAnimationsRef}
-                enabled={turn.status === "pending" || turn.status === "done"}
+                enabled={turn.status !== "failed"}
               >
                 <AssistantMessage
                   turn={turn}
@@ -256,9 +256,7 @@ export function ChatPanel({
             variant="outline"
             size="sm"
             className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background/95 shadow-md backdrop-blur-sm"
-            aria-label={
-              hasUnreadReply ? "新回复已生成，滚动到底部" : "滚动到底部"
-            }
+            aria-label={hasUnreadReply ? "新回复已生成，滚动到底部" : "滚动到底部"}
             onClick={scrollToBottom}
           >
             <ArrowDown className="size-4" />
