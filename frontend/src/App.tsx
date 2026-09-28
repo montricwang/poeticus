@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 const poem = `风卷珠帘自上钩，萧萧乱叶报新秋。
 独携纤手上高楼。
@@ -75,7 +77,11 @@ function App() {
       }}
     >
       <article>
-        <h1 className="text-4xl font-semibold text-violet-600">Poeticus</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-3xl font-semibold text-foreground">Poeticus</h1>
+
+          <ThemeSwitcher />
+        </div>
         <h2>浣溪沙</h2>
 
         <p
@@ -175,13 +181,14 @@ function App() {
             onChange={(event) => setQuestion(event.target.value)}
           />
 
-          <button
+          <Button
             type="button"
             onClick={handleSend}
             disabled={!question.trim()}
+            className="mt-3 w-full rounded-xl"
           >
             发送
-          </button>
+          </Button>
         </div>
       </aside>
     </main>
