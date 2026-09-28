@@ -1,4 +1,3 @@
-
 import { useRef, useState } from "react";
 
 const poem = `风卷珠帘自上钩，萧萧乱叶报新秋。
@@ -7,9 +6,15 @@ const poem = `风卷珠帘自上钩，萧萧乱叶报新秋。
 缺月向人舒窈窕，三星当户照绸缪。
 香生雾縠见纤柔。`;
 
+type SelectedText = {
+  text: string;
+  start: number;
+  end: number;
+};
+
 function App() {
   const poemRef = useRef<HTMLParagraphElement>(null);
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState<SelectedText | null>(null);
 
   function handleSelection() {
     const selection = window.getSelection();
@@ -22,17 +27,18 @@ function App() {
     const textNode = poemRef.current?.firstChild;
 
     // 目前原文只有一个文本节点
-    if (
-      range.startContainer !== textNode ||
-      range.endContainer !== textNode
-    ) {
+    if (range.startContainer !== textNode || range.endContainer !== textNode) {
       return;
     }
 
     const start = range.startOffset;
     const end = range.endOffset;
 
-    setSelected(poem.slice(start, end));
+    setSelected({
+      text: poem.slice(start, end),
+      start,
+      end,
+    });
 
     console.log("选中范围：", start, end);
   }
@@ -55,7 +61,7 @@ function App() {
       {selected && (
         <section>
           <h3>当前选中的文字</h3>
-          <p>{selected}</p>
+          <p>{selected.text}</p>
         </section>
       )}
     </main>
