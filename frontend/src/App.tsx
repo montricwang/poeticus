@@ -15,13 +15,19 @@ import type { PoemAnalysis } from "@/components/analysis-panel";
 
 type ActiveView = "chat" | "analysis";
 
+type ChatResponse = {
+  answer: string;
+};
+
 function App() {
   // 阅读选区与聊天
   const [selected, setSelected] = useState<SelectedText | null>(null);
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState("");
 
-  // 右侧当前显示的视图
+  // 右侧视图
   const [activeView, setActiveView] = useState<ActiveView>("chat");
 
   // 整首赏析
@@ -29,19 +35,64 @@ function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
 
-  function handleSend() {
-    if (!question.trim()) return;
+  async function handleSend() {
+    if (!question.trim() || chatLoading) return;
 
-    setMessages((previous) => [
-      ...previous,
-      {
-        question: question.trim(),
-        quote: selected?.text ?? null,
-      },
-    ]);
+    const currentQuestion = question.trim();
+    const currentSelection = selected;
 
-    setQuestion("");
-    setSelected(null);
+    setChatLoading(true);
+    setChatError("");
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          poem,
+          question: currentQuestion,
+          selection: currentSelection,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => null);
+
+        throw new Error(
+          typeof error?.detail === "string"
+            ? error.detail
+            : `请求失败：HTTP ${response.status}`,
+        );
+      }
+
+      const result: ChatResponse = await response.json();
+
+      if (!result.answer?.trim()) {
+        throw new Error("AI 返回了空回答");
+      }
+
+      setMessages((previous) => [
+        ...previous,
+        {
+          role: "user",
+          content: currentQuestion,
+          quote: currentSelection?.text ?? null,
+        },
+        {
+          role: "assistant",
+          content: result.answer,
+        },
+      ]);
+
+      setQuestion("");
+      setSelected(null);
+    } catch (error) {
+      setChatError(error instanceof Error ? error.message : "消息发送失败");
+    } finally {
+      setChatLoading(false);
+    }
   }
 
   async function handleAnalyze() {
@@ -59,10 +110,10 @@ function App() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => null);
 
         throw new Error(
-          typeof error.detail === "string"
+          typeof error?.detail === "string"
             ? error.detail
             : `请求失败：HTTP ${response.status}`,
         );
@@ -122,12 +173,15 @@ function App() {
           </Button>
         </div>
 
-        {/* 左侧阅读器 + 右侧双视图 */}
+        {/* 阅读器与右侧双视图 */}
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-          <PoemReader onSelect={setSelected} />
+          <PoemReader
+            onSelect={(value) => {
+              if (!chatLoading) setSelected(value);
+            }}
+          />
 
           <div className="min-w-0">
-            {/* 右侧视图切换 */}
             <div
               className="mb-3 flex items-center gap-2"
               role="group"
@@ -159,6 +213,8 @@ function App() {
                 selected={selected}
                 question={question}
                 messages={messages}
+                loading={chatLoading}
+                error={chatError}
                 onQuestionChange={setQuestion}
                 onClearQuote={() => setSelected(null)}
                 onSend={handleSend}
