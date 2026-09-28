@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ArrowUp, LoaderCircle, RotateCcw, Sparkles, X } from "lucide-react";
-
+import { AssistantMarkdown } from "@/components/assistant-markdown";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -122,9 +122,7 @@ export function ChatPanel({
                 </div>
 
                 <div className="min-w-0 flex-1 pt-1">
-                  <p className="whitespace-pre-wrap break-words text-sm leading-7 text-foreground/90">
-                    {turn.answer}
-                  </p>
+                  <AssistantMarkdown content={turn.answer} />
                 </div>
               </div>
             )}
