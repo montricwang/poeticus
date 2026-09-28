@@ -48,16 +48,16 @@ export function ChatPanel({
   const chatListRef = useRef<HTMLDivElement>(null);
 
   const [copyStatus, setCopyStatus] = useState<{
-    id: number;
+    key: string;
     status: "success" | "error";
   } | null>(null);
 
-  async function handleCopy(id: number, content: string) {
+  async function handleCopy(key: string, content: string) {
     try {
       await navigator.clipboard.writeText(content);
-      setCopyStatus({ id, status: "success" });
+      setCopyStatus({ key, status: "success" });
     } catch {
-      setCopyStatus({ id, status: "error" });
+      setCopyStatus({ key, status: "error" });
     }
   }
 
@@ -122,16 +122,56 @@ export function ChatPanel({
           <div key={turn.id} className="space-y-5">
             {/* 用户消息：发送后立即出现 */}
             <div className="flex justify-end">
-              <div className="max-w-[90%] space-y-3 rounded-2xl rounded-tr-md bg-secondary px-4 py-3">
-                {turn.selection && (
-                  <div className="rounded-lg border-l-2 border-violet-400 bg-background/60 px-3 py-2 text-sm leading-6 text-muted-foreground">
-                    {turn.selection.text}
-                  </div>
-                )}
+              <div className="group flex max-w-[90%] flex-col items-end gap-1">
+                {/* 原有的用户消息气泡 */}
+                <div className="w-full space-y-3 rounded-2xl rounded-tr-md bg-secondary px-4 py-3">
+                  {turn.selection && (
+                    <div className="rounded-lg border-l-2 border-violet-400 bg-background/60 px-3 py-2 text-sm leading-6 text-muted-foreground">
+                      {turn.selection.text}
+                    </div>
+                  )}
 
-                <p className="whitespace-pre-wrap break-words text-sm leading-7">
-                  {turn.question}
-                </p>
+                  <p className="whitespace-pre-wrap wrap-break-word text-sm leading-7">
+                    {turn.question}
+                  </p>
+                </div>
+
+                {/* 新增：用户消息下方的操作栏 */}
+                <div className="flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-muted-foreground/60 hover:text-foreground"
+                    aria-label="复制用户消息"
+                    title="复制用户消息"
+                    onClick={() =>
+                      void handleCopy(
+                        `${turn.id}:user`,
+                        turn.selection
+                          ? `引用原文：${turn.selection.text}
+
+问题：${turn.question}`
+                          : turn.question,
+                      )
+                    }
+                  >
+                    {copyStatus?.key === `${turn.id}:user` &&
+                    copyStatus.status === "success" ? (
+                      <Check className="size-4" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
+                  </Button>
+
+                  {/* 只有当前用户消息复制失败时才显示提示 */}
+                  {copyStatus?.key === `${turn.id}:user` &&
+                    copyStatus.status === "error" && (
+                      <span role="alert" className="text-xs text-destructive">
+                        复制失败，请手动选择文字复制
+                      </span>
+                    )}
+                </div>
               </div>
             </div>
 
@@ -153,20 +193,26 @@ export function ChatPanel({
                   <Sparkles className="size-4" />
                 </div>
 
-                <div className="min-w-0 flex-1 select-text pt-1">
+                <div className="group min-w-0 flex-1 select-text pt-1">
                   <AssistantMarkdown content={turn.answer} />
 
-                  <div className="mt-2 flex items-center gap-2">
+                  {/* AI 回答的操作工具栏 */}
+                  <div className="mt-2 flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon"
+                      className="size-8 text-muted-foreground/60 hover:text-foreground"
                       onClick={() =>
-                        void handleCopy(turn.id, turn.answer ?? "")
+                        void handleCopy(
+                          `${turn.id}:assistant`,
+                          turn.answer ?? "",
+                        )
                       }
                       aria-label="复制 AI 回答"
+                      title="复制 AI 回答"
                     >
-                      {copyStatus?.id === turn.id &&
+                      {copyStatus?.key === `${turn.id}:assistant` &&
                       copyStatus.status === "success" ? (
                         <Check className="size-4" />
                       ) : (
@@ -174,7 +220,7 @@ export function ChatPanel({
                       )}
                     </Button>
 
-                    {copyStatus?.id === turn.id &&
+                    {copyStatus?.key === `${turn.id}:assistant` &&
                       copyStatus.status === "error" && (
                         <span role="alert" className="text-xs text-destructive">
                           复制失败，请手动选择文字复制
