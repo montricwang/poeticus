@@ -1,5 +1,7 @@
 """ /chat 回归测试：在 API 边界替换 Graph，不调用真实模型。"""
 
+from types import SimpleNamespace
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -36,7 +38,7 @@ def test_chat_returns_graph_reply_without_changing_frontend_contract(
         received.append(state)
         return {"intent": intent, "reply": reply}
 
-    monkeypatch.setattr(api_module.graph, "invoke", fake_invoke)
+    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=fake_invoke))
     response = client.post(
         "/chat",
         json={
@@ -61,7 +63,7 @@ def test_chat_graph_failure_returns_502(monkeypatch, api_module, client):
     def fake_failure(state):
         raise RuntimeError("意图识别 API 调用失败")
 
-    monkeypatch.setattr(api_module.graph, "invoke", fake_failure)
+    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=fake_failure))
     response = client.post(
         "/chat",
         json={"poem": "萧萧乱叶报新秋。", "question": "解释报字"},
@@ -92,7 +94,7 @@ def test_chat_rejects_invalid_requests_before_running_graph(
     def unexpected_invoke(state):
         pytest.fail("无效请求不应该调用 Graph")
 
-    monkeypatch.setattr(api_module.graph, "invoke", unexpected_invoke)
+    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=unexpected_invoke))
     response = client.post("/chat", json=payload)
 
     assert response.status_code == 422
