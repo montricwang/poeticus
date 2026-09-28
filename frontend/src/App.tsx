@@ -75,7 +75,7 @@ function App() {
       }}
     >
       <article>
-        <h1>Poeticus</h1>
+        <h1 className="text-4xl font-semibold text-violet-600">Poeticus</h1>
         <h2>浣溪沙</h2>
 
         <p
