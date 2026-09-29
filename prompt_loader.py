@@ -7,10 +7,11 @@ from pathlib import Path
 PROMPT_ROOT = Path(__file__).resolve().parent / "prompts"
 PROMPT_FILES = {
     "output_style": "common/output_style.md",
-    "evidence_answer": "evidence_answer.md",
+    "agent_decide": "agent_decide.md",
+    "agent_after_tool": "agent_after_tool.md",
     "analyze_poem": "analyze_poem.md",
     "chat": "chat.md",
-    "classify_intent": "classify_intent.md",
+    "evidence_answer": "evidence_answer.md",
 }
 
 
