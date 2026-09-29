@@ -7,7 +7,9 @@ from pydantic import BaseModel, ValidationError
 import asyncio
 import re
 import logging
+import time
 
+from workflow_trace import log_event, traced_node
 from main import (
     client,
     chat_about_poem,
@@ -48,8 +50,8 @@ class RouterState(TypedDict):
     next_step: NotRequired[str]
     evidences: NotRequired[list[dict]]
     reply: NotRequired[str]
-    # 仅 /chat/stream 传入；原有 /chat 不受影响。
     stream_reply: NotRequired[bool]
+    trace_id: NotRequired[str]
 
 
 def classify_intent(state: RouterState) -> dict:
@@ -167,6 +169,9 @@ def source_lookup(state: RouterState) -> dict:
         }
 
     # 2. 查询 EvidenceService
+
+    lookup_started = time.perf_counter()
+
     try:
         evidences = asyncio.run(
             evidence_service.search(
@@ -176,14 +181,37 @@ def source_lookup(state: RouterState) -> dict:
             )
         )
     except CNKGraphError:
-        logger.exception(
-            "CNKGraph 查询失败，查询对象：%s",
-            term,
+        log_event(
+            state.get("trace_id", "-"),
+            "evidence_lookup",
+            provider="cnkgraph",
+            status="error",
+            duration_ms=round(
+                (time.perf_counter() - lookup_started) * 1000,
+                1,
+            ),
+            error_type="CNKGraphError",
         )
+
+        logger.exception("CNKGraph 查询失败")
+
         return {
             "next_step": "source_lookup",
             "reply": "CNKGraph 查询失败，本次未能取得证据。",
         }
+
+    log_event(
+        state.get("trace_id", "-"),
+        "evidence_lookup",
+        provider="cnkgraph",
+        status="found" if evidences else "empty",
+        query_origin="selection" if selection else "question",
+        evidence_count=len(evidences),
+        duration_ms=round(
+            (time.perf_counter() - lookup_started) * 1000,
+            1,
+        ),
+    )
 
     # 3. 处理空结果
     if not evidences:
@@ -221,10 +249,24 @@ def clarify_user(state: RouterState) -> dict:
 
 
 builder = StateGraph(RouterState)
-builder.add_node("classify_intent", classify_intent)
-builder.add_node("direct_answer", direct_answer)
-builder.add_node("source_lookup", source_lookup)
-builder.add_node("clarify_user", clarify_user)
+
+builder.add_node(
+    "classify_intent",
+    traced_node("classify_intent", classify_intent),
+)
+builder.add_node(
+    "direct_answer",
+    traced_node("direct_answer", direct_answer),
+)
+builder.add_node(
+    "source_lookup",
+    traced_node("source_lookup", source_lookup),
+)
+builder.add_node(
+    "clarify_user",
+    traced_node("clarify_user", clarify_user),
+)
+
 builder.add_edge(START, "classify_intent")
 builder.add_conditional_edges(
     "classify_intent",

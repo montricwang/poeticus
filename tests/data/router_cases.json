@@ -1,0 +1,107 @@
+[
+  {
+    "id": "R01",
+    "question": "「报」字为什么用得好？",
+    "selection": "报",
+    "expected_intent": "text_reading",
+    "expected_query": null
+  },
+  {
+    "id": "R02",
+    "question": "这句营造了怎样的秋日氛围？",
+    "selection": "萧萧乱叶报新秋",
+    "expected_intent": "text_reading",
+    "expected_query": null
+  },
+  {
+    "id": "R03",
+    "question": "这首词上阕的情绪如何变化？",
+    "selection": null,
+    "expected_intent": "text_reading",
+    "expected_query": null
+  },
+  {
+    "id": "R04",
+    "question": "这句话用了什么修辞手法？",
+    "selection": "缺月向人舒窈窕",
+    "expected_intent": "text_reading",
+    "expected_query": null
+  },
+  {
+    "id": "R05",
+    "question": "「绸缪」在这首词里是什么意思？",
+    "selection": "绸缪",
+    "expected_intent": "text_reading",
+    "expected_query": null
+  },
+  {
+    "id": "R06",
+    "question": "刘郎有哪些不同的典故？",
+    "selection": null,
+    "expected_intent": "source_lookup",
+    "expected_query": "刘郎"
+  },
+  {
+    "id": "R07",
+    "question": "「前度刘郎」出自哪里？",
+    "selection": null,
+    "expected_intent": "source_lookup",
+    "expected_query": "前度刘郎"
+  },
+  {
+    "id": "R08",
+    "question": "「窈窕」有哪些早期文献用例？",
+    "selection": "窈窕",
+    "expected_intent": "source_lookup",
+    "expected_query": "窈窕"
+  },
+  {
+    "id": "R09",
+    "question": "这句话出自哪部古籍？",
+    "selection": "三星当户",
+    "expected_intent": "source_lookup",
+    "expected_query": "三星当户"
+  },
+  {
+    "id": "R10",
+    "question": "「绸缪」的文献出处是什么？",
+    "selection": "绸缪",
+    "expected_intent": "source_lookup",
+    "expected_query": "绸缪"
+  },
+  {
+    "id": "R11",
+    "question": "刘郎有哪些典故？",
+    "selection": "三星当户",
+    "expected_intent": "source_lookup",
+    "expected_query": "刘郎"
+  },
+  {
+    "id": "R12",
+    "question": "解释这句话，并核对它的文献出处。",
+    "selection": "三星当户",
+    "expected_intent": "source_lookup",
+    "expected_query": "三星当户"
+  },
+  {
+    "id": "R13",
+    "question": "这里是什么意思？",
+    "selection": null,
+    "expected_intent": "needs_clarification",
+    "expected_query": null
+  },
+  {
+    "id": "R14",
+    "question": "这个典故出自哪里？",
+    "selection": null,
+    "expected_intent": "needs_clarification",
+    "expected_query": null
+  },
+  {
+    "id": "R15",
+    "question": "你说的那个人是谁？",
+    "selection": null,
+    "expected_intent": "needs_clarification",
+    "expected_query": null
+  }
+]
