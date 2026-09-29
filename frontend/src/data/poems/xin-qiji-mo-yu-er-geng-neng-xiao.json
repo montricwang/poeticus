@@ -1,0 +1,39 @@
+{
+  "id": "xin-qiji-mo-yu-er-geng-neng-xiao",
+  "language": "zh-Hans",
+  "dynasty": "宋",
+  "author": "辛弃疾",
+  "tune": "摸鱼儿",
+  "subtitle": null,
+  "title": "摸鱼儿·更能消几番风雨",
+  "incipit": "更能消几番风雨",
+  "preface": "淳熙己亥，自湖北漕移湖南，同官王正之置酒小山亭，为赋。",
+  "stanzas": [
+    [
+      "更能消几番风雨，匆匆春又归去。",
+      "惜春长怕花开早，何况落红无数。",
+      "春且住！见说道天涯芳草无归路。",
+      "怨春不语，算只有殷勤，画檐蛛网尽日惹飞絮。"
+    ],
+    [
+      "长门事，准拟佳期又误，蛾眉曾有人妒。",
+      "千金纵买相如赋，脉脉此情谁诉？",
+      "君莫舞！君不见，玉环飞燕皆尘土。",
+      "闲愁最苦，休去倚危栏，斜阳正在烟柳断肠处。"
+    ]
+  ],
+  "sources": [
+    {
+      "kind": "import_base",
+      "url": "https://zh.wikisource.org/wiki/%E6%91%B8%E9%AD%9A%E5%85%92_(%E8%BE%9B%E6%A3%84%E7%96%BE)"
+    },
+    {
+      "kind": "comparison",
+      "url": "https://github.com/chinese-poetry/chinese-poetry/blob/b8594f81a89752241442f2ce267d6f66f96704ee/%E5%AE%8B%E8%AF%8D/%E5%AE%8B%E8%AF%8D%E4%B8%89%E7%99%BE%E9%A6%96.json"
+    }
+  ],
+  "review_status": "imported_unreviewed",
+  "editorial_notes": [
+    "chinese-poetry 另有「惜春长恨／长怕」「画檐珠网／蛛网」「倚危楼／危栏」等差异，当前采用维基文库页面录文，待底本级核对。"
+  ]
+}

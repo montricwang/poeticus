@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 
 import { Card } from "@/components/ui/card";
-import { poem } from "@/data/sample-poem";
+import { poemText } from "@/data/poem-library";
+import type { Poem } from "@/data/poem-library";
 
 export type SelectedText = {
   text: string;
@@ -10,10 +11,12 @@ export type SelectedText = {
 };
 
 type PoemReaderProps = {
+  work: Poem;
   onSelect: (selection: SelectedText) => void;
 };
 
-export function PoemReader({ onSelect }: PoemReaderProps) {
+export function PoemReader({ work, onSelect }: PoemReaderProps) {
+  const poem = poemText(work);
   const readerRef = useRef<HTMLDivElement>(null);
   const poemRef = useRef<HTMLParagraphElement>(null);
 
@@ -45,68 +48,55 @@ export function PoemReader({ onSelect }: PoemReaderProps) {
         return;
       }
 
+      // 正文保留为一个文本节点，标题与词序不参与 offset 计算。
       const textNode = element.firstChild;
-
       if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
         return;
       }
 
       const range = selection.getRangeAt(0);
-
-      // 诗歌正文在 DOM 中的范围。
       const poemRange = document.createRange();
       poemRange.selectNodeContents(textNode);
 
-      // 最终选区必须真正包含至少一部分诗歌正文。
       const endsBeforePoem =
         range.compareBoundaryPoints(Range.START_TO_END, poemRange) <= 0;
-
       const startsAfterPoem =
         range.compareBoundaryPoints(Range.END_TO_START, poemRange) >= 0;
-
       if (endsBeforePoem || startsAfterPoem) {
         return;
       }
 
-      // 截取选区与诗歌正文的交集。
-      // 即使选区包含标题、说明文字，也只引用诗歌。
       const clippedRange = range.cloneRange();
-
       if (
         clippedRange.compareBoundaryPoints(Range.START_TO_START, poemRange) < 0
       ) {
         clippedRange.setStart(textNode, 0);
       }
-
-      if (clippedRange.compareBoundaryPoints(Range.END_TO_END, poemRange) > 0) {
+      if (
+        clippedRange.compareBoundaryPoints(Range.END_TO_END, poemRange) > 0
+      ) {
         clippedRange.setEnd(textNode, textNode.textContent?.length ?? 0);
       }
 
       const text = clippedRange.toString();
-
       if (!text.trim()) {
         return;
       }
 
-      // 计算截取后的文字在原始诗歌中的位置。
       const prefixRange = document.createRange();
       prefixRange.selectNodeContents(textNode);
       prefixRange.setEnd(clippedRange.startContainer, clippedRange.startOffset);
 
       const start = prefixRange.toString().length;
       const end = start + text.length;
-
-      // 保持与 FastAPI 的引用位置校验一致。
       if (poem.slice(start, end) !== text) {
         return;
       }
-
       onSelect({ text, start, end });
     }
 
     function handlePointerDown(event: PointerEvent) {
       pointerDown = true;
-
       pointerStartedInReader =
         event.target instanceof Node &&
         !!readerRef.current?.contains(event.target);
@@ -114,11 +104,8 @@ export function PoemReader({ onSelect }: PoemReaderProps) {
 
     function handlePointerUp() {
       const startedInReader = pointerStartedInReader;
-
       pointerDown = false;
       pointerStartedInReader = false;
-
-      // 只有从左侧阅读区域开始的拖选，才更新诗歌引用。
       if (startedInReader) {
         handleSelection(true);
       }
@@ -130,7 +117,6 @@ export function PoemReader({ onSelect }: PoemReaderProps) {
     }
 
     function handleSelectionChange() {
-      // 拖动期间暂不更新，等待鼠标松开后的最终选区。
       if (!pointerDown) {
         handleSelection();
       }
@@ -147,7 +133,7 @@ export function PoemReader({ onSelect }: PoemReaderProps) {
       window.removeEventListener("pointercancel", handlePointerCancel);
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
-  }, [onSelect]);
+  }, [onSelect, poem]);
 
   return (
     <div className="min-w-0">
@@ -158,9 +144,26 @@ export function PoemReader({ onSelect }: PoemReaderProps) {
         <article className="mx-auto w-full max-w-xl px-7 py-12 sm:px-12 sm:py-14">
           <header className="mb-9 text-center">
             <h1 className="font-serif text-4xl font-medium tracking-widest">
-              浣溪沙
+              {work.title}
             </h1>
+            <p className="mt-4 text-sm text-muted-foreground">
+              {work.author ?? "作者未核实"}
+              {work.subtitle && !work.title.includes(work.subtitle)
+                ? ` · ${work.subtitle}`
+                : ""}
+            </p>
+            {work.review_status !== "reviewed" && (
+              <p className="mt-2 text-xs text-muted-foreground/75">
+                正文待校勘
+              </p>
+            )}
           </header>
+
+          {work.preface && (
+            <p className="mb-8 whitespace-pre-line font-serif text-sm leading-8 text-muted-foreground">
+              {work.preface}
+            </p>
+          )}
 
           <p
             ref={poemRef}

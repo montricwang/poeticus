@@ -1,0 +1,41 @@
+{
+  "id": "jiang-kui-an-xiang-jiu-shi-yue-se",
+  "language": "zh-Hans",
+  "dynasty": "宋",
+  "author": "姜夔",
+  "tune": "暗香",
+  "subtitle": null,
+  "title": "暗香·旧时月色",
+  "incipit": "旧时月色",
+  "preface": "辛亥之冬，予载雪诣石湖。止既月，授简索句，且征新声，作此两曲。石湖把玩不已，使工妓习之，音节谐婉，乃名之暗香、疏影。",
+  "stanzas": [
+    [
+      "旧时月色。",
+      "算几番照我，梅边吹笛。",
+      "唤起玉人，不管清寒与攀摘。",
+      "何逊而今渐老，都忘却、春风词笔。",
+      "但怪得、竹外疏花，香冷入瑶席。"
+    ],
+    [
+      "江国。正寂寂。",
+      "叹寄与路遥，夜雪初积。",
+      "翠尊易泣，红萼无言耿相忆。",
+      "长记曾携手处，千树压、西湖寒碧。",
+      "又片片、吹尽也，几时见得。"
+    ]
+  ],
+  "sources": [
+    {
+      "kind": "import_base",
+      "url": "https://github.com/chinese-poetry/chinese-poetry/blob/b8594f81a89752241442f2ce267d6f66f96704ee/%E5%AE%8B%E8%AF%8D/%E5%AE%8B%E8%AF%8D%E4%B8%89%E7%99%BE%E9%A6%96.json"
+    },
+    {
+      "kind": "comparison",
+      "url": "https://zh.wikisource.org/wiki/%E6%9A%97%E9%A6%99"
+    }
+  ],
+  "review_status": "imported_unreviewed",
+  "editorial_notes": [
+    "序文参照维基文库《暗香》并做简体展示；该页附「攀摘／轻折」「词笔／诗笔」「泣／竭」等异文，后续保留版本化记录。"
+  ]
+}

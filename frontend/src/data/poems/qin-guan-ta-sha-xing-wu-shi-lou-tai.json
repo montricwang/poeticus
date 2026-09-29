@@ -1,0 +1,35 @@
+{
+  "id": "qin-guan-ta-sha-xing-wu-shi-lou-tai",
+  "language": "zh-Hans",
+  "dynasty": "宋",
+  "author": "秦观",
+  "tune": "踏莎行",
+  "subtitle": null,
+  "title": "踏莎行·雾失楼台",
+  "incipit": "雾失楼台",
+  "preface": null,
+  "stanzas": [
+    [
+      "雾失楼台，月迷津渡。",
+      "桃源望断无寻处。",
+      "可堪孤馆闭春寒，杜鹃声里斜阳暮。"
+    ],
+    [
+      "驿寄梅花，鱼传尺素。",
+      "砌成此恨无重数。",
+      "郴江幸自绕郴山，为谁流下潇湘去。"
+    ]
+  ],
+  "sources": [
+    {
+      "kind": "import_base",
+      "url": "https://github.com/chinese-poetry/chinese-poetry/blob/b8594f81a89752241442f2ce267d6f66f96704ee/%E5%AE%8B%E8%AF%8D/ci.song.3000.json"
+    },
+    {
+      "kind": "comparison",
+      "url": "https://zh.wikisource.org/wiki/%E8%B8%8F%E8%8E%8E%E8%A1%8C_(%E7%A7%A6%E8%A7%80)"
+    }
+  ],
+  "review_status": "imported_unreviewed",
+  "editorial_notes": []
+}

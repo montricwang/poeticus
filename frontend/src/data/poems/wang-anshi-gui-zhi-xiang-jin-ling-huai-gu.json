@@ -1,0 +1,35 @@
+{
+  "id": "wang-anshi-gui-zhi-xiang-jin-ling-huai-gu",
+  "language": "zh-Hans",
+  "dynasty": "宋",
+  "author": "王安石",
+  "tune": "桂枝香",
+  "subtitle": "金陵怀古",
+  "title": "桂枝香·金陵怀古",
+  "incipit": "登临送目",
+  "preface": null,
+  "stanzas": [
+    [
+      "登临送目。",
+      "正故国晚秋，天气初肃。",
+      "千里澄江似练，翠峰如簇。",
+      "归帆去棹残阳里，背西风、酒旗斜矗。",
+      "彩舟云淡，星河鹭起，画图难足。"
+    ],
+    [
+      "念往昔、繁华竞逐。",
+      "叹门外楼头，悲恨相续。",
+      "千古凭高，对此漫嗟荣辱。",
+      "六朝旧事随流水，但寒烟、芳草凝绿。",
+      "至今商女，时时犹唱，后庭遗曲。"
+    ]
+  ],
+  "sources": [
+    {
+      "kind": "import_base",
+      "url": "https://github.com/chinese-poetry/chinese-poetry/blob/b8594f81a89752241442f2ce267d6f66f96704ee/%E5%AE%8B%E8%AF%8D/%E5%AE%8B%E8%AF%8D%E4%B8%89%E7%99%BE%E9%A6%96.json"
+    }
+  ],
+  "review_status": "imported_unreviewed",
+  "editorial_notes": []
+}

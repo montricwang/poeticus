@@ -1,0 +1,39 @@
+{
+  "id": "xin-qiji-shui-long-yin-deng-jian-kang",
+  "language": "zh-Hans",
+  "dynasty": "宋",
+  "author": "辛弃疾",
+  "tune": "水龙吟",
+  "subtitle": "登建康赏心亭",
+  "title": "水龙吟·登建康赏心亭",
+  "incipit": "楚天千里清秋",
+  "preface": null,
+  "stanzas": [
+    [
+      "楚天千里清秋，水随天去秋无际。",
+      "遥岑远目，献愁供恨，玉簪螺髻。",
+      "落日楼头，断鸿声里，江南游子。",
+      "把吴钩看了，栏杆拍遍，无人会，登临意。"
+    ],
+    [
+      "休说鲈鱼堪鲙，尽西风，季鹰归未？",
+      "求田问舍，怕应羞见，刘郎才气。",
+      "可惜流年，忧愁风雨，树犹如此！",
+      "倩何人、唤取红巾翠袖，揾英雄泪！"
+    ]
+  ],
+  "sources": [
+    {
+      "kind": "import_base",
+      "url": "https://zh.wikisource.org/wiki/%E6%B0%B4%E9%BE%8D%E5%90%9F_(%E8%BE%9B%E6%A3%84%E7%96%BE)"
+    },
+    {
+      "kind": "comparison",
+      "url": "https://github.com/chinese-poetry/chinese-poetry/blob/b8594f81a89752241442f2ce267d6f66f96704ee/%E5%AE%8B%E8%AF%8D/%E5%AE%8B%E8%AF%8D%E4%B8%89%E7%99%BE%E9%A6%96.json"
+    }
+  ],
+  "review_status": "imported_unreviewed",
+  "editorial_notes": [
+    "chinese-poetry 三百首数据出现「休说鲈鱼堪。」缺字及「倩何人……英雄泪」脱漏，已按维基文库完整录文另存；「鲙／脍」等异体待统一展示规则。"
+  ]
+}

@@ -6,7 +6,7 @@ import { PoemReader } from "@/components/poem-reader";
 import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
 
-import { poem } from "@/data/sample-poem";
+import { poems, poemText } from "@/data/poem-library";
 import { readChatStream } from "@/lib/chat-stream";
 
 import type { SelectedText } from "@/components/poem-reader";
@@ -15,7 +15,13 @@ import type { PoemAnalysis } from "@/components/analysis-panel";
 
 type ActiveView = "chat" | "analysis";
 
+const DEFAULT_POEM_ID = "su-shi-huan-xi-sha-feng-juan-zhu-lian";
+
 function App() {
+  const [poemId, setPoemId] = useState(DEFAULT_POEM_ID);
+  const activePoem = poems.find((item) => item.id === poemId) ?? poems[0];
+  const poem = poemText(activePoem);
+
   const [selected, setSelected] = useState<SelectedText | null>(null);
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
@@ -32,6 +38,24 @@ function App() {
   const [analysis, setAnalysis] = useState<PoemAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
+
+  function handlePoemChange(nextId: string) {
+    if (inFlightRef.current || analyzing || nextId === activePoem.id) return;
+    if (!poems.some((item) => item.id === nextId)) return;
+
+    // 当前的对话/分析只属于当前作品；切换时不带到另一首诗。
+    window.getSelection()?.removeAllRanges();
+    setPoemId(nextId);
+    setSelected(null);
+    setQuestion("");
+    setTurns([]);
+    setAnalysis(null);
+    setAnalysisError("");
+    setHasUnreadReply(false);
+    setActiveView("chat");
+    seenAnimationsRef.current.clear();
+    chatViewportRef.current = { scrollTop: 0, atBottom: true };
+  }
 
   async function requestReply(turn: ChatTurn, regenerate = false) {
     if (inFlightRef.current) return;
@@ -151,13 +175,11 @@ function App() {
       answer: null,
       status: "pending",
       error: null,
-
       regenerating: false,
       regenerateError: null,
       streamDraft: null,
     };
 
-    // 关键修改：先更新页面，再等待 API。
     setTurns((previous) => [...previous, turn]);
     setQuestion("");
     setSelected(null);
@@ -167,40 +189,27 @@ function App() {
 
   function handleRetry(id: number) {
     if (inFlightRef.current) return;
-
     const turn = turns.find((item) => item.id === id);
-
     if (!turn || turn.status !== "failed") return;
-
     void requestReply(turn);
   }
 
   function handleRegenerate(id: number) {
     if (inFlightRef.current) return;
-
     const turn = turns.find((item) => item.id === id);
-
     if (!turn || turn.status !== "done" || !turn.answer || turn.regenerating) {
       return;
     }
-
     void requestReply(turn, true);
   }
 
   function handleEdit(id: number, nextQuestion: string) {
     if (inFlightRef.current || !nextQuestion.trim()) return;
-  
-    // 找到用户正在编辑的那一轮。
     const index = turns.findIndex((item) => item.id === id);
-  
     if (index === -1) return;
-  
     const turn = turns[index];
 
-    // 编辑后的新回答应重新播放一次入场动画。
     seenAnimationsRef.current.delete(`assistant:${id}:answer`);
-
-    // 保留原来的引用，更新问题。
     const editedTurn: ChatTurn = {
       ...turn,
       question: nextQuestion.trim(),
@@ -211,15 +220,8 @@ function App() {
       regenerateError: null,
       streamDraft: null,
     };
-  
-    // 保留编辑位置之前的记录，
-    // 移除后续记录，并放入修改后的消息。
-    setTurns([
-      ...turns.slice(0, index),
-      editedTurn,
-    ]);
-  
-    // 使用新问题请求 AI。
+
+    setTurns([...turns.slice(0, index), editedTurn]);
     void requestReply(editedTurn);
   }
 
@@ -231,15 +233,12 @@ function App() {
     try {
       const response = await fetch("/api/analyze", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ poem }),
       });
 
       if (!response.ok) {
         const error = await response.json().catch(() => null);
-
         throw new Error(
           typeof error?.detail === "string"
             ? error.detail
@@ -266,8 +265,29 @@ function App() {
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-5 pb-10 pt-7 md:px-8">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <label htmlFor="poem-picker" className="text-sm text-muted-foreground">
+            当前作品
+          </label>
+          <select
+            id="poem-picker"
+            value={activePoem.id}
+            disabled={chatLoading || analyzing}
+            onChange={(event) => handlePoemChange(event.target.value)}
+            className="max-w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground disabled:opacity-50"
+          >
+            {poems.map((work) => (
+              <option key={work.id} value={work.id}>
+                {work.title} · {work.author ?? "作者未核实"}
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
           <PoemReader
+            key={activePoem.id}
+            work={activePoem}
             onSelect={(value) => {
               if (!chatLoading) setSelected(value);
             }}
@@ -312,6 +332,7 @@ function App() {
 
             {activeView === "chat" ? (
               <ChatPanel
+                key={activePoem.id}
                 selected={selected}
                 question={question}
                 turns={turns}

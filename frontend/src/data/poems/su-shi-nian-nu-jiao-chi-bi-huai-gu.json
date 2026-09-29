@@ -1,0 +1,39 @@
+{
+  "id": "su-shi-nian-nu-jiao-chi-bi-huai-gu",
+  "language": "zh-Hans",
+  "dynasty": "宋",
+  "author": "苏轼",
+  "tune": "念奴娇",
+  "subtitle": "赤壁怀古",
+  "title": "念奴娇·赤壁怀古",
+  "incipit": "大江东去",
+  "preface": null,
+  "stanzas": [
+    [
+      "大江东去，浪淘尽、千古风流人物。",
+      "故垒西边，人道是、三国周郎赤壁。",
+      "乱石穿空，惊涛拍岸，卷起千堆雪。",
+      "江山如画，一时多少豪杰。"
+    ],
+    [
+      "遥想公瑾当年，小乔初嫁了，雄姿英发。",
+      "羽扇纶巾，谈笑间、樯橹灰飞烟灭。",
+      "故国神游，多情应笑我，早生华发。",
+      "人间如梦，一尊还酹江月。"
+    ]
+  ],
+  "sources": [
+    {
+      "kind": "import_base",
+      "url": "https://zh.wikisource.org/wiki/%E5%BF%B5%E5%A5%B4%E5%AC%8C_%28%E8%98%87%E8%BB%BE%29"
+    },
+    {
+      "kind": "comparison",
+      "url": "https://github.com/chinese-poetry/chinese-poetry/blob/b8594f81a89752241442f2ce267d6f66f96704ee/%E5%AE%8B%E8%AF%8D/ci.song.1000.json"
+    }
+  ],
+  "review_status": "imported_unreviewed",
+  "editorial_notes": [
+    "维基文库列「乱石穿空／崩云」「惊涛拍岸／裂岸」「樯橹／强虏」「人间／人生」等异文；本目录采用其主文版本，未宣称权威定本。"
+  ]
+}
