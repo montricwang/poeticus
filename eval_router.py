@@ -1,12 +1,7 @@
-"""LangGraph 意图分类基线评测：使用真实 LLM。"""
-
 import json
 import time
 from datetime import datetime
 from pathlib import Path
-
-from intent_router import classify_intent
-
 
 POEM = (
     "风卷珠帘自上钩，萧萧乱叶报新秋。"

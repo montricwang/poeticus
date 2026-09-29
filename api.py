@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from main import PoemAnalysis, analyze_poem
-from intent_router import graph
+from intent_router import graph, RouterState
 from poem_context import PoemContext
 
 logger = logging.getLogger(__name__)
@@ -65,7 +65,7 @@ def validate_chat_request(request: ChatRequest) -> None:
             raise HTTPException(status_code=422, detail="引用位置与原文不一致")
 
 
-def graph_input(request: ChatRequest) -> dict:
+def graph_input(request: ChatRequest) -> RouterState:
     return {
         "poem": request.poem,
         "question": request.question,
@@ -93,23 +93,47 @@ def sse(event: str, data: dict) -> str:
 
 
 def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
-    """Graph custom 事件承载 token，updates 事件承载最终回复与静态分支。"""
+    """Graph custom 事件承载 token，updates 事件承载节点结果。"""
     # 立即发送 SSE 注释，避免反向代理一直等待首个正文 Token。
     yield ": connected\n\n"
 
+    # 只校验最近一轮 Agent 的正文；此前的工具调用说明不属于最终回答。
     received: list[str] = []
+    separate_next_reply = False
     final_reply: str | None = None
+
     try:
-        state = {**graph_input(request), "stream_reply": True}
-        for mode, payload in graph.stream(state, stream_mode=["custom", "updates"]):
+        state = graph_input(request)
+        state["stream_reply"] = True
+
+        for mode, payload in graph.stream(
+            state,
+            stream_mode=["custom", "updates"],
+        ):
             if mode == "custom":
                 if not isinstance(payload, dict) or payload.get("type") != "token":
                     continue
+
                 token = payload.get("text")
                 if isinstance(token, str) and token:
+                    if separate_next_reply:
+                        # 兼容现有前端：用空行分隔说明与正式回答。
+                        # 分隔符不参与最终回答的完整性校验。
+                        yield sse("token", {"text": "\n\n"})
+                        separate_next_reply = False
+
                     received.append(token)
                     yield sse("token", {"text": token})
+
             elif mode == "updates" and isinstance(payload, dict):
+                agent_update = payload.get("agent")
+
+                if isinstance(agent_update, dict) and agent_update.get("tool_calls"):
+                    # 这一轮的文字是工具调用前的说明。
+                    # 下一轮重新记录正式回答。
+                    separate_next_reply = separate_next_reply or bool(received)
+                    received.clear()
+
                 for update in payload.values():
                     if isinstance(update, dict) and isinstance(
                         update.get("reply"), str
@@ -119,18 +143,22 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
         if not final_reply or not final_reply.strip():
             raise RuntimeError("工作流没有返回答案")
 
-        # source_lookup / clarification 仍是静态 Graph 节点，发送一次即可。
-        # 直接生成分支已经发送过 Token，不重复推送全文。
+        # 已收到正式回答的增量 Token 时，不再重复发送全文。
         if received:
             if "".join(received) != final_reply:
                 raise RuntimeError("流式内容与工作流结果不一致")
         else:
+            if separate_next_reply:
+                yield sse("token", {"text": "\n\n"})
+
             yield sse("token", {"text": final_reply})
 
         yield sse("done", {})
+
     except (ValueError, RuntimeError) as exc:
         logger.warning("聊天流中断：%s", exc)
         yield sse("error", {"message": str(exc)})
+
     except Exception:
         logger.exception("聊天流发生未预期异常")
         yield sse("error", {"message": "生成过程中发生服务器错误"})

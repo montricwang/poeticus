@@ -21,22 +21,31 @@ def agent(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
     import intent_router
+
     return intent_router
 
 
 def make_delta(content=None, tool_calls=None, finish_reason=None):
     return SimpleNamespace(
-        choices=[SimpleNamespace(delta=SimpleNamespace(content=content, tool_calls=tool_calls), finish_reason=finish_reason)]
+        choices=[
+            SimpleNamespace(
+                delta=SimpleNamespace(content=content, tool_calls=tool_calls),
+                finish_reason=finish_reason,
+            )
+        ]
     )
 
 
 def make_tool_call_chunk(index, id_, name, args, finish_reason=None):
-    tc = SimpleNamespace(index=index, id=id_, function=SimpleNamespace(name=name, arguments=args))
+    tc = SimpleNamespace(
+        index=index, id=id_, function=SimpleNamespace(name=name, arguments=args)
+    )
     return make_delta(content=None, tool_calls=[tc], finish_reason=finish_reason)
 
 
 class MockStream:
     """可重复迭代的流式响应 Mock。"""
+
     def __init__(self, chunks):
         self._chunks = chunks
 
@@ -70,14 +79,30 @@ def _fake_streaming_client(agent, chunk_sequences, monkeypatch):
         if call_idx < len(chunk_sequences):
             last = chunk_sequences[call_idx][-1]
             return SimpleNamespace(
-                choices=[SimpleNamespace(message=SimpleNamespace(
-                    content=last.content if hasattr(last, 'content') else None,
-                    tool_calls=last.tool_calls if hasattr(last, 'tool_calls') else None
-                ))]
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(
+                            content=last.content if hasattr(last, "content") else None,
+                            tool_calls=last.tool_calls
+                            if hasattr(last, "tool_calls")
+                            else None,
+                        )
+                    )
+                ]
             )
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="", tool_calls=None))])
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(message=SimpleNamespace(content="", tool_calls=None))
+            ]
+        )
 
-    monkeypatch.setattr(agent, "client", SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))))
+    monkeypatch.setattr(
+        agent,
+        "client",
+        SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
+        ),
+    )
     return calls
 
 
@@ -94,10 +119,12 @@ def test_streaming_direct_answer_emits_token_events(monkeypatch, agent):
 
     calls = _fake_streaming_client(agent, chunks, monkeypatch)
 
-    events = list(agent.graph.stream(
-        {"poem": "三星当户照绸缪。", "question": "解释三星", "stream_reply": True},
-        stream_mode=["custom", "updates"],
-    ))
+    events = list(
+        agent.graph.stream(
+            {"poem": "三星当户照绸缪。", "question": "解释三星", "stream_reply": True},
+            stream_mode=["custom", "updates"],
+        )
+    )
 
     custom_tokens = [p.get("text") for m, p in events if m == "custom"]
     assert custom_tokens == ["三", "星"]
@@ -119,6 +146,7 @@ def test_streaming_with_tool_call_then_answer(monkeypatch, agent):
 
     async def fake_search(query, *, provider_name, evidence_type=None):
         from backend.evidence.schema import EvidenceItem
+
         return [
             EvidenceItem(
                 anchor=query,
@@ -135,7 +163,9 @@ def test_streaming_with_tool_call_then_answer(monkeypatch, agent):
         # 第 1 次调用：流式工具调用
         [
             make_tool_call_chunk(0, "call-1", "lookup_allusion", '{"term": '),
-            make_tool_call_chunk(0, "call-1", "", '"刘郎"}', finish_reason="tool_calls"),
+            make_tool_call_chunk(
+                0, "call-1", "", '"刘郎"}', finish_reason="tool_calls"
+            ),
         ],
         # 第 2 次调用：工具返回后的流式回答
         [
@@ -146,10 +176,12 @@ def test_streaming_with_tool_call_then_answer(monkeypatch, agent):
 
     calls = _fake_streaming_client(agent, chunks, monkeypatch)
 
-    events = list(agent.graph.stream(
-        {"poem": "测试诗", "question": "刘郎典故？", "stream_reply": True},
-        stream_mode=["custom", "updates"],
-    ))
+    events = list(
+        agent.graph.stream(
+            {"poem": "测试诗", "question": "刘郎典故？", "stream_reply": True},
+            stream_mode=["custom", "updates"],
+        )
+    )
 
     custom_tokens = [p.get("text") for m, p in events if m == "custom"]
     assert custom_tokens == ["刘郎指情郎", "，词人自指。"]
@@ -173,13 +205,23 @@ def test_non_streaming_invoke_still_works(monkeypatch, agent):
 
     def fake_create(**kwargs):
         assert kwargs.get("stream") is not True
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="非流式回答", tool_calls=None))])
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content="非流式回答", tool_calls=None)
+                )
+            ]
+        )
 
-    monkeypatch.setattr(agent, "client", SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))))
-
-    result = agent.graph.invoke(
-        {"poem": "三星当户。", "question": "解释"}
+    monkeypatch.setattr(
+        agent,
+        "client",
+        SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
+        ),
     )
+
+    result = agent.graph.invoke({"poem": "三星当户。", "question": "解释"})
 
     assert result["reply"] == "非流式回答"
     assert result.get("tool_calls") == []
@@ -204,7 +246,11 @@ def test_sse_no_duplicate_full_reply_when_tokens_sent(monkeypatch, agent):
         {"poem": "测试", "question": "测试", "stream_reply": True},
         stream_mode=["custom", "updates"],
     ):
-        if mode == "custom" and isinstance(payload, dict) and payload.get("type") == "token":
+        if (
+            mode == "custom"
+            and isinstance(payload, dict)
+            and payload.get("type") == "token"
+        ):
             received_tokens.append(payload.get("text"))
         elif mode == "updates" and isinstance(payload, dict):
             for v in payload.values():
@@ -215,3 +261,85 @@ def test_sse_no_duplicate_full_reply_when_tokens_sent(monkeypatch, agent):
     assert final_reply == "第一"
     # 拼接后的 token 等于最终 reply，说明没有重复发送全文
     assert "".join(received_tokens) == final_reply
+
+
+def test_streaming_preamble_then_tool_call(monkeypatch, agent):
+    """真实 Graph → API：工具前先说话，也能完成 SSE，且不重复正文。"""
+    import api as api_module
+    from backend.evidence.schema import EvidenceItem
+
+    search_calls = []
+
+    async def fake_search(query, *, provider_name, evidence_type=None):
+        search_calls.append((query, provider_name, evidence_type))
+        return [
+            EvidenceItem(
+                anchor=query,
+                type="allusion",
+                text="三星当户：见于《诗经·唐风·绸缪》。",
+                provider="cnkgraph",
+                status="candidate",
+            )
+        ]
+
+    monkeypatch.setattr(agent.evidence_service, "search", fake_search)
+    monkeypatch.setattr(api_module, "graph", agent.graph)
+
+    preamble = "I'll look up the allusion for 「三星当户」."
+    answer_parts = ["「三星当户」化用《诗经·绸缪》。", "它借星象写相聚。"]
+    calls = _fake_streaming_client(
+        agent,
+        [
+            [
+                make_delta(content=preamble),
+                make_tool_call_chunk(
+                    0,
+                    "call-1",
+                    "lookup_allusion",
+                    '{"term": ',
+                ),
+                make_tool_call_chunk(
+                    0,
+                    None,
+                    None,
+                    '"三星当户"}',
+                    finish_reason="tool_calls",
+                ),
+            ],
+            [
+                make_delta(content=answer_parts[0]),
+                make_delta(content=answer_parts[1], finish_reason="stop"),
+            ],
+        ],
+        monkeypatch,
+    )
+
+    request = api_module.ChatRequest(
+        poem="三星当户照绸缪。",
+        question="请先查询「三星当户」的典故，再根据检索结果解释这句词",
+        selection=api_module.QuoteSelection(text="三星当户", start=0, end=4),
+    )
+    raw = "".join(api_module.stream_graph_reply(request))
+    events = []
+    for block in raw.split("\n\n"):
+        if not block or block.startswith(":"):
+            continue
+        lines = block.split("\n")
+        event = next(line[7:] for line in lines if line.startswith("event: "))
+        data = next(line[6:] for line in lines if line.startswith("data: "))
+        events.append((event, json.loads(data)))
+
+    assert events == [
+        ("token", {"text": preamble}),
+        ("token", {"text": "\n\n"}),
+        ("token", {"text": answer_parts[0]}),
+        ("token", {"text": answer_parts[1]}),
+        ("done", {}),
+    ]
+    assert search_calls == [("三星当户", "cnkgraph", "allusion")]
+    assert len(calls) == 2
+    assert all(call.get("stream") is True for call in calls)
+    # 正式回答单独计数；预告语和分隔符不参与与 Graph reply 的对账。
+    assert "".join(data["text"] for event, data in events[2:-1]) == "".join(
+        answer_parts
+    )

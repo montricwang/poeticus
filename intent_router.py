@@ -100,6 +100,7 @@ def _stream_agent_decision(
     pending: dict[int, dict] = {}
     finish_reason = None
     stream = None
+    tool_calls_started = False
 
     try:
         stream = client.chat.completions.create(
@@ -121,8 +122,8 @@ def _stream_agent_decision(
 
             # 工具调用可能分散在多个 chunk 中。
             for call in delta.tool_calls or []:
-                if parts:
-                    raise RuntimeError("模型混合返回了正文和工具调用")
+                if not tool_calls_started:
+                    tool_calls_started = True
 
                 item = pending.setdefault(
                     call.index,
@@ -145,18 +146,16 @@ def _stream_agent_decision(
 
             # 只有纯文字回答才向前端发送 token。
             if delta.content:
-                if pending:
-                    raise RuntimeError("模型混合返回了工具调用和正文")
+                if not tool_calls_started:
+                    parts.append(delta.content)
 
-                parts.append(delta.content)
-
-                if delta.content:
-                    writer(
-                        {
-                            "type": "token",
-                            "text": delta.content,
-                        }
-                    )
+                    if delta.content:
+                        writer(
+                            {
+                                "type": "token",
+                                "text": delta.content,
+                            }
+                        )
 
             if choice.finish_reason is not None:
                 finish_reason = choice.finish_reason
