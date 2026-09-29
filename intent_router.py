@@ -5,7 +5,6 @@ from typing import Literal, NotRequired, TypedDict, cast
 from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, START, END
 from openai import APIError
-from pydantic import BaseModel
 from openai.types.chat import (
     ChatCompletionFunctionToolParam,
     ChatCompletionMessageParam,
@@ -53,15 +52,6 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
         },
     }
 ]
-
-
-class IntentResult(BaseModel):
-    intent: Literal[
-        "text_reading",
-        "source_lookup",
-        "needs_clarification",
-    ]
-    reason: str
 
 
 class RouterState(TypedDict):

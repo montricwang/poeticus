@@ -10,7 +10,6 @@ from prompt_loader import load_prompt, compose_prompt
     [
         "output_style",
         "agent_decide",
-        "agent_after_tool",
         "analyze_poem",
         "chat",
         "evidence_answer",
