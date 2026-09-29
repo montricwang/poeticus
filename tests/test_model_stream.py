@@ -4,6 +4,16 @@ from types import SimpleNamespace
 
 import pytest
 
+from poem_context import PoemContext
+
+SAMPLE_CONTEXT = PoemContext(
+    id="test-poem",
+    title="测试",
+    author="苏轼",
+    dynasty="宋",
+    review_status="imported_unreviewed",
+)
+
 
 @pytest.fixture
 def model(monkeypatch):
@@ -14,17 +24,26 @@ def model(monkeypatch):
     return main
 
 
-@pytest.mark.parametrize("finish_reason,should_fail", [("stop", False), ("length", True)])
-def test_model_stream_closes_and_checks_finish_reason(monkeypatch, model, finish_reason, should_fail):
+@pytest.mark.parametrize(
+    "finish_reason,should_fail", [("stop", False), ("length", True)]
+)
+def test_model_stream_closes_and_checks_finish_reason(
+    monkeypatch, model, finish_reason, should_fail
+):
     closed = []
     calls = []
 
     class FakeStream:
         def __iter__(self):
             for text, reason in [("三", None), ("星", None), (None, finish_reason)]:
-                yield SimpleNamespace(choices=[SimpleNamespace(
-                    delta=SimpleNamespace(content=text), finish_reason=reason
-                )])
+                yield SimpleNamespace(
+                    choices=[
+                        SimpleNamespace(
+                            delta=SimpleNamespace(content=text), finish_reason=reason
+                        )
+                    ]
+                )
+
         def close(self):
             closed.append(True)
 
@@ -32,14 +51,60 @@ def test_model_stream_closes_and_checks_finish_reason(monkeypatch, model, finish
         calls.append(kwargs)
         return FakeStream()
 
-    monkeypatch.setattr(model, "client", SimpleNamespace(
-        chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
-    ))
+    monkeypatch.setattr(
+        model,
+        "client",
+        SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
+        ),
+    )
     if should_fail:
         with pytest.raises(ValueError, match="未正常完成"):
-            list(model.stream_chat_about_poem("诗", "问题"))
+            list(model.stream_chat_about_poem("诗", "问题", context=SAMPLE_CONTEXT))
     else:
-        assert list(model.stream_chat_about_poem("诗", "问题")) == ["三", "星"]
+        assert list(
+            model.stream_chat_about_poem("诗", "问题", context=SAMPLE_CONTEXT)
+        ) == ["三", "星"]
     assert len(closed) == 1
     assert calls[0]["stream"] is True
     assert calls[0]["model"] == "deepseek-flash"
+    assert "作品上下文" in calls[0]["messages"][1]["content"]
+
+
+def test_model_stream_without_context_uses_plain_poem(monkeypatch, model):
+    calls = []
+
+    class FakeStream:
+        def __iter__(self):
+            yield SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        delta=SimpleNamespace(content="三"), finish_reason=None
+                    )
+                ]
+            )
+            yield SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        delta=SimpleNamespace(content=None), finish_reason="stop"
+                    )
+                ]
+            )
+
+        def close(self):
+            pass
+
+    def fake_create(**kwargs):
+        calls.append(kwargs)
+        return FakeStream()
+
+    monkeypatch.setattr(
+        model,
+        "client",
+        SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
+        ),
+    )
+
+    assert list(model.stream_chat_about_poem("诗", "问题")) == ["三"]
+    assert "作品上下文" not in calls[0]["messages"][1]["content"]

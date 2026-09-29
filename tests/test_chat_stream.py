@@ -6,6 +6,16 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
+from poem_context import PoemContext
+
+SAMPLE_CONTEXT = {
+    "id": "su-shi-huan-xi-sha-feng-juan-zhu-lian",
+    "title": "浣溪沙·新秋",
+    "author": "苏轼",
+    "dynasty": "宋",
+    "review_status": "imported_unreviewed",
+}
+
 
 @pytest.fixture
 def api_module(monkeypatch):
@@ -45,6 +55,7 @@ def test_stream_sends_incremental_tokens_and_done(monkeypatch, api_module):
             "poem": "三星当户照绸缪。",
             "question": "解释三星",
             "selection": {"text": "三星", "start": 0, "end": 2},
+            "context": SAMPLE_CONTEXT,
         },
     )
     assert response.status_code == 200
@@ -55,9 +66,35 @@ def test_stream_sends_incremental_tokens_and_done(monkeypatch, api_module):
         ("token", {"text": "星"}),
         ("done", {}),
     ]
-    assert received == [
-        ({"poem": "三星当户照绸缪。", "question": "解释三星", "selection": "三星", "stream_reply": True}, ["custom", "updates"])
+    assert len(received) == 1
+    state, stream_mode = received[0]
+    assert stream_mode == ["custom", "updates"]
+    assert state["poem"] == "三星当户照绸缪。"
+    assert state["question"] == "解释三星"
+    assert state["selection"] == "三星"
+    assert state["stream_reply"] is True
+    assert isinstance(state["context"], PoemContext)
+    assert state["context"].model_dump() == SAMPLE_CONTEXT
+
+
+def test_stream_accepts_request_without_context(monkeypatch, api_module):
+    received = []
+
+    def fake_stream(state, stream_mode):
+        received.append(state)
+        yield "updates", {"direct_answer": {"reply": "旧请求仍可用。"}}
+
+    monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=fake_stream))
+    response = TestClient(api_module.app).post(
+        "/chat/stream",
+        json={"poem": "三星当户。", "question": "解释"},
+    )
+    assert response.status_code == 200
+    assert parse_sse(response.text) == [
+        ("token", {"text": "旧请求仍可用。"}),
+        ("done", {}),
     ]
+    assert received[0]["context"] is None
 
 
 @pytest.mark.parametrize("route", ["source_lookup", "clarify_user"])
@@ -68,7 +105,12 @@ def test_static_branch_emits_answer_once(monkeypatch, api_module, route):
 
     monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
-        "/chat/stream", json={"poem": "三星当户。", "question": "出处？"}
+        "/chat/stream",
+        json={
+            "poem": "三星当户。",
+            "question": "出处？",
+            "context": SAMPLE_CONTEXT,
+        },
     )
     assert parse_sse(response.text) == [
         ("token", {"text": "尚无可靠资料。"}),
@@ -83,7 +125,12 @@ def test_failure_after_partial_keeps_tokens_and_sends_error(monkeypatch, api_mod
 
     monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
-        "/chat/stream", json={"poem": "三星当户。", "question": "解释"}
+        "/chat/stream",
+        json={
+            "poem": "三星当户。",
+            "question": "解释",
+            "context": SAMPLE_CONTEXT,
+        },
     )
     assert parse_sse(response.text) == [
         ("token", {"text": "前半句"}),
@@ -94,9 +141,14 @@ def test_failure_after_partial_keeps_tokens_and_sends_error(monkeypatch, api_mod
 @pytest.mark.parametrize(
     "payload",
     [
-        {"poem": "  ", "question": "解释"},
-        {"poem": "三星当户。", "question": "  "},
-        {"poem": "三星当户。", "question": "解释", "selection": {"text": "三星", "start": 3, "end": 5}},
+        {"poem": "  ", "question": "解释", "context": SAMPLE_CONTEXT},
+        {"poem": "三星当户。", "question": "  ", "context": SAMPLE_CONTEXT},
+        {
+            "poem": "三星当户。",
+            "question": "解释",
+            "selection": {"text": "三星", "start": 3, "end": 5},
+            "context": SAMPLE_CONTEXT,
+        },
     ],
 )
 def test_stream_validation_matches_chat(monkeypatch, api_module, payload):

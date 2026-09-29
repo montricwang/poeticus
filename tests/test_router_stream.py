@@ -5,6 +5,16 @@ from types import SimpleNamespace
 
 import pytest
 
+from poem_context import PoemContext
+
+SAMPLE_CONTEXT = PoemContext(
+    id="su-shi-huan-xi-sha-feng-juan-zhu-lian",
+    title="浣溪沙·新秋",
+    author="苏轼",
+    dynasty="宋",
+    review_status="imported_unreviewed",
+)
+
 
 @pytest.fixture
 def router(monkeypatch):
@@ -21,19 +31,38 @@ def test_direct_answer_streams_custom_events_without_double_answer(monkeypatch, 
     def fake_create(**kwargs):
         model_calls.append(kwargs)
         return SimpleNamespace(
-            choices=[SimpleNamespace(finish_reason="stop", message=SimpleNamespace(
-                content=json.dumps({"intent": "text_reading", "reason": "测试"})
-            ))],
+            choices=[
+                SimpleNamespace(
+                    finish_reason="stop",
+                    message=SimpleNamespace(
+                        content=json.dumps({"intent": "text_reading", "reason": "测试"})
+                    ),
+                )
+            ],
             usage=None,
         )
 
-    fake_client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create)))
+    fake_client = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
+    )
     monkeypatch.setattr(router, "client", fake_client)
-    monkeypatch.setattr(router, "stream_chat_about_poem", lambda **kwargs: iter(["三", "星"]))
-    events = list(router.graph.stream(
-        {"poem": "三星当户。", "question": "解释", "selection": None, "stream_reply": True},
-        stream_mode=["custom", "updates"],
-    ))
+    monkeypatch.setattr(
+        router,
+        "stream_chat_about_poem",
+        lambda **kwargs: iter(["三", "星"]),
+    )
+    events = list(
+        router.graph.stream(
+            {
+                "poem": "三星当户。",
+                "question": "解释",
+                "selection": None,
+                "context": SAMPLE_CONTEXT,
+                "stream_reply": True,
+            },
+            stream_mode=["custom", "updates"],
+        )
+    )
     assert len(model_calls) == 1
     assert [(mode, payload) for mode, payload in events if mode == "custom"] == [
         ("custom", {"type": "token", "text": "三"}),

@@ -17,6 +17,7 @@ from main import (
 from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
 from prompt_loader import load_prompt
+from poem_context import PoemContext, format_poem_context
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class IntentResult(BaseModel):
 class RouterState(TypedDict):
     poem: str
     question: str
+    context: NotRequired[PoemContext | None]
     selection: NotRequired[str | None]
     intent: NotRequired[str]
     reason: NotRequired[str]
@@ -59,6 +61,7 @@ def classify_intent(state: RouterState) -> dict:
                 {
                     "role": "user",
                     "content": (
+                        f"{format_poem_context(state.get('context'))}"
                         f"当前诗歌：\n{state['poem']}\n\n"
                         f"当前选区：\n"
                         f"{state.get('selection') or '（未选择任何原文）'}\n\n"
@@ -111,6 +114,7 @@ def direct_answer(state: RouterState) -> dict:
             poem=state["poem"],
             question=state["question"],
             selection=state.get("selection"),
+            context=state.get("context"),
         ):
             parts.append(token)
             writer({"type": "token", "text": token})
@@ -120,6 +124,7 @@ def direct_answer(state: RouterState) -> dict:
             poem=state["poem"],
             question=state["question"],
             selection=state.get("selection"),
+            context=state.get("context"),
         )
     return {"next_step": "direct_answer", "reply": answer}
 
@@ -194,6 +199,7 @@ def source_lookup(state: RouterState) -> dict:
             question=question,
             selection=selection or None,
             evidences=evidences,
+            context=state.get("context"),
         )
     except APIError as exc:
         raise RuntimeError("证据分析 API 调用失败") from exc

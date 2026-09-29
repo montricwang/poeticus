@@ -1,9 +1,27 @@
-""" /chat 回归测试：在 API 边界替换 Graph，不调用真实模型。"""
+"""/chat 与 /analyze 回归测试：在 API 边界替换 Graph，不调用真实模型。"""
 
 from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
+
+from poem_context import PoemContext
+
+SAMPLE_CONTEXT = {
+    "id": "su-shi-huan-xi-sha-feng-juan-zhu-lian",
+    "title": "浣溪沙·新秋",
+    "author": "苏轼",
+    "dynasty": "宋",
+    "review_status": "imported_unreviewed",
+}
+
+NULL_AUTHOR_CONTEXT = {
+    "id": "unknown-work",
+    "title": "未定题",
+    "author": None,
+    "dynasty": None,
+    "review_status": "imported_unreviewed",
+}
 
 
 @pytest.fixture
@@ -45,18 +63,18 @@ def test_chat_returns_graph_reply_without_changing_frontend_contract(
             "poem": "萧萧乱叶报新秋。",
             "question": "解释报字",
             "selection": {"text": "报", "start": 4, "end": 5},
+            "context": SAMPLE_CONTEXT,
         },
     )
 
     assert response.status_code == 200
     assert response.json() == {"answer": reply}
-    assert received == [
-        {
-            "poem": "萧萧乱叶报新秋。",
-            "question": "解释报字",
-            "selection": "报",
-        }
-    ]
+    assert len(received) == 1
+    assert received[0]["poem"] == "萧萧乱叶报新秋。"
+    assert received[0]["question"] == "解释报字"
+    assert received[0]["selection"] == "报"
+    assert isinstance(received[0]["context"], PoemContext)
+    assert received[0]["context"].model_dump() == SAMPLE_CONTEXT
 
 
 def test_chat_graph_failure_returns_502(monkeypatch, api_module, client):
@@ -66,7 +84,11 @@ def test_chat_graph_failure_returns_502(monkeypatch, api_module, client):
     monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=fake_failure))
     response = client.post(
         "/chat",
-        json={"poem": "萧萧乱叶报新秋。", "question": "解释报字"},
+        json={
+            "poem": "萧萧乱叶报新秋。",
+            "question": "解释报字",
+            "context": SAMPLE_CONTEXT,
+        },
     )
 
     assert response.status_code == 502
@@ -76,13 +98,20 @@ def test_chat_graph_failure_returns_502(monkeypatch, api_module, client):
 @pytest.mark.parametrize(
     ("payload", "detail"),
     [
-        ({"poem": "   ", "question": "解释报字"}, "诗歌原文不能为空"),
-        ({"poem": "萧萧乱叶报新秋。", "question": "  "}, "问题不能为空"),
+        (
+            {"poem": "   ", "question": "解释报字", "context": SAMPLE_CONTEXT},
+            "诗歌原文不能为空",
+        ),
+        (
+            {"poem": "萧萧乱叶报新秋。", "question": "  ", "context": SAMPLE_CONTEXT},
+            "问题不能为空",
+        ),
         (
             {
                 "poem": "萧萧乱叶报新秋。",
                 "question": "解释报字",
                 "selection": {"text": "秋", "start": 4, "end": 5},
+                "context": SAMPLE_CONTEXT,
             },
             "引用位置与原文不一致",
         ),
@@ -99,3 +128,116 @@ def test_chat_rejects_invalid_requests_before_running_graph(
 
     assert response.status_code == 422
     assert response.json() == {"detail": detail}
+
+
+def test_chat_accepts_request_without_context(monkeypatch, api_module, client):
+    """旧客户端只发送正文和问题时仍按原行为工作。"""
+    received = []
+
+    def fake_invoke(state):
+        received.append(state)
+        return {"reply": "旧请求仍可用。"}
+
+    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=fake_invoke))
+    response = client.post(
+        "/chat",
+        json={"poem": "萧萧乱叶报新秋。", "question": "解释报字"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"answer": "旧请求仍可用。"}
+    assert len(received) == 1
+    assert received[0]["context"] is None
+
+
+def test_chat_accepts_null_author_context(monkeypatch, api_module, client):
+    received = []
+
+    def fake_invoke(state):
+        received.append(state)
+        return {"reply": "作者尚未核实。"}
+
+    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=fake_invoke))
+    response = client.post(
+        "/chat",
+        json={
+            "poem": "萧萧乱叶报新秋。",
+            "question": "作者是谁？",
+            "context": NULL_AUTHOR_CONTEXT,
+        },
+    )
+
+    assert response.status_code == 200
+    assert received[0]["context"].author is None
+    assert received[0]["context"].dynasty is None
+
+
+def test_analyze_receives_context(monkeypatch, api_module, client):
+    received = []
+
+    def fake_analyze(poem, context):
+        received.append((poem, context))
+        return api_module.PoemAnalysis(
+            translation="译文",
+            glosses=[],
+            commentary="赏析",
+        )
+
+    monkeypatch.setattr(api_module, "analyze_poem", fake_analyze)
+    response = client.post(
+        "/analyze",
+        json={"poem": "萧萧乱叶报新秋。", "context": SAMPLE_CONTEXT},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "translation": "译文",
+        "glosses": [],
+        "commentary": "赏析",
+    }
+    assert len(received) == 1
+    assert received[0][0] == "萧萧乱叶报新秋。"
+    assert isinstance(received[0][1], PoemContext)
+    assert received[0][1].model_dump() == SAMPLE_CONTEXT
+
+
+def test_analyze_accepts_request_without_context(monkeypatch, api_module, client):
+    """旧客户端只发送正文时，赏析仍按原行为工作。"""
+    received = []
+
+    def fake_analyze(poem, context):
+        received.append((poem, context))
+        return api_module.PoemAnalysis(
+            translation="译文",
+            glosses=[],
+            commentary="赏析",
+        )
+
+    monkeypatch.setattr(api_module, "analyze_poem", fake_analyze)
+    response = client.post("/analyze", json={"poem": "萧萧乱叶报新秋。"})
+
+    assert response.status_code == 200
+    assert len(received) == 1
+    assert received[0][0] == "萧萧乱叶报新秋。"
+    assert received[0][1] is None
+
+
+def test_analyze_accepts_null_author_context(monkeypatch, api_module, client):
+    received = []
+
+    def fake_analyze(poem, context):
+        received.append(context)
+        return api_module.PoemAnalysis(
+            translation="译文",
+            glosses=[],
+            commentary="赏析",
+        )
+
+    monkeypatch.setattr(api_module, "analyze_poem", fake_analyze)
+    response = client.post(
+        "/analyze",
+        json={"poem": "萧萧乱叶报新秋。", "context": NULL_AUTHOR_CONTEXT},
+    )
+
+    assert response.status_code == 200
+    assert received[0].author is None

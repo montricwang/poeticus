@@ -12,6 +12,7 @@ from openai.types.chat import (
 )
 
 from prompt_loader import compose_prompt
+from poem_context import PoemContext, format_poem_context
 
 
 class Gloss(BaseModel):
@@ -33,7 +34,11 @@ client = wrap_openai(OpenAI(api_key=api_key, base_url=base_url))
 
 
 def answer_with_evidence(
-    poem: str, question: str, selection: str | None, evidences: list
+    poem: str,
+    question: str,
+    selection: str | None,
+    evidences: list,
+    context: PoemContext | None = None,
 ) -> str:
     """根据检索到的候选证据回答文学问题。"""
     materials = []
@@ -64,6 +69,7 @@ def answer_with_evidence(
             {
                 "role": "user",
                 "content": (
+                    f"{format_poem_context(context)}"
                     f"当前诗歌：\n{poem}\n\n"
                     f"选区：{selection or '无'}\n"
                     f"问题：{question}\n\n"
@@ -83,7 +89,7 @@ def answer_with_evidence(
     return choice.message.content
 
 
-def analyze_poem(poem: str) -> PoemAnalysis:
+def analyze_poem(poem: str, context: PoemContext | None = None) -> PoemAnalysis:
     """调用模型，返回经过校验的诗歌赏析。"""
     if not poem.strip():
         raise ValueError("诗歌原文不能为空")
@@ -101,7 +107,10 @@ def analyze_poem(poem: str) -> PoemAnalysis:
                 },
                 {
                     "role": "user",
-                    "content": poem,
+                    "content": (
+                        f"{format_poem_context(context)}"
+                        f"诗歌原文：\n{poem}"
+                    ),
                 },
             ],
             response_format={"type": "json_object"},
@@ -127,15 +136,16 @@ def _chat_messages(
     poem: str,
     question: str,
     selection: str | None,
+    context: PoemContext | None,
 ) -> list[ChatCompletionMessageParam]:
     """普通聊天和流式聊天共用同一套消息模板。"""
 
-    context = f"诗歌原文：\n{poem}"
+    context_block = f"{format_poem_context(context)}诗歌原文：\n{poem}"
 
     if selection:
-        context += f"\n\n用户选中的原文：\n{selection}"
+        context_block += f"\n\n用户选中的原文：\n{selection}"
 
-    context += f"\n\n用户的问题：\n{question}"
+    context_block += f"\n\n用户的问题：\n{question}"
 
     system_message: ChatCompletionSystemMessageParam = {
         "role": "system",
@@ -147,18 +157,24 @@ def _chat_messages(
 
     user_message: ChatCompletionUserMessageParam = {
         "role": "user",
-        "content": context,
+        "content": context_block,
     }
 
     return [system_message, user_message]
 
 
-def chat_about_poem(poem: str, question: str, selection: str | None = None) -> str:
+def chat_about_poem(
+    poem: str,
+    question: str,
+    selection: str | None = None,
+    *,
+    context: PoemContext | None = None,
+) -> str:
     """原有非流式接口继续使用，不影响 /chat 和现有 Graph 测试。"""
     try:
         response = client.chat.completions.create(
             model="deepseek-flash",
-            messages=_chat_messages(poem, question, selection),
+            messages=_chat_messages(poem, question, selection, context),
         )
     except APIError as exc:
         raise RuntimeError("DeepSeek API 调用失败") from exc
@@ -175,7 +191,11 @@ def chat_about_poem(poem: str, question: str, selection: str | None = None) -> s
 
 
 def stream_chat_about_poem(
-    poem: str, question: str, selection: str | None = None
+    poem: str,
+    question: str,
+    selection: str | None = None,
+    *,
+    context: PoemContext | None = None,
 ) -> Iterator[str]:
     """直接转发模型真实生成的增量文本；不做假打字动画。"""
     stream = None
@@ -184,7 +204,7 @@ def stream_chat_about_poem(
     try:
         stream = client.chat.completions.create(
             model="deepseek-flash",
-            messages=_chat_messages(poem, question, selection),
+            messages=_chat_messages(poem, question, selection, context),
             stream=True,
         )
         for chunk in stream:

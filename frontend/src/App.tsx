@@ -6,7 +6,7 @@ import { PoemReader } from "@/components/poem-reader";
 import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
 
-import { poems, poemText } from "@/data/poem-library";
+import { poems, poemContext, poemText } from "@/data/poem-library";
 import { readChatStream } from "@/lib/chat-stream";
 
 import type { SelectedText } from "@/components/poem-reader";
@@ -97,6 +97,7 @@ function App() {
           poem,
           question: turn.question,
           selection: turn.selection,
+          context: poemContext(activePoem),
         }),
       });
 
@@ -234,7 +235,10 @@ function App() {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ poem }),
+        body: JSON.stringify({
+          poem,
+          context: poemContext(activePoem),
+        }),
       });
 
       if (!response.ok) {

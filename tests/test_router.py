@@ -6,6 +6,15 @@ from types import SimpleNamespace
 import pytest
 
 from backend.evidence.schema import EvidenceItem
+from poem_context import PoemContext, format_poem_context
+
+SAMPLE_CONTEXT = PoemContext(
+    id="su-shi-huan-xi-sha-feng-juan-zhu-lian",
+    title="浣溪沙·新秋",
+    author="苏轼",
+    dynasty="宋",
+    review_status="imported_unreviewed",
+)
 
 
 @pytest.fixture
@@ -120,6 +129,7 @@ def test_graph_routes_and_only_direct_branch_generates_answer(
             "poem": "萧萧乱叶报新秋。",
             "question": "测试问题",
             "selection": selection,
+            "context": SAMPLE_CONTEXT,
         }
     )
 
@@ -136,6 +146,7 @@ def test_graph_routes_and_only_direct_branch_generates_answer(
                 "poem": "萧萧乱叶报新秋。",
                 "question": "测试问题",
                 "selection": selection,
+                "context": SAMPLE_CONTEXT,
             }
         ]
         assert search_calls == []
@@ -154,6 +165,7 @@ def test_graph_routes_and_only_direct_branch_generates_answer(
         ]
 
         assert len(evidence_answer_calls) == 1
+        assert evidence_answer_calls[0]["context"] == SAMPLE_CONTEXT
         assert len(result["evidences"]) == 1
         assert result["evidences"][0]["anchor"] == "三星当户"
 
@@ -197,5 +209,129 @@ def test_classifier_rejects_unknown_intent(monkeypatch, router):
             {
                 "poem": "萧萧乱叶报新秋。",
                 "question": "解释报字",
+                "context": SAMPLE_CONTEXT,
             }
         )
+
+
+def test_classifier_receives_poem_context(monkeypatch, router):
+    model_calls = []
+
+    def fake_create(**kwargs):
+        model_calls.append(kwargs)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    finish_reason="stop",
+                    message=SimpleNamespace(
+                        content=json.dumps(
+                            {
+                                "intent": "text_reading",
+                                "reason": "测试",
+                            }
+                        )
+                    ),
+                )
+            ],
+            usage=None,
+        )
+
+    monkeypatch.setattr(
+        router,
+        "client",
+        SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
+        ),
+    )
+
+    result = router.classify_intent(
+        {
+            "poem": "萧萧乱叶报新秋。",
+            "question": "解释报字",
+            "selection": None,
+            "context": SAMPLE_CONTEXT,
+        }
+    )
+
+    assert result["intent"] == "text_reading"
+    user_content = model_calls[0]["messages"][1]["content"]
+    assert format_poem_context(SAMPLE_CONTEXT) in user_content
+    assert "作者：苏轼" in user_content
+    assert "imported_unreviewed" not in user_content
+
+
+def test_classifier_and_graph_work_without_context(monkeypatch, router):
+    """旧请求不带 context 时，分类与细读分支仍能正常工作。"""
+
+    model_calls = []
+
+    def fake_create(**kwargs):
+        model_calls.append(kwargs)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    finish_reason="stop",
+                    message=SimpleNamespace(
+                        content=json.dumps(
+                            {
+                                "intent": "text_reading",
+                                "reason": "测试",
+                            }
+                        )
+                    ),
+                )
+            ],
+            usage=None,
+        )
+
+    monkeypatch.setattr(
+        router,
+        "client",
+        SimpleNamespace(
+            chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
+        ),
+    )
+    monkeypatch.setattr(
+        router,
+        "chat_about_poem",
+        lambda **kwargs: "模拟细读回答",
+    )
+
+    result = router.graph.invoke(
+        {
+            "poem": "萧萧乱叶报新秋。",
+            "question": "解释报字",
+            "selection": None,
+        }
+    )
+
+    assert result["intent"] == "text_reading"
+    assert result["next_step"] == "direct_answer"
+    assert result["reply"] == "模拟细读回答"
+    user_content = model_calls[0]["messages"][1]["content"]
+    assert "作品上下文" not in user_content
+
+
+def test_format_poem_context_notes_only_imported_unreviewed():
+    assert format_poem_context(None) == ""
+
+    unreviewed = format_poem_context(SAMPLE_CONTEXT)
+    assert "题名：浣溪沙·新秋" in unreviewed
+    assert "作者：苏轼" in unreviewed
+    assert "时代：宋" in unreviewed
+    assert "imported_unreviewed" not in unreviewed
+    assert "尚未完成全面校勘" in unreviewed
+
+    reviewed = format_poem_context(
+        PoemContext(
+            id="other-work",
+            title="其他作品",
+            author="某某",
+            dynasty="唐",
+            review_status="reviewed",
+        )
+    )
+    assert "题名：其他作品" in reviewed
+    assert "作者：某某" in reviewed
+    assert "时代：唐" in reviewed
+    assert "尚未完成全面校勘" not in reviewed

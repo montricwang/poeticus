@@ -6,6 +6,16 @@ from urllib.parse import unquote
 import httpx
 import pytest
 
+from poem_context import PoemContext
+
+SAMPLE_CONTEXT = PoemContext(
+    id="test-poem",
+    title="测试",
+    author="苏轼",
+    dynasty="宋",
+    review_status="imported_unreviewed",
+)
+
 
 @pytest.fixture
 def router(monkeypatch):
@@ -93,6 +103,7 @@ def test_evidence_success(
             "poem": "测试诗歌",
             "question": "「刘郎」有什么典故？",
             "selection": None,
+            "context": SAMPLE_CONTEXT,
         }
     )
 
@@ -112,6 +123,7 @@ def test_evidence_success(
 
     assert len(answer_calls) == 1
     assert answer_calls[0]["question"] == ("「刘郎」有什么典故？")
+    assert answer_calls[0]["context"] == SAMPLE_CONTEXT
     assert len(answer_calls[0]["evidences"]) == 1
 
 
@@ -144,6 +156,7 @@ def test_evidence_not_found(
             "poem": "三星当户照绸缪。",
             "question": "这个词出自哪里？",
             "selection": "绸缪",
+            "context": SAMPLE_CONTEXT,
         }
     )
 
@@ -183,6 +196,7 @@ def test_evidence_provider_error(
             "poem": "三星当户照绸缪。",
             "question": "这个词出自哪里？",
             "selection": "绸缪",
+            "context": SAMPLE_CONTEXT,
         }
     )
 

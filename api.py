@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from main import PoemAnalysis, analyze_poem
 from intent_router import graph
+from poem_context import PoemContext
 
 logger = logging.getLogger(__name__)
 app = FastAPI(title="Poeticus")
@@ -17,6 +18,7 @@ app = FastAPI(title="Poeticus")
 
 class AnalyzeRequest(BaseModel):
     poem: str
+    context: PoemContext | None = None
 
 
 @app.post("/analyze", response_model=PoemAnalysis)
@@ -24,7 +26,7 @@ def analyze(request: AnalyzeRequest):
     if not request.poem.strip():
         raise HTTPException(status_code=422, detail="诗歌原文不能为空")
     try:
-        return analyze_poem(request.poem)
+        return analyze_poem(request.poem, request.context)
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
@@ -39,6 +41,7 @@ class ChatRequest(BaseModel):
     poem: str
     question: str
     selection: QuoteSelection | None = None
+    context: PoemContext | None = None
 
 
 class ChatResponse(BaseModel):
@@ -57,7 +60,7 @@ def validate_chat_request(request: ChatRequest) -> None:
             selection.start < 0
             or selection.end > len(request.poem)
             or selection.start >= selection.end
-            or request.poem[selection.start:selection.end] != selection.text
+            or request.poem[selection.start : selection.end] != selection.text
         ):
             raise HTTPException(status_code=422, detail="引用位置与原文不一致")
 
@@ -67,6 +70,7 @@ def graph_input(request: ChatRequest) -> dict:
         "poem": request.poem,
         "question": request.question,
         "selection": request.selection.text if request.selection else None,
+        "context": request.context,
     }
 
 
@@ -107,7 +111,9 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
                     yield sse("token", {"text": token})
             elif mode == "updates" and isinstance(payload, dict):
                 for update in payload.values():
-                    if isinstance(update, dict) and isinstance(update.get("reply"), str):
+                    if isinstance(update, dict) and isinstance(
+                        update.get("reply"), str
+                    ):
                         final_reply = update["reply"]
 
         if not final_reply or not final_reply.strip():
