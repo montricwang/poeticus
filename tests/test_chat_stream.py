@@ -43,10 +43,17 @@ def test_stream_sends_incremental_tokens_and_done(monkeypatch, api_module):
 
     def fake_stream(state, stream_mode):
         received.append((state, stream_mode))
-        yield "updates", {"classify_intent": {"intent": "text_reading"}}
         yield "custom", {"type": "token", "text": "三"}
         yield "custom", {"type": "token", "text": "星"}
-        yield "updates", {"direct_answer": {"reply": "三星"}}
+        yield (
+            "updates",
+            {
+                "agent": {
+                    "reply": "三星",
+                    "tool_calls": [],
+                }
+            },
+        )
 
     monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
@@ -82,7 +89,15 @@ def test_stream_accepts_request_without_context(monkeypatch, api_module):
 
     def fake_stream(state, stream_mode):
         received.append(state)
-        yield "updates", {"direct_answer": {"reply": "旧请求仍可用。"}}
+        yield (
+            "updates",
+            {
+                "agent": {
+                    "reply": "旧请求仍可用。",
+                    "tool_calls": [],
+                }
+            },
+        )
 
     monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
@@ -97,13 +112,59 @@ def test_stream_accepts_request_without_context(monkeypatch, api_module):
     assert received[0]["context"] is None
 
 
-@pytest.mark.parametrize("route", ["source_lookup", "clarify_user"])
-def test_static_branch_emits_answer_once(monkeypatch, api_module, route):
-    def fake_stream(state, stream_mode):
-        yield "updates", {"classify_intent": {"intent": route}}
-        yield "updates", {route: {"reply": "尚无可靠资料。"}}
+def test_tool_round_emits_final_answer_once(monkeypatch, api_module):
+    """Agent 调用工具后，只补发一次最终回答。"""
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=fake_stream))
+    def fake_stream(state, stream_mode):
+        # 第一轮 Agent 决定调用工具。
+        yield (
+            "updates",
+            {
+                "agent": {
+                    "tool_calls": [
+                        {
+                            "id": "call-1",
+                            "name": "lookup_allusion",
+                            "arguments": '{"term": "三星当户"}',
+                        }
+                    ]
+                }
+            },
+        )
+
+        # 工具返回查询结果。
+        yield (
+            "updates",
+            {
+                "tools": {
+                    "tool_results": [
+                        {
+                            "id": "call-1",
+                            "content": '{"status": "no_hit", "evidences": []}',
+                        }
+                    ]
+                }
+            },
+        )
+
+        # 第二轮 Agent 返回最终回答。
+        # 这里故意不发送 custom token，以测试 API 的全文补发逻辑。
+        yield (
+            "updates",
+            {
+                "agent": {
+                    "reply": "尚无可靠资料。",
+                    "tool_calls": [],
+                }
+            },
+        )
+
+    monkeypatch.setattr(
+        api_module,
+        "graph",
+        SimpleNamespace(stream=fake_stream),
+    )
+
     response = TestClient(api_module.app).post(
         "/chat/stream",
         json={
@@ -112,6 +173,8 @@ def test_static_branch_emits_answer_once(monkeypatch, api_module, route):
             "context": SAMPLE_CONTEXT,
         },
     )
+
+    assert response.status_code == 200
     assert parse_sse(response.text) == [
         ("token", {"text": "尚无可靠资料。"}),
         ("done", {}),
