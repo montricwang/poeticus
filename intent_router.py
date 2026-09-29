@@ -1,11 +1,33 @@
 from typing import Literal, NotRequired, TypedDict
-
 from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, START, END
 from openai import APIError
 from pydantic import BaseModel, ValidationError
 
-from main import client, chat_about_poem, stream_chat_about_poem
+import asyncio
+import re
+import logging
+
+from main import (
+    client,
+    chat_about_poem,
+    stream_chat_about_poem,
+    answer_with_evidence,
+)
+from backend.evidence.service import EvidenceService
+from backend.evidence.providers.cnkgraph import (
+    CNKGraphProvider,
+    CNKGraphError,
+)
+
+
+logger = logging.getLogger(__name__)
+
+evidence_service = EvidenceService(
+    {
+        "cnkgraph": CNKGraphProvider(),
+    }
+)
 
 
 class IntentResult(BaseModel):
@@ -24,6 +46,7 @@ class RouterState(TypedDict):
     intent: NotRequired[str]
     reason: NotRequired[str]
     next_step: NotRequired[str]
+    evidences: NotRequired[list[dict]]
     reply: NotRequired[str]
     # 仅 /chat/stream 传入；原有 /chat 不受影响。
     stream_reply: NotRequired[bool]
@@ -97,12 +120,14 @@ needs_clarification：
             messages=[
                 {"role": "system", "content": system_prompt},
                 {
-                    "role": "user", "content": (
+                    "role": "user",
+                    "content": (
                         f"当前诗歌：\n{state['poem']}\n\n"
                         f"当前选区：\n"
                         f"{state.get('selection') or '（未选择任何原文）'}\n\n"
                         f"用户问题：\n{state['question']}"
-                    )},
+                    ),
+                },
             ],
             response_format={"type": "json_object"},
             temperature=0,
@@ -163,13 +188,86 @@ def direct_answer(state: RouterState) -> dict:
 
 
 def source_lookup(state: RouterState) -> dict:
+    question = state["question"].strip()
+    selection = (state.get("selection") or "").strip()
+
+    # 1. 确定查询对象：优先使用选区
+    term = selection
+
+    # 没有选区时，提取问题中带引号的词句
+    if not term:
+        quoted = re.search(
+            r"[「“『]([^」”』]{1,30})[」”』]",
+            question,
+        )
+        if quoted:
+            term = quoted.group(1).strip()
+
+    # 仍未找到时，识别几种明确的提问方式
+    if not term:
+        plain = re.match(
+            r"^([\u3400-\u9fff]{1,12}?)"
+            r"(?:"
+            r"有哪些[^？?。]*典故"
+            r"|的典故"
+            r"|(?:这个词)?出自哪里"
+            r"|有什么(?:文献)?出处"
+            r")",
+            question,
+        )
+        if plain:
+            term = plain.group(1).strip()
+
+    # 不允许把空字符串或模糊指代发送给 Provider
+    if not term or term in {"这个", "这个词", "这句话", "这里"}:
+        return {
+            "next_step": "needs_clarification",
+            "reply": ("请选中需要查证的词句，或在问题中明确指出查询对象。"),
+        }
+
+    # 2. 查询 EvidenceService
+    try:
+        evidences = asyncio.run(
+            evidence_service.search(
+                query=term,
+                provider_name="cnkgraph",
+                evidence_type="allusion",
+            )
+        )
+    except CNKGraphError:
+        logger.exception(
+            "CNKGraph 查询失败，查询对象：%s",
+            term,
+        )
+        return {
+            "next_step": "source_lookup",
+            "reply": "CNKGraph 查询失败，本次未能取得证据。",
+        }
+
+    # 3. 处理空结果
+    if not evidences:
+        return {
+            "next_step": "source_lookup",
+            "evidences": [],
+            "reply": (f"没有检索到「{term}」的典故资料。这不代表它没有其他文献出处。"),
+        }
+
+    # 4. 让 LLM 结合原诗和候选证据生成回答
+    try:
+        answer = answer_with_evidence(
+            poem=state["poem"],
+            question=question,
+            selection=selection or None,
+            evidences=evidences,
+        )
+    except APIError as exc:
+        raise RuntimeError("证据分析 API 调用失败") from exc
+
+    # 5. 将回答和结构化证据写回 Graph State
     return {
         "next_step": "source_lookup",
-        "reply": (
-            "这个问题需要核对词典或相关文献。"
-            "当前版本尚未接入查询工具，"
-            "因此暂时无法提供经过核实的答案。"
-        ),
+        "evidences": [item.model_dump() for item in evidences],
+        "reply": answer,
     }
 
 
@@ -210,10 +308,26 @@ if __name__ == "__main__":
         "香生雾縠见纤柔。"
     )
     cases = [
-        {"question": "这个词从哪来的？", "selection": "三星当户", "expected": "source_lookup"},
-        {"question": "这个词从哪来的？", "selection": None, "expected": "needs_clarification"},
-        {"question": "这个词我没听说过。", "selection": "绸缪", "expected": "text_reading"},
-        {"question": "这是什么意思？", "selection": None, "expected": "needs_clarification"},
+        {
+            "question": "这个词从哪来的？",
+            "selection": "三星当户",
+            "expected": "source_lookup",
+        },
+        {
+            "question": "这个词从哪来的？",
+            "selection": None,
+            "expected": "needs_clarification",
+        },
+        {
+            "question": "这个词我没听说过。",
+            "selection": "绸缪",
+            "expected": "text_reading",
+        },
+        {
+            "question": "这是什么意思？",
+            "selection": None,
+            "expected": "needs_clarification",
+        },
     ]
     for case in cases:
         result = graph.invoke(

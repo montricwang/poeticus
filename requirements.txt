@@ -5,3 +5,4 @@ fastapi
 uvicorn
 langgraph
 langsmith
+httpx
