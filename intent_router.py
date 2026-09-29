@@ -1,11 +1,14 @@
 import asyncio
 import logging
 import json
-from typing import Literal, NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict, cast
 from langgraph.graph import StateGraph, START, END
 from openai import APIError
 from pydantic import BaseModel
-from openai.types.chat import ChatCompletionFunctionToolParam
+from openai.types.chat import (
+    ChatCompletionFunctionToolParam,
+    ChatCompletionMessageParam,
+)
 
 from main import client
 from backend.evidence.service import EvidenceService
@@ -65,9 +68,14 @@ class RouterState(TypedDict):
     question: str
     context: NotRequired[PoemContext | None]
     selection: NotRequired[str | None]
+    messages: NotRequired[
+        list[ChatCompletionMessageParam]
+    ]  # Agent 当前请求中的完整消息记录
+    tool_count: NotRequired[int]  # 当前请求累计执行的工具次数
     reply: NotRequired[str]
     evidences: NotRequired[list[dict]]
     tool_calls: NotRequired[list[dict]]
+    tool_results: NotRequired[list[dict]]
     stream_reply: NotRequired[bool]
 
 
@@ -81,22 +89,142 @@ def _agent_user_message(state: RouterState) -> str:
     )
 
 
+def _stream_agent_decision(
+    messages: list[ChatCompletionMessageParam],
+    tool_choice: Literal["auto", "none"],
+) -> tuple[str, list[dict]]:
+    writer = get_stream_writer()
+
+    parts: list[str] = []
+    pending: dict[int, dict] = {}
+    finish_reason = None
+    stream = None
+
+    try:
+        stream = client.chat.completions.create(
+            model="deepseek-flash",
+            messages=messages,
+            tools=TOOLS,
+            tool_choice=tool_choice,
+            temperature=0,
+            stream=True,
+            extra_body={"thinking": {"type": "disabled"}},
+        )
+
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+
+            choice = chunk.choices[0]
+            delta = choice.delta
+
+            # 工具调用可能分散在多个 chunk 中。
+            for call in delta.tool_calls or []:
+                if parts:
+                    raise RuntimeError("模型混合返回了正文和工具调用")
+
+                item = pending.setdefault(
+                    call.index,
+                    {
+                        "id": "",
+                        "name": "",
+                        "arguments": "",
+                    },
+                )
+
+                if call.id:
+                    item["id"] = call.id
+
+                if call.function:
+                    if call.function.name:
+                        item["name"] += call.function.name
+
+                    if call.function.arguments:
+                        item["arguments"] += call.function.arguments
+
+            # 只有纯文字回答才向前端发送 token。
+            if delta.content:
+                if pending:
+                    raise RuntimeError("模型混合返回了工具调用和正文")
+
+                parts.append(delta.content)
+
+                if delta.content:
+                    writer(
+                        {
+                            "type": "token",
+                            "text": delta.content,
+                        }
+                    )
+
+            if choice.finish_reason is not None:
+                finish_reason = choice.finish_reason
+
+    except APIError as exc:
+        raise RuntimeError("Agent 流式请求失败") from exc
+
+    finally:
+        if stream is not None:
+            stream.close()
+
+    if pending:
+        if finish_reason != "tool_calls":
+            raise RuntimeError(f"工具调用未正常结束：{finish_reason}")
+
+        calls = [pending[index] for index in sorted(pending)]
+
+        for call in calls:
+            if not call["id"] or not call["name"] or not call["arguments"]:
+                raise RuntimeError("流式工具调用信息不完整")
+
+        return "", calls
+
+    if finish_reason != "stop":
+        raise RuntimeError(f"模型未正常完成：{finish_reason}")
+
+    answer = "".join(parts)
+
+    if not answer.strip():
+        raise RuntimeError("模型返回了空回答")
+
+    return answer, []
+
+
 def agent_decide(state: RouterState) -> dict:
+    # 第一次进入 Agent 时建立消息历史；
+    # 再次进入时沿用已有记录。
+    messages = list(state.get("messages") or [])
+
+    if not messages:
+        messages = [
+            {
+                "role": "system",
+                "content": compose_prompt(
+                    "agent_decide",
+                    "output_style",
+                ),
+            },
+            {
+                "role": "user",
+                "content": _agent_user_message(state),
+            },
+        ]
+
+    messages = cast(
+        list[ChatCompletionMessageParam],
+        messages,
+    )
+
+    tool_choice: Literal["auto", "none"] = (
+        "none" if state.get("tool_count", 0) >= 8 else "auto"
+    )
+
     try:
         response = client.chat.completions.create(
             model="deepseek-flash",
-            messages=[
-                {
-                    "role": "system",
-                    "content": compose_prompt("agent_decide", "output_style"),
-                },
-                {
-                    "role": "user",
-                    "content": _agent_user_message(state),
-                },
-            ],
+            messages=messages,
             tools=TOOLS,
-            tool_choice="auto",
+            tool_choice=tool_choice,
             temperature=0,
             extra_body={"thinking": {"type": "disabled"}},
         )
@@ -108,6 +236,7 @@ def agent_decide(state: RouterState) -> dict:
 
     message = response.choices[0].message
 
+    # 情况一：模型决定调用工具。
     if message.tool_calls:
         tool_calls = []
 
@@ -123,12 +252,44 @@ def agent_decide(state: RouterState) -> dict:
                 }
             )
 
-        return {"tool_calls": tool_calls}
+        # 把模型实际发出的工具调用保存到历史。
+        # 每个调用的结果将在下一步由 execute_tools 追加。
+        messages.append(
+            {
+                "role": "assistant",
+                "content": message.content,
+                "tool_calls": [
+                    {
+                        "id": call["id"],
+                        "type": "function",
+                        "function": {
+                            "name": call["name"],
+                            "arguments": call["arguments"],
+                        },
+                    }
+                    for call in tool_calls
+                ],
+            }
+        )
 
-    if not message.content:
+        return {
+            "messages": messages,
+            "tool_calls": tool_calls,
+        }
+
+    # 情况二：模型决定直接回答。
+    if not message.content or not message.content.strip():
         raise RuntimeError("模型既没有回答，也没有调用工具")
 
+    messages.append(
+        {
+            "role": "assistant",
+            "content": message.content,
+        }
+    )
+
     return {
+        "messages": messages,
         "reply": message.content,
         "tool_calls": [],
     }
@@ -143,164 +304,139 @@ def route_agent(state: RouterState) -> Literal["tools", "done"]:
 def execute_tools(state: RouterState) -> dict:
     calls = state.get("tool_calls") or []
 
-    if len(calls) != 1:
-        raise RuntimeError("当前版本每轮只允许一次工具调用")
-
-    call = calls[0]
-
-    if call["name"] != "lookup_allusion":
-        raise RuntimeError(f"未知工具：{call['name']}")
-
-    try:
-        arguments = json.loads(call["arguments"])
-    except json.JSONDecodeError as exc:
-        raise RuntimeError("工具参数不是有效 JSON") from exc
-
-    term = arguments.get("term")
-
-    if not isinstance(term, str) or not term.strip():
-        raise RuntimeError("lookup_allusion 缺少有效 term")
-
-    term = term.strip()
-
-    try:
-        evidences = asyncio.run(
-            evidence_service.search(
-                query=term,
-                provider_name="cnkgraph",
-                evidence_type="allusion",
-            )
-        )
-    except CNKGraphError:
-        logger.exception("CNKGraph 查询失败")
-        return {
-            "evidences": [],
-        }
-
-    return {"evidences": [item.model_dump() for item in evidences]}
-
-
-def answer_after_tool(state: RouterState) -> dict:
-    calls = state.get("tool_calls") or []
-
     if not calls:
-        raise RuntimeError("缺少工具调用信息")
+        raise RuntimeError("没有待执行的工具调用")
 
-    call = calls[0]
-    evidences = state.get("evidences") or []
+    messages = list(state.get("messages") or [])
+    tool_count = state.get("tool_count", 0)
 
-    tool_result = json.dumps(
-        evidences,
-        ensure_ascii=False,
-    )
+    # 一次用户请求最多执行 8 次实际工具调用。
+    max_tool_calls = 8
 
-    try:
-        response = client.chat.completions.create(
-            model="deepseek-flash",
-            messages=[
+    # 防止重复 ID 使工具结果无法正确对应。
+    ids = [call["id"] for call in calls]
+    if len(ids) != len(set(ids)):
+        raise RuntimeError("工具调用 ID 重复")
+
+    async def run_tools():
+        results = []
+        all_evidences = []
+        count = tool_count
+
+        for call in calls:
+            if count >= max_tool_calls:
+                result = {
+                    "status": "budget_exceeded",
+                    "message": "本次请求的工具调用预算已用完",
+                    "evidences": [],
+                }
+            else:
+                count += 1
+
+                try:
+                    if call["name"] != "lookup_allusion":
+                        raise ValueError(f"未知工具：{call['name']}")
+
+                    arguments = json.loads(call["arguments"])
+
+                    if not isinstance(arguments, dict):
+                        raise ValueError("工具参数必须是对象")
+
+                    term = arguments.get("term")
+
+                    if not isinstance(term, str) or not term.strip() or len(term) > 64:
+                        raise ValueError("无效的典故查询词")
+
+                    term = term.strip()
+
+                    evidences = await evidence_service.search(
+                        query=term,
+                        provider_name="cnkgraph",
+                        evidence_type="allusion",
+                    )
+
+                    items = [item.model_dump() for item in evidences]
+
+                    all_evidences.extend(items)
+
+                    result = {
+                        "status": ("ok" if items else "no_hit"),
+                        "query": term,
+                        "evidences": items,
+                    }
+
+                except (
+                    ValueError,
+                    KeyError,
+                    TypeError,
+                    CNKGraphError,
+                ) as exc:
+                    logger.warning(
+                        "工具执行失败：%s",
+                        exc,
+                    )
+
+                    result = {
+                        "status": "error",
+                        "message": str(exc),
+                        "evidences": [],
+                    }
+
+            content = json.dumps(
+                result,
+                ensure_ascii=False,
+            )
+
+            results.append(
                 {
-                    "role": "system",
-                    "content": compose_prompt("agent_after_tool", "output_style"),
-                },
-                {
-                    "role": "user",
-                    "content": _agent_user_message(state),
-                },
-                {
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": [
-                        {
-                            "id": call["id"],
-                            "type": "function",
-                            "function": {
-                                "name": call["name"],
-                                "arguments": call["arguments"],
-                            },
-                        }
-                    ],
-                },
-                {
-                    "role": "tool",
-                    "tool_call_id": call["id"],
-                    "content": tool_result,
-                },
-            ],
-            temperature=0,
-            extra_body={"thinking": {"type": "disabled"}},
+                    "id": call["id"],
+                    "content": content,
+                }
+            )
+
+        return results, all_evidences, count
+
+    results, evidences, new_count = asyncio.run(run_tools())
+
+    # agent_decide 已经将 assistant 的工具调用
+    # 加入 messages，这里只追加对应的工具回复。
+    for result in results:
+        messages.append(
+            {
+                "role": "tool",
+                "tool_call_id": result["id"],
+                "content": result["content"],
+            }
         )
-    except APIError as exc:
-        raise RuntimeError("工具结果回答 API 调用失败") from exc
 
-    if not response.choices:
-        raise RuntimeError("模型没有返回最终回答")
-
-    message = response.choices[0].message
-
-    if not message.content:
-        raise RuntimeError("模型返回了空回答")
-
-    return {"reply": message.content}
+    return {
+        "messages": messages,
+        "tool_results": results,
+        "tool_count": new_count,
+        "evidences": [
+            *(state.get("evidences") or []),
+            *evidences,
+        ],
+    }
 
 
 builder = StateGraph(RouterState)
 
 builder.add_node("agent", agent_decide)
 builder.add_node("tools", execute_tools)
-builder.add_node("answer_after_tool", answer_after_tool)
 
 builder.add_edge(START, "agent")
+
 builder.add_conditional_edges(
     "agent",
     route_agent,
-    {"tools": "tools", "done": END},
+    {
+        "tools": "tools",
+        "done": END,
+    },
 )
-builder.add_edge("tools", "answer_after_tool")
-builder.add_edge("answer_after_tool", END)
+
+# 工具执行后，不再直接进入最终回答节点。将工具结果交还给 Agent，由它重新决定下一步。
+builder.add_edge("tools", "agent")
 
 graph = builder.compile()
-
-
-if __name__ == "__main__":
-    poem = (
-        "风卷珠帘自上钩，萧萧乱叶报新秋。"
-        "独携纤手上高楼。"
-        "缺月向人舒窈窕，三星当户照绸缪。"
-        "香生雾縠见纤柔。"
-    )
-    cases = [
-        {
-            "question": "这个词从哪来的？",
-            "selection": "三星当户",
-            "expected": "source_lookup",
-        },
-        {
-            "question": "这个词从哪来的？",
-            "selection": None,
-            "expected": "needs_clarification",
-        },
-        {
-            "question": "这个词我没听说过。",
-            "selection": "绸缪",
-            "expected": "text_reading",
-        },
-        {
-            "question": "这是什么意思？",
-            "selection": None,
-            "expected": "needs_clarification",
-        },
-    ]
-    for case in cases:
-        result = graph.invoke(
-            {"poem": poem, "question": case["question"], "selection": case["selection"]}
-        )
-        actual = result["intent"]
-        expected = case["expected"]
-        print(f"\n问题：{case['question']}")
-        print(f"选区：{case['selection']}")
-        print(f"预期：{expected}")
-        print(f"实际：{actual}")
-        print(f"结果：{'PASS' if actual == expected else 'FAIL'}")
-        print(f"理由：{result['reason']}")
-        if result.get("reply"):
-            print(f"澄清：{result['reply']}")

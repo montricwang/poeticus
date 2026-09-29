@@ -34,9 +34,7 @@ def _fake_client(fake_create):
 def _text_response(content):
     return SimpleNamespace(
         choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(content=content, tool_calls=None)
-            )
+            SimpleNamespace(message=SimpleNamespace(content=content, tool_calls=None))
         ]
     )
 
@@ -50,6 +48,7 @@ def _tool_call_response(call_id, name, arguments):
                     tool_calls=[
                         SimpleNamespace(
                             id=call_id,
+                            type="function",
                             function=SimpleNamespace(
                                 name=name,
                                 arguments=arguments,
