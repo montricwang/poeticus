@@ -37,10 +37,9 @@ flowchart TD
 输入包括 poem、question 和可选的 selection。
 
 工作流执行期间增加 intent、reason、next_step、
-evidences、reply、trace_id 等字段。
+evidences、reply 等字段。
 
 stream_reply 仅用于指示是否通过流式接口生成回答。
-trace_id 用于关联同一次请求的执行日志，不属于用户内容。
 
 ## 4. 节点职责
 
@@ -53,15 +52,11 @@ trace_id 用于关联同一次请求的执行日志，不属于用户内容。
 
 ## 5. 执行追踪
 
-使用同一个 trace_id 关联分类、工具检索和回答节点。
+使用 LangSmith 追踪 LangGraph 的执行过程、
+节点耗时、模型调用、输入与输出。
 
-每个节点记录执行状态与耗时；检索另外记录 Provider、
-候选数量、是否命中及失败类型。
-
-默认不记录诗歌全文、用户问题全文、API Key 或证据全文。
-
-LangSmith 用于更深入的模型调用追踪，
-本地结构化日志用于日常调试和故障定位。
+Python Logging 只记录必要的本地错误信息。
+CNKGraph 请求发生异常时保留错误日志。
 
 ## 6. 失败处理
 

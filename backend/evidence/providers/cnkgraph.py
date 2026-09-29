@@ -1,6 +1,6 @@
 import os
-
 import httpx
+from langsmith import traceable
 
 from ..schema import EvidenceItem, EvidenceSource
 
@@ -11,12 +11,13 @@ class CNKGraphError(RuntimeError):
 
 class CNKGraphProvider:
     def __init__(self):
-        self.base_url = os.getenv(
-            "CNKGRAPH_BASE_URL",
-            "https://api.cnkgraph.com",
-        )
+        self.base_url = os.getenv("CNKGRAPH_BASE_URL", "https://api.cnkgraph.com")
         self.timeout = 10.0
 
+    @traceable(
+        name="cnkgraph_allusion_search",
+        run_type="tool",
+    )
     async def search(
         self,
         query: str,
@@ -40,18 +41,8 @@ class CNKGraphProvider:
                 response.raise_for_status()
                 raw = response.json()
 
-                # item = raw[0] if isinstance(raw, list) and raw else raw
-
-                # if isinstance(item, dict):
-                #     print("返回字段：", list(item.keys()))
-                #     print("释义数据：", item.get("Explains"))
-
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 404:
-                print(
-                    "CNKGraph 返回 404：",
-                    exc.response.text[:500],
-                )
                 return []
 
             raise CNKGraphError(
