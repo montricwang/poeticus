@@ -1,11 +1,9 @@
-"""测试 LangGraph 意图路由及各分支，不调用真实 API。"""
+"""测试 Agent 路由的上下文与工具守卫回归，不调用真实 API。"""
 
-import json
 from types import SimpleNamespace
 
 import pytest
 
-from backend.evidence.schema import EvidenceItem
 from poem_context import PoemContext, format_poem_context
 
 SAMPLE_CONTEXT = PoemContext(
@@ -27,62 +25,117 @@ def router(monkeypatch):
     return intent_router
 
 
-@pytest.mark.parametrize(
-    ("intent", "expected_step", "selection"),
-    [
-        ("text_reading", "direct_answer", "报"),
-        ("source_lookup", "source_lookup", "三星当户"),
-        ("needs_clarification", "needs_clarification", None),
-    ],
-)
-def test_graph_routes_and_only_direct_branch_generates_answer(
-    monkeypatch,
-    router,
-    intent,
-    expected_step,
-    selection,
-):
-    model_calls = []
-    direct_calls = []
-    search_calls = []
-    evidence_answer_calls = []
-
-    # 模拟意图分类模型
-    def fake_create(**kwargs):
-        model_calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    finish_reason="stop",
-                    message=SimpleNamespace(
-                        content=json.dumps(
-                            {
-                                "intent": intent,
-                                "reason": "测试分类",
-                            }
-                        )
-                    ),
-                )
-            ],
-            usage=None,
-        )
-
-    fake_client = SimpleNamespace(
+def _fake_client(fake_create):
+    return SimpleNamespace(
         chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
     )
 
-    # 模拟直接细读
-    def fake_direct_answer(**kwargs):
-        direct_calls.append(kwargs)
-        return "模拟细读回答"
 
-    # 模拟 EvidenceService
-    async def fake_search(
-        query,
-        *,
-        provider_name,
-        evidence_type=None,
-    ):
+def _text_response(content):
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(message=SimpleNamespace(content=content, tool_calls=None))
+        ]
+    )
+
+
+def _tool_call_response(call_id, name, arguments):
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    content=None,
+                    tool_calls=[
+                        SimpleNamespace(
+                            id=call_id,
+                            type="function",
+                            function=SimpleNamespace(
+                                name=name,
+                                arguments=arguments,
+                            ),
+                        )
+                    ],
+                )
+            )
+        ]
+    )
+
+
+def _user_message(model_calls):
+    return model_calls[0]["messages"][1]["content"]
+
+
+def test_graph_sends_poem_context_to_model(monkeypatch, router):
+    """有作品元数据时，模型收到对应上下文。"""
+
+    model_calls = []
+
+    def fake_create(**kwargs):
+        model_calls.append(kwargs)
+        return _text_response("模拟细读回答")
+
+    monkeypatch.setattr(router, "client", _fake_client(fake_create))
+
+    result = router.graph.invoke(
+        {
+            "poem": "萧萧乱叶报新秋。",
+            "question": "解释报字",
+            "selection": None,
+            "context": SAMPLE_CONTEXT,
+        }
+    )
+
+    assert result["reply"] == "模拟细读回答"
+
+    user_content = _user_message(model_calls)
+    assert format_poem_context(SAMPLE_CONTEXT) in user_content
+    assert "作者：苏轼" in user_content
+    assert "作品上下文" in user_content
+    assert "imported_unreviewed" not in user_content
+
+
+def test_graph_answers_legacy_request_without_context(monkeypatch, router):
+    """没有作品元数据时，旧请求仍可正常回答。"""
+
+    model_calls = []
+
+    def fake_create(**kwargs):
+        model_calls.append(kwargs)
+        return _text_response("模拟细读回答")
+
+    monkeypatch.setattr(router, "client", _fake_client(fake_create))
+
+    result = router.graph.invoke(
+        {
+            "poem": "萧萧乱叶报新秋。",
+            "question": "解释报字",
+            "selection": None,
+        }
+    )
+
+    assert result["reply"] == "模拟细读回答"
+    assert "作品上下文" not in _user_message(model_calls)
+
+
+def test_unknown_tool_is_not_executed(monkeypatch, router):
+    """模型伪造未注册工具时，只返回错误结果，不触发检索。"""
+
+    model_calls = []
+    search_calls = []
+
+    def fake_create(**kwargs):
+        model_calls.append(kwargs)
+
+        if len(model_calls) == 1:
+            return _tool_call_response(
+                "call-1",
+                "lookup_unknown",
+                '{"term": "刘郎"}',
+            )
+
+        return _text_response("没有可用的检索工具，只能凭已有知识回答。")
+
+    async def fake_search(query, *, provider_name, evidence_type=None):
         search_calls.append(
             {
                 "query": query,
@@ -91,225 +144,29 @@ def test_graph_routes_and_only_direct_branch_generates_answer(
             }
         )
 
-        return [
-            EvidenceItem(
-                anchor=query,
-                type="allusion",
-                text="模拟文献引文",
-                provider="cnkgraph",
-                status="candidate",
-            )
-        ]
-
-    # 模拟根据证据生成答案
-    def fake_evidence_answer(**kwargs):
-        evidence_answer_calls.append(kwargs)
-        return "模拟证据回答"
-
-    monkeypatch.setattr(router, "client", fake_client)
-    monkeypatch.setattr(
-        router,
-        "chat_about_poem",
-        fake_direct_answer,
-    )
-    monkeypatch.setattr(
-        router.evidence_service,
-        "search",
-        fake_search,
-    )
-    monkeypatch.setattr(
-        router,
-        "answer_with_evidence",
-        fake_evidence_answer,
-    )
-
-    # 真正运行 Graph，但所有外部调用都已被替换
-    result = router.graph.invoke(
-        {
-            "poem": "萧萧乱叶报新秋。",
-            "question": "测试问题",
-            "selection": selection,
-            "context": SAMPLE_CONTEXT,
-        }
-    )
-
-    assert len(model_calls) == 1
-    assert result["intent"] == intent
-    assert result["next_step"] == expected_step
-    assert isinstance(result["reply"], str)
-    assert result["reply"]
-
-    if intent == "text_reading":
-        assert result["reply"] == "模拟细读回答"
-        assert direct_calls == [
-            {
-                "poem": "萧萧乱叶报新秋。",
-                "question": "测试问题",
-                "selection": selection,
-                "context": SAMPLE_CONTEXT,
-            }
-        ]
-        assert search_calls == []
-        assert evidence_answer_calls == []
-
-    elif intent == "source_lookup":
-        assert result["reply"] == "模拟证据回答"
-        assert direct_calls == []
-
-        assert search_calls == [
-            {
-                "query": "三星当户",
-                "provider_name": "cnkgraph",
-                "evidence_type": "allusion",
-            }
-        ]
-
-        assert len(evidence_answer_calls) == 1
-        assert evidence_answer_calls[0]["context"] == SAMPLE_CONTEXT
-        assert len(result["evidences"]) == 1
-        assert result["evidences"][0]["anchor"] == "三星当户"
-
-    else:
-        assert direct_calls == []
-        assert search_calls == []
-        assert evidence_answer_calls == []
-
-
-def test_classifier_rejects_unknown_intent(monkeypatch, router):
-    """模型返回不符合 Schema 的意图时，应当报错。"""
-
-    def fake_create(**kwargs):
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    finish_reason="stop",
-                    message=SimpleNamespace(
-                        content=json.dumps(
-                            {
-                                "intent": "unknown",
-                                "reason": "测试非法标签",
-                            }
-                        )
-                    ),
-                )
-            ],
-            usage=None,
-        )
-
-    monkeypatch.setattr(
-        router,
-        "client",
-        SimpleNamespace(
-            chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
-        ),
-    )
-
-    with pytest.raises(RuntimeError, match="不符合 Schema"):
-        router.classify_intent(
-            {
-                "poem": "萧萧乱叶报新秋。",
-                "question": "解释报字",
-                "context": SAMPLE_CONTEXT,
-            }
-        )
-
-
-def test_classifier_receives_poem_context(monkeypatch, router):
-    model_calls = []
-
-    def fake_create(**kwargs):
-        model_calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    finish_reason="stop",
-                    message=SimpleNamespace(
-                        content=json.dumps(
-                            {
-                                "intent": "text_reading",
-                                "reason": "测试",
-                            }
-                        )
-                    ),
-                )
-            ],
-            usage=None,
-        )
-
-    monkeypatch.setattr(
-        router,
-        "client",
-        SimpleNamespace(
-            chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
-        ),
-    )
-
-    result = router.classify_intent(
-        {
-            "poem": "萧萧乱叶报新秋。",
-            "question": "解释报字",
-            "selection": None,
-            "context": SAMPLE_CONTEXT,
-        }
-    )
-
-    assert result["intent"] == "text_reading"
-    user_content = model_calls[0]["messages"][1]["content"]
-    assert format_poem_context(SAMPLE_CONTEXT) in user_content
-    assert "作者：苏轼" in user_content
-    assert "imported_unreviewed" not in user_content
-
-
-def test_classifier_and_graph_work_without_context(monkeypatch, router):
-    """旧请求不带 context 时，分类与细读分支仍能正常工作。"""
-
-    model_calls = []
-
-    def fake_create(**kwargs):
-        model_calls.append(kwargs)
-        return SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    finish_reason="stop",
-                    message=SimpleNamespace(
-                        content=json.dumps(
-                            {
-                                "intent": "text_reading",
-                                "reason": "测试",
-                            }
-                        )
-                    ),
-                )
-            ],
-            usage=None,
-        )
-
-    monkeypatch.setattr(
-        router,
-        "client",
-        SimpleNamespace(
-            chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
-        ),
-    )
-    monkeypatch.setattr(
-        router,
-        "chat_about_poem",
-        lambda **kwargs: "模拟细读回答",
-    )
+    monkeypatch.setattr(router, "client", _fake_client(fake_create))
+    monkeypatch.setattr(router.evidence_service, "search", fake_search)
 
     result = router.graph.invoke(
         {
             "poem": "萧萧乱叶报新秋。",
-            "question": "解释报字",
+            "question": "刘郎有什么典故？",
             "selection": None,
         }
     )
 
-    assert result["intent"] == "text_reading"
-    assert result["next_step"] == "direct_answer"
-    assert result["reply"] == "模拟细读回答"
-    user_content = model_calls[0]["messages"][1]["content"]
-    assert "作品上下文" not in user_content
+    assert search_calls == []
+
+    assert len(model_calls) == 2
+    tool_messages = [
+        message
+        for message in model_calls[1]["messages"]
+        if message.get("role") == "tool"
+    ]
+    assert len(tool_messages) == 1
+    assert "未知工具" in tool_messages[0]["content"]
+
+    assert result["reply"] == "没有可用的检索工具，只能凭已有知识回答。"
 
 
 def test_format_poem_context_notes_only_imported_unreviewed():

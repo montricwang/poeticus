@@ -2,6 +2,7 @@ import asyncio
 import logging
 import json
 from typing import Literal, NotRequired, TypedDict, cast
+from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, START, END
 from openai import APIError
 from pydantic import BaseModel
@@ -219,45 +220,50 @@ def agent_decide(state: RouterState) -> dict:
         "none" if state.get("tool_count", 0) >= 8 else "auto"
     )
 
-    try:
-        response = client.chat.completions.create(
-            model="deepseek-flash",
-            messages=messages,
-            tools=TOOLS,
-            tool_choice=tool_choice,
-            temperature=0,
-            extra_body={"thinking": {"type": "disabled"}},
-        )
-    except APIError as exc:
-        raise RuntimeError("Agent 决策 API 调用失败") from exc
+    stream_reply = state.get("stream_reply", False)
 
-    if not response.choices:
-        raise RuntimeError("模型没有返回结果")
-
-    message = response.choices[0].message
-
-    # 情况一：模型决定调用工具。
-    if message.tool_calls:
-        tool_calls = []
-
-        for call in message.tool_calls:
-            if call.type != "function":
-                raise RuntimeError(f"暂不支持的工具类型：{call.type}")
-
-            tool_calls.append(
-                {
-                    "id": call.id,
-                    "name": call.function.name,
-                    "arguments": call.function.arguments,
-                }
+    if stream_reply:
+        answer, tool_calls = _stream_agent_decision(messages, tool_choice)
+    else:
+        try:
+            response = client.chat.completions.create(
+                model="deepseek-flash",
+                messages=messages,
+                tools=TOOLS,
+                tool_choice=tool_choice,
+                temperature=0,
+                extra_body={"thinking": {"type": "disabled"}},
             )
+        except APIError as exc:
+            raise RuntimeError("Agent 决策 API 调用失败") from exc
 
-        # 把模型实际发出的工具调用保存到历史。
-        # 每个调用的结果将在下一步由 execute_tools 追加。
+        if not response.choices:
+            raise RuntimeError("模型没有返回结果")
+
+        message = response.choices[0].message
+
+        if message.tool_calls:
+            tool_calls = []
+            for call in message.tool_calls:
+                if call.type != "function":
+                    raise RuntimeError(f"暂不支持的工具类型：{call.type}")
+                tool_calls.append(
+                    {
+                        "id": call.id,
+                        "name": call.function.name,
+                        "arguments": call.function.arguments,
+                    }
+                )
+            answer = message.content or ""
+        else:
+            tool_calls = []
+            answer = message.content or ""
+
+    if tool_calls:
         messages.append(
             {
                 "role": "assistant",
-                "content": message.content,
+                "content": answer,
                 "tool_calls": [
                     {
                         "id": call["id"],
@@ -271,26 +277,23 @@ def agent_decide(state: RouterState) -> dict:
                 ],
             }
         )
-
         return {
             "messages": messages,
             "tool_calls": tool_calls,
         }
 
-    # 情况二：模型决定直接回答。
-    if not message.content or not message.content.strip():
+    if not answer or not answer.strip():
         raise RuntimeError("模型既没有回答，也没有调用工具")
 
     messages.append(
         {
             "role": "assistant",
-            "content": message.content,
+            "content": answer,
         }
     )
-
     return {
         "messages": messages,
-        "reply": message.content,
+        "reply": answer,
         "tool_calls": [],
     }
 

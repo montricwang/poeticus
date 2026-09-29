@@ -9,10 +9,11 @@ from prompt_loader import load_prompt, compose_prompt
     "name",
     [
         "output_style",
-        "evidence_answer",
+        "agent_decide",
+        "agent_after_tool",
         "analyze_poem",
         "chat",
-        "classify_intent",
+        "evidence_answer",
     ],
 )
 def test_registered_prompts_are_not_empty(name):
@@ -30,12 +31,12 @@ def test_compose_prompt_preserves_order():
     assert result == (load_prompt("chat") + "\n\n" + load_prompt("output_style"))
 
 
-def test_classifier_prompt_contains_all_intents():
-    prompt = load_prompt("classify_intent")
+def test_agent_decide_prompt_contains_tool_selection_principles():
+    prompt = load_prompt("agent_decide")
 
-    assert "text_reading" in prompt
-    assert "source_lookup" in prompt
-    assert "needs_clarification" in prompt
+    assert "工具使用原则" in prompt
+    assert "只能调用真正适合当前问题的工具" in prompt
+    assert "选区与问题中出现不同对象时" in prompt
 
 
 def test_output_style_contains_quote_rules():
