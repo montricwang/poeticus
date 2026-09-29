@@ -1,90 +1,101 @@
 
-# Poeticus：LangGraph 工作流
+# Poeticus：LangGraph Agent 架构
 
-## 1. 目标
+## 1. 目标与边界
 
-根据用户的问题和诗歌选区，决定直接进行文学细读、
-查询外部文献，还是要求用户进一步说明。
+根据当前诗歌、作品信息、用户选区及问题，由 Agent 决定直接回答，还是调用外部工具获取资料。
 
-首版采用固定的三分支工作流，不实现通用自主 Agent。
+当前使用 ReAct 式循环，不再采用固定意图分类工作流。用户选区为理解问题提供线索，不强制作为工具查询对象。
+
+首版仅提供 CNKGraph 典故检索工具；尚未支持多轮聊天历史。
 
 ## 2. 执行流程
 
 ```mermaid
 flowchart TD
-    A[用户问题、诗歌及选区] --> B[classify_intent]
-    B --> C{意图分类}
-
-    C -->|text_reading| D[direct_answer]
-    C -->|source_lookup| E[source_lookup]
-    C -->|needs_clarification| F[clarify_user]
-
-    E --> G[CNKGraph 典故检索]
-    G --> H{检索结果}
-    H -->|找到候选| I[answer_with_evidence]
-    H -->|未命中| J[说明未检索到资料]
-    H -->|接口失败| K[返回检索失败提示]
-
-    D --> L[结束]
-    I --> L
-    J --> L
-    K --> L
-    F --> L
+    A["START：诗歌、选区、问题"] --> B["agent"]
+    B --> C{"是否产生 tool_calls"}
+    C -->|否| D["返回最终 reply"]
+    C -->|是| E["tools"]
+    E --> F["执行工具并追加 tool 消息"]
+    F --> B
+    D --> G["END"]
 ```
+
+入口配置在 `langgraph.json`，当前仍指向 `intent_router.py:graph`。文件名保留历史名称，但内部已不再执行意图分类。
+
+### agent
+
+首次执行时，使用 `agent_decide` 和 `output_style` Prompt 构造消息。模型结合诗歌内容、作品信息、选区及问题，决定直接回答或调用工具。
+
+再次执行时，沿用消息历史，包括先前的工具调用及其返回结果。
+
+没有工具调用时，节点返回最终 `reply`；存在工具调用时，将其交给 `tools` 节点。
+
+### tools
+
+当前支持 `lookup_allusion`，通过 EvidenceService 查询 CNKGraph 的典故资料。
+
+工具返回结果后，Graph 不会直接结束，而是把结果作为 `tool` 消息追加到消息历史，再交还给 Agent。
+
+工具结果可能为成功、未命中、执行错误或超出预算。检索得到的候选资料不等于已经核实的文献出处。
+
+每次用户请求最多实际执行 8 次工具调用。达到预算后，后续工具请求返回预算不足结果，由 Agent 根据已有信息继续处理。
 
 ## 3. Graph State
 
-输入包括 poem、question 和可选的 selection。
+`RouterState` 定义于 `intent_router.py`。
 
-工作流执行期间增加 intent、reason、next_step、
-evidences、reply 等字段。
+| 字段 | 用途 |
+|---|---|
+| `poem`、`question` | 必需输入：诗歌原文和用户问题 |
+| `selection`、`context` | 可选的选区及作品信息 |
+| `messages` | 当前请求中的 Agent 消息历史 |
+| `tool_calls` | 当前待执行的工具调用 |
+| `tool_results` | 最近一轮工具执行结果 |
+| `tool_count` | 已执行的工具次数 |
+| `evidences` | 累计获得的候选资料 |
+| `reply` | 最终回答 |
+| `stream_reply` | 是否采用流式模型调用 |
 
-stream_reply 仅用于指示是否通过流式接口生成回答。
+`messages` 只保存当前请求内部的执行历史，不代表已经实现跨用户轮次的长期对话记忆。
 
-## 4. 节点职责
+## 4. 普通与流式接口
 
-- classify_intent：调用 DeepSeek，输出三种固定意图之一，
-  并通过 Pydantic 校验结果。
-- direct_answer：结合诗歌原文直接回答文学问题。
-- source_lookup：确定查询对象，检索 CNKGraph，
-  将候选资料交给证据回答模型。
-- clarify_user：缺少必要信息时，请用户明确查询对象。
+普通聊天和流式聊天共用同一个 Graph：
 
-## 5. 执行追踪
+- `POST /chat` 使用 `graph.invoke()`，完成后返回回答。
+- `POST /chat/stream` 使用 `graph.stream()`，同时接收 `custom` 和 `updates` 两类事件。
 
-使用 LangSmith 追踪 LangGraph 的执行过程、
-节点耗时、模型调用、输入与输出。
+流式模式下，模型生成的正文片段通过 `custom` token 事件传给 FastAPI；Graph 的 `updates` 事件用于获取节点结果，包括最终 `reply`。
 
-Python Logging 只记录必要的本地错误信息。
-CNKGraph 请求发生异常时保留错误日志。
+FastAPI 将正文片段包装为 SSE `token` 事件。正常结束时发送 `done`，执行失败时发送 `error`。
 
-## 6. 失败处理
+对于没有增量 token 的回答，API 会根据最终 `reply` 补发正文；已有完整增量正文时，不应再次发送全文。API 同时检查增量正文与 Graph 最终结果是否一致。
 
-意图分类返回非法标签时停止工作流并报告错误。
+### 已知流式问题
 
-CNKGraph 查询失败时向用户说明本次未取得资料；
-查询无结果不代表相关文献不存在。
+目前模型可能在一次工具调用消息中，同时生成普通文字和 `tool_calls`。这些工具调用前的说明文字可能提前作为 token 发送，并显示在正式回答前。
 
-当前 source_lookup 内部可能返回澄清提示，
-但不会再跳转执行 clarify_user 节点。
+这是已记录的 Issue #6，尚未完成中间消息与最终回答的彻底分离。不要将当前行为描述为已经解决。
 
-## 7. 流式输出
+## 5. 失败处理
 
-direct_answer 可以通过 Graph custom 事件逐步输出 Token。
+Graph 和 API 分别处理不同层面的错误：
 
-source_lookup 和 clarify_user 当前在计算完成后，
-由 SSE 接口一次性发送最终回答。
+- 模型 API 请求失败或返回异常结束状态时，中止相应执行。
+- 工具参数非法、检索失败等情况，由工具层尽可能转换为结构化工具结果，供 Agent 后续处理。
+- 工具调用信息不完整或调用 ID 重复等无法安全继续的情况，作为执行错误处理。
+- SSE 已经开始发送后发生异常时，通过 `error` 事件通知前端，而不是尝试改写 HTTP 状态码。
 
-流式接口与普通接口复用同一个 Graph。
+LangSmith 用于追踪 Graph 节点及模型执行过程；Python Logging 记录本地异常。FastAPI 的 SSE 处理错误不一定会直接出现在 LangSmith 的 Graph Trace 中。
 
-## 8. 已知限制
+## 6. 当前限制和后续工作
 
-- 尚未支持多轮对话状态。
-- 当前外部检索仅使用 CNKGraph 典故接口。
-- source_lookup 仍以选区优先、正则提取方式确定查询对象。
-  当选区与问题明确指定的对象不一致时，可能查错资料。
-- 候选证据不等于经过核实的文献出处。
-- 缺少跨作品、大规模路由质量评测。
+- **多轮聊天**：尚未将不同用户轮次的消息历史交给 Agent，见 Issue #9。
+- **Agent 质量评测**：旧三分类评测已经失效，需要建立针对工具选择、资料利用和回答质量的新评测，见 Issue #14。
+- **工具与证据能力**：目前仅支持 CNKGraph 典故检索；更完整的工具路由和证据聚合仍待完善，见 Issue #32。
+- **流式中间消息**：工具调用前的文字可能被展示，见 Issue #6。
+- **重新生成界面**：当前临时草稿框的展示方式待调整，见 Issue #39。
 
-查询对象提取、工具选择和补查归入 #32；
-进一步的模型质量评测归入 #14。
+不应把旧版 `classify_intent`、`direct_answer`、`source_lookup` 或 `clarify_user` 描述为当前 Graph 节点。
