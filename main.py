@@ -5,6 +5,12 @@ from dotenv import load_dotenv
 from openai import OpenAI, APIError
 from pydantic import BaseModel
 from langsmith.wrappers import wrap_openai
+from openai.types.chat import (
+    ChatCompletionMessageParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+)
+
 from prompt_loader import compose_prompt
 
 
@@ -117,8 +123,13 @@ def analyze_poem(poem: str) -> PoemAnalysis:
     return PoemAnalysis.model_validate_json(choice.message.content)
 
 
-def _chat_messages(poem: str, question: str, selection: str | None) -> list[dict]:
+def _chat_messages(
+    poem: str,
+    question: str,
+    selection: str | None,
+) -> list[ChatCompletionMessageParam]:
     """普通聊天和流式聊天共用同一套消息模板。"""
+
     context = f"诗歌原文：\n{poem}"
 
     if selection:
@@ -126,19 +137,20 @@ def _chat_messages(poem: str, question: str, selection: str | None) -> list[dict
 
     context += f"\n\n用户的问题：\n{question}"
 
-    return [
-        {
-            "role": "system",
-            "content": compose_prompt(
-                "chat",
-                "output_style",
-            ),
-        },
-        {
-            "role": "user",
-            "content": context,
-        },
-    ]
+    system_message: ChatCompletionSystemMessageParam = {
+        "role": "system",
+        "content": compose_prompt(
+            "chat",
+            "output_style",
+        ),
+    }
+
+    user_message: ChatCompletionUserMessageParam = {
+        "role": "user",
+        "content": context,
+    }
+
+    return [system_message, user_message]
 
 
 def chat_about_poem(poem: str, question: str, selection: str | None = None) -> str:
