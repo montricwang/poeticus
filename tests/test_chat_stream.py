@@ -222,3 +222,55 @@ def test_stream_validation_matches_chat(monkeypatch, api_module, payload):
     response = TestClient(api_module.app).post("/chat/stream", json=payload)
     assert response.status_code == 422
     assert response.headers["content-type"].startswith("application/json")
+
+
+def test_stream_passes_history_to_graph(monkeypatch, api_module):
+    received = []
+
+    def fake_stream(state, stream_mode):
+        received.append(state)
+        yield (
+            "updates",
+            {
+                "agent": {
+                    "reply": "这是结合上一轮的回答。",
+                    "tool_calls": [],
+                }
+            },
+        )
+
+    monkeypatch.setattr(
+        api_module,
+        "graph",
+        SimpleNamespace(stream=fake_stream),
+    )
+
+    response = TestClient(api_module.app).post(
+        "/chat/stream",
+        json={
+            "poem": "三星当户照绸缪。",
+            "question": "那第二点呢？",
+            "history": [
+                {
+                    "role": "user",
+                    "content": "三星是什么意思？",
+                },
+                {
+                    "role": "assistant",
+                    "content": "这里有两种主要解释。",
+                },
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert received[0]["history"] == [
+        {
+            "role": "user",
+            "content": "三星是什么意思？",
+        },
+        {
+            "role": "assistant",
+            "content": "这里有两种主要解释。",
+        },
+    ]

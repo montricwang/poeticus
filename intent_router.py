@@ -54,15 +54,19 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
 ]
 
 
+class HistoryMessage(TypedDict):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class RouterState(TypedDict):
     poem: str
     question: str
     context: NotRequired[PoemContext | None]
     selection: NotRequired[str | None]
-    messages: NotRequired[
-        list[ChatCompletionMessageParam]
-    ]  # Agent 当前请求中的完整消息记录
-    tool_count: NotRequired[int]  # 当前请求累计执行的工具次数
+    history: NotRequired[list[HistoryMessage]]
+    messages: NotRequired[list[ChatCompletionMessageParam]]
+    tool_count: NotRequired[int]
     reply: NotRequired[str]
     evidences: NotRequired[list[dict]]
     tool_calls: NotRequired[list[dict]]
@@ -194,11 +198,26 @@ def agent_decide(state: RouterState) -> dict:
                     "output_style",
                 ),
             },
+        ]
+
+        # 跨用户轮次的有效对话历史。
+        # 这里只在 Agent 第一次启动时加入；
+        # 工具执行后再次进入 Agent 时沿用 messages，
+        # 避免重复插入历史。
+        for message in state.get("history") or []:
+            messages.append(
+                {
+                    "role": message["role"],
+                    "content": message["content"],
+                }
+            )
+
+        messages.append(
             {
                 "role": "user",
                 "content": _agent_user_message(state),
-            },
-        ]
+            }
+        )
 
     messages = cast(
         list[ChatCompletionMessageParam],

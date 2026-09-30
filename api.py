@@ -3,10 +3,11 @@
 import json
 import logging
 from collections.abc import Iterator
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from main import PoemAnalysis, analyze_poem
 from intent_router import graph, RouterState
@@ -37,15 +38,32 @@ class QuoteSelection(BaseModel):
     end: int
 
 
+class HistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class ChatRequest(BaseModel):
     poem: str
     question: str
     selection: QuoteSelection | None = None
     context: PoemContext | None = None
+    history: list[HistoryMessage] = Field(default_factory=list)
 
 
 class ChatResponse(BaseModel):
     answer: str
+
+
+# v0.1 初始历史预算。
+# 依据 2026-09-30 LangSmith 样本：
+# 当前正常 AI 回答约 300–600 output tokens，
+# 因此先保留最近 6 个完整 Turn。
+# 字符限制主要作为异常输入的保险丝，后续根据真实多轮 Trace / Eval 调整。
+MAX_HISTORY_TURNS = 6
+MAX_HISTORY_MESSAGES = MAX_HISTORY_TURNS * 2
+MAX_HISTORY_MESSAGE_CHARS = 4000
+MAX_HISTORY_TOTAL_CHARS = 12000
 
 
 def validate_chat_request(request: ChatRequest) -> None:
@@ -54,7 +72,9 @@ def validate_chat_request(request: ChatRequest) -> None:
         raise HTTPException(status_code=422, detail="诗歌原文不能为空")
     if not request.question.strip():
         raise HTTPException(status_code=422, detail="问题不能为空")
+
     selection = request.selection
+
     if selection is not None:
         if (
             selection.start < 0
@@ -64,6 +84,51 @@ def validate_chat_request(request: ChatRequest) -> None:
         ):
             raise HTTPException(status_code=422, detail="引用位置与原文不一致")
 
+    history = request.history
+
+    if len(history) % 2 != 0:
+        raise HTTPException(
+            status_code=422,
+            detail="历史消息必须由完整的 user / assistant 轮次组成",
+        )
+
+    if len(history) > MAX_HISTORY_MESSAGES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"历史消息最多保留 {MAX_HISTORY_TURNS} 轮",
+        )
+
+    total_chars = 0
+
+    for index, message in enumerate(history):
+        expected_role = "user" if index % 2 == 0 else "assistant"
+
+        if message.role != expected_role:
+            raise HTTPException(
+                status_code=422,
+                detail="历史消息必须按 user / assistant 完整轮次排列",
+            )
+
+        if not message.content.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="历史消息内容不能为空",
+            )
+
+        if len(message.content) > MAX_HISTORY_MESSAGE_CHARS:
+            raise HTTPException(
+                status_code=422,
+                detail="单条历史消息过长",
+            )
+
+        total_chars += len(message.content)
+
+    if total_chars > MAX_HISTORY_TOTAL_CHARS:
+        raise HTTPException(
+            status_code=422,
+            detail="历史消息总长度过长",
+        )
+
 
 def graph_input(request: ChatRequest) -> RouterState:
     return {
@@ -71,6 +136,13 @@ def graph_input(request: ChatRequest) -> RouterState:
         "question": request.question,
         "selection": request.selection.text if request.selection else None,
         "context": request.context,
+        "history": [
+            {
+                "role": message.role,
+                "content": message.content,
+            }
+            for message in request.history
+        ],
     }
 
 

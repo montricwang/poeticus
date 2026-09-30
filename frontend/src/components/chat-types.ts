@@ -1,5 +1,10 @@
 import type { SelectedText } from "@/components/poem-reader";
 
+export type HistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export type ChatTurn = {
   id: number;
   question: string;

@@ -183,3 +183,57 @@ def test_tool_call_queries_requested_term_and_returns_final_reply(
     ]
     assert len(tool_messages) == 1
     assert "刘郎：此处指情郎" in tool_messages[0]["content"]
+
+
+def test_agent_includes_conversation_history_before_current_user(
+    monkeypatch,
+    agent,
+):
+    create_calls = []
+
+    def fake_create(**kwargs):
+        create_calls.append(kwargs)
+        return _text_response("这里的“它”仍然指三星当户。")
+
+    monkeypatch.setattr(
+        agent,
+        "client",
+        _fake_client(fake_create),
+    )
+
+    result = agent.graph.invoke(
+        {
+            "poem": "三星当户照绸缪。",
+            "question": "那它和绸缪有什么关系？",
+            "selection": None,
+            "history": [
+                {
+                    "role": "user",
+                    "content": "三星当户是什么意思？",
+                },
+                {
+                    "role": "assistant",
+                    "content": "这里化用了《诗经·绸缪》。",
+                },
+            ],
+        }
+    )
+
+    assert result["reply"] == "这里的“它”仍然指三星当户。"
+    assert len(create_calls) == 1
+
+    messages = create_calls[0]["messages"]
+
+    assert messages[0]["role"] == "system"
+
+    assert messages[1] == {
+        "role": "user",
+        "content": "三星当户是什么意思？",
+    }
+    assert messages[2] == {
+        "role": "assistant",
+        "content": "这里化用了《诗经·绸缪》。",
+    }
+
+    assert messages[3]["role"] == "user"
+    assert "那它和绸缪有什么关系？" in messages[3]["content"]

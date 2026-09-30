@@ -10,12 +10,58 @@ import { poems, poemContext, poemText } from "@/data/poem-library";
 import { readChatStream } from "@/lib/chat-stream";
 
 import type { SelectedText } from "@/components/poem-reader";
-import type { ChatTurn, ChatViewport } from "@/components/chat-types";
+import type {
+  ChatTurn,
+  ChatViewport,
+  HistoryMessage,
+} from "@/components/chat-types";
 import type { PoemAnalysis } from "@/components/analysis-panel";
 
 type ActiveView = "chat" | "analysis";
 
 const DEFAULT_POEM_ID = "su-shi-huan-xi-sha-feng-juan-zhu-lian";
+
+const MAX_HISTORY_TURNS = 6;
+
+function historyUserContent(turn: ChatTurn) {
+  if (!turn.selection) {
+    return turn.question;
+  }
+
+  return `引用原文：${turn.selection.text}\n\n问题：${turn.question}`;
+}
+
+function buildHistory(
+  turns: ChatTurn[],
+  currentTurnId: number,
+): HistoryMessage[] {
+  const currentIndex = turns.findIndex((turn) => turn.id === currentTurnId);
+
+  // 新发送的 Turn 还没进入当前 render 的 turns，因此找不到时，
+  // 当前已有 turns 全部都是它之前的历史。
+  const previousTurns =
+    currentIndex === -1 ? turns : turns.slice(0, currentIndex);
+
+  const completedTurns = previousTurns
+    .filter(
+      (turn) =>
+        turn.status === "done" &&
+        turn.answer !== null &&
+        turn.answer.trim() !== "",
+    )
+    .slice(-MAX_HISTORY_TURNS);
+
+  return completedTurns.flatMap((turn) => [
+    {
+      role: "user" as const,
+      content: historyUserContent(turn),
+    },
+    {
+      role: "assistant" as const,
+      content: turn.answer!.trim(),
+    },
+  ]);
+}
 
 function App() {
   const [poemId, setPoemId] = useState(DEFAULT_POEM_ID);
@@ -60,6 +106,8 @@ function App() {
   async function requestReply(turn: ChatTurn, regenerate = false) {
     if (inFlightRef.current) return;
 
+    const history = buildHistory(turns, turn.id);
+
     inFlightRef.current = true;
     setChatLoading(true);
     let received = "";
@@ -98,6 +146,7 @@ function App() {
           question: turn.question,
           selection: turn.selection,
           context: poemContext(activePoem),
+          history,
         }),
       });
 
@@ -190,17 +239,31 @@ function App() {
 
   function handleRetry(id: number) {
     if (inFlightRef.current) return;
-    const turn = turns.find((item) => item.id === id);
-    if (!turn || turn.status !== "failed") return;
+
+    const index = turns.findIndex((item) => item.id === id);
+    if (index === -1) return;
+
+    const turn = turns[index];
+    if (turn.status !== "failed") return;
+
+    // 重试旧轮次会改变过去，因此丢弃它之后的对话。
+    setTurns(turns.slice(0, index + 1));
     void requestReply(turn);
   }
 
   function handleRegenerate(id: number) {
     if (inFlightRef.current) return;
-    const turn = turns.find((item) => item.id === id);
-    if (!turn || turn.status !== "done" || !turn.answer || turn.regenerating) {
+
+    const index = turns.findIndex((item) => item.id === id);
+    if (index === -1) return;
+
+    const turn = turns[index];
+    if (turn.status !== "done" || !turn.answer || turn.regenerating) {
       return;
     }
+
+    // 重新生成旧轮次会改变过去，因此丢弃它之后的对话。
+    setTurns(turns.slice(0, index + 1));
     void requestReply(turn, true);
   }
 
@@ -270,7 +333,10 @@ function App() {
 
       <main className="mx-auto w-full max-w-7xl px-5 pb-10 pt-7 md:px-8">
         <div className="mb-6 flex flex-wrap items-center gap-3">
-          <label htmlFor="poem-picker" className="text-sm text-muted-foreground">
+          <label
+            htmlFor="poem-picker"
+            className="text-sm text-muted-foreground"
+          >
             当前作品
           </label>
           <select
