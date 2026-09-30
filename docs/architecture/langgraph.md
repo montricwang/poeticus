@@ -7,7 +7,7 @@
 
 当前使用 ReAct 式循环，不再采用固定意图分类工作流。用户选区为理解问题提供线索，不强制作为工具查询对象。
 
-首版仅提供 CNKGraph 典故检索工具；尚未支持多轮聊天历史。
+首版仅提供 CNKGraph 典故检索工具。跨用户轮次的短期上下文采用 client-carried bounded history：前端携带近期有效的 user / assistant 历史，后端校验后在 Agent 首次执行时插入当前问题之前。
 
 ## 2. 执行流程
 
@@ -50,7 +50,8 @@ flowchart TD
 |---|---|
 | `poem`、`question` | 必需输入：诗歌原文和用户问题 |
 | `selection`、`context` | 可选的选区及作品信息 |
-| `messages` | 当前请求中的 Agent 消息历史 |
+| `history` | 当前用户轮次之前、已经完成并通过校验的短期对话历史 |
+| `messages` | 当前请求中的 Agent 执行消息历史 |
 | `tool_calls` | 当前待执行的工具调用 |
 | `tool_results` | 最近一轮工具执行结果 |
 | `tool_count` | 已执行的工具次数 |
@@ -58,7 +59,7 @@ flowchart TD
 | `reply` | 最终回答 |
 | `stream_reply` | 是否采用流式模型调用 |
 
-`messages` 只保存当前请求内部的执行历史，不代表已经实现跨用户轮次的长期对话记忆。
+`history` 与 `messages` 分工不同：`history` 是跨用户轮次传入的短期会话背景；`messages` 是当前一次 Agent 执行中逐步增长的消息记录，包括工具调用和工具结果。服务端 Thread 持久化与长期记忆仍未实现。
 
 ## 4. 普通与流式接口
 
@@ -92,8 +93,8 @@ LangSmith 用于追踪 Graph 节点及模型执行过程；Python Logging 记录
 
 ## 6. 当前限制和后续工作
 
-- **多轮聊天**：尚未将不同用户轮次的消息历史交给 Agent，见 Issue #9。
-- **Agent 质量评测**：旧三分类评测已经失效，需要建立针对工具选择、资料利用和回答质量的新评测，见 Issue #14。
+- **Conversation 持久化**：模型已经支持 bounded multi-turn history，但刷新 / 切诗恢复当前会话由 Issue #8 负责；未来服务端持久化见 #40。
+- **Agent 质量评测**：需要建立针对工具选择、资料利用、多轮指代和回答质量的新评测基线，见 Issue #42。
 - **工具与证据能力**：目前仅支持 CNKGraph 典故检索；更完整的工具路由和证据聚合仍待完善，见 Issue #32。
 - **流式中间消息**：工具调用前的文字可能被展示，见 Issue #6。
 - **重新生成界面**：当前临时草稿框的展示方式待调整，见 Issue #39。
