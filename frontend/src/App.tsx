@@ -223,6 +223,7 @@ function App() {
 
     const storedConversation = loadPoemConversation(nextId);
     const nextTurns = storedConversation?.turns ?? [];
+    saveLastActivePoemId(nextId);
     const nextSelection = validSelectionForPoem(
       storedConversation?.draft.selection ?? null,
       poemText(nextPoem),
