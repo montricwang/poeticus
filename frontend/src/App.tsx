@@ -150,27 +150,28 @@ function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
 
-  persistenceRef.current = {
-    conversationId,
-    poemId,
-    turns,
-    question,
-    selected,
-  };
+  useEffect(() => {
+    persistenceRef.current = {
+      conversationId,
+      poemId,
+      turns,
+      question,
+      selected,
+    };
+  }, [conversationId, poemId, question, selected, turns]);
 
   // 本地存储只是 v0.1 的 persistence adapter。
   // 轻微延迟可避免流式 token 到达时同步写 localStorage 过于频繁。
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const current = persistenceRef.current;
-      saveLastActivePoemId(current.poemId);
+      saveLastActivePoemId(poemId);
       savePoemConversation({
-        conversationId: current.conversationId,
-        poemId: current.poemId,
-        turns: current.turns,
+        conversationId,
+        poemId,
+        turns,
         draft: {
-          question: current.question,
-          selection: current.selected,
+          question,
+          selection: selected,
         },
       });
     }, 200);
@@ -199,15 +200,14 @@ function App() {
   }, []);
 
   function persistCurrentConversation() {
-    const current = persistenceRef.current;
-    saveLastActivePoemId(current.poemId);
+    saveLastActivePoemId(poemId);
     savePoemConversation({
-      conversationId: current.conversationId,
-      poemId: current.poemId,
-      turns: current.turns,
+      conversationId,
+      poemId,
+      turns,
       draft: {
-        question: current.question,
-        selection: current.selected,
+        question,
+        selection: selected,
       },
     });
   }
