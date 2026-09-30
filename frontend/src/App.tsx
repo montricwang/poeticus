@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -8,6 +8,13 @@ import { AnalysisPanel } from "@/components/analysis-panel";
 
 import { poems, poemContext, poemText } from "@/data/poem-library";
 import { readChatStream } from "@/lib/chat-stream";
+import {
+  createConversationId,
+  loadLastActivePoemId,
+  loadPoemConversation,
+  saveLastActivePoemId,
+  savePoemConversation,
+} from "@/lib/chat-storage";
 
 import type { SelectedText } from "@/components/poem-reader";
 import type {
@@ -63,21 +70,79 @@ function buildHistory(
   ]);
 }
 
+function validSelectionForPoem(
+  selection: SelectedText | null,
+  poem: string,
+): SelectedText | null {
+  if (!selection) return null;
+
+  if (
+    selection.start < 0 ||
+    selection.end > poem.length ||
+    selection.start >= selection.end ||
+    poem.slice(selection.start, selection.end) !== selection.text
+  ) {
+    return null;
+  }
+
+  return selection;
+}
+
+function maxTurnId(turns: ChatTurn[]): number {
+  return turns.reduce((max, turn) => Math.max(max, turn.id), 0);
+}
+
+function loadInitialChatState() {
+  const storedPoemId = loadLastActivePoemId();
+  const initialPoem =
+    poems.find((item) => item.id === storedPoemId) ??
+    poems.find((item) => item.id === DEFAULT_POEM_ID) ??
+    poems[0];
+
+  const storedConversation = loadPoemConversation(initialPoem.id);
+  const turns = storedConversation?.turns ?? [];
+
+  return {
+    poemId: initialPoem.id,
+    conversationId:
+      storedConversation?.conversationId ?? createConversationId(),
+    turns,
+    question: storedConversation?.draft.question ?? "",
+    selected: validSelectionForPoem(
+      storedConversation?.draft.selection ?? null,
+      poemText(initialPoem),
+    ),
+  };
+}
+
 function App() {
-  const [poemId, setPoemId] = useState(DEFAULT_POEM_ID);
+  const [initialChatState] = useState(loadInitialChatState);
+  const [poemId, setPoemId] = useState(initialChatState.poemId);
   const activePoem = poems.find((item) => item.id === poemId) ?? poems[0];
   const poem = poemText(activePoem);
 
-  const [selected, setSelected] = useState<SelectedText | null>(null);
-  const [question, setQuestion] = useState("");
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [conversationId, setConversationId] = useState(
+    initialChatState.conversationId,
+  );
+  const [selected, setSelected] = useState<SelectedText | null>(
+    initialChatState.selected,
+  );
+  const [question, setQuestion] = useState(initialChatState.question);
+  const [turns, setTurns] = useState<ChatTurn[]>(initialChatState.turns);
   const [chatLoading, setChatLoading] = useState(false);
   const inFlightRef = useRef(false);
-  const nextTurnId = useRef(0);
+  const nextTurnId = useRef(maxTurnId(initialChatState.turns));
   const seenAnimationsRef = useRef(new Set<string>());
   const chatViewportRef = useRef<ChatViewport>({
     scrollTop: 0,
     atBottom: true,
+  });
+  const persistenceRef = useRef({
+    conversationId,
+    poemId,
+    turns,
+    question,
+    selected,
   });
   const [hasUnreadReply, setHasUnreadReply] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>("chat");
@@ -85,16 +150,94 @@ function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
 
+  persistenceRef.current = {
+    conversationId,
+    poemId,
+    turns,
+    question,
+    selected,
+  };
+
+  // 本地存储只是 v0.1 的 persistence adapter。
+  // 轻微延迟可避免流式 token 到达时同步写 localStorage 过于频繁。
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const current = persistenceRef.current;
+      saveLastActivePoemId(current.poemId);
+      savePoemConversation({
+        conversationId: current.conversationId,
+        poemId: current.poemId,
+        turns: current.turns,
+        draft: {
+          question: current.question,
+          selection: current.selected,
+        },
+      });
+    }, 200);
+
+    return () => window.clearTimeout(timer);
+  }, [conversationId, poemId, question, selected, turns]);
+
+  // 刷新/关闭页面时，把尚未等到定时写入的最新状态再保存一次。
+  useEffect(() => {
+    function handlePageHide() {
+      const current = persistenceRef.current;
+      saveLastActivePoemId(current.poemId);
+      savePoemConversation({
+        conversationId: current.conversationId,
+        poemId: current.poemId,
+        turns: current.turns,
+        draft: {
+          question: current.question,
+          selection: current.selected,
+        },
+      });
+    }
+
+    window.addEventListener("pagehide", handlePageHide);
+    return () => window.removeEventListener("pagehide", handlePageHide);
+  }, []);
+
+  function persistCurrentConversation() {
+    const current = persistenceRef.current;
+    saveLastActivePoemId(current.poemId);
+    savePoemConversation({
+      conversationId: current.conversationId,
+      poemId: current.poemId,
+      turns: current.turns,
+      draft: {
+        question: current.question,
+        selection: current.selected,
+      },
+    });
+  }
+
   function handlePoemChange(nextId: string) {
     if (inFlightRef.current || analyzing || nextId === activePoem.id) return;
-    if (!poems.some((item) => item.id === nextId)) return;
 
-    // 当前的对话/分析只属于当前作品；切换时不带到另一首诗。
+    const nextPoem = poems.find((item) => item.id === nextId);
+    if (!nextPoem) return;
+
+    // 切换作品前先保存当前会话，再恢复目标作品自己的会话和草稿。
+    persistCurrentConversation();
+
+    const storedConversation = loadPoemConversation(nextId);
+    const nextTurns = storedConversation?.turns ?? [];
+    const nextSelection = validSelectionForPoem(
+      storedConversation?.draft.selection ?? null,
+      poemText(nextPoem),
+    );
+
     window.getSelection()?.removeAllRanges();
     setPoemId(nextId);
-    setSelected(null);
-    setQuestion("");
-    setTurns([]);
+    setConversationId(
+      storedConversation?.conversationId ?? createConversationId(),
+    );
+    setSelected(nextSelection);
+    setQuestion(storedConversation?.draft.question ?? "");
+    setTurns(nextTurns);
+    nextTurnId.current = maxTurnId(nextTurns);
+
     setAnalysis(null);
     setAnalysisError("");
     setHasUnreadReply(false);
