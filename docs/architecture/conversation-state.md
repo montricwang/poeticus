@@ -74,7 +74,7 @@ Poeticus v0.1 的生成任务仍依赖当前浏览器到 FastAPI 的 SSE 请求�
 - pending / streaming Turn 恢复为“生成中断，可重试”；
 - regenerate 中途刷新时保留旧的成功答案，不把临时新草稿当成正式答案。
 
-这是 **v0.1 的降级策略**，不是最终产品原则。未来若需要“刷新后继续原生成”，应实现独立的 resumable generation 能力：服务端 Run ID、生成状态持久化和重新订阅。
+这是 **v0.1 的降级策略**，不是最终产品原则。未来若需要“刷新后继续原生成”，应实现独立的 resumable generation 能力：服务端 Run ID、生成状态持久化和重新订阅，见 #46。
 
 ## 6. 与模型上下文的区别
 
@@ -100,4 +100,5 @@ localStorage 可以保存更多历史，但模型仍只接收受预算约束的�
 - #40：将 Conversation persistence 迁移到服务端
 - #45：跨 Conversation 的长期记忆与历史召回
 - #43：显式的跨作品比较 / 多诗 Context
+- #46：刷新后的可恢复生成
 - #41：Conversation state & memory 的长期架构演进记录
