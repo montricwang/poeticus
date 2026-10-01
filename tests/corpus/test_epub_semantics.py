@@ -126,3 +126,12 @@ def test_flatten_nested_volume_and_skip_front_matter():
 def test_source_only_unicode_glyph_map_resolves():
     from normalize_poems import normalize_text
     assert normalize_text('甲{{glyph:uni.png}}乙', {'uni.png':{'source_form':'龢'}})=='甲龢乙'
+
+
+def test_he_zhu_small_print_alternate_name_is_not_entire_tune():
+    book = Book(**{'x.html': '<h2>新调名<span style="font-size:.5em">旧调，亦名另一调</span></h2><p>词作</p>'})
+    sections = extract_sections(book, 'x.html', '贺铸词集')
+    assert sections[0]['tune'] == '旧调'
+    assert sections[0]['title'] == '新调名'
+    # This MVP deliberately does not introduce a tune_alias field.
+    assert 'tune_alias' not in sections[0]

@@ -7,6 +7,7 @@ import re
 from bs4 import NavigableString, Tag
 
 CHRONOLOGY = re.compile(r"[（(]\d{4}[）)]$")
+HE_ZHU_ALIAS_NOTE = re.compile(r"^(?P<tune>[^，,]+)[，,]\s*亦名\s*(?P<alias>.+)$")
 NON_POEMS = {"欧阳修词集": {"西湖念语"}}
 
 
@@ -79,6 +80,11 @@ def interpret_heading(tag, collection):
     first = parts[0]
     second = parts[1] if len(parts) > 1 else None
     if "贺铸" in collection and second:
-        # He Zhu altered tune names: the original tune follows as small print.
+        # The small-print portion may also supply an alternate name:
+        # "旧调，亦名另一调". Use the primary tune for this minimal Poem.
+        # A tune alias dictionary is a separate, later enrichment task.
+        alias_note = HE_ZHU_ALIAS_NOTE.fullmatch(second)
+        if alias_note:
+            return alias_note.group("tune").strip(), first, issues
         return second, first, issues
     return first, second, issues
