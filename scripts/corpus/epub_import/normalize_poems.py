@@ -1,124 +1,94 @@
+"""Resolve manually reviewed image glyphs in extracted poetry records."""
+import argparse
 import json
 import re
 from pathlib import Path
-import argparse
 
 GLYPH_PATTERN = re.compile(r"\{\{glyph:([^}]+)\}\}")
 
 
-def load_json(path: Path):
-    with path.open(encoding="utf-8") as f:
-        return json.load(f)
+def load_json(path):
+    with Path(path).open(encoding="utf-8") as handle:
+        return json.load(handle)
 
 
-def resolve_mapping(src, glyph_map):
+def resolve_mapping(src, glyph_map, seen=None):
+    seen = set() if seen is None else seen
+    if src in seen:
+        raise ValueError(f"循环图片字映射：{src}")
+    seen.add(src)
     item = glyph_map.get(src)
-
     if item is None:
         return None
-
     if "same_as" in item:
-        return resolve_mapping(item["same_as"], glyph_map)
-
+        return resolve_mapping(item["same_as"], glyph_map, seen)
     return item
 
 
 def get_output_form(mapping):
     if not mapping:
         return None
-
-    # 有指定替代字，优先使用替代字
-    display = mapping.get("display_form")
-    if display:
-        return display
-
-    # 没有替代字，则尝试直接使用原字
-    source = mapping.get("source_form")
-
-    if source and len(source) == 1:
-        return source
-
-    # IDS 不能作为单个汉字直接输出
-    return None
+    return mapping.get("display_form") or (
+        mapping.get("source_form") if len(mapping.get("source_form") or "") == 1 else None
+    )
 
 
 def normalize_text(text, glyph_map):
     def replace(match):
-        src = match.group(1)
-        mapping = resolve_mapping(src, glyph_map)
-
-        output_form = get_output_form(mapping)
-
-        if output_form is None:
-            return match.group(0)
-
-        display_form = mapping.get("display_form")
-
-        if not display_form:
-            return match.group(0)
-
-        return display_form
-
+        item = resolve_mapping(match.group(1), glyph_map)
+        return get_output_form(item) or match.group(0)
     return GLYPH_PATTERN.sub(replace, text)
 
 
 def normalize_poem(poem, glyph_map):
-    for category in ["text", "annotations", "commentaries"]:
+    for field in ("tune", "title"):
+        if poem.get(field) is not None:
+            poem[field] = normalize_text(poem[field], glyph_map)
+    for category in ("text", "prefaces", "annotations", "commentaries"):
         poem["content"][category] = [
-            normalize_text(text, glyph_map) for text in poem["content"][category]
+            normalize_text(text, glyph_map) for text in poem["content"].get(category, [])
         ]
-
-    for warning in poem["warnings"]:
-        if warning["type"] != "inline_image":
+    for warning in poem.get("warnings", []):
+        if warning.get("type") != "inline_image":
             continue
-
         mapping = resolve_mapping(warning["src"], glyph_map)
-        output_form = get_output_form(mapping)
-
-        if output_form is not None:
+        output = get_output_form(mapping)
+        if output is not None:
             warning["status"] = "resolved"
-            warning["resolved_form"] = output_form
-
-        if mapping and mapping.get("display_form"):
-            warning["status"] = "resolved"
-            warning["display_form"] = mapping["display_form"]
-
+            warning["resolved_form"] = output
+            if mapping.get("display_form"):
+                warning["display_form"] = mapping["display_form"]
     return poem
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+def unresolved_glyphs(poems):
+    for poem in poems:
+        fields = [("tune", poem.get("tune")), ("title", poem.get("title"))]
+        fields.extend((category, text) for category in ("text", "prefaces", "annotations", "commentaries")
+                      for text in poem["content"].get(category, []))
+        for category, text in fields:
+            if text and "{{glyph:" in text:
+                yield poem["id"], category, text
 
+
+def main():
+    parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--glyph-map", type=Path)
-
     args = parser.parse_args()
-
     poems = load_json(args.input)
-
     glyph_map = load_json(args.glyph_map) if args.glyph_map else {}
-
     normalized = [normalize_poem(poem, glyph_map) for poem in poems]
-
-    unresolved = []
-
-    for poem in normalized:
-        for category in ["text", "annotations", "commentaries"]:
-            for text in poem["content"][category]:
-                if "{{glyph:" in text:
-                    unresolved.append((poem["id"], category, text))
-
+    unresolved = list(unresolved_glyphs(normalized))
     if unresolved:
-        for poem_id, category, text in unresolved:
-            print(f"未解析：{poem_id} [{category}] {text}")
-
-        raise RuntimeError(f"仍有 {len(unresolved)} 个段落包含未解析图片字")
-
+        for poem_id, category, text in unresolved[:30]:
+            print(f"未解析：{poem_id} [{category}] {text[:80]}")
+        raise RuntimeError(f"仍有 {len(unresolved)} 个文本字段包含未解析图片字")
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps(normalized, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"规范化完成：{len(normalized)} 首；输出：{args.output}")
 
-    with args.output.open("w", encoding="utf-8") as f:
-        json.dump(normalized, f, ensure_ascii=False, indent=2)
 
-    print(f"规范化完成：{len(normalized)} 首")
-    print(f"输出文件：{args.output}")
+if __name__ == "__main__":
+    main()
