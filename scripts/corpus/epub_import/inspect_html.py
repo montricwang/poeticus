@@ -33,5 +33,9 @@ def inspect_html(epub_path: Path, target_html: str):
 
 
 if __name__ == "__main__":
-    inspect_html(Path("data/raw/历代名家词集精华录.epub"), "text00204.html")
+    epub_path = Path("data/raw/历代名家词集精华录.epub")
+
+    for html_name in ["text00015.html", "text00016.html"]:
+        print(f"\n===== {html_name} =====")
+        inspect_html(epub_path, html_name)
     # 苏轼词作正文从 text00204.html 开始

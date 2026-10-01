@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-
+import argparse
 
 GLYPH_PATTERN = re.compile(r"\{\{glyph:([^}]+)\}\}")
 
@@ -61,9 +61,17 @@ def normalize_poem(poem, glyph_map):
 
 
 if __name__ == "__main__":
-    poems = load_json(Path("data/output/wen_tingyun.json"))
+    parser = argparse.ArgumentParser()
 
-    glyph_map = load_json(Path("data/raw/glyph_maps/wen_tingyun.json"))
+    parser.add_argument("--input", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--glyph-map", type=Path)
+
+    args = parser.parse_args()
+
+    poems = load_json(args.input)
+
+    glyph_map = load_json(args.glyph_map) if args.glyph_map else {}
 
     normalized = [normalize_poem(poem, glyph_map) for poem in poems]
 
@@ -73,34 +81,18 @@ if __name__ == "__main__":
         for category in ["text", "annotations", "commentaries"]:
             for text in poem["content"][category]:
                 if "{{glyph:" in text:
-                    unresolved.append(
-                        {
-                            "poem_id": poem["id"],
-                            "category": category,
-                            "text": text,
-                        }
-                    )
+                    unresolved.append((poem["id"], category, text))
 
     if unresolved:
-        print(f"仍有 {len(unresolved)} 处未解析图片字：")
+        for poem_id, category, text in unresolved:
+            print(f"未解析：{poem_id} [{category}] {text}")
 
-        for item in unresolved:
-            print(
-                item["poem_id"],
-                item["category"],
-                item["text"],
-            )
+        raise RuntimeError(f"仍有 {len(unresolved)} 个段落包含未解析图片字")
 
-        raise RuntimeError("存在未解析的 glyph placeholder")
+    args.output.parent.mkdir(parents=True, exist_ok=True)
 
-    output_path = Path("data/output/wen_tingyun_normalized.json")
+    with args.output.open("w", encoding="utf-8") as f:
+        json.dump(normalized, f, ensure_ascii=False, indent=2)
 
-    with output_path.open("w", encoding="utf-8") as f:
-        json.dump(
-            normalized,
-            f,
-            ensure_ascii=False,
-            indent=2,
-        )
-
-    print(f"规范化完成：{output_path}")
+    print(f"规范化完成：{len(normalized)} 首")
+    print(f"输出文件：{args.output}")
