@@ -9,3 +9,5 @@ httpx
 ebooklib
 beautifulsoup4
 lxml
+tinycss2
+cssselect2
