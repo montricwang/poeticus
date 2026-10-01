@@ -135,3 +135,15 @@ def test_xml_declaration_is_not_visible_stray_text():
     toc = [{"title": "甲词集", "children": [{"title": "卷一", "href": "page.html"}]}]
     report = run(book, toc)
     assert "[document]" not in report["volumes"][0]["other_text_tags"]
+
+
+def test_raw_xhtml_utf8_bom_decodes_without_guessing():
+    book = Book({"bom.html": "<html><head></head><body><h2>词牌<span>词题</span></h2></body></html>"})
+    class BomItem(Item):
+        def __init__(self, text):
+            super().__init__(text)
+            self.content = b"\xef\xbb\xbf" + self.data
+    book.get_item_with_href = lambda name: BomItem(book.contents[name]) if name in book.contents else None
+    toc = [{"title": "测试词集", "children": [{"title": "卷一", "href": "bom.html"}]}]
+    record = run(book, toc)["volumes"][0]["heading_templates"][0]
+    assert [part["text"] for part in record["samples"][0]["runs"]] == ["词牌", "词题"]

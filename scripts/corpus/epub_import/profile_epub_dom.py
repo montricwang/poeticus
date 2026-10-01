@@ -163,7 +163,12 @@ def inspect_document(book, html_name, groups, resolver, templates, paragraphs, c
     # EbookLib EpubHtml.get_content() rebuilds the document and may drop the
     # original <head> / CSS links. .content holds the imported XHTML bytes.
     original = getattr(item, "content", None)
-    soup = BeautifulSoup(original if original is not None else item.get_content(), "lxml")
+    raw = original if original is not None else item.get_content()
+    # EPUB XHTML is UTF-8 here. Pass Unicode to Beautiful Soup so a different
+    # charset detector cannot silently corrupt short Chinese titles.
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8-sig")
+    soup = BeautifulSoup(raw, "lxml")
     styles = resolver.for_document(soup, html_name)
     coverage["files"] += 1
     coverage["linked_css"].update(styles.paths)

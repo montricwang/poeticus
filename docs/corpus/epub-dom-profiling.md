@@ -44,3 +44,5 @@ python scripts/corpus/epub_import/profile_epub_dom.py --book "苏轼词集"
 `EpubHtml.get_content()` 会重建 HTML 文档，可能丢失 EPUB 原始 `<head>` 的 `<link rel="stylesheet">`。Profiler 优先解析 `item.content`（导入时保存的原始 XHTML）；只有没有这个属性时才回退到 `get_content()`。此前的 22 册「CSS=0」报告因此无效，需重新生成。
 
 验收时检查总览表 CSS 一列，以及每册标题样例后的 `font-family/font-size` 与 CSS 来源。若全部显示 0 和「未声明」，应先检查输入结构，不能据此推断原书没有样式。
+
+本 EPUB 的原始 XHTML 为 UTF-8。现在明确解码字节后再交给 Beautiful Soup，避免其在缺少 charset 声明时误判汉字编码；UTF-8 BOM 亦可正常处理。
