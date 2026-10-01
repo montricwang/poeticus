@@ -37,41 +37,6 @@ def parse_toc(items):
     return result
 
 
-def truncate_toc(nodes, max_children=10):
-    """
-    截断目录树：
-    - 每个节点 children 超过 max_children 时，只保留前 max_children 个
-    - 保留一个提示节点说明被截断
-    """
-    result = []
-
-    for node in nodes:
-        new_node = {
-            "title": node.get("title"),
-            "href": node.get("href"),
-            "children": [],
-        }
-
-        children = node.get("children", [])
-
-        if len(children) > max_children:
-            new_node["children"] = truncate_toc(children[:max_children], max_children)
-
-            new_node["children"].append(
-                {
-                    "title": f"... truncated ({len(children) - max_children} more children)",
-                    "href": None,
-                    "children": [],
-                }
-            )
-        else:
-            new_node["children"] = truncate_toc(children, max_children)
-
-        result.append(new_node)
-
-    return result
-
-
 def inspect_epub(epub_path: Path):
     book = epub.read_epub(str(epub_path))
 
@@ -83,9 +48,7 @@ def inspect_epub(epub_path: Path):
         "toc": [],
     }
 
-    toc = parse_toc(book.toc)
-
-    result["toc"] = truncate_toc(toc, max_children=40)
+    result["toc"] = parse_toc(book.toc)
 
     title = book.get_metadata("DC", "title")
 
