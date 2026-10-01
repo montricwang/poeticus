@@ -1,13 +1,18 @@
+import warnings
 from pathlib import Path, PurePosixPath
 
-from bs4 import BeautifulSoup
+
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from ebooklib import epub
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
 def extract_referenced_images(
     epub_path: Path,
     html_name: str,
     output_dir: Path,
+    only_srcs: set[str] | None = None,
 ):
     book = epub.read_epub(str(epub_path))
 
@@ -30,7 +35,7 @@ def extract_referenced_images(
 
         image_path = str(PurePosixPath(html_name).parent / PurePosixPath(src))
 
-        if image_path in extracted:
+        if only_srcs is not None and src not in only_srcs:
             continue
 
         image_item = book.get_item_with_href(image_path)

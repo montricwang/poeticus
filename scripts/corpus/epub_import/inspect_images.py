@@ -1,8 +1,11 @@
 import json
+import warnings
 from pathlib import Path
 
-from bs4 import BeautifulSoup
 from ebooklib import ITEM_DOCUMENT, epub
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
 def inspect_images(epub_path: Path):

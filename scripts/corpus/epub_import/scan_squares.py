@@ -1,9 +1,11 @@
+import warnings
 from pathlib import Path
 from collections import Counter
 
-from bs4 import BeautifulSoup
 from ebooklib import epub, ITEM_DOCUMENT
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 book = epub.read_epub(str(Path("data/raw/历代名家词集精华录.epub")))
 

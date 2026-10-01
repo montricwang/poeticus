@@ -23,12 +23,33 @@ def resolve_mapping(src, glyph_map):
     return item
 
 
+def get_output_form(mapping):
+    if not mapping:
+        return None
+
+    # 有指定替代字，优先使用替代字
+    display = mapping.get("display_form")
+    if display:
+        return display
+
+    # 没有替代字，则尝试直接使用原字
+    source = mapping.get("source_form")
+
+    if source and len(source) == 1:
+        return source
+
+    # IDS 不能作为单个汉字直接输出
+    return None
+
+
 def normalize_text(text, glyph_map):
     def replace(match):
         src = match.group(1)
         mapping = resolve_mapping(src, glyph_map)
 
-        if mapping is None:
+        output_form = get_output_form(mapping)
+
+        if output_form is None:
             return match.group(0)
 
         display_form = mapping.get("display_form")
@@ -52,6 +73,11 @@ def normalize_poem(poem, glyph_map):
             continue
 
         mapping = resolve_mapping(warning["src"], glyph_map)
+        output_form = get_output_form(mapping)
+
+        if output_form is not None:
+            warning["status"] = "resolved"
+            warning["resolved_form"] = output_form
 
         if mapping and mapping.get("display_form"):
             warning["status"] = "resolved"

@@ -2,12 +2,16 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 import argparse
+import warnings
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from ebooklib import epub
 from inspect_epub import parse_toc
 
 from schema import Poem, PoemContent
+
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
 def extract_sections(book, html_name):

@@ -1,7 +1,10 @@
+import warnings
 from pathlib import Path
 
 from ebooklib import epub
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
 def inspect_html(epub_path: Path, target_html: str):
