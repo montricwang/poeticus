@@ -28,3 +28,7 @@ data/output/
 # Private DOM/CSS profiling reports (may contain copyrighted source excerpts)
 data/reports/epub_dom_layout_profile.md
 data/reports/epub_dom_layout_profile.json
+
+# Local-only corpus reports: generated output may include licensed source excerpts
+data/reports/*
+!data/reports/.gitkeep
