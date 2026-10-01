@@ -33,19 +33,54 @@ def extract_sections(epub_path: Path, html_name: str):
                 "text": [],
                 "annotations": [],
                 "commentaries": [],
+                "warnings": [],
             }
 
         elif element.name == "p" and current:
-            text = element.get_text(strip=True)
+            raw_text = element.get_text(strip=True)
 
-            if text:
-                category = classify_paragraph(text)
+            if raw_text:
+                category = classify_paragraph(raw_text)
+
+                warnings = preserve_inline_images(
+                    element,
+                    html_name,
+                    category,
+                )
+                current["warnings"].extend(warnings)
+
+                text = element.get_text(strip=True)
                 current[category].append(text)
 
     if current:
         sections.append(current)
 
     return sections
+
+
+def preserve_inline_images(element, html_name, category):
+    warnings = []
+
+    for img in element.find_all("img"):
+        src = img.get("src")
+
+        if not src:
+            continue
+
+        placeholder = f"{{{{glyph:{src}}}}}"
+        img.replace_with(placeholder)
+
+        warnings.append(
+            {
+                "type": "inline_image",
+                "html": html_name,
+                "src": src,
+                "category": category,
+                "status": "unresolved",
+            }
+        )
+
+    return warnings
 
 
 def classify_paragraph(text):
@@ -72,6 +107,7 @@ def convert_to_poem(section, index, author):
         ),
         collection="温庭筠词集",
         source="历代名家词集精华录",
+        warnings=section["warnings"],
     )
 
 

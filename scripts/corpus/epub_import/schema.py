@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import Any, Dict, List
 
 
 @dataclass
@@ -17,3 +17,4 @@ class Poem:
     content: PoemContent
     collection: str
     source: str = ""
+    warnings: List[Dict[str, Any]] = field(default_factory=list)
