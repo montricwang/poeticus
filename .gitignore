@@ -16,3 +16,11 @@ __pycache__/
 # 操作系统
 .DS_Store
 Thumbs.db
+
+# 原始数据
+data/raw/*
+data/raw/
+data/output/
+
+# 保持目录结构
+!data/raw/.gitkeep

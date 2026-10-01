@@ -6,3 +6,6 @@ uvicorn
 langgraph
 langsmith
 httpx
+ebooklib
+beautifulsoup4
+lxml
