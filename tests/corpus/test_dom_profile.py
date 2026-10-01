@@ -102,3 +102,36 @@ def test_relative_css_paths():
     assert local_href("chapters/a.html", "../css/book.css?v=1") == "css/book.css"
     assert local_href("a.html", "https://example.test/x.css") is None
     assert local_href("a.html", "../../secret.css") is None
+
+def test_original_xhtml_head_is_kept_when_ebooklib_regenerates_content():
+    """EpubHtml.get_content() can erase original <head> links; use .content."""
+    class EpubHtmlLike(Item):
+        def __init__(self, text):
+            super().__init__(text)
+            self.content = self.data
+
+        def get_content(self):
+            return b"<html><head></head><body><h2>Regenerated title</h2></body></html>"
+
+    original = (
+        '<html><head><link rel="stylesheet" href="style.css"></head><body>'
+        '<h2 class="heading">词牌<span class="small">词题</span></h2></body></html>'
+    )
+    book = Book({"page.html": original, "style.css": "span.small{font-size:0.5em;}"})
+    book.get_item_with_href = lambda name: (
+        EpubHtmlLike(original) if name == "page.html" else Item(book.contents[name])
+        if name in book.contents else None
+    )
+    toc = [{"title": "测试词集", "children": [{"title": "卷一", "href": "page.html"}]}]
+    report = run(book, toc)
+    volume = report["volumes"][0]
+    assert volume["linked_css"] == ["style.css"]
+    assert volume["heading_templates"][0]["samples"][0]["runs"][1]["text"] == "词题"
+    assert volume["heading_templates"][0]["samples"][0]["runs"][1]["style"]["font-size"] == "0.5em"
+
+
+def test_xml_declaration_is_not_visible_stray_text():
+    book = Book({"page.html": "<?xml version='1.0' encoding='utf-8'?><html><body><h2>词牌</h2><p>正文</p></body></html>"})
+    toc = [{"title": "甲词集", "children": [{"title": "卷一", "href": "page.html"}]}]
+    report = run(book, toc)
+    assert "[document]" not in report["volumes"][0]["other_text_tags"]

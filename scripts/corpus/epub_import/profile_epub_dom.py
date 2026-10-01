@@ -12,7 +12,10 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from urllib.parse import unquote
 
-from bs4 import BeautifulSoup, NavigableString, Tag, XMLParsedAsHTMLWarning
+from bs4 import (
+    BeautifulSoup, Comment, Declaration, Doctype, NavigableString,
+    ProcessingInstruction, Tag, XMLParsedAsHTMLWarning,
+)
 from ebooklib import epub
 
 from css_styles import StyleResolver
@@ -136,7 +139,9 @@ def unhandled_text(soup):
     grouped = Counter()
     samples = {}
     for text in soup.find_all(string=True):
-        if not isinstance(text, NavigableString) or not text.strip():
+        if (not isinstance(text, NavigableString) or
+                isinstance(text, (Comment, Declaration, Doctype, ProcessingInstruction)) or
+                not text.strip()):
             continue
         if text.parent.find_parent(["p", *sorted(HEADINGS)]):
             continue
@@ -155,7 +160,10 @@ def inspect_document(book, html_name, groups, resolver, templates, paragraphs, c
     if item is None:
         coverage["missing"].append(html_name)
         return
-    soup = BeautifulSoup(item.get_content(), "lxml")
+    # EbookLib EpubHtml.get_content() rebuilds the document and may drop the
+    # original <head> / CSS links. .content holds the imported XHTML bytes.
+    original = getattr(item, "content", None)
+    soup = BeautifulSoup(original if original is not None else item.get_content(), "lxml")
     styles = resolver.for_document(soup, html_name)
     coverage["files"] += 1
     coverage["linked_css"].update(styles.paths)

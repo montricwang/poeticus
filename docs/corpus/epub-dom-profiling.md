@@ -38,3 +38,9 @@ python scripts/corpus/epub_import/profile_epub_dom.py --book "苏轼词集"
 2. 同名 CSS class 可以在不同分册承担不同用途；字体差异也不自动等于语义差异。只有核验样例后，才能制定作用域明确的抽取规则。
 3. Markdown/JSON 仅保留有限样例，不复制整册原文；但包含现代注释和评论，作为**本地私有报告**保管，不提交公开仓库。
 4. 下一阶段先根据报告写 `docs/corpus/epub-semantics.md`，明确拆分词牌、词题、序文、正文等字段的证据和不确定性；随后再修改 Parser。
+
+## EbookLib 原始 XHTML 的注意事项
+
+`EpubHtml.get_content()` 会重建 HTML 文档，可能丢失 EPUB 原始 `<head>` 的 `<link rel="stylesheet">`。Profiler 优先解析 `item.content`（导入时保存的原始 XHTML）；只有没有这个属性时才回退到 `get_content()`。此前的 22 册「CSS=0」报告因此无效，需重新生成。
+
+验收时检查总览表 CSS 一列，以及每册标题样例后的 `font-family/font-size` 与 CSS 来源。若全部显示 0 和「未声明」，应先检查输入结构，不能据此推断原书没有样式。
