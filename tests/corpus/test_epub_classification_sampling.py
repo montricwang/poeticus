@@ -73,6 +73,7 @@ def test_sampler_covers_warning_types_and_success_controls_without_duplicate_sit
     assert [counts[c["kind"]] for c in cases] == [1] * 5
     assert len({(c["html"], c["block"]) for c in cases}) == 5
     assert cases[0]["case_id"] == "R01-01"
+    assert cases[3]["inspect_blocks"] == [3, 4, 5, 6]
 
 
 def test_public_plan_only_includes_locations_not_private_paragraphs():
@@ -92,6 +93,14 @@ def test_public_plan_only_includes_locations_not_private_paragraphs():
     assert "合成注释续段" in local
     assert "合成行内文字" in local
     assert "原始段落快速查询" in local
+    # A clean complex sample shows the commentary even when it lies
+    # far from its work heading; notes aren't restricted to after=4.
+    full_cases, full_counts = choose_batch(
+        build_candidates(BOOK, TOC, SPECS), limit=5
+    )
+    private = private_packet_markdown(BOOK, full_cases)
+    assert "合成评论" in private
+    assert "附加检查块 4, 5, 6" in plan_markdown(full_cases, full_counts)
     assert "请勿公开" in local
 
 
