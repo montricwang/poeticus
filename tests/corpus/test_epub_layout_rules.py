@@ -371,3 +371,15 @@ def test_extra_heading_fragments_are_not_silently_discarded():
     assert section["title"] == "词题\n续题"
     assert any(w["type"] == "ambiguous_heading_parts"
                for w in section["warnings"])
+
+
+def test_repeat_tune_does_not_cross_inline_doubtful_section():
+    book = Book({"x.html": (
+        "<h2>采桑子</h2><p>正文一</p>"
+        "<h1>存疑词作</h1><h2>又</h2><p>存疑词正文</p>"
+    )})
+    toc = [node("李清照词集", [node("正文", href="x.html")])]
+    poems, _ = extract_collection(book, toc, "李清照词集", "li", "李清照")
+    assert [p.tune for p in poems] == ["采桑子", None]
+    assert any(w["type"] == "unresolved_tune_repeat" for w in poems[1].warnings)
+    assert any(w["type"] == "doubtful_attribution" for w in poems[1].warnings)
