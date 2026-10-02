@@ -701,7 +701,7 @@ def test_page_anchor_kaiti_continues_verse_without_false_inline_review():
     section = extract_sections(
         Book({"x.html": doc}), "x.html", "纳兰词集"
     )[0]
-    assert section["text"] == ["去年高摘句延续。", "这一句应继续写完。\n\n"]
+    assert section["text"] == ["去年高摘句延续。", "这一句应继续写完。"]
     assert not any(w["type"] == "inline_body_style_review"
                    for w in section["warnings"])
 
