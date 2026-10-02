@@ -55,3 +55,25 @@ def test_audit_reports_authorless_inserted_work():
     assert report["unassigned_author"] == 1
     assert report["warning_counts"]["missing_inserted_author"] == 1
     assert "作者待定" in render_md({"results": [report]})
+
+
+def test_audit_prioritizes_unknown_author_and_reports_markup_not_text():
+    from scripts.corpus.epub_import.analyze.audit_extraction import audit_collection
+
+    class Volume:
+        def get_item_with_href(self, href):
+            if href == "x.html":
+                return Item(
+                    "<h2>采桑子</h2><p><span class='font1'>普通正文</span></p>"
+                    '<h4 class="kindle-cn-heading4">小调</h4>'
+                    "<p class='left'>模拟作品内容</p>"
+                )
+            return None
+
+    toc = [{"title": "纳兰词集", "children": [{"title": "正文", "href": "x.html"}]}]
+    result = audit_collection(Volume(), toc, "纳兰词集", "纳兰性德", "na")
+    md = render_md({"results": [result]})
+    assert "附词署名未识别" in md
+    assert "left" in md
+    assert "模拟作品内容" not in md
+    assert result["unassigned_author"] == 1
