@@ -22,4 +22,6 @@ class Poem:
     content: PoemContent
     collection: str
     source: str = ""
+    # He Zhu's author-coined tune heading, distinct from tune and poem title.
+    yusheng: Optional[str] = None
     warnings: List[Dict[str, Any]] = field(default_factory=list)
