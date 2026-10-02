@@ -9,6 +9,8 @@ class PoemContent:
     prefaces: List[str] = field(default_factory=list)
     annotations: List[str] = field(default_factory=list)
     commentaries: List[str] = field(default_factory=list)
+    # Extractor-only: source-positioned inline notes; verse retains raw text.
+    inline_notes: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
