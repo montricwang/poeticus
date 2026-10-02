@@ -101,6 +101,7 @@ def audit_collection(book, toc, name, author, slug):
                 "warning_types": sorted({i["type"] for i in poem.warnings}),
                 "warnings": poem.warnings,
                 "unknown_blocks": section["unknown"],
+                "preface_lengths": [len(text) for text in poem.content.prefaces],
                 "unknown_shapes": unknown_shapes,
                 # Structure only; no text from commercially published notes.
                 "unsigned_work_structure": [
@@ -169,6 +170,15 @@ def render_md(report):
                 f'`{src["html"]}` 块 {src["block"]}；'
                 f'{", ".join(review["warning_types"])}'
             )
+            if ("inserted_author_work" in review["warning_types"]
+                    and review.get("preface_lengths")):
+                lengths = review["preface_lengths"]
+                lines.append(
+                    "  - 附词独立题序："
+                    + f'{len(lengths)} 段（'
+                    + "、".join(f"{length}字" for length in lengths)
+                    + "），完整文字只保存在本地提取结果。"
+                )
             if review.get("unknown_shapes"):
                 shapes = review["unknown_shapes"]
                 def label(piece):
