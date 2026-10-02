@@ -16,6 +16,15 @@ from ..extractor.extractor import (
 )
 
 
+# High-impact errors should not be hidden behind hundreds of typography warnings.
+PRIORITY_WARNINGS = {
+    "missing_inserted_author", "ambiguous_toc_attribution", "empty_body",
+    "unresolved_tune_repeat", "unclassified_after_notes",
+    "ambiguous_reference_after_verse", "missing_image_src",
+    "ambiguous_heading_parts",
+}
+
+
 COLLECTIONS = (
     ("温庭筠词集·韦庄词集", "温庭筠", "wen-wei"),
     ("李煜词集（附：李璟词集 冯延巳词集）", "李煜", "nantang"),
@@ -69,6 +78,12 @@ def audit_collection(book, toc, name, author, slug):
                 "warning_types": sorted({i["type"] for i in poem.warnings}),
                 "warnings": poem.warnings,
                 "unknown_blocks": section["unknown"],
+                # Structure only; no text from commercially published notes.
+                "unsigned_work_structure": [
+                    {"role": b["role"], "tag": b["tag"],
+                     "classes": b["classes"], "text_length": len(b["text"])}
+                    for b in section["blocks"][:8]
+                ] if not poem.author else [],
             })
     return {
         "collection": name, "xhtml_count": len(files),
@@ -111,7 +126,13 @@ def render_md(report):
         lines.extend(["", f'## {item["collection"]}', "",
                       f'作者分布：{item["author_counts"]}', "",
                       f'告警分布：{item["warning_counts"]}', ""])
-        for review in item["review_items"][:12]:
+        # Put records likely to affect meaning or authorship first. Keep
+        # original source order among records of equal severity.
+        ordered_reviews = sorted(
+            item["review_items"],
+            key=lambda entry: not bool(PRIORITY_WARNINGS & set(entry["warning_types"])),
+        )
+        for review in ordered_reviews[:12]:
             src = review["source"]
             lines.append(
                 f'- `{review["id"]}` {review["author"]} '
@@ -119,6 +140,16 @@ def render_md(report):
                 f'`{src["html"]}` 块 {src["block"]}；'
                 f'{", ".join(review["warning_types"])}'
             )
+            if not review["author"]:
+                shapes = review.get("unsigned_work_structure", [])
+                lines.append(
+                    "  - 附词署名未识别；前几个块的结构（不含正文）："
+                    + "; ".join(
+                        f'{b["role"]}/{b["tag"]}/'
+                        f'{",".join(b["classes"]) or "-"}({b["text_length"]}字)'
+                        for b in shapes
+                    )
+                )
         if len(item["review_items"]) > 12:
             lines.append(
                 f'- ……另外 {len(item["review_items"]) - 12} 处详见 JSON'
