@@ -5,7 +5,6 @@ the separate PRIVATE packet contains licensed book excerpts for local review.
 Neither is a precision estimate or a substitute for a labelled evaluation set.
 """
 import argparse
-from collections import Counter
 from pathlib import Path
 
 from ebooklib import epub
@@ -92,10 +91,26 @@ def build_candidates(book, toc, collection_specs=COLLECTIONS):
                     or section["commentaries"]
                 )
                 kind = "clean_complex" if complex_material else "clean_plain"
-                result[kind].append(_make_candidate(
+                candidate = _make_candidate(
                     kind, collection, poem, section, section["ordinal"],
                     by_number.get(section["ordinal"], "work_start"),
-                ))
+                )
+                if complex_material:
+                    # A note near the end of a long poem may be many blocks
+                    # away from h2. Show at least one example per category
+                    # rather than asking the reviewer to locate it manually.
+                    anchors = [section["ordinal"]]
+                    for category in (
+                        "separate_title", "inserted_preface", "prefaces",
+                        "text", "annotations", "commentaries",
+                    ):
+                        for block in section["blocks"]:
+                            if block["role"] == category:
+                                if block["block"] not in anchors:
+                                    anchors.append(block["block"])
+                                break
+                    candidate["inspect_blocks"] = anchors
+                result[kind].append(candidate)
     return result
 
 
@@ -161,7 +176,9 @@ def plan_markdown(cases, counts, *, round_number=1):
             "",
             f"**位置：** {case['collection']} / "
             f"{case['poem_id']} / {case['tune']}",
-            f"**源块：** `{case['html']}` 块 {case['block']}",
+            f"**源块：** `{case['html']}` 块 {case['block']}"
+            + (f"；附加检查块 {', '.join(map(str, case['inspect_blocks'][1:]))}"
+               if len(case.get("inspect_blocks", [])) > 1 else ""),
             f"**现有分类：** `{case['role']}`",
             f"**请判断：** {KIND_QUESTIONS[case['kind']]}",
             "",
@@ -197,9 +214,12 @@ def private_packet_markdown(book, cases):
             f"**问题：** {KIND_QUESTIONS[case['kind']]}",
             "",
             inspect_source(
-                book, case["html"], [case["block"]],
+                book, case["html"],
+                case.get("inspect_blocks", [case["block"]]),
                 collection=case["collection"],
-                before=2, after=4, max_chars=240,
+                before=2 if "inspect_blocks" not in case else 1,
+                after=4 if "inspect_blocks" not in case else 2,
+                max_chars=240,
             ),
             "",
         ])
