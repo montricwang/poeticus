@@ -8,11 +8,14 @@ from bs4 import NavigableString, Tag
 
 CHRONOLOGY = re.compile(r"[（(]\d{4}[）)]$")
 HE_ZHU_ALIAS_NOTE = re.compile(r"^(?P<tune>[^，,]+)[，,]\s*亦名\s*(?P<alias>.+)$")
+# Only explicit document labels confirmed by the 15-volume audit.
+EDITORIAL_HEADINGS = {"总评"}
 NON_POEMS = {"欧阳修词集": {"西湖念语"}}
 
 
 def is_non_poem(collection, heading):
-    return heading in NON_POEMS.get(collection, set())
+    name = heading.strip()
+    return name in EDITORIAL_HEADINGS or name in NON_POEMS.get(collection, set())
 
 
 def is_chronology(tag, text):
@@ -79,7 +82,10 @@ def heading_components(tag):
                 pending = ""
             value = _heading_inline_text(child)
             if value:
-                pieces.append(value)
+                # A line break can occur *inside* a single wrapping span.
+                # Keep the original run order instead of turning tune + title
+                # into one multiline tune (observed in Na Lan's appended ci).
+                pieces.extend(part.strip() for part in value.split("\n") if part.strip())
     if pending.strip():
         pieces.append(pending.strip())
     return pieces
@@ -94,7 +100,8 @@ def interpret_heading(tag, collection):
     if len(parts) > 2:
         issues.append({"type": "ambiguous_heading_parts", "parts": parts})
     first = parts[0]
-    second = parts[1] if len(parts) > 1 else None
+    # Do not discard a third or later heading fragment silently.
+    second = "\n".join(parts[1:]) if len(parts) > 1 else None
     if "贺铸" in collection and second:
         # The small-print portion may also supply an alternate name:
         # "旧调，亦名另一调". Use the primary tune for this minimal Poem.
