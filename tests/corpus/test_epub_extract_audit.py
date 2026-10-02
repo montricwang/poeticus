@@ -36,3 +36,22 @@ def test_audit_scoped_to_one_collection_with_provenance():
 def test_only_15_scoped_author_volumes_are_selected():
     assert len(COLLECTIONS) == 15
     assert "词品" not in {x[0] for x in COLLECTIONS}
+
+
+def test_audit_reports_authorless_inserted_work():
+    from scripts.corpus.epub_import.analyze.audit_extraction import audit_collection
+
+    class InsertedBook:
+        def get_item_with_href(self, href):
+            if href == "a.html":
+                return Item(
+                    '<h4 class="kindle-cn-heading4">调名</h4><p>无署名附作</p>'
+                )
+            return None
+
+    toc = [{"title": "纳兰词集", "children": [
+        {"title": "作品", "href": "a.html"}]}]
+    report = audit_collection(InsertedBook(), toc, "纳兰词集", "纳兰性德", "na")
+    assert report["unassigned_author"] == 1
+    assert report["warning_counts"]["missing_inserted_author"] == 1
+    assert "作者待定" in render_md({"results": [report]})
