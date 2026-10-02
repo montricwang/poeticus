@@ -84,6 +84,11 @@ def extract_sections(book, html_name, collection=""):
         )
         if block.tag == "h2" or is_supplement_heading:
             if current is not None:
+                if current["inserted"] and not current["author_override"]:
+                    current["warnings"].append({
+                        "type": "missing_inserted_author", "html": html_name,
+                        "block": current["ordinal"]
+                    })
                 sections.append(current)
             if awaiting_supplement and not is_supplement_heading and sections:
                 sections[-1]["warnings"].append({
@@ -140,12 +145,20 @@ def extract_sections(book, html_name, collection=""):
         if discarded or current is None:
             continue
         classes = set(block.classes)
-        if "page-break" in classes or not preview and not element.find("img"):
+        if not preview and not element.find("img"):
+            if ("李清照" in collection and has_verse and note_category is None
+                    and "kindle-cn-poem-center" in classes):
+                current["text"].append("")  # explicit stanza/part separator
+                add_evidence(current, block, "stanza_separator")
+            else:
+                add_evidence(current, block, "layout_only")
+            continue
+        if "page-break" in classes:
             add_evidence(current, block, "layout_only")
             continue
         if any("picture-txt" in css for css in classes):
             add_evidence(current, block, "figure_caption", preview)
-            note_category = None
+            note_classes = ()  # prevents merging across a figure boundary
             continue
         if current["inserted"] and not has_verse and not current["author_override"]:
             if "kindle-cn-para-right" in classes:
