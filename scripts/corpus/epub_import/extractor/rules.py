@@ -41,31 +41,47 @@ def is_preface(tag, collection):
     return False
 
 
-def heading_components(tag):
-    """Keep text separated by actual child nodes; never guess a tune prefix."""
+def _heading_inline_text(node):
+    """Retain glyph positions even when images are nested inside a subtitle."""
     pieces = []
+    for child in node.descendants:
+        if isinstance(child, NavigableString):
+            pieces.append(str(child))
+        elif isinstance(child, Tag) and child.name == "img":
+            pieces.append("{{glyph:" + (child.get("src") or "missing-src") + "}}")
+        elif isinstance(child, Tag) and child.name == "br":
+            pieces.append("\n")
+    return "".join(pieces).strip()
+
+
+def heading_components(tag):
+    """Read heading runs in source order, keeping inline glyphs in place."""
+    pieces = []
+    pending = ""
+
     for child in tag.children:
         if isinstance(child, NavigableString):
-            value = str(child).strip()
-            if value:
-                pieces.append(value)
+            pending += str(child)
+        elif isinstance(child, Tag) and child.name == "br":
+            if pending.strip():
+                pieces.append(pending.strip())
+            pending = ""
         elif isinstance(child, Tag) and child.name == "img":
-            # An image may encode a character continuing the preceding title.
-            if child.get("src"):
-                glyph = f"{{{{glyph:{child['src']}}}}}"
-                if pieces:
-                    pieces[-1] += glyph
-                else:
-                    pieces.append(glyph)
-        elif isinstance(child, Tag) and child.name not in ("a", "br"):
-            value = child.get_text("", strip=True)
-            # Rare headings have an image-based character after the subtitle.
-            for image in child.find_all("img"):
-                value += f"{{{{glyph:{image.get('src', '')}}}}}"
+            glyph = "{{glyph:" + (child.get("src") or "missing-src") + "}}"
+            if pending.strip() or not pieces:
+                pending += glyph
+            else:
+                # A direct glyph after a subtitle belongs to that subtitle.
+                pieces[-1] += glyph
+        elif isinstance(child, Tag):
+            if pending.strip():
+                pieces.append(pending.strip())
+                pending = ""
+            value = _heading_inline_text(child)
             if value:
                 pieces.append(value)
-        elif isinstance(child, Tag) and child.name == "a" and child.get_text(strip=True):
-            pieces.append(child.get_text("", strip=True))
+    if pending.strip():
+        pieces.append(pending.strip())
     return pieces
 
 
