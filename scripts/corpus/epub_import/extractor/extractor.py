@@ -217,7 +217,7 @@ def extract_sections(book, html_name, collection=""):
                 continue
             # Real Na Lan appended works sometimes put an unstyled paragraph
             # between the h4 and a right-aligned three-character byline.
-            # Classify that paragraph as unresolved front matter, not verse:
+            # Classify that paragraph as a separate preface, not verse:
             # otherwise has_verse prevents the byline from being recognized.
             next_block = next((candidate for candidate in source_blocks[block_index + 1:]
                                if candidate.tag != "p" or candidate.text), None)
@@ -229,26 +229,16 @@ def extract_sections(book, html_name, collection=""):
                     and all("\u3400" <= ch <= "\u9fff" or ch == "·"
                             for ch in next_block.text.strip())
                     and not preview.startswith(("◎", "◆"))):
-                if not current["title"]:
-                    # Verified appended-work layout: h4 tune, an unstyled
-                    # dedicatory title, a short right-aligned author byline.
-                    # Keep the complete title text; do not invent a split
-                    # between occasion, rhyme exchange, and background.
-                    text, image_warnings = paragraph_text(element, html_name, "title")
-                    current["warnings"].extend(image_warnings)
-                    current["title"] = text
-                    add_evidence(current, block, "inserted_title", text)
-                else:
-                    # An h4 may already contain a subtitle. Two distinct
-                    # titles are ambiguous without further evidence.
-                    text, image_warnings = paragraph_text(element, html_name, "unknown")
-                    current["warnings"].extend(image_warnings)
-                    current["unknown"].append({**block.location(), "text": text})
-                    current["warnings"].append({
-                        "type": "unclassified_before_inserted_author",
-                        **block.location(), "text": text,
-                    })
-                    add_evidence(current, block, "unknown_before_author", text)
+                # In the source volume the independent p lies *below* the
+                # centered h4 tune/heading, but above the author's signature.
+                # Editorial placement identifies it as a short prefatory
+                # note (题序), even if it describes whom the poem addresses.
+                # Do not split its sentences or overwrite a title in h4.
+                text, image_warnings = paragraph_text(element, html_name, "prefaces")
+                current["warnings"].extend(image_warnings)
+                if text:
+                    current["prefaces"].append(text)
+                add_evidence(current, block, "inserted_preface", text)
                 continue
         if preview.startswith("◎"):
             category = "annotations"
