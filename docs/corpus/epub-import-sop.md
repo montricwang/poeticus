@@ -2,13 +2,13 @@
 
 本文件记录 Poeticus 从 EPUB 导入作品数据时的标准检查流程，以及已经发现或需要主动排查的风险。它不是某一册书的解析说明，而是处理半结构化文献数据时的操作清单。跨项目的**问题诊断与工具选型原则**归入《教学与开发协作手册》，不在本 SOP 中重复扩写。
 
-对应实施 Issue：[#48](https://github.com/montricwang/poeticus/issues/48)；本轮已整合代码见 [PR #52](https://github.com/montricwang/poeticus/pull/52)。
+对应实施 Issue：[#48](https://github.com/montricwang/poeticus/issues/48)；基础导入由 [PR #52](https://github.com/montricwang/poeticus/pull/52) 合并，十五册全量审计与导出由 [PR #59](https://github.com/montricwang/poeticus/pull/59) 于 2026-10-02 合并。运行与数据限制以本 SOP 的最新章节为准。
 
 ## 1. 核心原则
 
 1. **先认识数据，再写规则。** 不根据一两个样本推断整本 EPUB 都使用同一种 XHTML 结构。
 2. **提取层保持可追溯。** 不静默改字、不擅自统一异文；但产品最终 Schema 不需要保存所有原书信息。明确哪些内容有意跳过，避免错误混入作品。
-3. **规范化有明确边界。** 提取过程中临时保留 DOM 标题片段，再生成 `tune`、`title`；最终 Poem 不保存 `title_raw`，如需校对返回私有 EPUB。
+3. **规范化有明确边界。** 提取过程中临时保留 DOM 标题片段，再生成中间 Poem 的 `tune`、`title`；贺铸可另有 `yusheng`。中间 Poem 不保存 `title_raw`，如需校对返回私有 EPUB；它还不是前端或数据库的最终格式。
 4. **程序成功运行不等于数据正确。** 结构覆盖、合成测试、真实 CLI 与文学文本校勘需要分别验证。
 5. **不确定就进入 warning / review。** 不让启发式规则把猜测伪装成确定事实。
 6. **原始资料可追溯。** 规范化结果尽可能能够回到原 EPUB 中对应的文件、锚点或上下文。
@@ -94,12 +94,12 @@ Enrichment / 知识增强（后续）
 
 只有 Extraction 基本可靠才做规范化：
 
-- 输出 `tune`、`title`（可空），原书标题仅在临时结构中用于审查；
+- 输出中间 Poem 的 `tune`、`title`（可空）；贺铸的寓声名另外保存可选 `yusheng`，其余作品为 `null`。原书标题拆分证据保留在临时结构；
 - 处理明确的全角/半角空格和格式差异；规范作者、collection、source；
-- 保持稳定 ID、来源线索与审核状态；不在规范化阶段消除真实异文；
+- 保持同版同规则下的导出 ID 和已有来源线索；**当前 ID 按分册及作品序号生成，重排后可能变化**。导出结果不是已经校勘的 `reviewed` 数据；不在规范化阶段消除真实异文；
 - 仅对确认的单独“又”做词牌继承，不确定时 warning；
 - 区分原始缺字 `□`、视觉缺字和以图片表示的生僻字，已确认的 glyph 映射另行处理；
-- 贺铸「主词调，亦名别调」只提取本轮需要的单一调名，异名关系以后由词牌参考数据维护，不新增 Poem alias 字段。
+- 贺铸题头区分 `tune`（原词调）、`yusheng`（另拟的寓声名）和 `title`（独立作品题目）。「思越人，亦名鹧鸪天」只提取主要原调，不新增全局 `cipai_alias`；超出已核实版式的例外进入后续复核。
 
 ## 7. Normalization Validation
 
@@ -163,7 +163,7 @@ python -m scripts.corpus.epub_import.import_poems --all
 
 默认每册 glyph 映射位于 `data/raw/glyph_maps/<slug_with_underscore>.json`；全量模式可用 `--glyph-map-dir` 指定另一目录。只要输入本身仍有图片字，就必须先核对字形；全量模式**绝不调用 `input()`**。旧的单册模式仍可在交互终端中提取待核对图片并调用 `glyph_mapping.py` 保存人工映射；它现在也正确尊重 `--epub` 指定的实际文件，而不误用默认路径。
 
-原始 EPUB、图片映射、报告和导出 JSON 都是本地私有数据，不要提交公共仓库。此处的“导出完成”指**无损中间数据层**：并未按前端 `stanzas` / `preface` / `review_status` 格式转换，也未将所有 `font1` 行内自注从阅读正文中删除。下一阶段需要独立决定这些内容的审校状态与展示方式，不可仅凭字段存在宣称文学准确率。
+原始 EPUB、图片映射、报告和导出 JSON 都是本地私有数据，不要提交公共仓库。此处的“导出完成”指**保留约定字段和关键证据的中间数据层，而非整册 EPUB 无损转换**：并未按前端 `stanzas` / `preface` / `review_status` 格式转换，也未将所有 `font1` 行内自注从阅读正文中删除。下一阶段需要独立决定这些内容的审校状态与展示方式，不可仅凭字段存在宣称文学准确率。
 
 ### 11.1 本次真实预检后的图片字集中处理
 
@@ -175,7 +175,7 @@ python -m scripts.corpus.epub_import.import_poems --all
 python -m scripts.corpus.epub_import.review_glyphs --prepare
 ```
 
-它读取已存在的 `data/reports/epub_import_preflight.json` 和本地 EPUB，把去重后的图片字提取到 `data/reports/glyph_review_images/`，生成可在浏览器打开的**本地字形画廊** `data/reports/glyph_review.html`，及可直接在 VS Code/Excel 编辑的 `data/reports/glyph_review.tsv`；两者都在 gitignore 下。TSV 按编号对应图片，每行保留 `slug`、`src`、引用页面；只填写 `source_form`（原字），需要替代显示时才填 `display_form`（仅一字）。原字可填正常汉字、`U+XXXX` 或 IDS 组合字形（IDS 必须有显示代用字）。
+它读取已存在的 `data/reports/epub_import_preflight.json` 和本地 EPUB，把去重后的图片字提取到 `data/reports/glyph_review_images/`，生成可在浏览器打开的**本地字形画廊** `data/reports/glyph_review.html`，及可直接在 VS Code/Excel 编辑的 `data/reports/glyph_review.tsv`；两者都在 gitignore 下。TSV 按编号对应图片，每行保留 `slug`、`src`、引用页面；只填写 `source_form`（原字），需要替代显示时才填 `display_form`（仅一字）。原字可填正常汉字、`U+XXXX` 或 IDS 组合字形；**IDS 若没有可信的 Unicode 单字替代，`display_form` 可以留空**，中间 JSON 会保留 IDS 字符序列及 `ids_transcription` 标记，不将其伪装为一个标准汉字。
 
 填写后运行：
 
@@ -198,7 +198,7 @@ python -m scripts.corpus.epub_import.review_glyph_contexts
 
 脚本利用同一份 `epub_import_preflight.json` 依照字形画廊的原顺序（001—049 等），在原 EPUB 的 h1/h2/h4/p 块里寻找图片，最多展示每个目标两处引用的前后各 16 字，以 `⟦目标字⟧` 占位；其他图片字也用标记表示，不会凭空替字。默认保存 `data/reports/glyph_contexts_private.md`，**包含局部版权文字，仅供私人核字，不提交仓库**。不覆盖已填写的 `glyph_review.tsv`，不需要重新生成画廊。用户与 AI 先确认字形再 `review_glyphs --apply`。
 
-### 11.2 从原 EPUB 批量导出图片字所在的完整段落
+### 11.3 从原 EPUB 批量导出图片字所在的完整段落
 
 字形画廊只展示图片和 XHTML 文件名。每个文件内的完整词句/注释其实仍然在原始本地 EPUB 中；不需要上网搜索，也不需要重新抽取整书。新增可单独运行的上下文导出命令：
 
@@ -210,7 +210,7 @@ python -m scripts.corpus.epub_import.review_glyphs --contexts
 
 **与只展示少量邻近文字的 `review_glyph_contexts.py` 不同**，这份 HTML 展示完整段落，适合复制原句搜索通行版本。生成步骤只读取原有 `epub_import_preflight.json` 和原 EPUB，**不改动/覆盖已有字形 TSV 或 HTML 填写页面**，也不写新的 glyph_map，用户可并排打开填写表和原文上下文。本地报告嵌有商业原书文字及图片，必须留在 gitignore 下，不提交公共仓库；讨论某个争议时只分享必要短片段。
 
-### 11.3 直接导入字形画廊的 JSON 备份（用户已完成 49 张）
+### 11.4 直接导入字形画廊的 JSON 备份（用户已完成 49 张）
 
 本地字形核对页导出的 `glyph_review_backup.json` 是结构化备份，不必重新誊抄到 TSV。实际人工校对备份与原始 `epub_import_preflight.json` 对照结果：49 条 `records` 均与来源图片/分册/顺序一一匹配；49 项 `values` 都有 `source_form`；14 项有人审定的 `display_form`；仅编号 020 的 `⿰缶吾` 暂时只有 IDS，没有可证实的 Unicode 单字替代。**这是已描述构形、尚未确定单字字形的情况，不是校对未完成。**
 
@@ -232,3 +232,10 @@ python -m scripts.corpus.epub_import.import_poems --all
 ```
 
 这一步生成十五册原始/规范化 Poem 中间 JSON，以及 `data/output/all_normalized.json`。此处完成的是**导出管线与人工确认字形的录入**，不是宣布古籍语义分类准确率达到 95%，也不是前端清商所需的纯净诗词结构；行内作者自注仍保留在原句，最终阅读层的拆分仍需后续实现。
+
+
+### 11.5 备份与复现：代码入库，不代表本地私有输入已有备份
+
+实际重建需保留：原始 `data/raw/历代名家词集精华录.epub`、整个 `data/raw/glyph_maps/` 及 `data/reports/glyph_review_backup.json`，并记录 Git commit（本轮完成版本：`4cae604`）。`data/output/`（包括 `all_normalized.json`、`all_manifest.json` 和分册结果）及 `data/reports/` 可整体另存私人目录供校验和排障，**不要推送公共仓库**。删除本地 `all_normalized.json` 后仍可利用上述输入重建，但删除映射或原书将无法仅凭 GitHub 代码恢复相同输出；运行 `git clean -fdx` 前务必确认不会误删被 Git 忽略的资料。
+
+自动数量验收仅说明本地报告中的 `3491` 条唯一 ID、`0` 空正文等约束成立，不能代替入库前的语义质量检查；继续参照 [Issue #57](https://github.com/montricwang/poeticus/issues/57) 和 [维护地图](epub-pipeline-maintenance-map.md)。
