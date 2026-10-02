@@ -29,7 +29,7 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction --book "纳兰词�
 
 默认输出位于 git 忽略的本地文件：
 
-- `data/reports/epub_extraction_audit.md`：按册汇总、各册前 12 条待查记录。
+- `data/reports/epub_extraction_audit.md`：按册汇总，优先显示高风险告警，再显示一般样式告警；对作者待定的附词，显示不含正文的前几个块的标签、class 和长度，帮助定位署名模板。
 - `data/reports/epub_extraction_audit.json`：完整告警位置，可能包含受版权保护文本，严禁公开。
 
 审计命令不执行图片字的交互式人工确认，不导出 curated Poem，不执行 normalization。先看作者待定、空正文、未解析调名、正文混入注评标记，再核查续段候选、无法分类块、行内样式，以及存疑词和附词作者。
@@ -42,3 +42,5 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction --book "纳兰词�
 4. 如发现错误，提取不含商业文本的最小合成用例后修正规则。
 
 注意：GitHub CI 只能证明合成测试通过，不能由此宣称 15 册的文学语义抽取准确。
+
+首次真实审计（2026-10-02）的已确认发现：二晏合刊曾把同一文件末尾的 `h2`「总评」计作作品；已加入精确标题排除规则。多个分册存在每首两条的普通 `span` 样式告警，已缩小为混合样式才告警。纳兰 3 首附词作者待定仍需在本地依据结构检查，不擅自填写。
