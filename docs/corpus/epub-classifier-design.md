@@ -105,3 +105,20 @@ python -m scripts.corpus.epub_import.analyze.inspect_source --html text00045.htm
 抽取器现在对正文里的明确 `（以下缺）`（兼容半角括号）生成 `inline_editorial_gap` 结构化 warning，记录 XHTML 块号、展开后的正文起止字符位置、标记、是否位于带样式 span，以及 `retained_in_body_pending_schema` 状态；**不删除、不搬移、不猜测缺字数量**，原 `PoemContent.text` 逐字保持不变。这个 warning 表示已识别的编辑性标记，不代表整个段落不能使用，也不把它误当成原作者的文学表达。多处相同标记时暂不强行把位置对应到某个 span。
 
 `audit_inline_styles.py` 与抽取器共用同一个确切标记正则和样式判断函数。真实源文的完整标签尚未通过 `inspect_source --show-html` 逐字核对；后续如确有使用需要，再讨论是否为产品阅读页加入行内校勘片段的单独数据结构。不要为了这单一已知案例贸然改动所有正文的序列化格式。
+
+### 行内 `font1` 与 `kaiti` 的独立取样（2026-10-02）
+
+真实 `inspect_source --show-html` 抽查显示：
+
+- 黄庭坚《醉落魄》 `text00214.html` 块 679：`p.font3` 正文后跟 `<span class="font1">`，内部是与前面词句相联系的石曼卿故事说明，整段目前归于 `text`。
+- 辛弃疾《西江月·为范南伯寿》 `text00278.html` 块 135：正文上片结束后插入 `<span class="font1">`，内部是范南伯生子情况说明；这段也整体归于 `text`。
+
+**修正此前错误**：第二个样本确实是 `font1`，不是 `kaiti`。两处能够证明存在行内文字类别混杂，但不能证明 20 个 `font1` 都是注释，更不能据此把 38 个 `kaiti` 自动归类。另一方面，究竟是编者加注还是词人原注，也未由 XHTML 样式直接决定。
+
+新增 `inspect_inline_samples`，按源 `span` 的真实 class 分组；每类优先取不同分册，再从其余位置分散选择；结构计划与包含源文字/HTML 的私有报告严格分开。下一轮只需：
+
+```powershell
+python -m scripts.corpus.epub_import.analyze.inspect_inline_samples --style kaiti --per-style 3
+```
+
+生成 `data/reports/inline_style_review_plan.md`（可分享无原文）和 `data/reports/inline_style_review_private.md`（含版权正文及原始 span，只供本地人工复核）。待核实 `kaiti` 版式后，再设计明确区分**行内原文**与**行内附注/残缺标记**的结构；当前 `PoemContent.text` 一字不删，避免未经确认的规则扩大影响。
