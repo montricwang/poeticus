@@ -14,6 +14,18 @@ from .audit_inline_styles import collect_inline_evidence
 from .inspect_source import inspect_source
 
 
+# Human-reviewed source coordinates, no copyrighted text.
+# Two original cases plus ten further user-provided examples.
+REVIEWED_FONT1_SITES = frozenset({
+    ("text00214.html", 679), ("text00278.html", 135),
+    ("text00214.html", 696), ("text00278.html", 519),
+    ("text00280.html", 87), ("text00281.html", 754),
+    ("text00214.html", 755), ("text00278.html", 520),
+    ("text00279.html", 12), ("text00279.html", 188),
+    ("text00279.html", 243), ("text00279.html", 424),
+})
+
+
 def _group_key(signature):
     """The style class family, not the surrounding p's class."""
     if signature.startswith("span class="):
@@ -21,7 +33,8 @@ def _group_key(signature):
     return signature
 
 
-def select_inline_samples(audit, *, families=("kaiti", "font1"), per_style=3):
+def select_inline_samples(audit, *, families=("kaiti", "font1"),
+                          per_style=3, remaining=False):
     """One sample per collection first, then spread within remaining sites."""
     if per_style < 1 or per_style > 15:
         raise ValueError("per_style must be between 1 and 15")
@@ -32,6 +45,9 @@ def select_inline_samples(audit, *, families=("kaiti", "font1"), per_style=3):
         for signature in site["style_signatures"]:
             family = _group_key(signature)
             if family not in families:
+                continue
+            if (remaining and family == "font1"
+                    and (site["html"], site["block"]) in REVIEWED_FONT1_SITES):
                 continue
             groups[family].append(site)
 
@@ -136,6 +152,8 @@ def main():
     parser.add_argument("--style", choices=("kaiti", "font1"),
                         action="append", help="仅抽取指定的 span class；可重复")
     parser.add_argument("--per-style", type=int, default=3)
+    parser.add_argument("--remaining", action="store_true",
+                        help="跳过此前已人工核对的 font1 位置，只看剩余样本")
     parser.add_argument("--output", type=Path, default=Path(
         "data/reports/inline_style_review_plan.md"
     ))
@@ -149,7 +167,7 @@ def main():
     audit = collect_inline_evidence(book, parse_toc(book.toc))
     cases = select_inline_samples(
         audit, families=tuple(dict.fromkeys(args.style or ("kaiti", "font1"))),
-        per_style=args.per_style,
+        per_style=args.per_style, remaining=args.remaining,
     )
     for path, report in (
         (args.output, render_plan(cases)),
