@@ -284,15 +284,26 @@ def extract_sections(book, html_name, collection=""):
         elif category == "text":
             note_category = None
         if category == "text":
-            for span in element.find_all("span"):
-                if span.get("style") or any(
-                    cls in {"kindle-cn-kai", "kaiti", "small"}
-                    or cls.startswith("font") for cls in span.get("class", [])
-                ):
-                    current["warnings"].append({
-                        "type": "inline_body_style_review", **block.location()
-                    })
-                    break
+            # A lone span wrapping the *entire* verse paragraph is a normal
+            # typography container in several volumes, not an inline gloss.
+            # Mixed plain/styled text and multiple styled runs remain reviewable.
+            significant_children = [child for child in element.children
+                                    if getattr(child, "name", None)
+                                    or str(child).strip()]
+            whole_paragraph_span = (
+                len(significant_children) == 1
+                and getattr(significant_children[0], "name", None) == "span"
+            )
+            if not whole_paragraph_span:
+                for span in element.find_all("span"):
+                    if span.get("style") or any(
+                        cls in {"kindle-cn-kai", "kaiti", "small"}
+                        or cls.startswith("font") for cls in span.get("class", [])
+                    ):
+                        current["warnings"].append({
+                            "type": "inline_body_style_review", **block.location()
+                        })
+                        break
     if current is not None:
         if current["inserted"] and not current["author_override"]:
             current["warnings"].append({
