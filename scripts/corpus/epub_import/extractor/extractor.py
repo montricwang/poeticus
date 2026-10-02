@@ -222,6 +222,11 @@ def extract_sections(book, html_name, collection=""):
                                if candidate.tag != "p" or candidate.text), None)
             if (next_block and next_block.tag == "p"
                     and "kindle-cn-para-right" in next_block.classes
+                    # A 2-6-character Chinese name is credible as a byline;
+                    # a long right-aligned verse paragraph is not.
+                    and 2 <= len(next_block.text.strip()) <= 6
+                    and all("\u3400" <= ch <= "\u9fff" or ch == "·"
+                            for ch in next_block.text.strip())
                     and not preview.startswith(("◎", "◆"))):
                 text, image_warnings = paragraph_text(element, html_name, "unknown")
                 current["warnings"].extend(image_warnings)
