@@ -40,20 +40,24 @@ def source_block_coverage(book, files, sections, collection):
             raise ValueError(f"EPUB XHTML not found: {filename}")
         soup = BeautifulSoup(raw_xhtml(item), "lxml")
         editorial_region = False
+        editorial_section = False
         for block in iter_source_blocks(soup, filename):
             key = (filename, block.ordinal)
             if block.tag == "h1":
                 editorial_region = block.text.startswith(EDITORIAL_REGION_PREFIXES)
+                editorial_section = False
             is_editorial_heading = (
                 block.tag == "h2" and is_non_poem(collection, block.text)
             )
+            if block.tag == "h2":
+                editorial_section = is_editorial_heading
             if key in evidence:
                 status = "handled"
             elif block.tag == "h1":
                 status = "excluded_structural_heading"
             elif editorial_region:
                 status = "excluded_editorial_region"
-            elif is_editorial_heading:
+            elif editorial_section:
                 status = "excluded_editorial_heading"
             else:
                 status = "untracked"
