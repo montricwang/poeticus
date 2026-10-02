@@ -5,10 +5,12 @@
 ## 本次规则
 
 - SourceBlock 先保存来源 XHTML、块序号、标签、class、标题内部的子片段与换行，再做语义判断。证据只保存在提取阶段，不改变当前 Poem Schema。
-- 按 TOC 子词集给温韦、二晏和南唐三词人归属作者；纳兰集用【附】＋h4＋作者段落识别附词作者。
+- 按 TOC 子词集和同 XHTML 内的 `h1` 作者边界，给温韦、二晏和南唐三词人归属作者；同一个文件被不同作者分组引用、又无明确作者证据时，作者留空并告警，不猜测。
+- 纳兰集用【附】＋h4＋作者段落识别附词作者；附词缺署名时，作者留空并标记 `missing_inserted_author`，不能自动写成纳兰性德。
 - 「又」仅在同一作者、同一文献区域内继承。存疑作品产生归属提醒。
-- `◆/◎` 后无符号内容不直接视为词正文：仅相同直接 class/style 的连续段落先合并为候选续段，发出 `inferred_note_continuation`；否则发出 `unclassified_after_notes`，保留全文待核对。
-- 小字夹注保留原文字并发出 `inline_body_style_review`，暂不擅自删除。
+- `◆/◎` 后无符号内容不直接视为词正文（包括注评发生在首段正文之前时）：仅相同直接 class/style 的连续段落先合并为候选续段，发出 `inferred_note_continuation`；否则发出 `unclassified_after_notes`，保留全文待核对。
+- 正文之后出现 `p.kindle-cn-ref/ref1/ref2` 且不能确认类别时，写入待核查块并发出 `ambiguous_reference_after_verse`，不再直接并入词正文。
+- 小字夹注保留原文字并发出 `inline_body_style_review`，暂不擅自删除。标题嵌套图片字保持原文先后位置；缺失图片 `src` 时保留占位符并告警。
 - 李清照逐句 p 的空段保留空字符串，表示原书显式分片，但此数组不是已经清理好的前端分阕数据。
 
 ## 一条命令审计 15 册
@@ -30,7 +32,7 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction --book "纳兰词�
 - `data/reports/epub_extraction_audit.md`：按册汇总、各册前 12 条待查记录。
 - `data/reports/epub_extraction_audit.json`：完整告警位置，可能包含受版权保护文本，严禁公开。
 
-审计命令不执行图片字的交互式人工确认，不导出 curated Poem，不执行 normalization。先看空正文、未解析调名、正文混入注评标记，再核查续段候选、无法分类块、行内样式，以及存疑词和附词作者。
+审计命令不执行图片字的交互式人工确认，不导出 curated Poem，不执行 normalization。先看作者待定、空正文、未解析调名、正文混入注评标记，再核查续段候选、无法分类块、行内样式，以及存疑词和附词作者。
 
 ## 复核建议
 
