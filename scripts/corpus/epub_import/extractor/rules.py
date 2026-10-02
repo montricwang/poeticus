@@ -161,22 +161,41 @@ def heading_components(tag):
 
 
 def interpret_heading(tag, collection):
-    """Return (displayed_tune, title, issues); '又' resolved in conversion."""
+    """Return (tune, title, yusheng, warnings); '又' resolved later.
+
+    For He Zhu, the outer heading names an author-coined tune (寓声).
+    The small-print run identifies the original tune, optionally followed
+    by a separate work title after an explicit layout delimiter.
+    """
     parts = heading_components(tag)
     issues = []
     if not parts:
-        return None, None, [{"type": "empty_heading"}]
+        return None, None, None, [{"type": "empty_heading"}]
+    first = parts[0]
+    if "贺铸" in collection and len(parts) >= 2:
+        # Two layouts are supported:
+        #   <h2>寓声<span>原调</span><span>作品题目</span></h2>
+        #   <h2>寓声<span>原调　作品题目</span></h2>
+        # Only split explicit ideographic (fullwidth) whitespace within one
+        # run; never split a tune on its ordinary single ASCII spaces.
+        detail = parts[1].strip()
+        if "　" in detail:
+            split = [segment.strip() for segment in re.split(r"　+", detail)
+                     if segment.strip()]
+        else:
+            split = [detail]
+        tune_text = split[0]
+        titles = split[1:] + parts[2:]
+        title = "\n".join(titles) if titles else None
+        if len(titles) > 1:
+            issues.append({"type": "ambiguous_heading_parts", "parts": parts})
+        # Treat '亦名' as a note about the old tune, not a work title.
+        # No universal cipai_alias field is introduced by this importer.
+        alias_note = HE_ZHU_ALIAS_NOTE.fullmatch(tune_text)
+        tune = alias_note.group("tune").strip() if alias_note else tune_text
+        return tune, title, first, issues
     if len(parts) > 2:
         issues.append({"type": "ambiguous_heading_parts", "parts": parts})
-    first = parts[0]
     # Do not discard a third or later heading fragment silently.
     second = "\n".join(parts[1:]) if len(parts) > 1 else None
-    if "贺铸" in collection and second:
-        # The small-print portion may also supply an alternate name:
-        # "旧调，亦名另一调". Use the primary tune for this minimal Poem.
-        # A tune alias dictionary is a separate, later enrichment task.
-        alias_note = HE_ZHU_ALIAS_NOTE.fullmatch(second)
-        if alias_note:
-            return alias_note.group("tune").strip(), first, issues
-        return second, first, issues
-    return first, second, issues
+    return first, second, None, issues
