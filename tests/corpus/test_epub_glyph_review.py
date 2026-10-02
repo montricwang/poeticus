@@ -154,3 +154,31 @@ def test_missing_source_image_reports_location_without_fake_character(tmp_path):
     )
     assert result["missing_assets"] == [("a", "missing.jpg")]
     assert "图片文件未找到" in (tmp_path / "x.html").read_text(encoding="utf-8")
+
+
+
+def test_existing_tsv_flow_also_allows_ids_with_no_fabricated_display(tmp_path):
+    report = {"collections": [{
+        "collection": "合成册", "slug": "synthetic", "missing_glyphs": [
+            {"html": "x.html", "src": "symbol.jpg"},
+        ],
+    }]}
+    gallery, tsv = tmp_path / "gallery.html", tmp_path / "review.tsv"
+    prepare_review(
+        report, Book({"symbol.jpg": b"not-a-real-glyph"}),
+        sheet_path=gallery, tsv_path=tsv,
+    )
+    with tsv.open(encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.DictReader(stream, delimiter="\t"))
+    rows[0]["source_form"] = "⿰木奇"
+    with tsv.open("w", encoding="utf-8-sig", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=rows[0], delimiter="\t")
+        writer.writeheader()
+        writer.writerows(rows)
+    result = apply_review(tsv, map_dir=tmp_path / "maps")
+    assert result["mapped"] == 1
+    entry = json.loads(
+        (tmp_path / "maps" / "synthetic.json").read_text(encoding="utf-8")
+    )["symbol.jpg"]
+    assert entry["source_form"] == "⿰木奇"
+    assert not entry["display_form"]
