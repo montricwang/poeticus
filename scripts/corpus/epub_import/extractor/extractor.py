@@ -64,6 +64,7 @@ def extract_sections(book, html_name, collection=""):
     sections = []
     current = None
     discarded = False
+    skip_region = False
     has_verse = False
     note_category = None
     note_classes = None
@@ -102,17 +103,22 @@ def extract_sections(book, html_name, collection=""):
             }
             if len(scoped) == 1:
                 local_author = scoped.pop()
+                skip_region = False
                 discarded = False
                 local_zone = "main"
             elif "存疑" in preview:
                 local_zone = "doubtful"
+                skip_region = False
                 discarded = False
             elif "补遗" in preview or "辑佚" in preview:
                 local_zone = "supplement"
+                skip_region = False
                 discarded = False
             elif preview.startswith(("导读", "导　读", "总评", "词论")):
+                skip_region = True
                 discarded = True
             else:
+                skip_region = False
                 discarded = False
             continue
         is_supplement_heading = (
@@ -131,7 +137,9 @@ def extract_sections(book, html_name, collection=""):
                 sections[-1]["warnings"].append({
                     "type": "orphan_supplement_marker", "html": html_name
                 })
-            discarded = block.tag == "h2" and is_non_poem(collection, preview)
+            discarded = skip_region or (
+                block.tag == "h2" and is_non_poem(collection, preview)
+            )
             current = None
             has_verse = False
             note_category = None
