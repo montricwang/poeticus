@@ -12,9 +12,11 @@ from .schema import Poem, PoemContent
 from .blocks import iter_source_blocks
 from .rules import (
     INLINE_EDITORIAL_GAP,
+    INLINE_AUTHOR_NOTE_REVIEWS,
     interpret_heading,
     is_chronology,
     is_inline_styled_span,
+    is_pagination_kaiti_continuation,
     is_non_poem,
     is_preface,
     is_separate_title,
@@ -352,6 +354,38 @@ def extract_sections(book, html_name, collection=""):
                     "inside_styled_span": styled_containment,
                     "status": "retained_in_body_pending_schema",
                 })
+            # Two source positions have been manually examined: an author
+            # self-note (Xin) and a possible author note (Huang). Both are
+            # separately tracked WITHOUT stripping text from poem paragraphs.
+            # A future structured inline-note schema must decide how the
+            # normalized reading text excludes such notes without loss.
+            note_review = INLINE_AUTHOR_NOTE_REVIEWS.get(
+                (collection, html_name, block.ordinal)
+            )
+            note_recognized = False
+            if (note_review and current["tune"] in {"西江月", "醉落魄"}):
+                note_spans = [
+                    span for span in element.find_all("span")
+                    if "font1" in span.get("class", [])
+                ]
+                if len(note_spans) == 1:
+                    note_text = note_spans[0].get_text("", strip=True)
+                    if note_text and text.count(note_text) == 1:
+                        first = text.index(note_text)
+                        current["warnings"].append({
+                            "type": ("inline_author_note"
+                                     if note_review == "user_identified_author_note"
+                                     else "inline_author_note_candidate"),
+                            **block.location(),
+                            "category": "text",
+                            "start": first, "end": first + len(note_text),
+                            "text": note_text,
+                            "origin": ("author"
+                                       if note_review == "user_identified_author_note"
+                                       else "unverified"),
+                            "status": "retained_in_body_pending_schema",
+                        })
+                        note_recognized = True
             # A lone span wrapping the *entire* verse paragraph is a normal
             # typography container in several volumes, not an inline gloss.
             # Mixed plain/styled text and multiple styled runs remain reviewable.
@@ -364,6 +398,13 @@ def extract_sections(book, html_name, collection=""):
             )
             if not whole_paragraph_span:
                 for span in element.find_all("span"):
+                    # Do not flag text split by EPUB pagination as a possible
+                    # annotation. Nor duplicate a narrow, source-reviewed
+                    # font1 note with the generic style warning.
+                    if is_pagination_kaiti_continuation(span):
+                        continue
+                    if note_recognized and "font1" in span.get("class", []):
+                        continue
                     if is_inline_styled_span(span):
                         current["warnings"].append({
                             "type": "inline_body_style_review", **block.location()
