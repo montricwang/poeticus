@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from .schema import Poem, PoemContent
 from .blocks import iter_source_blocks
 from .rules import (
+    INLINE_EDITORIAL_GAP,
     interpret_heading,
     is_chronology,
     is_non_poem,
@@ -325,6 +326,24 @@ def extract_sections(book, html_name, collection=""):
         elif category == "text":
             note_category = None
         if category == "text":
+            # Detect an explicit *editorial* lacuna marker even when its span
+            # looks identical in a reader. Keep the exact paragraph intact:
+            # a future edition-aware schema may render the missing segment.
+            # Offsets use the same flattened paragraph_text() that we export.
+            for match in INLINE_EDITORIAL_GAP.finditer(text):
+                inside_span = any(
+                    INLINE_EDITORIAL_GAP.search(span.get_text("", strip=True))
+                    for span in element.find_all("span")
+                )
+                current["warnings"].append({
+                    "type": "inline_editorial_gap",
+                    **block.location(),
+                    "category": "text",
+                    "start": match.start(), "end": match.end(),
+                    "marker": match.group(0),
+                    "inside_span": inside_span,
+                    "status": "retained_in_body_pending_schema",
+                })
             # A lone span wrapping the *entire* verse paragraph is a normal
             # typography container in several volumes, not an inline gloss.
             # Mixed plain/styled text and multiple styled runs remain reviewable.
