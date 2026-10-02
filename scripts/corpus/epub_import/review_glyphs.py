@@ -203,6 +203,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--prepare", action="store_true")
+    action.add_argument("--contexts", action="store_true",
+                        help="从本地 EPUB 按 001–049 编号导出含图片字的完整原文段落")
     action.add_argument("--apply", action="store_true")
     parser.add_argument("--epub", type=Path, default=Path(
         "data/raw/历代名家词集精华录.epub"
@@ -216,32 +218,42 @@ def main():
     parser.add_argument("--tsv", type=Path, default=Path(
         "data/reports/glyph_review.tsv"
     ))
+    parser.add_argument("--context-html", type=Path, default=Path(
+        "data/reports/glyph_contexts.html"
+    ))
     parser.add_argument("--map-dir", type=Path, default=Path(
         "data/raw/glyph_maps"
     ))
     parser.add_argument("--partial", action="store_true",
                         help="保存已填写部分的映射")
     args = parser.parse_args()
-    if args.prepare:
+    if args.prepare or args.contexts:
         if args.partial:
             parser.error("--partial 只能与 --apply 同时使用")
         report = json.loads(args.report.read_text(encoding="utf-8"))
         if report.get("kind") != "private-epub-import-preflight":
             parser.error("报告不是 --all --check 的预检输出")
         book = epub.read_epub(str(args.epub))
-        result = prepare_review(
-            report, book, sheet_path=args.html, tsv_path=args.tsv,
-        )
-        print(
-            f"已准备 {result['unique_images']} 张不同图片字，"
-            f"来自 {result['references']} 个 XHTML 引用"
-        )
-        print(f"字形图版：{result['sheet']}")
-        print(f"人工填写表：{result['tsv']}")
-        if result["missing_assets"]:
-            print("以下图片未在 EPUB 找到，请检查其路径：")
-            for slug, src in result["missing_assets"]:
-                print(f"  {slug} / {src}")
+        if args.contexts:
+            from .glyph_contexts import write_contexts
+            path = write_contexts(report, book, args.context_html)
+            print(f"已保存包含原书完整段落的私有核对页面：{path}")
+            print("每张图片与 glyph_review.html/TSV 使用相同编号；"
+                  "不会覆盖已有填写结果。")
+        else:
+            result = prepare_review(
+                report, book, sheet_path=args.html, tsv_path=args.tsv,
+            )
+            print(
+                f"已准备 {result['unique_images']} 张不同图片字，"
+                f"来自 {result['references']} 个 XHTML 引用"
+            )
+            print(f"字形图版：{result['sheet']}")
+            print(f"人工填写表：{result['tsv']}")
+            if result["missing_assets"]:
+                print("以下图片未在 EPUB 找到，请检查其路径：")
+                for slug, src in result["missing_assets"]:
+                    print(f"  {slug} / {src}")
     else:
         result = apply_review(
             args.tsv, map_dir=args.map_dir, partial=args.partial,
