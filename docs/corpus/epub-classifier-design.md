@@ -122,3 +122,13 @@ python -m scripts.corpus.epub_import.analyze.inspect_inline_samples --style kait
 ```
 
 生成 `data/reports/inline_style_review_plan.md`（可分享无原文）和 `data/reports/inline_style_review_private.md`（含版权正文及原始 span，只供本地人工复核）。待核实 `kaiti` 版式后，再设计明确区分**行内原文**与**行内附注/残缺标记**的结构；当前 `PoemContent.text` 一字不删，避免未经确认的规则扩大影响。
+
+### `font1` 自注与 `kaiti` 分页：第二轮语义复核（2026-10-02）
+
+用户进一步核对原书后指出：辛弃疾《西江月·为范南伯寿》 `text00278.html` 块 135 的行内 `font1` 是**作者自注**；黄庭坚《醉落魄》 `text00214.html` 块 679 的 `font1` **疑似作者自注**，尚待更直接的出处验证。后一处不能据“字体相同”就当作已确认作者身份。黄庭坚该首块 677 是**作者自序**（原 `prefaces` 分类正确），块 680—683 是**独立注释**（原 `annotations` 分类正确）。
+
+最新 `kaiti` 私有 XHTML 样本验证三种截然不同的情况：李煜 `text00045.html` 块 2 的 `span.kaiti` 是明确编辑性残缺标记；纳兰 `text00304.html` 块 123 和 `text00306.html` 块 343 的 `span.kaiti` 均紧接空页码锚点 `<a id="page…">`，包住跨页后的**词正文**。因此 `kaiti` 不是“注释”的语义标志。仅当 `span.kaiti` 紧接空 `page\d+` 锚点，且后方仅剩排版用换行/空白时，现有抽取器不再报普通行内样式疑似注释，正文原样保留；不满足结构条件的样式继续接受复核。
+
+目前采取**保守的可逆处理**：辛弃疾与黄庭坚上述位置分别新增 `inline_author_note`、`inline_author_note_candidate` 类型的来源证据，包含该 XHTML、源块、原展平文字中的位置及原始字词；均以 `retained_in_body_pending_schema` 标记，并在 `PoemContent.text` 中原样保留。这些证据暂时通过 Poem `warnings` 持续到中间导出，**不意味着已生成可供前端直接使用的纯净正文或独立自注字段**。其他 `font1` 尚未核实，不得推广为通用删注规则。
+
+未来若产品需要纯词文与注释分别呈现，需设计 `inline_notes` 结构明确：作者自注/编者注/未证实来源、原书位置（正文段落号及字符区间）、字词内容、是否可从正文展示中移除。应避免仅删除一段 span、使注释在文本和结构化字段中重复或造成源文字丢失。题前作者自序继续使用 `prefaces`，后世独立引证注释继续使用 `annotations`。
