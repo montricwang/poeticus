@@ -402,11 +402,12 @@ def test_nalan_byline_after_unstyled_front_matter_is_not_missed():
     assert poems[1].tune == "金缕曲"
     assert poems[1].content.text == ["附词正文上片", "附词正文下片"]
     assert not any(w["type"] == "missing_inserted_author" for w in poems[1].warnings)
-    assert any(w["type"] == "unclassified_before_inserted_author"
-               for w in poems[1].warnings)
+    assert poems[1].title == "附作前说明文字"
+    assert not any(w["type"] == "unclassified_before_inserted_author"
+                   for w in poems[1].warnings)
     sections = extract_sections(book, "x.html", group)
-    assert sections[1]["unknown"][0]["text"] == "附作前说明文字"
-    assert sections[1]["blocks"][1]["role"] == "unknown_before_author"
+    assert sections[1]["unknown"] == []
+    assert sections[1]["blocks"][1]["role"] == "inserted_title"
     assert sections[1]["blocks"][2]["role"] == "inserted_author"
 
 
@@ -438,3 +439,105 @@ def test_nalan_long_right_aligned_sentence_is_not_preclassified_as_an_author():
     assert poems[0].content.text[0] == "可能是真正的第一段词正文"
     assert not any(w["type"] == "unclassified_before_inserted_author"
                    for w in poems[0].warnings)
+
+
+
+def test_nalan_confirmed_title_between_h4_and_three_character_author():
+    """Original short heading paragraphs are titles, not verse or commentary."""
+    group = "纳兰词集"
+    book = Book({"x.html": (
+        '<h4 class="kindle-cn-heading4">金缕曲</h4>'
+        '<p>赠知己，次友人韵。</p>'
+        '<p class="kindle-cn-para-right">严某某</p>'
+        '<p>合成正文甲</p><p>合成正文乙</p>'
+    )})
+    toc = [node(group, [node("词", href="x.html")])]
+    poems, _ = extract_collection(book, toc, group, "na", "纳兰性德")
+    assert len(poems) == 1
+    poem = poems[0]
+    assert poem.author == "严某某"
+    assert poem.tune == "金缕曲"
+    assert poem.title == "赠知己，次友人韵。"
+    assert poem.content.text == ["合成正文甲", "合成正文乙"]
+    assert not any(w["type"].startswith("unclassified") for w in poem.warnings)
+
+
+def test_nalan_two_separate_title_regions_stay_pending():
+    """An existing h4 subtitle plus another title p is not silently merged."""
+    group = "纳兰词集"
+    book = Book({"x.html": (
+        '<h4 class="kindle-cn-heading4">金缕曲'
+        '<span class="small">先有词题</span></h4>'
+        '<p>另有不同的题下注。</p>'
+        '<p class="kindle-cn-para-right">陈某某</p>'
+        '<p>合成正文</p>'
+    )})
+    section = extract_sections(book, "x.html", group)[0]
+    assert section["title"] == "先有词题"
+    assert section["unknown"][0]["text"] == "另有不同的题下注。"
+    assert any(w["type"] == "unclassified_before_inserted_author"
+               for w in section["warnings"])
+    assert section["author_override"] == "陈某某"
+
+
+def test_zhou_verified_extended_commentary_is_scoped_to_work_and_blocks():
+    """Both quoted sources and scholarly prose stay in commentary for one run."""
+    # h1 block 1, h2 block 2, verse blocks 3..18, ◆ block 19,
+    # checked continuation blocks 20..38, second work begins at 39.
+    paragraphs = "".join("<p>合成正文</p>" for _ in range(16))
+    continuation = "".join(
+        ('<p class="kindle-cn-ref">合成古籍引文</p>' if i % 2 == 0
+         else "<p>合成学者分析</p>")
+        for i in range(19)
+    )
+    book = Book({"text00241.html": (
+        "<h1>周邦彦词集</h1><h2>少年游</h2>"
+        + paragraphs + "<p>◆合成评论</p>" + continuation
+        + "<h2>下一首</h2><p>下一首正文</p><p>◆另一评论</p>"
+        + '<p class="kindle-cn-ref">未验证的引文</p>'
+    )})
+    one, two = extract_sections(book, "text00241.html", "周邦彦词集")
+    assert len(one["commentaries"]) == 1
+    assert len(one["commentaries"][0].splitlines()) == 20
+    assert one["unknown"] == []
+    assert len([w for w in one["warnings"]
+                if w["type"] == "verified_commentary_continuation"]) == 19
+    assert len(two["unknown"]) == 1
+    assert two["unknown"][0]["text"] == "未验证的引文"
+    assert any(w["type"] == "unclassified_after_notes" for w in two["warnings"])
+
+
+def test_zhou_second_verified_run_preserves_no_indent_ending():
+    # 503 synthetic paragraphs before the second target h2, so its source
+    # ordinal is 504; verse 505..509, comment 510, two more notes 511..512.
+    html = (
+        "<p>前置非作品材料</p>" * 503
+        + "<h2>红林檎近</h2>"
+        + "<p>模拟词句</p>" * 5
+        + "<p>◆合成评论</p>"
+        + '<p class="kindle-cn-ref">合成文献资料</p>'
+        + '<p class="kindle-cn-para-no-indent">合成考据说明</p>'
+    )
+    section = extract_sections(
+        Book({"text00241.html": html}), "text00241.html", "周邦彦词集"
+    )[0]
+    assert section["ordinal"] == 504
+    assert section["unknown"] == []
+    assert section["commentaries"] == [
+        "◆合成评论\n合成文献资料\n合成考据说明"
+    ]
+    assert len([w for w in section["warnings"]
+                if w["type"] == "verified_commentary_continuation"]) == 2
+
+
+def test_zhou_verified_numbering_cannot_bleed_to_other_collections():
+    book = Book({"text00241.html": (
+        "<h1>词集</h1><h2>少年游</h2>"
+        + "<p>正文</p>" * 16
+        + "<p>◆评论</p>"
+        + '<p class="kindle-cn-ref">其他词集的引文</p>'
+    )})
+    s = extract_sections(book, "text00241.html", "秦观词集")[0]
+    assert s["unknown"][0]["text"] == "其他词集的引文"
+    assert not any(w["type"] == "verified_commentary_continuation"
+                   for w in s["warnings"])
