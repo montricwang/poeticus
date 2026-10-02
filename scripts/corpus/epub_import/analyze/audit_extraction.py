@@ -142,8 +142,8 @@ def audit_book(book, toc, only=None):
 def render_md(report):
     lines = [
         "# EPUB 15 册抽取审计（候选结果，未经文学校勘）", "",
-        "| 分册 | XHTML | 候选词作 | 告警涉及作品 | 作者待定 | 空正文 | 正文混入注评标记 | 未追踪源块 | 其他标签文字 |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| 分册 | XHTML | 候选词作 | 告警涉及作品 | 作者待定 | 空正文 | 正文混入注评标记 | 未追踪源块 | 待处理年代标记 | 其他标签文字 |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for item in report["results"]:
         lines.append(
@@ -152,6 +152,7 @@ def render_md(report):
             f'{item["unassigned_author"]} | {item["empty_body"]} | '
             f'{item["note_marker_in_body"]} | '
             f'{item["source_coverage"]["untracked_blocks"]} | '
+            f'{item["source_coverage"]["internal_chronology_not_exported"]} | '
             f'{item["source_coverage"]["unsupported_text_nodes"]} |'
         )
     for item in report["results"]:
@@ -165,8 +166,26 @@ def render_md(report):
                       f'{item["source_coverage"]["total_blocks"]} 块中，'
                       f'{item["source_coverage"]["handled_blocks"]} 块有抽取证据，'
                       f'{item["source_coverage"]["excluded_blocks"]} 块按已知版式排除，'
-                      f'{item["source_coverage"]["untracked_blocks"]} 块未追踪；'
+                      f'{item["source_coverage"]["untracked_blocks"]} 块未追踪，'
+                      f'{item["source_coverage"]["internal_chronology_not_exported"]} '
+                      '块年代标记仅作中间上下文、未进入 Poem，'
                       f'{item["source_coverage"]["unsupported_text_nodes"]} 处文字位于非扫描标签内。', ""])
+        chronology = item["source_coverage"]["chronology_sites"]
+        if chronology:
+            lines.append(
+                "年代标记（只用于临时章节上下文、未写入最终 Poem；"
+                "是否作为编年元数据保留，需人工决定）："
+            )
+            for site in chronology[:10]:
+                lines.append(
+                    f'- `{site["html"]}` 块 {site["block"]} '
+                    f'`{site["tag"]}` '
+                    f'class=`{",".join(site["classes"]) or "-"}` '
+                    f'（{site["text_length"]}字）'
+                )
+            if len(chronology) > 10:
+                lines.append(f'- 其余 {len(chronology) - 10} 处见本地 JSON')
+            lines.append("")
         missing = item["source_coverage"]["untracked_sites"]
         if missing:
             lines.append("未追踪源块（仅结构，不含原文；需确认后才允许忽略）：")
