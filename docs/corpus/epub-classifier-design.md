@@ -77,3 +77,23 @@ python -m scripts.corpus.epub_import.analyze.sample_classification --round 1 --l
 第一阶段采用确定性的轮次轮换（`--round 2`、`--round 3`）和按作品去重，优先选择五种情况：推定评论续段、推定注释续段、正文中的特殊字体、无告警但含注评的复杂作品、无告警的普通作品；每批尽量来自不同分册。某类候选为空则跳过。
 
 **注意：这只是为了高效发现分类逻辑缺陷的分层诊断，不是随机统计抽样，也不能从 5 个例子判断是否达到 95% 的字段准确率。** 每轮由用户反馈「正确 / 应归为某字段 / 仍无法判断」，由开发侧将有根据的结果转成分册规则与合成回归测试；以后需要另外建立有代表性的随机标注集才能报告准确率。
+
+## 行内样式是否等于校勘标记？先核对再分类
+
+第一轮人工样本 R01-03（李煜《谢新恩》，`text00045.html` 块 2）含“（以下缺）”；但原先的 `classification_review_private.md` 仅把整个 p 展开为普通文字，没有呈现 span 内部内容与 CSS，**不能据此证明“（以下缺）”用了特殊字体**。`inline_body_style_review` 只说明正文段落有独立样式的 span，而且可能是段内别的词句。原书阅读器呈现的字形差异也未被验证。
+
+新增只读的全册结构诊断（不改正文归类）：
+
+```powershell
+python -m scripts.corpus.epub_import.analyze.audit_inline_styles --output data/reports/epub_inline_style_audit.md
+```
+
+它对所有正文段落同时检测两件事：是否触发 `inline_body_style_review`，以及是否出现明确形态的 `（以下缺）` 残缺标记（兼容半角括号）。分别统计残缺标记是否处在带样式 span 内、是否出现在完全没有样式告警的段落，按分册聚合样式 class/style 和块号。报告**只含结构、计数与源位置，不含商业原文**。
+
+定位李煜原始标签可单独运行：
+
+```powershell
+python -m scripts.corpus.epub_import.analyze.inspect_source --html text00045.html --block 2 --before 0 --after 0 --show-html --book "李煜词集（附：李璟词集 冯延巳词集）" --output data/reports/nantang_030_markup_private.md
+```
+
+后者**包含原文，只能留在本地**；要交流时截取必要的最短 HTML 片段即可。先确认“（以下缺）”是否与 CSS span 对齐、其他 56 处样式是否同一类，再决定是否需要专门的行内校勘数据结构。无证据时不得直接删除正文中的残缺标记，也不得将所有样式 span 一律当注释。
