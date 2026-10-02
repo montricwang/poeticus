@@ -11,6 +11,7 @@ from pathlib import Path
 from ebooklib import epub
 
 from ..epub.reader import parse_toc
+from .coverage import source_block_coverage
 from ..extractor.extractor import (
     extract_collection, extract_sections, find_toc_group, toc_file_contexts,
 )
@@ -61,6 +62,7 @@ def audit_collection(book, toc, name, author, slug):
     ]
     if len(poems) != len(sections):
         raise RuntimeError(f"{name}: poem/section order mismatch")
+    coverage = source_block_coverage(book, files, sections, name)
     warnings = Counter()
     review = []
     for poem, section in zip(poems, sections):
@@ -112,6 +114,7 @@ def audit_collection(book, toc, name, author, slug):
             })
     return {
         "collection": name, "xhtml_count": len(files),
+        "source_coverage": coverage,
         "candidate_poems": len(poems), "author_counts": dict(Counter(
             p.author for p in poems
         )), "warning_counts": dict(warnings),
@@ -139,15 +142,16 @@ def audit_book(book, toc, only=None):
 def render_md(report):
     lines = [
         "# EPUB 15 册抽取审计（候选结果，未经文学校勘）", "",
-        "| 分册 | XHTML | 候选词作 | 待核查位置 | 作者待定 | 空正文 | 正文混入注评标记 |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| 分册 | XHTML | 候选词作 | 告警涉及作品 | 作者待定 | 空正文 | 正文混入注评标记 | 未追踪源块 |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for item in report["results"]:
         lines.append(
             f'| {item["collection"]} | {item["xhtml_count"]} | '
             f'{item["candidate_poems"]} | {len(item["review_items"])} | '
             f'{item["unassigned_author"]} | {item["empty_body"]} | '
-            f'{item["note_marker_in_body"]} |'
+            f'{item["note_marker_in_body"]} | '
+            f'{item["source_coverage"]["untracked_blocks"]} |'
         )
     for item in report["results"]:
         lines.extend(["", f'## {item["collection"]}', "",
@@ -155,7 +159,25 @@ def render_md(report):
                       f'告警分布：{item["warning_counts"]}', "",
                       f'待分类段落：{item["unclassified_block_count"]} 块，'
                       f'涉及 {item["unclassified_work_count"]} 首候选作品；'
-                      '这些段落不会进入 PoemContent，未复核前不允许直接导出。', ""])
+                      '这些段落不会进入 PoemContent，未复核前不允许直接导出。', "",
+                      '源块去向：'
+                      f'{item["source_coverage"]["total_blocks"]} 块中，'
+                      f'{item["source_coverage"]["handled_blocks"]} 块有抽取证据，'
+                      f'{item["source_coverage"]["excluded_blocks"]} 块按已知版式排除，'
+                      f'{item["source_coverage"]["untracked_blocks"]} 块未追踪。', ""])
+        missing = item["source_coverage"]["untracked_sites"]
+        if missing:
+            lines.append("未追踪源块（仅结构，不含原文；需确认后才允许忽略）：")
+            for site in missing[:10]:
+                lines.append(
+                    f'- `{site["html"]}` 块 {site["block"]} '
+                    f'`{site["tag"]}` '
+                    f'class=`{",".join(site["classes"]) or "-"}` '
+                    f'（{site["text_length"]}字）'
+                )
+            if len(missing) > 10:
+                lines.append(f'- 其余 {len(missing) - 10} 处见本地 JSON')
+            lines.append("")
         # Put records likely to affect meaning or authorship first. Keep
         # original source order among records of equal severity.
         ordered_reviews = sorted(
