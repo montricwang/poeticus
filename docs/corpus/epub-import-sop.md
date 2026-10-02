@@ -164,3 +164,26 @@ python -m scripts.corpus.epub_import.import_poems --all
 默认每册 glyph 映射位于 `data/raw/glyph_maps/<slug_with_underscore>.json`；全量模式可用 `--glyph-map-dir` 指定另一目录。只要输入本身仍有图片字，就必须先核对字形；全量模式**绝不调用 `input()`**。旧的单册模式仍可在交互终端中提取待核对图片并调用 `glyph_mapping.py` 保存人工映射；它现在也正确尊重 `--epub` 指定的实际文件，而不误用默认路径。
 
 原始 EPUB、图片映射、报告和导出 JSON 都是本地私有数据，不要提交公共仓库。此处的“导出完成”指**无损中间数据层**：并未按前端 `stanzas` / `preface` / `review_status` 格式转换，也未将所有 `font1` 行内自注从阅读正文中删除。下一阶段需要独立决定这些内容的审校状态与展示方式，不可仅凭字段存在宣称文学准确率。
+
+### 11.1 本次真实预检后的图片字集中处理
+
+十五册真实预检（用户本地，2026-10-02）：`total_candidate_poems=3491`、`total_unexportable_issues=0`、`total_missing_glyph_sites=54`、`ready_to_export=false`。54 是 XHTML 文件/图片的引用位置；重复图片在不同 XHTML 出现多次，按分册和图片 filename 合并后，理论上待辨认的**不同图片约 49 张**（以用户本地脚本统计结果为准）。不应在此阶段把真实图片/对应原书内容发布到 GitHub。
+
+不建议直接用 `import_poems.py --all`：只会因为未解决图片字而停止。为避免旧版单册命令一张张询问，在代码根目录运行：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyphs --prepare
+```
+
+它读取已存在的 `data/reports/epub_import_preflight.json` 和本地 EPUB，把去重后的图片字提取到 `data/reports/glyph_review_images/`，生成可在浏览器打开的**本地字形画廊** `data/reports/glyph_review.html`，及可直接在 VS Code/Excel 编辑的 `data/reports/glyph_review.tsv`；两者都在 gitignore 下。TSV 按编号对应图片，每行保留 `slug`、`src`、引用页面；只填写 `source_form`（原字），需要替代显示时才填 `display_form`（仅一字）。原字可填正常汉字、`U+XXXX` 或 IDS 组合字形（IDS 必须有显示代用字）。
+
+填写后运行：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyphs --apply
+python -m scripts.corpus.epub_import.import_poems --all --check
+```
+
+应用操作会先完整校验 TSV，禁止与已有分册映射相冲突，再调用现有 `glyph_mapping.save_map()` 写入每册 `data/raw/glyph_maps/<slug>.json`。遇到难字可先使用 `--apply --partial` 保存已解决的映射；重新生成画廊时不会覆盖含人工填写内容的 TSV。若 EPUB 同一个 slug/src 名称对应不同图片内容，会停止并提示冲突，不能武断合并。预检报告若出现未找到的图片资源，也须按 XHTML 路径检查，不能盲目填字。
+
+**给 AI 协作的建议**：用本地 HTML 打开后可以按屏幕区域截取少量字形图发来，先由 AI 识别可辨认的常见字，再人工确认疑难字；不要提交整本商业 EPUB 或整套私有字形资料。等 `--all --check` 报告无阻断项才执行 `--all`。
