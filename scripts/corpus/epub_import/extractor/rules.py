@@ -46,6 +46,42 @@ def is_inline_styled_span(span):
     )
 
 
+# Scoped human-review evidence for the particular commercial EPUB layout.
+# Do not infer 'author's note' from font1 globally: other font1 spans can
+# represent editorial glosses or simply typesetting.
+# The second case is only a candidate; authorship has not been established.
+INLINE_AUTHOR_NOTE_REVIEWS = {
+    ("辛弃疾词集", "text00278.html", 135): "user_identified_author_note",
+    ("黄庭坚词集", "text00214.html", 679): "possible_author_note",
+}
+
+
+def is_pagination_kaiti_continuation(span):
+    """A kaiti span used for verse split by an EPUB page marker.
+
+    Requires an immediately preceding empty page anchor and no meaningful
+    content after the span apart from layout <br> nodes. This does not classify
+    generic kaiti text or other styled spans as verse.
+    """
+    if span.name != "span" or "kaiti" not in span.get("class", []):
+        return False
+    previous = span.previous_sibling
+    while previous is not None and not str(previous).strip():
+        previous = previous.previous_sibling
+    if (previous is None or getattr(previous, "name", None) != "a"
+            or not re.fullmatch(
+                r"page\d+", previous.get("id", "")
+            ) or previous.get_text("", strip=True)):
+        return False
+    after = span.next_sibling
+    while after is not None:
+        if getattr(after, "name", None) == "br" or not str(after).strip():
+            after = after.next_sibling
+        else:
+            return False
+    return True
+
+
 def is_non_poem(collection, heading):
     name = heading.strip()
     return name in EDITORIAL_HEADINGS or name in NON_POEMS.get(collection, set())
