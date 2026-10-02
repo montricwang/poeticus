@@ -170,3 +170,61 @@ def test_inline_body_style_warns_without_erasing_original_text():
     s = extract_sections(book, "x.html", "贺铸词集")[0]
     assert s["text"] == ["上句小注下句"]
     assert any(w["type"] == "inline_body_style_review" for w in s["warnings"])
+
+
+def test_unmarked_preverse_annotation_continuation_is_not_verse():
+    book = Book({"x.html": (
+        "<h2>浣溪沙</h2>"
+        '<p class="note">◎材料第一段</p>'
+        '<p class="note">材料第二段</p>'
+        '<p class="verse">真正正文</p>'
+    )})
+    section = extract_sections(book, "x.html", "秦观词集")[0]
+    assert section["annotations"] == ["◎材料第一段\n材料第二段"]
+    assert section["text"] == []
+    assert section["unknown"][0]["text"] == "真正正文"
+    assert any(w["type"] == "unclassified_after_notes" for w in section["warnings"])
+
+
+def test_reference_after_verse_requires_review_instead_of_becoming_verse():
+    book = Book({"x.html": (
+        "<h2>少年游</h2><p>真正正文</p>"
+        '<p class="kindle-cn-ref">后附引证材料</p>'
+    )})
+    section = extract_sections(book, "x.html", "周邦彦词集")[0]
+    assert section["text"] == ["真正正文"]
+    assert section["unknown"][0]["text"] == "后附引证材料"
+    assert any(w["type"] == "ambiguous_reference_after_verse"
+               for w in section["warnings"])
+
+
+def test_unsigned_inserted_work_has_no_fabricated_author_or_tune_inheritance():
+    group = "纳兰词集"
+    book = Book({"x.html": (
+        "<h2>采桑子</h2><p>本集正文</p>"
+        '<h4 class="kindle-cn-heading4">附作调名</h4><p>附作正文</p>'
+        "<h2>又</h2><p>本集另一首</p>"
+    )})
+    toc = [node(group, [node("正文", href="x.html")])]
+    poems, _ = extract_collection(book, toc, group, "nalan", "纳兰性德")
+    assert [p.author for p in poems] == ["纳兰性德", "", "纳兰性德"]
+    assert [p.tune for p in poems] == ["采桑子", "附作调名", "采桑子"]
+    assert any(w["type"] == "missing_inserted_author" for w in poems[1].warnings)
+
+
+def test_images_inside_heading_keep_original_character_order():
+    book = Book({"x.html": (
+        '<h2>临<img src="g1"/>江仙'
+        '<span class="small">咏<img src="g2"/>梅</span></h2><p>正文</p>'
+    )})
+    section = extract_sections(book, "x.html", "辛弃疾词集")[0]
+    assert section["tune"] == "临{{glyph:g1}}江仙"
+    assert section["title"] == "咏{{glyph:g2}}梅"
+    assert [w["src"] for w in section["warnings"] if w["type"] == "inline_image"] == ["g1", "g2"]
+
+
+def test_missing_image_src_never_disappears_silently():
+    book = Book({"x.html": "<h2>新调</h2><p>起句<img/>末句</p>"})
+    section = extract_sections(book, "x.html", "柳永词集")[0]
+    assert section["text"] == ["起句{{glyph:missing-src}}末句"]
+    assert any(w["type"] == "missing_image_src" for w in section["warnings"])
