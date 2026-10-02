@@ -154,3 +154,30 @@ def test_export_guard_blocks_pre_author_and_post_verse_unknown():
     assert "2 首" in str(exc.value)
     assert "unclassified_before_inserted_author" in str(exc.value)
     assert "ambiguous_reference_after_verse" in str(exc.value)
+
+
+
+def test_nalan_preface_is_visible_as_lengths_without_leaking_original_words():
+    from scripts.corpus.epub_import.analyze.audit_extraction import audit_collection
+
+    class NalanBook:
+        def get_item_with_href(self, href):
+            if href != "x.html":
+                return None
+            return Item(
+                '<h4 class="kindle-cn-heading4">金缕曲</h4>'
+                '<p>赠故友，次前作韵。</p>'
+                '<p class="kindle-cn-para-right">严某某</p>'
+                '<p>合成上片</p><p>合成下片</p>'
+            )
+
+    toc = [{"title": "纳兰词集", "children": [
+        {"title": "附词", "href": "x.html"}]}]
+    summary = audit_collection(NalanBook(), toc, "纳兰词集", "纳兰性德", "na")
+    assert summary["unclassified_block_count"] == 0
+    review = summary["review_items"][0]
+    assert review["preface_lengths"] == [len("赠故友，次前作韵。")]
+    md = render_md({"results": [summary]})
+    assert "附词独立题序：1 段" in md
+    assert "赠故友" not in md
+    assert "严某某" in md
