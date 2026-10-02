@@ -1,0 +1,42 @@
+# 15 册词集：规则抽取与本地审计
+
+范围：仅《历代名家词集精华录》的 15 个作者词集分册。词话、词谱、格律文献不使用 Poem 抽取器。不要将 EPUB、画像报告、现代注评、图片映射或真实抽取 JSON 提交到公开仓库。
+
+## 本次规则
+
+- SourceBlock 先保存来源 XHTML、块序号、标签、class、标题内部的子片段与换行，再做语义判断。证据只保存在提取阶段，不改变当前 Poem Schema。
+- 按 TOC 子词集给温韦、二晏和南唐三词人归属作者；纳兰集用【附】＋h4＋作者段落识别附词作者。
+- 「又」仅在同一作者、同一文献区域内继承。存疑作品产生归属提醒。
+- `◆/◎` 后无符号内容不直接视为词正文：仅相同直接 class/style 的连续段落先合并为候选续段，发出 `inferred_note_continuation`；否则发出 `unclassified_after_notes`，保留全文待核对。
+- 小字夹注保留原文字并发出 `inline_body_style_review`，暂不擅自删除。
+- 李清照逐句 p 的空段保留空字符串，表示原书显式分片，但此数组不是已经清理好的前端分阕数据。
+
+## 一条命令审计 15 册
+
+在仓库根目录安装依赖并保留本地 EPUB 后：
+
+```bash
+python -m scripts.corpus.epub_import.analyze.audit_extraction
+```
+
+只检查一册：
+
+```bash
+python -m scripts.corpus.epub_import.analyze.audit_extraction --book "纳兰词集"
+```
+
+默认输出位于 git 忽略的本地文件：
+
+- `data/reports/epub_extraction_audit.md`：按册汇总、各册前 12 条待查记录。
+- `data/reports/epub_extraction_audit.json`：完整告警位置，可能包含受版权保护文本，严禁公开。
+
+审计命令不执行图片字的交互式人工确认，不导出 curated Poem，不执行 normalization。先看空正文、未解析调名、正文混入注评标记，再核查续段候选、无法分类块、行内样式，以及存疑词和附词作者。
+
+## 复核建议
+
+1. 每册抽查普通、稀有、异常、首尾及随机作品。
+2. 检查合刊作者切换，纳兰附词的实际作者，「又」是否错误继承。
+3. 检查贺铸词调与自命名顺序、柳永独立词题、姜夔编年、李清照的空段分片及注评跨段。
+4. 如发现错误，提取不含商业文本的最小合成用例后修正规则。
+
+注意：GitHub CI 只能证明合成测试通过，不能由此宣称 15 册的文学语义抽取准确。
