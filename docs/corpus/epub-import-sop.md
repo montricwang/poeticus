@@ -209,3 +209,26 @@ python -m scripts.corpus.epub_import.review_glyphs --contexts
 输出 `data/reports/glyph_contexts.html`：**49 张图片继续沿用原 `glyph_review.html`、`glyph_review.tsv` 的 001–049 编号，绝不根据字形相似程度合并**。自带离线图片预览、分册、XHTML 文件名、与 `inspect_source` 一致的源块号、最近章节标题及目标图片在整个原书段落中的真实位置；黄色标记为本卡图片，蓝色标记为同段其他图片。如果同一图片在多个文件、多个段落或者同段出现多次，会保留所有原始位置，不只展示一个例子。除 `h1/h2/h4/p` 外的来源不做无依据的猜测：预检记录对应图片但找不到源块时明确抛错。
 
 **与只展示少量邻近文字的 `review_glyph_contexts.py` 不同**，这份 HTML 展示完整段落，适合复制原句搜索通行版本。生成步骤只读取原有 `epub_import_preflight.json` 和原 EPUB，**不改动/覆盖已有字形 TSV 或 HTML 填写页面**，也不写新的 glyph_map，用户可并排打开填写表和原文上下文。本地报告嵌有商业原书文字及图片，必须留在 gitignore 下，不提交公共仓库；讨论某个争议时只分享必要短片段。
+
+### 11.3 直接导入字形画廊的 JSON 备份（用户已完成 49 张）
+
+本地字形核对页导出的 `glyph_review_backup.json` 是结构化备份，不必重新誊抄到 TSV。实际人工校对备份与原始 `epub_import_preflight.json` 对照结果：49 条 `records` 均与来源图片/分册/顺序一一匹配；49 项 `values` 都有 `source_form`；14 项有人审定的 `display_form`；仅编号 020 的 `⿰缶吾` 暂时只有 IDS，没有可证实的 Unicode 单字替代。**这是已描述构形、尚未确定单字字形的情况，不是校对未完成。**
+
+将备份文件放到 `data/reports/glyph_review_backup.json`（或使用 `--backup` 指定本地路径）。执行：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyphs --import-backup
+python -m scripts.corpus.epub_import.import_poems --all --check
+```
+
+`--import-backup` 先严格校验 `poeticus-glyph-review-v1`、49 号与预检结果对应的 `(slug,src)`，核对原字符确为 Unicode 单字或以 IDS 操作符开头的结构；整批与已有私有 glyph map 存在任何冲突时拒绝覆盖，正确时分别合并写入 `data/raw/glyph_maps/<slug>.json`。命令不打开 EPUB、不访问网络、不调用 OCR，也不会提交字形数据至仓库。若备份路径不同：`--backup "C:/Users/.../Downloads/glyph_review_backup(1).json"`。
+
+没有可信替代字的 IDS（例如编号 020 `⿰缶吾`）**不强迫填入一个猜测的汉字**：规范化后的中间 JSON 用 IDS 字符序列在词文内占位，同时图片字的 `inline_image` warning 保留原始 `src`、`source_form` 和 `status=ids_transcription`，表示它**不是单个 Unicode 统一汉字，未来前端应通过原图或 IDS 专门显示**。当存在明确代用字，则规范化正文显示 `display_form`，warning 仍保存 `source_form`。已有 TSV 手工导入、单字 glyph CLI 也统一允许合法 IDS 不带 `display_form`。
+
+如果 `--all --check` 输出 `ready_to_export=true`、`missing_glyphs=0`、`unexportable=0`，再运行：
+
+```powershell
+python -m scripts.corpus.epub_import.import_poems --all
+```
+
+这一步生成十五册原始/规范化 Poem 中间 JSON，以及 `data/output/all_normalized.json`。此处完成的是**导出管线与人工确认字形的录入**，不是宣布古籍语义分类准确率达到 95%，也不是前端清商所需的纯净诗词结构；行内作者自注仍保留在原句，最终阅读层的拆分仍需后续实现。
