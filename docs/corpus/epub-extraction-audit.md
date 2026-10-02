@@ -52,3 +52,8 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction --book "纳兰词�
 第三次真实审计（同日，纳兰与周邦彦定点复跑）：纳兰 356 首的作者待定数从 3 降为 0，之前三处署名分别识别为严绳孙、陈维崧、严绳孙；原本在署名前的 3 个短段落仍列为 `unclassified_before_inserted_author`，不得无证据当成正文或小序。周邦彦虽然出现 21 个 `unclassified_after_notes`，但集中在两首（`zhou-bangyan-001` 19 块、`zhou-bangyan-055` 2 块）；这批段落在 `◆` 后交错使用 `kindle-cn-ref` 与普通 `p`，不能由排版 alone 判断到底是续注、引用还是其他编辑材料。
 
 **导出安全线：** `extract_sections` 将这些未归类文字留在本地临时 evidence，`PoemContent` 不含 `unknown` 字段。为了避免 `import_poems` 静默抛弃文本，正常导入只要遇到 `unclassified_after_notes`、`unclassified_before_inserted_author` 或 `ambiguous_reference_after_verse` 就必须在写任何 JSON 前停止。用户需在私有 EPUB 中复核，再落实真实的语义规则或有依据的跳过决定；不提供默认绕过选项。审计报告按册显示受影响作品数与待分类段落数。这不等于要求这些现代注评未来全部进入面向用户的 Poem Schema。
+
+
+第四次审计输入（2026-10-02，本地人工复核具体原文）：纳兰三个附作 `h4 → 普通 p → 署名 p` 中，普通段落实际是赠答对象、和韵关系与作词缘由，因此完整保留为 `title`，不再标为 `unknown`；如果 h4 本来已有另一词题，则仍保留待分类并阻止导出，避免静默覆盖。周邦彦两首词后的 19+2 个段落已由本地原文核实为 `◆` 评论延续中的文献引证及考辨，分别确认 `text00241.html` 的作品起始块 2（段落块 20–38）、作品起始块 504（段落块 511–512）。因此仅在这两个 **具体来源和块号范围**，且确实已进入 `commentaries` 状态、块 class 符合既定格式时并入评论；保留 `verified_commentary_continuation` 审计依据。若版本或排版变化，仍归为 unknown 并触发导入拦截。不要把这次确认扩大为“凡 `kindle-cn-ref` 都是注评”或“凡 ◆ 后所有 p 都是评论”。
+
+以上两处调整尚需重新在本地真实 EPUB 上运行审计，以验证两个分册的待分类块归零；新增合成测试只能验证规则，不代替这一步。
