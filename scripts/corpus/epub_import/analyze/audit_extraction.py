@@ -39,10 +39,13 @@ def audit_collection(book, toc, name, author, slug):
     """Capture summary statistics and all warning sites in source order."""
     poems, files = extract_collection(book, toc, name, slug, author)
     nodes = find_toc_group(toc, name)
-    contexts = dict(
-        (filename, (a, zone)) for filename, a, zone
-        in toc_file_contexts(nodes or [], name, author)
-    )
+    contexts = {}
+    for filename, owner, zone in toc_file_contexts(nodes or [], name, author):
+        value = (owner, zone)
+        if filename in contexts and contexts[filename] != value:
+            contexts[filename] = ("", "unknown")
+        else:
+            contexts.setdefault(filename, value)
     sections = [
         section for filename in files
         for section in extract_sections(book, filename, collection=name)
@@ -61,7 +64,8 @@ def audit_collection(book, toc, name, author, slug):
                 "tune": poem.tune, "title": poem.title,
                 "source": {"html": section["html"], "block": section["ordinal"],
                            "anchor": section["anchor"]},
-                "zone": contexts.get(section["html"], (None, "unknown"))[1],
+                "zone": section.get("zone_override") or
+                        contexts.get(section["html"], (None, "unknown"))[1],
                 "warning_types": sorted({i["type"] for i in poem.warnings}),
                 "warnings": poem.warnings,
                 "unknown_blocks": section["unknown"],
@@ -72,6 +76,7 @@ def audit_collection(book, toc, name, author, slug):
             p.author for p in poems
         )), "warning_counts": dict(warnings),
         "missing_tune": sum(p.tune is None for p in poems),
+        "unassigned_author": sum(not p.author for p in poems),
         "empty_body": sum(not p.content.text for p in poems),
         "note_marker_in_body": sum(
             any(line.lstrip().startswith(("◆", "◎")) for line in p.content.text)
@@ -92,14 +97,15 @@ def audit_book(book, toc, only=None):
 def render_md(report):
     lines = [
         "# EPUB 15 册抽取审计（候选结果，未经文学校勘）", "",
-        "| 分册 | XHTML | 候选词作 | 待核查位置 | 空正文 | 正文混入注评标记 |",
-        "|---|---:|---:|---:|---:|---:|",
+        "| 分册 | XHTML | 候选词作 | 待核查位置 | 作者待定 | 空正文 | 正文混入注评标记 |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for item in report["results"]:
         lines.append(
             f'| {item["collection"]} | {item["xhtml_count"]} | '
             f'{item["candidate_poems"]} | {len(item["review_items"])} | '
-            f'{item["empty_body"]} | {item["note_marker_in_body"]} |'
+            f'{item["unassigned_author"]} | {item["empty_body"]} | '
+            f'{item["note_marker_in_body"]} |'
         )
     for item in report["results"]:
         lines.extend(["", f'## {item["collection"]}', "",
