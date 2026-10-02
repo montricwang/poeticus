@@ -70,6 +70,8 @@ def extract_sections(book, html_name, collection=""):
     note_style = None
     awaiting_supplement = False
     chronology = None
+    local_author = None
+    local_zone = None
 
     def add_evidence(section, block, role, text=""):
         section["blocks"].append({**block.location(), "role": role, "text": text})
@@ -77,6 +79,42 @@ def extract_sections(book, html_name, collection=""):
     for block in iter_source_blocks(soup, html_name):
         element = block.element
         preview = block.text
+        if block.tag == "h1":
+            # An h1 can switch authors within the same XHTML. Close the
+            # previous poem before reading prose or the next author's works.
+            if current is not None:
+                if current["inserted"] and not current["author_override"]:
+                    current["warnings"].append({
+                        "type": "missing_inserted_author", "html": html_name,
+                        "block": current["ordinal"],
+                    })
+                sections.append(current)
+                current = None
+            has_verse = False
+            note_category = None
+            note_classes = None
+            note_style = None
+            awaiting_supplement = False
+            heading_name = "".join(preview.split())
+            scoped = {
+                name for label, name in VOLUME_AUTHORS.get(collection, {}).items()
+                if heading_name in ("".join(label.split()), name)
+            }
+            if len(scoped) == 1:
+                local_author = scoped.pop()
+                discarded = False
+                local_zone = "main"
+            elif "存疑" in preview:
+                local_zone = "doubtful"
+                discarded = False
+            elif "补遗" in preview or "辑佚" in preview:
+                local_zone = "supplement"
+                discarded = False
+            elif preview.startswith(("导读", "导　读", "总评", "词论")):
+                discarded = True
+            else:
+                discarded = False
+            continue
         is_supplement_heading = (
             "纳兰" in collection and block.tag == "h4"
             and "kindle-cn-heading4" in block.classes
@@ -124,7 +162,8 @@ def extract_sections(book, html_name, collection=""):
                 "warnings": issues, "html": html_name,
                 "anchor": block.anchor, "ordinal": block.ordinal,
                 "chronology": chronology, "inserted": is_supplement_heading,
-                "author_override": None,
+                "author_override": None if is_supplement_heading else local_author,
+                "zone_override": local_zone,
             }
             add_evidence(current, block, "work_start", preview)
             continue
@@ -360,12 +399,13 @@ def extract_collection(book, toc, group_name, author_slug, author_name):
     if entries is None:
         raise ValueError(f"未找到词集：{group_name}")
     file_context = {}
-    conflicts = set()
+    conflicts = {}
     for file_name, author, zone in toc_file_contexts(
         entries, group_name, author_name
     ):
-        if file_name in file_context and file_context[file_name] != (author, zone):
-            conflicts.add(file_name)
+        previous = file_context.get(file_name)
+        if previous is not None and previous != (author, zone):
+            conflicts.setdefault(file_name, {previous}).add((author, zone))
         else:
             file_context.setdefault(file_name, (author, zone))
     files = list(file_context)
@@ -375,8 +415,14 @@ def extract_collection(book, toc, group_name, author_slug, author_name):
     previous_tunes = {}
     for html_name in files:
         author, zone = file_context[html_name]
+        if html_name in conflicts:
+            contexts = conflicts[html_name]
+            if len({owner for owner, _ in contexts}) > 1:
+                author = ""  # Unresolvable without an in-document author marker.
+            if len({area for _, area in contexts}) > 1:
+                zone = "unknown"
         for section in extract_sections(book, html_name, collection=group_name):
-            section["zone"] = zone
+            section["zone"] = section.get("zone_override") or zone
             effective_author = section.get("author_override") or (
                 "" if section.get("inserted") else author
             )
