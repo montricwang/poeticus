@@ -7,6 +7,9 @@ import re
 from bs4 import NavigableString, Tag
 
 CHRONOLOGY = re.compile(r"[（(]\d{4}[）)]$")
+# The anthology's explicit editorial omission marker, not authored verse.
+# Keep original text; downstream schema policy is a separate decision.
+INLINE_EDITORIAL_GAP = re.compile(r"[（(]\\s*以下缺\\s*[）)]")
 HE_ZHU_ALIAS_NOTE = re.compile(r"^(?P<tune>[^，,]+)[，,]\s*亦名\s*(?P<alias>.+)$")
 # Only explicit document labels confirmed by the 15-volume audit.
 EDITORIAL_HEADINGS = {"总评"}
