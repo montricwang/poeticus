@@ -26,11 +26,14 @@ def test_audit_scoped_to_one_collection_with_provenance():
     assert item["candidate_poems"] == 1
     assert item["xhtml_count"] == 1
     assert item["warning_counts"]["unclassified_after_notes"] == 1
+    assert item["unclassified_work_count"] == 1
+    assert item["unclassified_block_count"] == 1
     assert item["review_items"][0]["source"]["html"] == "a.html"
     assert item["review_items"][0]["source"]["block"] == 1
     md = render_md(r)
     assert "未经文学校勘" in md
     assert "李清照词集" in md
+    assert "待分类段落：1 块，涉及 1 首" in md
 
 
 def test_only_15_scoped_author_volumes_are_selected():
