@@ -448,7 +448,7 @@ def extract_collection(book, toc, group_name, author_slug, author_name):
             effective_author = section.get("author_override") or (
                 "" if section.get("inserted") else author
             )
-            key = effective_author, zone
+            key = effective_author, section["zone"]
             previous_tune = previous_tunes.get(key)
             if html_name in conflicts:
                 section["warnings"].append({
