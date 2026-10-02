@@ -15,6 +15,39 @@ from .pipeline.normalize import normalize_poems, resolve_mapping, get_output_for
 
 EPUB_PATH = Path("data/raw/历代名家词集精华录.epub")
 
+# These warning kinds contain source paragraphs that are retained by the
+# extractor's private section/audit evidence, but deliberately have no slot in
+# the public-facing PoemContent schema. Writing normalized JSON would silently
+# omit them. Review and classify them before running the import command.
+NON_EXPORTABLE_WARNING_TYPES = frozenset({
+    "unclassified_after_notes",
+    "unclassified_before_inserted_author",
+    "ambiguous_reference_after_verse",
+})
+
+
+def ensure_no_unclassified_content(poems):
+    """Fail closed before writing a partial extracted/normalized dataset."""
+    affected = []
+    for poem in poems:
+        types = sorted({
+            issue.get("type") for issue in poem.warnings
+            if issue.get("type") in NON_EXPORTABLE_WARNING_TYPES
+        })
+        if types:
+            affected.append((poem.id, types))
+    if not affected:
+        return
+    kinds = sorted({kind for _, types in affected for kind in types})
+    examples = ", ".join(poem_id for poem_id, _ in affected[:5])
+    raise RuntimeError(
+        f"{len(affected)} 首作品含未分类段落，禁止直接导出，以免丢失原文。"
+        f"告警类别：{', '.join(kinds)}；样例：{examples}。"
+        "请先运行 scripts.corpus.epub_import.analyze.audit_extraction "
+        "检查原始 XHTML 并明确分类或排除规则。"
+    )
+
+
 
 def load_map(path):
     if not path.exists():
@@ -159,6 +192,9 @@ def main():
 
     if not poems:
         raise RuntimeError("没有抽取到任何作品")
+
+    # Intermediate sections can retain text that PoemContent cannot export.
+    ensure_no_unclassified_content(poems)
 
     extracted.write_text(
         json.dumps(
