@@ -141,3 +141,26 @@ Enrichment / 知识增强（后续）
 - [ ] 合成测试不引用私有 EPUB 段落；在合并前区分“测试通过、结构抽取完成、文学文本精校完成”。
 
 > **停止线：** 现阶段完成的是作者词集的基础语义抽取。套词、组序、词牌别名体系、词谱字数验证、全量校勘等均已或应进入 Backlog，不自动成为当前 Parser 的完成条件。
+## 11. 十五册批量预检与中间 JSON 导出（2026-10-02）
+
+`scripts.corpus.epub_import.import_poems` 现在保留原有单册参数 `--toc / --author / --slug`，同时新增按已审计范围导出十五册的 `--all`。**不要把这些中间 Poem 记录误当成前端 `poem-library.ts` 的最终 JSON schema。**
+
+首先只做预检，不触发任何逐字输入，不写含原文的 JSON：
+
+```powershell
+python -m scripts.corpus.epub_import.import_poems --all --check
+```
+
+该命令读取当前私有 EPUB 一次，按审计配置的十五册逐一完成抽取，检查阻止导出的未分类段落与未映射 glyph 图片字，并写入 `data/reports/epub_import_preflight.json`。预检报告仅包含分册、数量、XHTML/块位置、图片文件名和 warning 类别，**不含书中词文、词序或注释**。若有未解决项，进程退出码为 2，不意味着工具崩溃；按报告处理后重跑。
+
+只有预检全部通过，才执行：
+
+```powershell
+python -m scripts.corpus.epub_import.import_poems --all
+```
+
+这一步先在内存中规范化并核对所有分册，成功后写入 gitignore 保护的 `data/output/`：每册的 `<slug>.json`（未规范化、保留图片字占位符和所有原始附注）、`<slug>_normalized.json`（映射生僻字后，保持正文与可逆行内附注位置），以及合并的 `all_normalized.json`、不含原文的 `all_manifest.json`。某册缺 glyph 映射或含未归类段落时，全量模式**不会写出任何新的正文文件**，避免误把部分成功当作完成。
+
+默认每册 glyph 映射位于 `data/raw/glyph_maps/<slug_with_underscore>.json`；全量模式可用 `--glyph-map-dir` 指定另一目录。只要输入本身仍有图片字，就必须先核对字形；全量模式**绝不调用 `input()`**。旧的单册模式仍可在交互终端中提取待核对图片并调用 `glyph_mapping.py` 保存人工映射；它现在也正确尊重 `--epub` 指定的实际文件，而不误用默认路径。
+
+原始 EPUB、图片映射、报告和导出 JSON 都是本地私有数据，不要提交公共仓库。此处的“导出完成”指**无损中间数据层**：并未按前端 `stanzas` / `preface` / `review_status` 格式转换，也未将所有 `font1` 行内自注从阅读正文中删除。下一阶段需要独立决定这些内容的审校状态与展示方式，不可仅凭字段存在宣称文学准确率。
