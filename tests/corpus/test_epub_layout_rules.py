@@ -619,3 +619,101 @@ def test_multiple_gap_markers_do_not_fabricate_individual_span_attribution():
     assert section["text"] == [
         "开头（以下缺）中间（以下缺）结尾"
     ]
+
+
+
+def test_author_self_note_preserved_with_source_offsets_not_flattened_away():
+    # Synthetic same XHTML filename/block as a human-reviewed Xin source
+    # location; NEVER commit excerpts of the real commercial anthology.
+    html = (
+        "<p>前置栏目</p>" * 133
+        + "<h2>西江月<span>贺友人</span></h2>"
+        + "<p>合成上片<span class='font1'>作者自注示例</span>。</p>"
+        + "<p>合成下片</p>"
+    )
+    section = extract_sections(
+        Book({"text00278.html": html}), "text00278.html", "辛弃疾词集"
+    )[0]
+    assert section["ordinal"] == 134
+    assert section["text"] == [
+        "合成上片作者自注示例。", "合成下片"
+    ]
+    notices = [w for w in section["warnings"]
+               if w["type"] == "inline_author_note"]
+    assert len(notices) == 1
+    note = notices[0]
+    assert note["block"] == 135
+    assert note["text"] == "作者自注示例"
+    assert section["text"][0][note["start"]:note["end"]] == note["text"]
+    assert note["origin"] == "author"
+    assert note["status"] == "retained_in_body_pending_schema"
+    assert not any(w["type"] == "inline_body_style_review"
+                   for w in section["warnings"])
+
+
+def test_huang_inline_note_is_candidate_without_claiming_author_provenance():
+    html = (
+        "<p>前置栏目</p>" * 675
+        + "<h2>醉落魄</h2>"
+        + "<p class='kindle-cn-para-2em-indent kindle-cn-kai'>合成自序</p>"
+        + "<p>合成上片</p>"
+        + "<p>合成下片<span class='font1'>合成轶事说明</span></p>"
+        + "<p>◎合成典故解释</p>"
+    )
+    section = extract_sections(
+        Book({"text00214.html": html}), "text00214.html", "黄庭坚词集"
+    )[0]
+    assert section["ordinal"] == 676
+    assert section["prefaces"] == ["合成自序"]
+    assert section["text"] == [
+        "合成上片", "合成下片合成轶事说明"
+    ]
+    assert section["annotations"] == ["◎合成典故解释"]
+    notes = [w for w in section["warnings"]
+             if w["type"] == "inline_author_note_candidate"]
+    assert len(notes) == 1
+    assert notes[0]["block"] == 679
+    assert notes[0]["origin"] == "unverified"
+    assert section["text"][1][notes[0]["start"]:notes[0]["end"]] == notes[0]["text"]
+
+
+def test_font1_outside_manually_reviewed_locations_remains_suspicious():
+    html = (
+        "<h2>西江月</h2><p>词句<span class='font1'>附带文字</span>。</p>"
+    )
+    section = extract_sections(
+        Book({"text00278.html": html}), "text00278.html", "辛弃疾词集"
+    )[0]
+    assert not any(w["type"].startswith("inline_author_note")
+                   for w in section["warnings"])
+    assert any(w["type"] == "inline_body_style_review"
+               for w in section["warnings"])
+
+
+def test_page_anchor_kaiti_continues_verse_without_false_inline_review():
+    doc = (
+        "<h2>词牌</h2>"
+        "<p>去年高<a id='page14'></a>"
+        "<span class='kaiti'>摘句延续。</span></p>"
+        "<p>这一句应<a id='page117'></a>"
+        "<span class='kaiti'>继续写完。</span><br/><br/></p>"
+    )
+    section = extract_sections(
+        Book({"x.html": doc}), "x.html", "纳兰词集"
+    )[0]
+    assert section["text"] == ["去年高摘句延续。", "这一句应继续写完。\n\n"]
+    assert not any(w["type"] == "inline_body_style_review"
+                   for w in section["warnings"])
+
+
+def test_kaiti_without_page_break_remains_reviewable():
+    doc = (
+        "<h2>词牌</h2>"
+        "<p>原句<span class='kaiti'>行内说明</span>尾句</p>"
+        "<p>原句<a id='not_page'></a><span class='kaiti'>另一段</span></p>"
+    )
+    section = extract_sections(
+        Book({"x.html": doc}), "x.html", "纳兰词集"
+    )[0]
+    assert sum(w["type"] == "inline_body_style_review"
+               for w in section["warnings"]) == 2
