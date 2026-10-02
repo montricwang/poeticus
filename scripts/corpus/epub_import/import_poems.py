@@ -1,12 +1,16 @@
 import argparse
 import json
-import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path, PurePosixPath
+from dataclasses import asdict
 
+from ebooklib import epub
+
+from epub.reader import parse_toc
+from extractor.extractor import extract_collection
 from extract_images import extract_referenced_images
-from pipeline.normalize import resolve_mapping, get_output_form
+from pipeline.normalize import normalize_poems, resolve_mapping, get_output_form
 
 
 EPUB_PATH = Path("data/raw/历代名家词集精华录.epub")
@@ -64,9 +68,10 @@ def resolve_missing_glyphs(missing, map_path, script_dir):
 
             display = input("替代字（不需要替换直接回车）：").strip()
 
+            # glyph_mapping 目前仍作为独立人工工具运行
             command = [
                 sys.executable,
-                str(script_dir / "pipeline/glyph_mapping.py"),
+                str(script_dir / "pipeline" / "glyph_mapping.py"),
                 str(image_path),
                 "--source",
                 source,
@@ -76,6 +81,8 @@ def resolve_missing_glyphs(missing, map_path, script_dir):
 
             if display:
                 command.extend(["--display", display])
+
+            import subprocess
 
             subprocess.run(command, check=True)
 
@@ -99,6 +106,7 @@ def print_glyph_summary(poems, glyph_map):
             seen.add(src)
 
             mapping = resolve_mapping(src, glyph_map)
+
             source = mapping["source_form"]
             output = get_output_form(mapping)
 
@@ -119,41 +127,61 @@ def main():
     parser.add_argument("--slug", required=True)
     parser.add_argument("--glyph-map", type=Path)
 
+    parser.add_argument(
+        "--epub",
+        type=Path,
+        default=EPUB_PATH,
+    )
+
     args = parser.parse_args()
 
     script_dir = Path(__file__).resolve().parent
+
     output_dir = Path("data/output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     stem = args.slug.replace("-", "_")
 
     extracted = output_dir / f"{stem}.json"
     normalized = output_dir / f"{stem}_normalized.json"
 
-    # 未指定时自动使用作者对应的映射文件
     map_path = args.glyph_map or Path("data/raw/glyph_maps") / f"{stem}.json"
 
-    # 1. Extraction
-    subprocess.run(
-        [
-            sys.executable,
-            str(script_dir / "extractor" / "extractor.py"),
-            "--toc",
-            args.toc,
-            "--author",
-            args.author,
-            "--slug",
-            args.slug,
-        ],
-        check=True,
+    # 1. EPUB extraction
+    book = epub.read_epub(str(args.epub))
+
+    poems, files = extract_collection(
+        book,
+        parse_toc(book.toc),
+        args.toc,
+        args.slug,
+        args.author,
     )
 
-    with extracted.open(encoding="utf-8") as f:
-        poems = json.load(f)
+    if not poems:
+        raise RuntimeError("没有抽取到任何作品")
 
-    # 2. 检查是否有尚未辨认的图片字
+    extracted.write_text(
+        json.dumps(
+            [asdict(poem) for poem in poems],
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    print(f"处理 XHTML：{len(files)} 个；抽取作品：{len(poems)} 首；输出：{extracted}")
+
+    # 2. 检查图片字
+    poems_data = json.loads(extracted.read_text(encoding="utf-8"))
+
     glyph_map = load_map(map_path)
-    missing = collect_missing_glyphs(poems, glyph_map)
 
-    # 3. 如果有，让用户人工补充映射
+    missing = collect_missing_glyphs(
+        poems_data,
+        glyph_map,
+    )
+
     if missing:
         if not sys.stdin.isatty():
             raise RuntimeError("存在未解析图片字，需要在交互式终端中处理")
@@ -164,24 +192,20 @@ def main():
             script_dir,
         )
 
-    # 4. Normalization
-    command = [
-        sys.executable,
-        str(script_dir / "pipeline" / "normalize.py"),
-        "--input",
-        str(extracted),
-        "--output",
-        str(normalized),
-    ]
-
-    if map_path.exists():
-        command.extend(["--glyph-map", str(map_path)])
-
-    subprocess.run(command, check=True)
-
-    # 5. 打印实际使用的字形处理记录
+    # 3. normalization
     glyph_map = load_map(map_path)
-    print_glyph_summary(poems, glyph_map)
+
+    normalize_poems(
+        input_path=extracted,
+        output_path=normalized,
+        glyph_map=glyph_map if map_path.exists() else None,
+    )
+
+    # 4. summary
+    print_glyph_summary(
+        poems_data,
+        glyph_map,
+    )
 
     print(f"\n导入流程完成：{normalized}")
 

@@ -4,16 +4,10 @@ The input DOM is interpreted using evidence from the all-volume layout profile;
 non-poem editorial material is intentionally excluded from output.
 """
 
-import argparse
-import json
 import warnings
-from dataclasses import asdict
-from pathlib import Path
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
-from ebooklib import epub
 
-from epub.reader import parse_toc
 from extractor.schema import Poem, PoemContent
 from extractor.rules import (
     interpret_heading,
@@ -216,32 +210,3 @@ def extract_collection(book, toc, group_name, author_slug, author_name):
                 previous_tune = poem.tune
             poems.append(poem)
     return poems, files
-
-
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--toc", required=True)
-    parser.add_argument("--author", required=True)
-    parser.add_argument("--slug", required=True)
-    parser.add_argument(
-        "--epub", type=Path, default=Path("data/raw/历代名家词集精华录.epub")
-    )
-    args = parser.parse_args()
-    book = epub.read_epub(str(args.epub))
-    poems, files = extract_collection(
-        book, parse_toc(book.toc), args.toc, args.slug, args.author
-    )
-    if not poems:
-        raise RuntimeError("没有抽取到任何作品")
-    directory = Path("data/output")
-    directory.mkdir(parents=True, exist_ok=True)
-    output = directory / (args.slug.replace("-", "_") + ".json")
-    output.write_text(
-        json.dumps([asdict(p) for p in poems], ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    print(f"处理 XHTML：{len(files)} 个；抽取作品：{len(poems)} 首；输出：{output}")
-
-
-if __name__ == "__main__":
-    main()
