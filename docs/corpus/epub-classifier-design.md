@@ -60,3 +60,20 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction
 新版 `source_block_coverage` 将**满足年份匹配条件**的年代块标成 `internal_chronology_not_exported`（无论是否曾登记过中间证据），单独给出块号及长度，不计入 `handled`、`excluded` 或 `untracked`。非年代文字不会仅因同一个 CSS 类而得到这种待遇。真实姜夔五块是不是全部匹配该条件，仍需用户再次运行一册审计来证实。
 
 后续需要明确产品对编年资料的处置：要么建立可靠的外围来源元数据，要么明示有依据的省略理由；**不能只是把审计数改成零**。本轮没有贸然改动 `Poem` 业务 Schema，也没有上传书中文字。
+
+## 分类准确性抽样第一轮（人工复核试运行）
+
+使用 `scripts.corpus.epub_import.analyze.sample_classification`，从真实 EPUB 提取后的证据中生成小批量分类复核任务。不修改抽取规则，也不向商业语料写回标注。
+
+```powershell
+python -m scripts.corpus.epub_import.analyze.sample_classification --round 1 --limit 5
+```
+
+生成两个报告，均默认位于 gitignore 保护的 `data/reports/`：
+
+- `classification_review_plan.md`：只有书名、作品 ID、块号、角色、需要人回答的问题，**没有原文**，可以直接拿来讨论分配复核任务。
+- `classification_review_private.md`：在本地展示每个目标块的前后原文、样式、DOM 路径与当前抽取角色，**含商业出版物原文**，不要提交到公开 GitHub，也不应原样整体分享。对无告警但含注评的作品，会额外显示词牌、小序、正文、注释、评论的代表位置。
+
+第一阶段采用确定性的轮次轮换（`--round 2`、`--round 3`）和按作品去重，优先选择五种情况：推定评论续段、推定注释续段、正文中的特殊字体、无告警但含注评的复杂作品、无告警的普通作品；每批尽量来自不同分册。某类候选为空则跳过。
+
+**注意：这只是为了高效发现分类逻辑缺陷的分层诊断，不是随机统计抽样，也不能从 5 个例子判断是否达到 95% 的字段准确率。** 每轮由用户反馈「正确 / 应归为某字段 / 仍无法判断」，由开发侧将有根据的结果转成分册规则与合成回归测试；以后需要另外建立有代表性的随机标注集才能报告准确率。
