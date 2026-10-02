@@ -33,15 +33,25 @@ def resolve_mapping(src, glyph_map, seen=None):
     return item
 
 
+def is_ids_form(value):
+    """A Unicode Ideographic Description Sequence, not a unified character."""
+    return bool(
+        isinstance(value, str)
+        and len(value) >= 3
+        and "\u2ff0" <= value[0] <= "\u2fff"
+    )
+
+
 def get_output_form(mapping):
     if not mapping:
         return None
-
-    return mapping.get("display_form") or (
-        mapping.get("source_form")
-        if len(mapping.get("source_form") or "") == 1
-        else None
-    )
+    display = mapping.get("display_form")
+    if display:
+        return display
+    source = mapping.get("source_form") or ""
+    # An IDS with no attested modern character must remain visibly marked
+    # as an IDS. Never invent a Unicode equivalence just to export the corpus.
+    return source if len(source) == 1 or is_ids_form(source) else None
 
 
 def normalize_text(text, glyph_map):
@@ -106,7 +116,13 @@ def normalize_poem(poem, glyph_map):
         output = get_output_form(mapping)
 
         if output is not None:
-            warning["status"] = "resolved"
+            source_form = mapping.get("source_form")
+            warning["source_form"] = source_form
+            warning["status"] = (
+                "ids_transcription"
+                if is_ids_form(source_form) and not mapping.get("display_form")
+                else "resolved"
+            )
             warning["resolved_form"] = output
 
             if mapping.get("display_form"):
