@@ -77,3 +77,25 @@ def test_audit_prioritizes_unknown_author_and_reports_markup_not_text():
     assert "left" in md
     assert "模拟作品内容" not in md
     assert result["unassigned_author"] == 1
+
+
+def test_ambiguous_note_report_exposes_adjacent_markup_without_its_text():
+    class Volume:
+        def get_item_with_href(self, href):
+            if href == "x.html":
+                return Item(
+                    '<h2>少年游</h2><p>正文</p>'
+                    '<p class="comment">◆合成评论</p>'
+                    '<p class="other">不应出现在Markdown中的合成待分类文字</p>'
+                )
+            return None
+    toc = [{"title": "周邦彦词集", "children": [
+        {"title": "少年游", "href": "x.html"}]}]
+    from scripts.corpus.epub_import.analyze.audit_extraction import audit_collection
+    one = audit_collection(Volume(), toc, "周邦彦词集", "周邦彦", "zhou")
+    md = render_md({"results": [one]})
+    assert "待分类块相邻结构" in md
+    assert "comment/p/comment" in md
+    assert "unknown/p/other" in md
+    assert "合成待分类文字" not in md
+    assert one["warning_counts"]["unclassified_after_notes"] == 1
