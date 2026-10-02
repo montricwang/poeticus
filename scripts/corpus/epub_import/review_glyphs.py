@@ -14,6 +14,7 @@ from urllib.parse import quote
 from ebooklib import epub
 
 from .pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
+from .pipeline.normalize import is_ids_form
 
 
 FIELDS = ("index", "slug", "collection", "src", "source_form",
@@ -132,7 +133,8 @@ def prepare_review(report, book, *, sheet_path, tsv_path):
         ' 张</h1><p>本页包含原书图片字，限本地使用。'
         '按编号在 glyph_review.tsv 填写 source_form；'
         '如果原字可直接输入，display_form 留空；'
-        '如果原字是 IDS 组合描述，display_form 必须填写一个显示汉字。'
+        '如果原字是 IDS 且暂无可核实的替代字，display_form 可以留空；'
+        '中间数据会保留 IDS，并标注其并非 Unicode 单字。'
         '点击图片可查看原图。</p><div class="grid">' +
         "".join(cards) + '</div></html>'
     )
@@ -165,8 +167,8 @@ def apply_review(tsv_path, *, map_dir, partial=False):
                 raise ValueError(f"{slug}/{src}: 未填写原字却填写了替代字")
             blanks += 1
             continue
-        if len(source) != 1 and not display:
-            raise ValueError(f"{slug}/{src}: 组合字形须填写单字替代字")
+        if len(source) != 1 and not is_ids_form(source):
+            raise ValueError(f"{slug}/{src}: 原始字形必须是单字或 IDS")
         if display and len(display) != 1:
             raise ValueError(f"{slug}/{src}: 替代字必须为单个 Unicode 字符")
         value = {
