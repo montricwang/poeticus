@@ -77,7 +77,8 @@ def extract_sections(book, html_name, collection=""):
     def add_evidence(section, block, role, text=""):
         section["blocks"].append({**block.location(), "role": role, "text": text})
 
-    for block in iter_source_blocks(soup, html_name):
+    source_blocks = list(iter_source_blocks(soup, html_name))
+    for block_index, block in enumerate(source_blocks):
         element = block.element
         preview = block.text
         if block.tag == "h1":
@@ -212,6 +213,24 @@ def extract_sections(book, html_name, collection=""):
             if "kindle-cn-para-right" in classes:
                 current["author_override"] = preview
                 add_evidence(current, block, "inserted_author", preview)
+                continue
+            # Real Na Lan appended works sometimes put an unstyled paragraph
+            # between the h4 and a right-aligned three-character byline.
+            # Classify that paragraph as unresolved front matter, not verse:
+            # otherwise has_verse prevents the byline from being recognized.
+            next_block = next((candidate for candidate in source_blocks[block_index + 1:]
+                               if candidate.tag != "p" or candidate.text), None)
+            if (next_block and next_block.tag == "p"
+                    and "kindle-cn-para-right" in next_block.classes
+                    and not preview.startswith(("◎", "◆"))):
+                text, image_warnings = paragraph_text(element, html_name, "unknown")
+                current["warnings"].extend(image_warnings)
+                current["unknown"].append({**block.location(), "text": text})
+                current["warnings"].append({
+                    "type": "unclassified_before_inserted_author",
+                    **block.location(), "text": text,
+                })
+                add_evidence(current, block, "unknown_before_author", text)
                 continue
         if preview.startswith("◎"):
             category = "annotations"
