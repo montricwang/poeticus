@@ -76,7 +76,11 @@ def build_candidates(book, toc, collection_specs=COLLECTIONS):
                         kind = "inferred_commentary"
                     elif category == "annotations":
                         kind = "inferred_annotation"
-                elif w_type == "inline_body_style_review":
+                elif w_type in (
+                    "inline_body_style_review",
+                    "inline_note_boundary_review",
+                    "inline_note_offset_review",
+                ):
                     kind = "inline_style"
                 # One sample per warning family per work. Avoid thousands
                 # of adjacent continuations in the same scholarly review.
