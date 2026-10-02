@@ -187,3 +187,13 @@ python -m scripts.corpus.epub_import.import_poems --all --check
 应用操作会先完整校验 TSV，禁止与已有分册映射相冲突，再调用现有 `glyph_mapping.save_map()` 写入每册 `data/raw/glyph_maps/<slug>.json`。遇到难字可先使用 `--apply --partial` 保存已解决的映射；重新生成画廊时不会覆盖含人工填写内容的 TSV。若 EPUB 同一个 slug/src 名称对应不同图片内容，会停止并提示冲突，不能武断合并。预检报告若出现未找到的图片资源，也须按 XHTML 路径检查，不能盲目填字。
 
 **给 AI 协作的建议**：用本地 HTML 打开后可以按屏幕区域截取少量字形图发来，先由 AI 识别可辨认的常见字，再人工确认疑难字；不要提交整本商业 EPUB 或整套私有字形资料。等 `--all --check` 报告无阻断项才执行 `--all`。
+
+### 11.2 独立图片字不够明确时：本地生成极短上下文
+
+对古籍的异体、俗字和同形字，不应该仅凭 80px 的孤立截图猜测 Unicode。为了避免错误填字（尤其是多张看起来相同的图片），增加仅输出每张待辨认图片字周围小片段的**私有定位报告**：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyph_contexts
+```
+
+脚本利用同一份 `epub_import_preflight.json` 依照字形画廊的原顺序（001—049 等），在原 EPUB 的 h1/h2/h4/p 块里寻找图片，最多展示每个目标两处引用的前后各 16 字，以 `⟦目标字⟧` 占位；其他图片字也用标记表示，不会凭空替字。默认保存 `data/reports/glyph_contexts_private.md`，**包含局部版权文字，仅供私人核字，不提交仓库**。不覆盖已填写的 `glyph_review.tsv`，不需要重新生成画廊。用户与 AI 先确认字形再 `review_glyphs --apply`。
