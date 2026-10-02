@@ -310,3 +310,64 @@ def test_chronology_breaks_note_continuation_even_with_same_class():
     assert first["unknown"][0]["text"] == "不可接续前作评论"
     assert second["text"] == ["另一首"]
     assert second["chronology"] == "某年（1180）"
+
+
+def test_literal_summary_h2_is_not_an_additional_poem():
+    """The audit found summaries counted as works in both Yan volumes."""
+    group = "晏殊词集·晏幾道词集"
+    book = Book({"yan.html": (
+        "<h2>采桑子</h2><p>词句甲</p>"
+        "<h2>总评</h2><p>这是一段编辑者的文学评论。</p>"
+    )})
+    toc = [node(group, [node("晏殊词集", [
+        node("采桑子", href="yan.html")])])]
+    poems, _ = extract_collection(book, toc, group, "yan", "晏殊")
+    assert len(poems) == 1
+    assert poems[0].tune == "采桑子"
+    assert poems[0].content.text == ["词句甲"]
+
+
+def test_nalan_nested_linebreak_inside_heading_wrapper():
+    """An inserted h4 can contain tune and title inside one wrapping span."""
+    book = Book({"x.html": (
+        '<h4 class="kindle-cn-heading4"><span class="font1">'
+        "点绛唇<br/>和某人韵</span></h4>"
+        '<p class="kindle-cn-para-right">友人</p><p>附作正文</p>'
+    )})
+    result = extract_sections(book, "x.html", "纳兰词集")
+    assert len(result) == 1
+    assert result[0]["tune"] == "点绛唇"
+    assert result[0]["title"] == "和某人韵"
+
+
+def test_whole_paragraph_font_span_is_not_reported_as_inline_gloss():
+    book = Book({"x.html": (
+        "<h2>新调</h2>"
+        '<p><span class="font3">上片全文</span></p>'
+        '<p><span style="font-size: 1.2em">下片全文</span></p>'
+    )})
+    section = extract_sections(book, "x.html", "贺铸词集")[0]
+    assert section["text"] == ["上片全文", "下片全文"]
+    assert not any(w["type"] == "inline_body_style_review"
+                   for w in section["warnings"])
+
+
+def test_mixed_style_inside_verse_still_triggers_audit():
+    book = Book({"x.html": (
+        "<h2>新调</h2><p>正文<span class='font2'>夹注</span>余文</p>"
+    )})
+    section = extract_sections(book, "x.html", "贺铸词集")[0]
+    assert section["text"] == ["正文夹注余文"]
+    assert any(w["type"] == "inline_body_style_review"
+               for w in section["warnings"])
+
+
+def test_extra_heading_fragments_are_not_silently_discarded():
+    book = Book({"x.html": (
+        "<h2>词牌<br/><span>词题</span><br/>续题</h2><p>正文</p>"
+    )})
+    section = extract_sections(book, "x.html", "苏轼词集")[0]
+    assert section["tune"] == "词牌"
+    assert section["title"] == "词题\n续题"
+    assert any(w["type"] == "ambiguous_heading_parts"
+               for w in section["warnings"])
