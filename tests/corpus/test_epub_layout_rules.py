@@ -564,3 +564,58 @@ def test_nalan_independent_preface_retains_two_sentences_as_one_paragraph():
     assert p.content.prefaces == ["送故友南归，次另一人韵。时故友遭家丧。"]
     assert p.content.text == ["模拟上片", "模拟下片"]
     assert p.author == "某词人"
+
+
+
+def test_inline_lacuna_marker_recorded_at_exact_text_offset_without_deleting_verse():
+    book = Book({"x.html": (
+        "<h2>谢新恩</h2>"
+        "<p>甲<span class='kaiti'>（以下缺）</span>乙</p>"
+    )})
+    section = extract_sections(book, "x.html", "李煜词集（附：李璟词集 冯延巳词集）")[0]
+    assert section["text"] == ["甲（以下缺）乙"]
+    marked = [w for w in section["warnings"]
+              if w["type"] == "inline_editorial_gap"]
+    assert len(marked) == 1
+    assert {key: marked[0][key] for key in (
+        "html", "block", "category", "start", "end", "marker",
+        "inside_styled_span", "status"
+    )} == {
+        "html": "x.html", "block": 2, "category": "text",
+        "start": 1, "end": 6, "marker": "（以下缺）",
+        "inside_styled_span": True,
+        "status": "retained_in_body_pending_schema",
+    }
+    assert any(w["type"] == "inline_body_style_review"
+               for w in section["warnings"])
+
+
+def test_unstyled_editorial_gap_is_still_detected_and_kept_verbatim():
+    book = Book({"x.html": (
+        "<h2>词牌</h2><p>正文甲(以下缺)正文乙</p>"
+        "<h2>词牌二</h2><p>甲<span class='kaiti'>乙</span>丙</p>"
+    )})
+    first, second = extract_sections(book, "x.html", "秦观词集")
+    warning = next(w for w in first["warnings"]
+                   if w["type"] == "inline_editorial_gap")
+    assert warning["inside_styled_span"] is False
+    assert warning["marker"] == "(以下缺)"
+    assert first["text"] == ["正文甲(以下缺)正文乙"]
+    assert not any(w["type"] == "inline_editorial_gap"
+                   for w in second["warnings"])
+
+
+def test_multiple_gap_markers_do_not_fabricate_individual_span_attribution():
+    book = Book({"x.html": (
+        "<h2>词牌</h2>"
+        "<p>开头<span class='font1'>（以下缺）</span>中间（以下缺）结尾</p>"
+    )})
+    section = extract_sections(book, "x.html", "李煜词集")[0]
+    markers = [w for w in section["warnings"]
+               if w["type"] == "inline_editorial_gap"]
+    assert len(markers) == 2
+    assert markers[0]["start"] < markers[1]["start"]
+    assert all(w["inside_styled_span"] is None for w in markers)
+    assert section["text"] == [
+        "开头（以下缺）中间（以下缺）结尾"
+    ]
