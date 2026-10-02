@@ -49,3 +49,14 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction
 ```
 
 分享报告的结构性摘要即可，尤其每册的 `未追踪源块`、`其他标签文字`、`待分类段落` 与实例结构；不提交 `data/reports/*.json` 或原书内容。先根据完整 15 册结果决定哪些是缺陷、哪些是有意排除，再继续拆分分册规则。
+
+
+## 第一份真实全量源块审计（2026-10-02）
+
+15 册的第一次源块审计中，14 册的 `untracked` 均为 0；姜夔词集有 5 个位置，集中在 `text00264.html` 至 `text00268.html`，均为文件开头第 2 块、`p.kindle-cn-para-no-indent1`、12～15 字。所有选中分册的 `unsupported_text_nodes` 都为 0。这些是审计器的**观测值**，不是十五册分类语义已经全部正确的证明。
+
+代码检查发现，当前 `is_chronology()` 已识别带四位年份的 `p.kindle-cn-para-no-indent1`，将内容放进临时 `section["chronology"]`；但遇到第一首作品之前的年代标记时 `current` 为空，因此未添加逐块审计证据。更重要的是，`convert_to_poem()` 目前并不导出 `chronology`，不能将这种块视作已经完整存入最终 Poem。
+
+新版 `source_block_coverage` 将**满足年份匹配条件**的年代块标成 `internal_chronology_not_exported`（无论是否曾登记过中间证据），单独给出块号及长度，不计入 `handled`、`excluded` 或 `untracked`。非年代文字不会仅因同一个 CSS 类而得到这种待遇。真实姜夔五块是不是全部匹配该条件，仍需用户再次运行一册审计来证实。
+
+后续需要明确产品对编年资料的处置：要么建立可靠的外围来源元数据，要么明示有依据的省略理由；**不能只是把审计数改成零**。本轮没有贸然改动 `Poem` 业务 Schema，也没有上传书中文字。
