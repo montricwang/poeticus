@@ -120,3 +120,51 @@ def test_bold_and_emphasis_inside_handled_paragraph_are_not_double_counted():
     report = source_block_coverage(book, ["x.html"], sections, "秦观词集")
     assert report["handled_blocks"] == 2
     assert report["unsupported_text_nodes"] == 0
+
+
+
+def test_chronology_labels_are_not_mislabeled_as_missing_or_fully_exported():
+    """A dated marker before the first h2 is used as intermediate context."""
+    book = Book({"x.html": (
+        "<h1>姜夔词集</h1>"
+        '<p class="kindle-cn-para-no-indent1">绍熙某年（1191）</p>'
+        "<h2>扬州慢</h2><p>模拟词句甲</p>"
+        '<p class="kindle-cn-para-no-indent1">庆元某年（1196）</p>'
+        "<h2>暗香</h2><p>模拟词句乙</p>"
+    )})
+    sections = extract_sections(book, "x.html", "姜夔词集")
+    assert [s["chronology"] for s in sections] == [
+        "绍熙某年（1191）", "庆元某年（1196）"
+    ]
+    coverage = source_block_coverage(
+        book, ["x.html"], sections, "姜夔词集"
+    )
+    assert coverage["total_blocks"] == 7
+    assert coverage["handled_blocks"] == 4
+    assert coverage["excluded_blocks"] == 1
+    assert coverage["untracked_blocks"] == 0
+    assert coverage["internal_chronology_not_exported"] == 2
+    assert [s["block"] for s in coverage["chronology_sites"]] == [2, 5]
+    assert "绍熙" not in str(coverage)
+
+    toc = [{"title": "姜夔词集", "children": [
+        {"title": "正文", "href": "x.html"}]}]
+    report = audit_collection(book, toc, "姜夔词集", "姜夔", "jiang")
+    md = render_md({"results": [report]})
+    assert "年代标记（只用于临时章节上下文" in md
+    assert "未写入最终 Poem" in md
+    assert "绍熙" not in md
+
+
+def test_same_css_without_date_does_not_disappear_as_chronology():
+    book = Book({"x.html": (
+        '<p class="kindle-cn-para-no-indent1">非年代说明文字</p>'
+        "<h2>忆王孙</h2><p>模拟词句</p>"
+    )})
+    sections = extract_sections(book, "x.html", "姜夔词集")
+    coverage = source_block_coverage(
+        book, ["x.html"], sections, "姜夔词集"
+    )
+    assert coverage["internal_chronology_not_exported"] == 0
+    assert coverage["untracked_blocks"] == 1
+    assert coverage["untracked_sites"][0]["block"] == 1
