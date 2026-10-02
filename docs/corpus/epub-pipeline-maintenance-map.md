@@ -104,7 +104,7 @@
 - `extractor/rules.py::interpret_heading`：对贺铸的多段来源标题，按首段寓声名、后续段落原词调和作品题注抽取。支持独立 `span` 及“思越人　牡丹”**全角空格明确分隔**的情况；其他分册保持既有行为。若源 EPUB 题头没有可判定分隔，不能仅凭连写字面臆断。
 - `extractor/extractor.py` 将 `yusheng` 写进 `section`、中间 Poem；`pipeline/normalize.py` 同样处理位于 `yusheng` 内的图片字。
 - 「思越人，亦名鹧鸪天」只取此来源的主要 `tune=思越人`，**不引入全书 `cipai_alias` 字段**；异名体系属于后续词谱知识。
-- 回归用例 `tests/corpus/test_epub_he_zhu_yusheng.py` 全部采用合成正文，覆盖《半死桐》、三段题头、图片字与批量导出。项目 CI 仅能验证合成排版，**仍需用户本地真实 EPUB 复核**。
+- 回归用例 `tests/corpus/test_epub_he_zhu_yusheng.py` 全部采用合成正文，覆盖《半死桐》、三段题头、图片字与批量导出。项目 CI 仅能验证合成排版；**用户已在本地真实 EPUB 导出结果中确认《半死桐》《翦朝霞》字段正确**，但尚未据此宣称整册贺铸逐首语义审核完成。
 
 复核命令（在 PR 分支拉取后，使用现有 EPUB 和 glyph map，无须重做辨字）：
 
@@ -122,4 +122,4 @@ for x in h:
 '@ | python -
 ```
 
-如本地《翦朝霞》未得到 `tune=思越人/yusheng=翦朝霞/title=牡丹`，需使用 `analyze.inspect_source --show-html` 对照该作品的真实 `h2` 标签再修改，不得声称合成测试等于源版本核对。此次变更只影响中间数据，今后数据库是否有专门的 `yusheng` 列应由下游 schema 决定。
+**本轮两首已经通过用户本地复核。** 如果以后更换 EPUB 版本，或更多贺铸题头不能得到 `tune=思越人/yusheng=翦朝霞/title=牡丹` 这类正确结构，应先查看源 XHTML/DOM，再修改针对性规则；参见仍待全面复核的 [Issue #60](https://github.com/montricwang/poeticus/issues/60)。此次变更只影响中间数据，未来数据库是否有专门的 `yusheng` 列应由下游 Schema 决定。
