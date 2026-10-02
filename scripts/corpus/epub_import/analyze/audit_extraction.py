@@ -117,6 +117,8 @@ def audit_collection(book, toc, name, author, slug):
         "missing_tune": sum(p.tune is None for p in poems),
         "unassigned_author": sum(not p.author for p in poems),
         "empty_body": sum(not p.content.text for p in poems),
+        "unclassified_work_count": sum(bool(section["unknown"]) for section in sections),
+        "unclassified_block_count": sum(len(section["unknown"]) for section in sections),
         "note_marker_in_body": sum(
             any(line.lstrip().startswith(("◆", "◎")) for line in p.content.text)
             for p in poems
@@ -149,7 +151,10 @@ def render_md(report):
     for item in report["results"]:
         lines.extend(["", f'## {item["collection"]}', "",
                       f'作者分布：{item["author_counts"]}', "",
-                      f'告警分布：{item["warning_counts"]}', ""])
+                      f'告警分布：{item["warning_counts"]}', "",
+                      f'待分类段落：{item["unclassified_block_count"]} 块，'
+                      f'涉及 {item["unclassified_work_count"]} 首候选作品；'
+                      '这些段落不会进入 PoemContent，未复核前不允许直接导出。', ""])
         # Put records likely to affect meaning or authorship first. Keep
         # original source order among records of equal severity.
         ordered_reviews = sorted(
