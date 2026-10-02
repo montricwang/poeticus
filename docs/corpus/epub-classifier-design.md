@@ -132,3 +132,20 @@ python -m scripts.corpus.epub_import.analyze.inspect_inline_samples --style kait
 目前采取**保守的可逆处理**：辛弃疾与黄庭坚上述位置分别新增 `inline_author_note`、`inline_author_note_candidate` 类型的来源证据，包含该 XHTML、源块、原展平文字中的位置及原始字词；均以 `retained_in_body_pending_schema` 标记，并在 `PoemContent.text` 中原样保留。这些证据暂时通过 Poem `warnings` 持续到中间导出，**不意味着已生成可供前端直接使用的纯净正文或独立自注字段**。其他 `font1` 尚未核实，不得推广为通用删注规则。
 
 未来若产品需要纯词文与注释分别呈现，需设计 `inline_notes` 结构明确：作者自注/编者注/未证实来源、原书位置（正文段落号及字符区间）、字词内容、是否可从正文展示中移除。应避免仅删除一段 span、使注释在文本和结构化字段中重复或造成源文字丢失。题前作者自序继续使用 `prefaces`，后世独立引证注释继续使用 `annotations`。
+
+### `font1` 十处新样本与可逆行内附注字段
+
+用户在本地生成的 10 个真实 `font1` 样本（黄庭坚与辛弃疾）全都表现出**词句之外的解释、记事或引文说明性质**，但仅凭 XHTML 类型还不足以核定每条注释的历史作者。涉及的位置包括：黄庭坚 `text00214.html` 块 696、755；辛弃疾 `text00278.html` 块 519、520；`text00280.html` 块 87；`text00281.html` 块 754；`text00279.html` 块 12、188、243、424。用户此前已单独复核黄庭坚 679、辛弃疾 135。其余未审样式不可据此臆断。
+
+尤其辛弃疾 `text00279.html` 块 243，`<span class="font1">` **只包住引文的引导词**，真正引用的诗句在 span 外。多处记录还有尾句号在 span 外。这证明“把所有 font1 文本截出后删除”可能造成正文残留注释，不能作为已通过的自动净化规则。
+
+新增 `PoemContent.inline_notes`（**中间抽取 JSON 的字段，尚非前端阅读器的数据格式**），为 `p` 词正文中的每段 `span.font1` 保留：
+
+- `source_html`、`source_block`，`paragraph_index`（正文段落数组的 **0 起始** 下标），`start/end`（以原展平段落内容为单位，前闭后开）；
+- `text`、`span_class`、`origin`（仅此前用户确认的辛弃疾 `text00278.html` 块 135 为 `confirmed_author_in_reviewed_source`，其余 `unverified`）、`boundary`；
+- `punctuation_outside_span`、`body_retains_note: true`，明确记下原文仍保留这些内容；
+- 当注释引言以冒号结尾、接下来为书面引号文本时，`boundary: citation_continues_outside_span`，并给出 `inline_note_boundary_review` warning。无法唯一匹配 span 内容、或 span 含复杂换行/图片字时发出 `inline_note_offset_review` 而**不生成假位置**。
+
+预处理未改变原来的 `content.text`：目前字段是**可追溯候选附注清单**，不能把 `inline_notes` 与 `text` 同时作为纯净诗词内容展示，否则会重复。`pipeline.normalize` 在字形占位符替换后对附注的字符区间重新定位，并核验 `[start:end]` 与附注文字一致；不一致则禁止导出，避免错位。用户确认为作者自注的范南伯样本保留出处判定；其他黄庭坚、辛弃疾样本**不能因为使用 font1 就自动获得“作者自注”身份**。
+
+如果未来要导出可供前端直接阅读的纯词文，应先完成剩余少量 font1 样本与跨 span 引文的确认，并定义专门的可逆原文片段序列（例如 `verse` / `inline_note` / `editorial_gap`），同步处理句号、行分隔、位置与渲染，不能在还原信息不完整时直接从正文里删字。现有 `prefaces` 作者自序与 `annotations` 后人独立注释保持不变。
