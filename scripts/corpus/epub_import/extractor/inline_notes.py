@@ -8,7 +8,6 @@ from .rules import INLINE_AUTHOR_NOTE_REVIEWS
 
 
 _QUOTE_OPEN = ("“", "「", "『", "‘", '"')
-_QUOTE_LEADS = ("云：", "云:", "曰：", "曰:", "谓：", "谓:")
 
 
 def inspect_inline_font1(element, text, block, collection, tune, paragraph_index):
@@ -42,7 +41,7 @@ def inspect_inline_font1(element, text, block, collection, tune, paragraph_index
         end = start + len(span_text)
         after = text[end:].lstrip()
         citation_spills = (
-            span_text.rstrip().endswith(_QUOTE_LEADS)
+            span_text.rstrip().endswith(("：", ":"))
             and after.startswith(_QUOTE_OPEN)
         )
         attribution = "unverified"
