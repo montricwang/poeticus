@@ -149,3 +149,11 @@ python -m scripts.corpus.epub_import.analyze.inspect_inline_samples --style kait
 预处理未改变原来的 `content.text`：目前字段是**可追溯候选附注清单**，不能把 `inline_notes` 与 `text` 同时作为纯净诗词内容展示，否则会重复。`pipeline.normalize` 在字形占位符替换后对附注的字符区间重新定位，并核验 `[start:end]` 与附注文字一致；不一致则禁止导出，避免错位。用户确认为作者自注的范南伯样本保留出处判定；其他黄庭坚、辛弃疾样本**不能因为使用 font1 就自动获得“作者自注”身份**。
 
 如果未来要导出可供前端直接阅读的纯词文，应先完成剩余少量 font1 样本与跨 span 引文的确认，并定义专门的可逆原文片段序列（例如 `verse` / `inline_note` / `editorial_gap`），同步处理句号、行分隔、位置与渲染，不能在还原信息不完整时直接从正文里删字。现有 `prefaces` 作者自序与 `annotations` 后人独立注释保持不变。
+
+已经核查的 `font1` 位置共 12 处。若要把尚未人工看到的源段落全部补齐，不需要重复查以前的样本：
+
+```powershell
+python -m scripts.corpus.epub_import.analyze.inspect_inline_samples --style font1 --per-style 15 --remaining
+```
+
+`--remaining` 只按已复核源坐标跳过 12 处 `font1`，**不是宣称全部十二处的历史注释作者都已确认**。输出文件与之前同名（分别为无原文的 review plan、带原文的 private packet）；不公开上传商业语料。用户原始全量审计共 20 处 `font1`，所以在这套未变的 EPUB 版本中，预期还有约 8 处待看，实际以脚本报告为准。
