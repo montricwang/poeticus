@@ -59,7 +59,7 @@ def test_headings_tune_repetition_and_epub_anchor():
     assert [p.content.text for p in poems] == [["正文甲"], ["正文乙"]]
 
 
-def test_he_zhu_reversed_names_are_not_extra_schema_fields():
+def test_he_zhu_reversed_names_preserve_author_coined_yusheng():
     book = Book(
         **{
             "x.html": """<h2>横塘路<span style="font-size:.5em">青玉案</span></h2><p>词作甲</p>
@@ -67,9 +67,9 @@ def test_he_zhu_reversed_names_are_not_extra_schema_fields():
         }
     )
     s = extract_sections(book, "x.html", "贺铸词集")
-    assert [(x["tune"], x["title"]) for x in s] == [
-        ("青玉案", "横塘路"),
-        ("小重山", "璧月堂"),
+    assert [(x["tune"], x["yusheng"], x["title"]) for x in s] == [
+        ("青玉案", "横塘路", None),
+        ("小重山", "璧月堂", None),
     ]
 
 
@@ -208,6 +208,7 @@ def test_he_zhu_small_print_alternate_name_is_not_entire_tune():
     )
     sections = extract_sections(book, "x.html", "贺铸词集")
     assert sections[0]["tune"] == "旧调"
-    assert sections[0]["title"] == "新调名"
-    # This MVP deliberately does not introduce a tune_alias field.
+    assert sections[0]["yusheng"] == "新调名"
+    assert sections[0]["title"] is None
+    # This importer deliberately does not introduce a tune_alias field.
     assert "tune_alias" not in sections[0]
