@@ -16,7 +16,7 @@ from ..extractor.rules import is_non_poem
 EDITORIAL_REGION_PREFIXES = ("导读", "导　读", "总评", "词论")
 
 
-def source_block_coverage(book, files, sections):
+def source_block_coverage(book, files, sections, collection):
     """Audit processed XHTML only; do not silently claim EPUB-wide coverage.
 
     handled: source block appears in the extractor's intermediate evidence.
@@ -31,7 +31,6 @@ def source_block_coverage(book, files, sections):
         for section in sections
         for block in section["blocks"]
     }
-    collection = sections[0].get("_collection", "") if sections else ""
     counters = Counter()
     untracked = []
 
