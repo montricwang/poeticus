@@ -155,11 +155,13 @@ def extract_sections(book, html_name, collection=""):
             awaiting_supplement = False
             if discarded:
                 continue
-            tune, title, issues = interpret_heading(element, collection)
+            tune, title, yusheng, issues = interpret_heading(element, collection)
             for image in element.find_all("img"):
                 src = image.get("src")
                 glyph = "{{glyph:" + (src or "missing-src") + "}}"
-                category = "title" if title and glyph in title else "tune"
+                category = ("yusheng" if yusheng and glyph in yusheng
+                            else "title" if title and glyph in title
+                            else "tune")
                 issues.append({
                     "type": "inline_image" if src else "missing_image_src",
                     "html": html_name, "src": src,
@@ -172,6 +174,7 @@ def extract_sections(book, html_name, collection=""):
                 })
             current = {
                 "heading": preview, "tune": tune, "title": title,
+                "yusheng": yusheng,
                 "text": [], "prefaces": [], "annotations": [],
                 "commentaries": [], "inline_notes": [],
                 "unknown": [], "blocks": [],
@@ -462,6 +465,7 @@ def convert_to_poem(
         id=f"{author_slug}-{index:03d}",
         author=safe_author,
         tune=tune, title=section["title"],
+        yusheng=section.get("yusheng"),
         content=PoemContent(
             text=section["text"], prefaces=section["prefaces"],
             annotations=section["annotations"],
