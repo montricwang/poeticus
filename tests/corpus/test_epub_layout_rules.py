@@ -423,3 +423,18 @@ def test_nalan_without_byline_keeps_first_verse_and_unknown_author():
     assert any(w["type"] == "missing_inserted_author" for w in poems[0].warnings)
     assert not any(w["type"] == "unclassified_before_inserted_author"
                    for w in poems[0].warnings)
+
+
+def test_nalan_long_right_aligned_sentence_is_not_preclassified_as_an_author():
+    group = "纳兰词集"
+    book = Book({"x.html": (
+        '<h4 class="kindle-cn-heading4">金缕曲</h4>'
+        '<p>可能是真正的第一段词正文</p>'
+        '<p class="kindle-cn-para-right">这是一句被右对齐的长句</p>'
+    )})
+    toc = [node(group, [node("附作", href="x.html")])]
+    poems, _ = extract_collection(book, toc, group, "na", "纳兰性德")
+    assert poems[0].author == ""
+    assert poems[0].content.text[0] == "可能是真正的第一段词正文"
+    assert not any(w["type"] == "unclassified_before_inserted_author"
+                   for w in poems[0].warnings)
