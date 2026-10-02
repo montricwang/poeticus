@@ -46,7 +46,7 @@ def inline_runs(element: Tag) -> list[dict]:
 def iter_source_blocks(soup: Tag, html_name: str):
     """Yield ordered paragraph/heading blocks; never assign semantic roles."""
     body = soup.body or soup
-    for ordinal, tag in enumerate(body.find_all(["h2", "h4", "p"]), 1):
+    for ordinal, tag in enumerate(body.find_all(["h1", "h2", "h4", "p"]), 1):
         yield SourceBlock(
             html=html_name, ordinal=ordinal, tag=tag.name,
             classes=tuple(tag.get("class", [])), anchor=tag.get("id"),
