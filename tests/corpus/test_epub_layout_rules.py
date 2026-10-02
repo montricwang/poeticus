@@ -268,3 +268,16 @@ def test_inline_doubtful_heading_overrides_main_toc_zone():
     assert len(poems) == 2
     assert not any(w["type"] == "doubtful_attribution" for w in poems[0].warnings)
     assert any(w["type"] == "doubtful_attribution" for w in poems[1].warnings)
+
+
+def test_h1_editorial_region_skips_internal_h2_until_next_work_region():
+    group = "温庭筠词集·韦庄词集"
+    book = Book({"one.html": (
+        "<h1>导读</h1><h2>风格</h2><p>这不是作品。</p>"
+        "<h1>温庭筠词集</h1><h2>菩萨蛮</h2><p>真正作品</p>"
+    )})
+    toc = [node(group, [node("全文", href="one.html")])]
+    poems, _ = extract_collection(book, toc, group, "wen", "温庭筠")
+    assert len(poems) == 1
+    assert poems[0].tune == "菩萨蛮"
+    assert poems[0].content.text == ["真正作品"]
