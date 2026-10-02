@@ -141,3 +141,94 @@ Enrichment / 知识增强（后续）
 - [ ] 合成测试不引用私有 EPUB 段落；在合并前区分“测试通过、结构抽取完成、文学文本精校完成”。
 
 > **停止线：** 现阶段完成的是作者词集的基础语义抽取。套词、组序、词牌别名体系、词谱字数验证、全量校勘等均已或应进入 Backlog，不自动成为当前 Parser 的完成条件。
+## 11. 十五册批量预检与中间 JSON 导出（2026-10-02）
+
+`scripts.corpus.epub_import.import_poems` 现在保留原有单册参数 `--toc / --author / --slug`，同时新增按已审计范围导出十五册的 `--all`。**不要把这些中间 Poem 记录误当成前端 `poem-library.ts` 的最终 JSON schema。**
+
+首先只做预检，不触发任何逐字输入，不写含原文的 JSON：
+
+```powershell
+python -m scripts.corpus.epub_import.import_poems --all --check
+```
+
+该命令读取当前私有 EPUB 一次，按审计配置的十五册逐一完成抽取，检查阻止导出的未分类段落与未映射 glyph 图片字，并写入 `data/reports/epub_import_preflight.json`。预检报告仅包含分册、数量、XHTML/块位置、图片文件名和 warning 类别，**不含书中词文、词序或注释**。若有未解决项，进程退出码为 2，不意味着工具崩溃；按报告处理后重跑。
+
+只有预检全部通过，才执行：
+
+```powershell
+python -m scripts.corpus.epub_import.import_poems --all
+```
+
+这一步先在内存中规范化并核对所有分册，成功后写入 gitignore 保护的 `data/output/`：每册的 `<slug>.json`（未规范化、保留图片字占位符和所有原始附注）、`<slug>_normalized.json`（映射生僻字后，保持正文与可逆行内附注位置），以及合并的 `all_normalized.json`、不含原文的 `all_manifest.json`。某册缺 glyph 映射或含未归类段落时，全量模式**不会写出任何新的正文文件**，避免误把部分成功当作完成。
+
+默认每册 glyph 映射位于 `data/raw/glyph_maps/<slug_with_underscore>.json`；全量模式可用 `--glyph-map-dir` 指定另一目录。只要输入本身仍有图片字，就必须先核对字形；全量模式**绝不调用 `input()`**。旧的单册模式仍可在交互终端中提取待核对图片并调用 `glyph_mapping.py` 保存人工映射；它现在也正确尊重 `--epub` 指定的实际文件，而不误用默认路径。
+
+原始 EPUB、图片映射、报告和导出 JSON 都是本地私有数据，不要提交公共仓库。此处的“导出完成”指**无损中间数据层**：并未按前端 `stanzas` / `preface` / `review_status` 格式转换，也未将所有 `font1` 行内自注从阅读正文中删除。下一阶段需要独立决定这些内容的审校状态与展示方式，不可仅凭字段存在宣称文学准确率。
+
+### 11.1 本次真实预检后的图片字集中处理
+
+十五册真实预检（用户本地，2026-10-02）：`total_candidate_poems=3491`、`total_unexportable_issues=0`、`total_missing_glyph_sites=54`、`ready_to_export=false`。54 是 XHTML 文件/图片的引用位置；重复图片在不同 XHTML 出现多次，按分册和图片 filename 合并后，理论上待辨认的**不同图片约 49 张**（以用户本地脚本统计结果为准）。不应在此阶段把真实图片/对应原书内容发布到 GitHub。
+
+不建议直接用 `import_poems.py --all`：只会因为未解决图片字而停止。为避免旧版单册命令一张张询问，在代码根目录运行：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyphs --prepare
+```
+
+它读取已存在的 `data/reports/epub_import_preflight.json` 和本地 EPUB，把去重后的图片字提取到 `data/reports/glyph_review_images/`，生成可在浏览器打开的**本地字形画廊** `data/reports/glyph_review.html`，及可直接在 VS Code/Excel 编辑的 `data/reports/glyph_review.tsv`；两者都在 gitignore 下。TSV 按编号对应图片，每行保留 `slug`、`src`、引用页面；只填写 `source_form`（原字），需要替代显示时才填 `display_form`（仅一字）。原字可填正常汉字、`U+XXXX` 或 IDS 组合字形（IDS 必须有显示代用字）。
+
+填写后运行：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyphs --apply
+python -m scripts.corpus.epub_import.import_poems --all --check
+```
+
+应用操作会先完整校验 TSV，禁止与已有分册映射相冲突，再调用现有 `glyph_mapping.save_map()` 写入每册 `data/raw/glyph_maps/<slug>.json`。遇到难字可先使用 `--apply --partial` 保存已解决的映射；重新生成画廊时不会覆盖含人工填写内容的 TSV。若 EPUB 同一个 slug/src 名称对应不同图片内容，会停止并提示冲突，不能武断合并。预检报告若出现未找到的图片资源，也须按 XHTML 路径检查，不能盲目填字。
+
+**给 AI 协作的建议**：用本地 HTML 打开后可以按屏幕区域截取少量字形图发来，先由 AI 识别可辨认的常见字，再人工确认疑难字；不要提交整本商业 EPUB 或整套私有字形资料。等 `--all --check` 报告无阻断项才执行 `--all`。
+
+### 11.2 独立图片字不够明确时：本地生成极短上下文
+
+对古籍的异体、俗字和同形字，不应该仅凭 80px 的孤立截图猜测 Unicode。为了避免错误填字（尤其是多张看起来相同的图片），增加仅输出每张待辨认图片字周围小片段的**私有定位报告**：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyph_contexts
+```
+
+脚本利用同一份 `epub_import_preflight.json` 依照字形画廊的原顺序（001—049 等），在原 EPUB 的 h1/h2/h4/p 块里寻找图片，最多展示每个目标两处引用的前后各 16 字，以 `⟦目标字⟧` 占位；其他图片字也用标记表示，不会凭空替字。默认保存 `data/reports/glyph_contexts_private.md`，**包含局部版权文字，仅供私人核字，不提交仓库**。不覆盖已填写的 `glyph_review.tsv`，不需要重新生成画廊。用户与 AI 先确认字形再 `review_glyphs --apply`。
+
+### 11.2 从原 EPUB 批量导出图片字所在的完整段落
+
+字形画廊只展示图片和 XHTML 文件名。每个文件内的完整词句/注释其实仍然在原始本地 EPUB 中；不需要上网搜索，也不需要重新抽取整书。新增可单独运行的上下文导出命令：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyphs --contexts
+```
+
+输出 `data/reports/glyph_contexts.html`：**49 张图片继续沿用原 `glyph_review.html`、`glyph_review.tsv` 的 001–049 编号，绝不根据字形相似程度合并**。自带离线图片预览、分册、XHTML 文件名、与 `inspect_source` 一致的源块号、最近章节标题及目标图片在整个原书段落中的真实位置；黄色标记为本卡图片，蓝色标记为同段其他图片。如果同一图片在多个文件、多个段落或者同段出现多次，会保留所有原始位置，不只展示一个例子。除 `h1/h2/h4/p` 外的来源不做无依据的猜测：预检记录对应图片但找不到源块时明确抛错。
+
+**与只展示少量邻近文字的 `review_glyph_contexts.py` 不同**，这份 HTML 展示完整段落，适合复制原句搜索通行版本。生成步骤只读取原有 `epub_import_preflight.json` 和原 EPUB，**不改动/覆盖已有字形 TSV 或 HTML 填写页面**，也不写新的 glyph_map，用户可并排打开填写表和原文上下文。本地报告嵌有商业原书文字及图片，必须留在 gitignore 下，不提交公共仓库；讨论某个争议时只分享必要短片段。
+
+### 11.3 直接导入字形画廊的 JSON 备份（用户已完成 49 张）
+
+本地字形核对页导出的 `glyph_review_backup.json` 是结构化备份，不必重新誊抄到 TSV。实际人工校对备份与原始 `epub_import_preflight.json` 对照结果：49 条 `records` 均与来源图片/分册/顺序一一匹配；49 项 `values` 都有 `source_form`；14 项有人审定的 `display_form`；仅编号 020 的 `⿰缶吾` 暂时只有 IDS，没有可证实的 Unicode 单字替代。**这是已描述构形、尚未确定单字字形的情况，不是校对未完成。**
+
+将备份文件放到 `data/reports/glyph_review_backup.json`（或使用 `--backup` 指定本地路径）。执行：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyphs --import-backup
+python -m scripts.corpus.epub_import.import_poems --all --check
+```
+
+`--import-backup` 先严格校验 `poeticus-glyph-review-v1`、49 号与预检结果对应的 `(slug,src)`，核对原字符确为 Unicode 单字或以 IDS 操作符开头的结构；整批与已有私有 glyph map 存在任何冲突时拒绝覆盖，正确时分别合并写入 `data/raw/glyph_maps/<slug>.json`。命令不打开 EPUB、不访问网络、不调用 OCR，也不会提交字形数据至仓库。若备份路径不同：`--backup "C:/Users/.../Downloads/glyph_review_backup(1).json"`。
+
+没有可信替代字的 IDS（例如编号 020 `⿰缶吾`）**不强迫填入一个猜测的汉字**：规范化后的中间 JSON 用 IDS 字符序列在词文内占位，同时图片字的 `inline_image` warning 保留原始 `src`、`source_form` 和 `status=ids_transcription`，表示它**不是单个 Unicode 统一汉字，未来前端应通过原图或 IDS 专门显示**。当存在明确代用字，则规范化正文显示 `display_form`，warning 仍保存 `source_form`。已有 TSV 手工导入、单字 glyph CLI 也统一允许合法 IDS 不带 `display_form`。
+
+如果 `--all --check` 输出 `ready_to_export=true`、`missing_glyphs=0`、`unexportable=0`，再运行：
+
+```powershell
+python -m scripts.corpus.epub_import.import_poems --all
+```
+
+这一步生成十五册原始/规范化 Poem 中间 JSON，以及 `data/output/all_normalized.json`。此处完成的是**导出管线与人工确认字形的录入**，不是宣布古籍语义分类准确率达到 95%，也不是前端清商所需的纯净诗词结构；行内作者自注仍保留在原句，最终阅读层的拆分仍需后续实现。

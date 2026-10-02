@@ -3,6 +3,8 @@ import json
 import re
 from pathlib import Path
 
+from .normalize import is_ids_form
+
 
 def parse_form(value):
     if value is None:
@@ -111,8 +113,8 @@ def main():
     if display and len(display) != 1:
         parser.error("--display 必须是单个 Unicode 字符")
 
-    if not display and len(source) != 1:
-        parser.error("原字形为 IDS 时，必须提供 --display")
+    if len(source) != 1 and not is_ids_form(source):
+        parser.error("原字形必须是单字或合法的 IDS 结构开头")
 
     if not args.image.is_file():
         parser.error(f"图片不存在：{args.image}")

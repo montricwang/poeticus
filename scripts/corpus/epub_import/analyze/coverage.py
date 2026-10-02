@@ -1,0 +1,132 @@
+"""Account for source blocks and otherwise unrecognized text in parsed XHTML.
+
+This report answers a structural question: where did a source block go?
+It does not assert that a field assignment is semantically correct.
+It intentionally exposes only locations, markup and character counts.
+"""
+from collections import Counter
+
+from bs4 import BeautifulSoup, Comment, NavigableString
+
+from ..extractor.blocks import iter_source_blocks
+from ..extractor.extractor import raw_xhtml
+from ..extractor.rules import is_chronology, is_non_poem
+
+
+EDITORIAL_REGION_PREFIXES = ("导读", "导　读", "总评", "词论")
+
+
+def source_block_coverage(book, files, sections, collection):
+    """Audit processed XHTML only; do not silently claim EPUB-wide coverage.
+
+    handled: source block appears in the extractor's intermediate evidence.
+    excluded: a structural h1 or known editorial region/non-poem heading.
+    internal_chronology_not_exported: metadata inferred from a dated p, but
+        not represented in the final Poem schema; never count as exported.
+    untracked: paragraph/heading neither handled nor explicitly excluded.
+
+    Positions use (XHTML filename, ordinal). A source paragraph contributes
+    exactly one status, and no source text is included in the report.
+    """
+    evidence = {
+        (section["html"], block["block"])
+        for section in sections
+        for block in section["blocks"]
+    }
+    counters = Counter()
+    untracked = []
+    chronology_sites = []
+    unsupported_text = []
+
+    for filename in files:
+        item = book.get_item_with_href(filename)
+        if item is None:
+            raise ValueError(f"EPUB XHTML not found: {filename}")
+        soup = BeautifulSoup(raw_xhtml(item), "lxml")
+        editorial_region = False
+        editorial_section = False
+        for block in iter_source_blocks(soup, filename):
+            key = (filename, block.ordinal)
+            if block.tag == "h1":
+                editorial_region = block.text.startswith(EDITORIAL_REGION_PREFIXES)
+                editorial_section = False
+            is_editorial_heading = (
+                block.tag == "h2" and is_non_poem(collection, block.text)
+            )
+            if block.tag == "h2":
+                editorial_section = is_editorial_heading
+            # Chronology is recognized as context for following works, but
+            # convert_to_poem deliberately does not publish section.chronology.
+            # Even if an adjacent poem has a block-evidence entry, keep this
+            # loss-of-metadata visible; do NOT mistake it for fully exported.
+            if block.tag == "p" and is_chronology(block.element, block.text):
+                status = "internal_chronology_not_exported"
+            elif key in evidence:
+                status = "handled"
+            elif block.tag == "h1":
+                status = "excluded_structural_heading"
+            elif editorial_region:
+                status = "excluded_editorial_region"
+            elif editorial_section:
+                status = "excluded_editorial_heading"
+            else:
+                status = "untracked"
+            counters[status] += 1
+            if status == "untracked":
+                untracked.append({
+                    "html": filename, "block": block.ordinal,
+                    "tag": block.tag, "classes": list(block.classes),
+                    "anchor": block.anchor, "text_length": len(block.text),
+                })
+            elif status == "internal_chronology_not_exported":
+                chronology_sites.append({
+                    "html": filename, "block": block.ordinal,
+                    "tag": block.tag, "classes": list(block.classes),
+                    "anchor": block.anchor, "text_length": len(block.text),
+                })
+        # iter_source_blocks intentionally scans h1/h2/h4/p. Inventory text
+        # outside *all* those tags as a separate signal; otherwise a div, li
+        # or direct body text could disappear without any coverage warning.
+        body = soup.body or soup
+        for text_node in body.descendants:
+            if (not isinstance(text_node, NavigableString)
+                    or isinstance(text_node, Comment)
+                    or not str(text_node).strip()):
+                continue
+            ancestry = list(text_node.parents)
+            if any(parent.name in {"h1", "h2", "h4", "p",
+                                   "script", "style", "noscript", "svg"}
+                   for parent in ancestry):
+                continue
+            parent = text_node.parent
+            unsupported_text.append({
+                "html": filename,
+                "parent_tag": parent.name if parent else "unknown",
+                "parent_classes": list(parent.get("class", [])) if parent else [],
+                "parent_id": parent.get("id") if parent else None,
+                "text_length": len(str(text_node).strip()),
+            })
+
+    total = sum(counters.values())
+    excluded = sum(n for label, n in counters.items()
+                   if label.startswith("excluded_"))
+    return {
+        "total_blocks": total,
+        "handled_blocks": counters["handled"],
+        "excluded_blocks": excluded,
+        "untracked_blocks": len(untracked),
+        "internal_chronology_not_exported": len(chronology_sites),
+        "chronology_sites": chronology_sites,
+        "exclusion_types": {
+            label: count for label, count in sorted(counters.items())
+            if label.startswith("excluded_")
+        },
+        "untracked_sites": untracked,
+        "unsupported_text_nodes": len(unsupported_text),
+        "unsupported_text_sites": unsupported_text,
+        "scope": (
+            "XHTML selected by collection TOC; tracked tags are h1/h2/h4/p, "
+            "other non-whitespace text nodes inventoried separately; "
+            "not every XHTML file in EPUB"
+        ),
+    }

@@ -33,15 +33,25 @@ def resolve_mapping(src, glyph_map, seen=None):
     return item
 
 
+def is_ids_form(value):
+    """A Unicode Ideographic Description Sequence, not a unified character."""
+    return bool(
+        isinstance(value, str)
+        and len(value) >= 3
+        and "\u2ff0" <= value[0] <= "\u2fff"
+    )
+
+
 def get_output_form(mapping):
     if not mapping:
         return None
-
-    return mapping.get("display_form") or (
-        mapping.get("source_form")
-        if len(mapping.get("source_form") or "") == 1
-        else None
-    )
+    display = mapping.get("display_form")
+    if display:
+        return display
+    source = mapping.get("source_form") or ""
+    # An IDS with no attested modern character must remain visibly marked
+    # as an IDS. Never invent a Unicode equivalence just to export the corpus.
+    return source if len(source) == 1 or is_ids_form(source) else None
 
 
 def normalize_text(text, glyph_map):
@@ -53,12 +63,31 @@ def normalize_text(text, glyph_map):
 
 
 def normalize_poem(poem, glyph_map):
-    for field in ("tune", "title"):
+    for field in ("tune", "title", "yusheng"):
         if poem.get(field) is not None:
             poem[field] = normalize_text(
                 poem[field],
                 glyph_map,
             )
+
+    raw_paragraphs = poem["content"].get("text", [])
+    # Normalization can replace a long glyph token with one character.
+    # Rebase inline-note offsets *before* changing the body text so the
+    # recorded intervals always refer to the normalized paragraph.
+    for note in poem["content"].get("inline_notes", []):
+        index = note["paragraph_index"]
+        if not (0 <= index < len(raw_paragraphs)):
+            raise ValueError("行内附注的正文段落号越界")
+        raw = raw_paragraphs[index]
+        start, end = note["start"], note["end"]
+        if not (0 <= start < end <= len(raw)
+                and raw[start:end] == note["text"]):
+            raise ValueError("行内附注位置与原文不一致；禁止错误导出")
+        normalized_before = normalize_text(raw[:start], glyph_map)
+        normalized_note = normalize_text(note["text"], glyph_map)
+        note["start"] = len(normalized_before)
+        note["end"] = note["start"] + len(normalized_note)
+        note["text"] = normalized_note
 
     for category in (
         "text",
@@ -70,6 +99,10 @@ def normalize_poem(poem, glyph_map):
             normalize_text(text, glyph_map)
             for text in poem["content"].get(category, [])
         ]
+    for note in poem["content"].get("inline_notes", []):
+        source = poem["content"]["text"][note["paragraph_index"]]
+        if source[note["start"]:note["end"]] != note["text"]:
+            raise ValueError("行内附注位置在正文规范化后失效")
 
     for warning in poem.get("warnings", []):
         if warning.get("type") != "inline_image":
@@ -83,7 +116,13 @@ def normalize_poem(poem, glyph_map):
         output = get_output_form(mapping)
 
         if output is not None:
-            warning["status"] = "resolved"
+            source_form = mapping.get("source_form")
+            warning["source_form"] = source_form
+            warning["status"] = (
+                "ids_transcription"
+                if is_ids_form(source_form) and not mapping.get("display_form")
+                else "resolved"
+            )
             warning["resolved_form"] = output
 
             if mapping.get("display_form"):
@@ -97,6 +136,7 @@ def unresolved_glyphs(poems):
         fields = [
             ("tune", poem.get("tune")),
             ("title", poem.get("title")),
+            ("yusheng", poem.get("yusheng")),
         ]
 
         fields.extend(
