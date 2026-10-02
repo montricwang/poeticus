@@ -14,6 +14,7 @@ from .rules import (
     INLINE_EDITORIAL_GAP,
     interpret_heading,
     is_chronology,
+    is_inline_styled_span,
     is_non_poem,
     is_preface,
     is_separate_title,
@@ -330,18 +331,25 @@ def extract_sections(book, html_name, collection=""):
             # looks identical in a reader. Keep the exact paragraph intact:
             # a future edition-aware schema may render the missing segment.
             # Offsets use the same flattened paragraph_text() that we export.
-            for match in INLINE_EDITORIAL_GAP.finditer(text):
-                inside_span = any(
-                    INLINE_EDITORIAL_GAP.search(span.get_text("", strip=True))
+            matches = list(INLINE_EDITORIAL_GAP.finditer(text))
+            # With multiple identical markers, source-to-flattened offsets
+            # cannot be assigned to individual spans reliably. Do not invent
+            # a containment judgment in that case.
+            styled_containment = (
+                any(
+                    is_inline_styled_span(span)
+                    and INLINE_EDITORIAL_GAP.search(span.get_text("", strip=True))
                     for span in element.find_all("span")
-                )
+                ) if len(matches) == 1 else None
+            )
+            for match in matches:
                 current["warnings"].append({
                     "type": "inline_editorial_gap",
                     **block.location(),
                     "category": "text",
                     "start": match.start(), "end": match.end(),
                     "marker": match.group(0),
-                    "inside_span": inside_span,
+                    "inside_styled_span": styled_containment,
                     "status": "retained_in_body_pending_schema",
                 })
             # A lone span wrapping the *entire* verse paragraph is a normal
@@ -356,10 +364,7 @@ def extract_sections(book, html_name, collection=""):
             )
             if not whole_paragraph_span:
                 for span in element.find_all("span"):
-                    if span.get("style") or any(
-                        cls in {"kindle-cn-kai", "kaiti", "small"}
-                        or cls.startswith("font") for cls in span.get("class", [])
-                    ):
+                    if is_inline_styled_span(span):
                         current["warnings"].append({
                             "type": "inline_body_style_review", **block.location()
                         })
