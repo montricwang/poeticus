@@ -9,7 +9,7 @@ from bs4 import NavigableString, Tag
 CHRONOLOGY = re.compile(r"[（(]\d{4}[）)]$")
 # The anthology's explicit editorial omission marker, not authored verse.
 # Keep original text; downstream schema policy is a separate decision.
-INLINE_EDITORIAL_GAP = re.compile(r"[（(]\\s*以下缺\\s*[）)]")
+INLINE_EDITORIAL_GAP = re.compile(r"[（(]\s*以下缺\s*[）)]")
 HE_ZHU_ALIAS_NOTE = re.compile(r"^(?P<tune>[^，,]+)[，,]\s*亦名\s*(?P<alias>.+)$")
 # Only explicit document labels confirmed by the 15-volume audit.
 EDITORIAL_HEADINGS = {"总评"}
@@ -35,6 +35,15 @@ def is_verified_zhou_commentary(collection, html_name, work_block, block, classe
     allowed = {"kindle-cn-ref", "kindle-cn-para-no-indent"}
     return not classes or classes <= allowed
 
+
+
+def is_inline_styled_span(span):
+    """Whether the EPUB markup marks a span as distinct from normal type."""
+    return bool(
+        span.get("style")
+        or any(cls in {"kindle-cn-kai", "kaiti", "small"}
+               or cls.startswith("font") for cls in span.get("class", []))
+    )
 
 
 def is_non_poem(collection, heading):
