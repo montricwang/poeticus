@@ -90,3 +90,33 @@ def test_unsupported_h4_outside_known_volume_is_untracked():
     assert report["untracked_blocks"] == 1
     assert report["untracked_sites"][0]["tag"] == "h4"
     assert report["handled_blocks"] == 3
+
+
+
+def test_unscanned_div_and_list_item_text_is_inventoried_without_content():
+    book = Book({"x.html": (
+        "<h2>如梦令</h2><p>词正文</p>"
+        "<div class='aside'>游离编者材料</div>"
+        "<ul><li>无法归类的条目</li></ul>"
+        "<div><span>附加杂项文字</span></div>"
+        "<!--这个源代码注释不应进入报告-->"
+    )})
+    sections = extract_sections(book, "x.html", "李清照词集")
+    report = source_block_coverage(book, ["x.html"], sections, "李清照词集")
+    assert report["untracked_blocks"] == 0
+    assert report["unsupported_text_nodes"] == 3
+    assert [s["parent_tag"] for s in report["unsupported_text_sites"]] == [
+        "div", "li", "span"
+    ]
+    assert "游离编者材料" not in str(report)
+    assert "无法归类的条目" not in str(report)
+
+
+def test_bold_and_emphasis_inside_handled_paragraph_are_not_double_counted():
+    book = Book({"x.html": (
+        "<h2>清平乐</h2><p><b>强调的词句</b><em>另一部分</em></p>"
+    )})
+    sections = extract_sections(book, "x.html", "秦观词集")
+    report = source_block_coverage(book, ["x.html"], sections, "秦观词集")
+    assert report["handled_blocks"] == 2
+    assert report["unsupported_text_nodes"] == 0
