@@ -89,7 +89,7 @@ def render_contexts(items):
             rows.append("未定位到文字段落中的该图片。")
         for example in item["examples"]:
             rows.append(
-                f"- \`{example['html']}\` / {example['block_tag']}："
+                f"- `{example['html']}` / {example['block_tag']}："
                 f"……{example['before']}**⟦目标字⟧**{example['after']}……"
             )
         rows.append("")
