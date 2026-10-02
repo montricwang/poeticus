@@ -5,7 +5,6 @@ commercially published verse, note, or commentary text. This is a diagnostic,
 not a correction rule: do not automatically remove detected phrases.
 """
 import argparse
-import re
 from collections import Counter
 from pathlib import Path
 
@@ -15,20 +14,8 @@ from ebooklib import epub
 from ..epub.reader import parse_toc
 from ..extractor.blocks import iter_source_blocks
 from ..extractor.extractor import extract_collection, extract_sections, raw_xhtml
+from ..extractor.rules import INLINE_EDITORIAL_GAP, is_inline_styled_span
 from .audit_extraction import COLLECTIONS
-
-
-GAP_MARKER = re.compile(r"[（(]\s*以下缺\s*[）)]")
-
-
-def _is_styled_span(span):
-    return bool(
-        span.get("style")
-        or any(
-            cls in {"kindle-cn-kai", "kaiti", "small"} or cls.startswith("font")
-            for cls in span.get("class", [])
-        )
-    )
 
 
 def _style_signature(span):
@@ -75,14 +62,14 @@ def collect_inline_evidence(book, toc, collection_specs=COLLECTIONS):
                     continue
                 total_text_blocks += 1
                 flagged = (filename, block.ordinal) in warned_sites
-                has_gap_marker = bool(GAP_MARKER.search(block.text))
+                has_gap_marker = bool(INLINE_EDITORIAL_GAP.search(block.text))
                 if not (flagged or has_gap_marker):
                     continue
                 all_spans = list(block.element.find_all("span"))
-                styled_spans = [span for span in all_spans if _is_styled_span(span)]
+                styled_spans = [span for span in all_spans if is_inline_styled_span(span)]
                 marked_spans = [
                     span for span in styled_spans
-                    if GAP_MARKER.search(span.get_text("", strip=True))
+                    if INLINE_EDITORIAL_GAP.search(span.get_text("", strip=True))
                 ]
                 rows.append({
                     "collection": collection,
