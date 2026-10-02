@@ -95,7 +95,7 @@ def test_ambiguous_note_report_exposes_adjacent_markup_without_its_text():
     one = audit_collection(Volume(), toc, "周邦彦词集", "周邦彦", "zhou")
     md = render_md({"results": [one]})
     assert "待分类块相邻结构" in md
-    assert "comment/p/comment" in md
+    assert "commentaries/p/comment" in md
     assert "unknown/p/other" in md
     assert "合成待分类文字" not in md
     assert one["warning_counts"]["unclassified_after_notes"] == 1
