@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup, Comment, NavigableString
 
 from ..extractor.blocks import iter_source_blocks
 from ..extractor.extractor import raw_xhtml
-from ..extractor.rules import is_non_poem
+from ..extractor.rules import is_chronology, is_non_poem
 
 
 EDITORIAL_REGION_PREFIXES = ("导读", "导　读", "总评", "词论")
@@ -21,6 +21,8 @@ def source_block_coverage(book, files, sections, collection):
 
     handled: source block appears in the extractor's intermediate evidence.
     excluded: a structural h1 or known editorial region/non-poem heading.
+    internal_chronology_not_exported: metadata inferred from a dated p, but
+        not represented in the final Poem schema; never count as exported.
     untracked: paragraph/heading neither handled nor explicitly excluded.
 
     Positions use (XHTML filename, ordinal). A source paragraph contributes
@@ -33,6 +35,7 @@ def source_block_coverage(book, files, sections, collection):
     }
     counters = Counter()
     untracked = []
+    chronology_sites = []
     unsupported_text = []
 
     for filename in files:
@@ -52,7 +55,13 @@ def source_block_coverage(book, files, sections, collection):
             )
             if block.tag == "h2":
                 editorial_section = is_editorial_heading
-            if key in evidence:
+            # Chronology is recognized as context for following works, but
+            # convert_to_poem deliberately does not publish section.chronology.
+            # Even if an adjacent poem has a block-evidence entry, keep this
+            # loss-of-metadata visible; do NOT mistake it for fully exported.
+            if block.tag == "p" and is_chronology(block.element, block.text):
+                status = "internal_chronology_not_exported"
+            elif key in evidence:
                 status = "handled"
             elif block.tag == "h1":
                 status = "excluded_structural_heading"
@@ -65,6 +74,12 @@ def source_block_coverage(book, files, sections, collection):
             counters[status] += 1
             if status == "untracked":
                 untracked.append({
+                    "html": filename, "block": block.ordinal,
+                    "tag": block.tag, "classes": list(block.classes),
+                    "anchor": block.anchor, "text_length": len(block.text),
+                })
+            elif status == "internal_chronology_not_exported":
+                chronology_sites.append({
                     "html": filename, "block": block.ordinal,
                     "tag": block.tag, "classes": list(block.classes),
                     "anchor": block.anchor, "text_length": len(block.text),
@@ -100,6 +115,8 @@ def source_block_coverage(book, files, sections, collection):
         "handled_blocks": counters["handled"],
         "excluded_blocks": excluded,
         "untracked_blocks": len(untracked),
+        "internal_chronology_not_exported": len(chronology_sites),
+        "chronology_sites": chronology_sites,
         "exclusion_types": {
             label: count for label, count in sorted(counters.items())
             if label.startswith("excluded_")
