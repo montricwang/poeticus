@@ -206,6 +206,8 @@ def main():
     action.add_argument("--contexts", action="store_true",
                         help="从本地 EPUB 按 001–049 编号导出含图片字的完整原文段落")
     action.add_argument("--apply", action="store_true")
+    action.add_argument("--import-backup", action="store_true",
+                        help="直接导入已填写的 glyph_review_backup.json，无需抄写 TSV")
     parser.add_argument("--epub", type=Path, default=Path(
         "data/raw/历代名家词集精华录.epub"
     ))
@@ -217,6 +219,9 @@ def main():
     ))
     parser.add_argument("--tsv", type=Path, default=Path(
         "data/reports/glyph_review.tsv"
+    ))
+    parser.add_argument("--backup", type=Path, default=Path(
+        "data/reports/glyph_review_backup.json"
     ))
     parser.add_argument("--context-html", type=Path, default=Path(
         "data/reports/glyph_contexts.html"
@@ -254,6 +259,23 @@ def main():
                 print("以下图片未在 EPUB 找到，请检查其路径：")
                 for slug, src in result["missing_assets"]:
                     print(f"  {slug} / {src}")
+    elif args.import_backup:
+        from .import_glyph_backup import import_review_backup
+        result = import_review_backup(
+            args.backup, args.report, args.map_dir, partial=args.partial
+        )
+        print(
+            f"已导入 {result['mapped']} 个编号；"
+            f"更新分册 glyph 映射文件 {result['map_files']} 个；"
+            f"未填写 {len(result['unfilled'])} 个"
+        )
+        if result["ids_only"]:
+            print(
+                "仅有 IDS、无 Unicode 替代字的编号："
+                + ", ".join(result["ids_only"])
+                + "。中间 JSON 将保留 IDS 文本和原图来源，"
+                  "不会凭空指定现代通行字。"
+            )
     else:
         result = apply_review(
             args.tsv, map_dir=args.map_dir, partial=args.partial,
