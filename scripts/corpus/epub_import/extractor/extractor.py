@@ -3,6 +3,7 @@
 The input DOM is interpreted using evidence from the all-volume layout profile;
 non-poem editorial material is intentionally excluded from output.
 """
+
 import argparse
 import json
 import warnings
@@ -12,10 +13,15 @@ from pathlib import Path
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from ebooklib import epub
 
-from inspect_epub import parse_toc
-from schema import Poem, PoemContent
-from semantic_rules import (interpret_heading, is_chronology, is_non_poem,
-                            is_preface, is_separate_title)
+from epub.reader import parse_toc
+from extractor.schema import Poem, PoemContent
+from extractor.rules import (
+    interpret_heading,
+    is_chronology,
+    is_non_poem,
+    is_preface,
+    is_separate_title,
+)
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
@@ -36,8 +42,15 @@ def paragraph_text(element, html_name, category):
         src = img.get("src")
         if src:
             img.replace_with(f"{{{{glyph:{src}}}}}")
-            image_warnings.append({"type": "inline_image", "html": html_name,
-                                   "src": src, "category": category, "status": "unresolved"})
+            image_warnings.append(
+                {
+                    "type": "inline_image",
+                    "html": html_name,
+                    "src": src,
+                    "category": category,
+                    "status": "unresolved",
+                }
+            )
     for br in node.find_all("br"):
         br.replace_with("[EPUB_BR]")
     result = node.get_text("", strip=True).replace("[EPUB_BR]", "\n").strip()
@@ -70,12 +83,27 @@ def extract_sections(book, html_name, collection=""):
                     continue
                 glyph = f"{{{{glyph:{src}}}}}"
                 category = "title" if title and glyph in title else "tune"
-                issues.append({"type": "inline_image", "html": html_name,
-                               "src": src, "category": category, "status": "unresolved"})
-            current = {"heading": heading, "tune": tune, "title": title,
-                       "text": [], "prefaces": [], "annotations": [],
-                       "commentaries": [], "warnings": issues,
-                       "html": html_name, "anchor": element.get("id")}
+                issues.append(
+                    {
+                        "type": "inline_image",
+                        "html": html_name,
+                        "src": src,
+                        "category": category,
+                        "status": "unresolved",
+                    }
+                )
+            current = {
+                "heading": heading,
+                "tune": tune,
+                "title": title,
+                "text": [],
+                "prefaces": [],
+                "annotations": [],
+                "commentaries": [],
+                "warnings": issues,
+                "html": html_name,
+                "anchor": element.get("id"),
+            }
             continue
         if discarded or current is None:
             continue
@@ -91,7 +119,9 @@ def extract_sections(book, html_name, collection=""):
             category = "commentaries"
         elif not has_verse and is_separate_title(element, collection):
             if current["title"]:
-                current["warnings"].append({"type": "multiple_titles", "html": html_name})
+                current["warnings"].append(
+                    {"type": "multiple_titles", "html": html_name}
+                )
             else:
                 current["title"] = preview
             continue
@@ -109,7 +139,9 @@ def extract_sections(book, html_name, collection=""):
     return sections
 
 
-def convert_to_poem(section, index, author_slug, author_name, collection, previous_tune=None):
+def convert_to_poem(
+    section, index, author_slug, author_name, collection, previous_tune=None
+):
     tune = section["tune"]
     issues = list(section["warnings"])
     if tune == "又":
@@ -117,16 +149,27 @@ def convert_to_poem(section, index, author_slug, author_name, collection, previo
             tune = previous_tune
         else:
             tune = None
-            issues.append({"type": "unresolved_tune_repeat", "html": section["html"],
-                           "anchor": section["anchor"]})
+            issues.append(
+                {
+                    "type": "unresolved_tune_repeat",
+                    "html": section["html"],
+                    "anchor": section["anchor"],
+                }
+            )
     return Poem(
-        id=f"{author_slug}-{index:03d}", author=author_name,
-        tune=tune, title=section["title"],
+        id=f"{author_slug}-{index:03d}",
+        author=author_name,
+        tune=tune,
+        title=section["title"],
         content=PoemContent(
-            text=section["text"], prefaces=section["prefaces"],
-            annotations=section["annotations"], commentaries=section["commentaries"],
+            text=section["text"],
+            prefaces=section["prefaces"],
+            annotations=section["annotations"],
+            commentaries=section["commentaries"],
         ),
-        collection=collection, source="历代名家词集精华录", warnings=issues,
+        collection=collection,
+        source="历代名家词集精华录",
+        warnings=issues,
     )
 
 
@@ -161,8 +204,14 @@ def extract_collection(book, toc, group_name, author_slug, author_name):
     previous_tune = None
     for html_name in files:
         for section in extract_sections(book, html_name, collection=group_name):
-            poem = convert_to_poem(section, len(poems) + 1, author_slug,
-                                   author_name, group_name, previous_tune)
+            poem = convert_to_poem(
+                section,
+                len(poems) + 1,
+                author_slug,
+                author_name,
+                group_name,
+                previous_tune,
+            )
             if poem.tune and poem.tune != "又":
                 previous_tune = poem.tune
             poems.append(poem)
@@ -174,19 +223,23 @@ def main():
     parser.add_argument("--toc", required=True)
     parser.add_argument("--author", required=True)
     parser.add_argument("--slug", required=True)
-    parser.add_argument("--epub", type=Path,
-                        default=Path("data/raw/历代名家词集精华录.epub"))
+    parser.add_argument(
+        "--epub", type=Path, default=Path("data/raw/历代名家词集精华录.epub")
+    )
     args = parser.parse_args()
     book = epub.read_epub(str(args.epub))
-    poems, files = extract_collection(book, parse_toc(book.toc), args.toc,
-                                      args.slug, args.author)
+    poems, files = extract_collection(
+        book, parse_toc(book.toc), args.toc, args.slug, args.author
+    )
     if not poems:
         raise RuntimeError("没有抽取到任何作品")
     directory = Path("data/output")
     directory.mkdir(parents=True, exist_ok=True)
     output = directory / (args.slug.replace("-", "_") + ".json")
-    output.write_text(json.dumps([asdict(p) for p in poems], ensure_ascii=False,
-                                 indent=2), encoding="utf-8")
+    output.write_text(
+        json.dumps([asdict(p) for p in poems], ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     print(f"处理 XHTML：{len(files)} 个；抽取作品：{len(poems)} 首；输出：{output}")
 
 

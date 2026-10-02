@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path, PurePosixPath
 
 from extract_images import extract_referenced_images
-from normalize_poems import resolve_mapping, get_output_form
+from pipeline.normalize import resolve_mapping, get_output_form
 
 
 EPUB_PATH = Path("data/raw/历代名家词集精华录.epub")
@@ -66,7 +66,7 @@ def resolve_missing_glyphs(missing, map_path, script_dir):
 
             command = [
                 sys.executable,
-                str(script_dir / "add_glyph_mapping.py"),
+                str(script_dir / "pipeline/glyph_mapping.py"),
                 str(image_path),
                 "--source",
                 source,
@@ -135,7 +135,7 @@ def main():
     subprocess.run(
         [
             sys.executable,
-            str(script_dir / "extract_poems.py"),
+            str(script_dir / "extractor" / "extractor.py"),
             "--toc",
             args.toc,
             "--author",
@@ -167,7 +167,7 @@ def main():
     # 4. Normalization
     command = [
         sys.executable,
-        str(script_dir / "normalize_poems.py"),
+        str(script_dir / "pipeline" / "normalize.py"),
         "--input",
         str(extracted),
         "--output",

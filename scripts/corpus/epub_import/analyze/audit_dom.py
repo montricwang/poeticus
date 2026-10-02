@@ -7,8 +7,8 @@ from urllib.parse import unquote
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from ebooklib import epub
 
-from extract_poems import extract_sections
-from inspect_epub import parse_toc
+from extractor.extractor import extract_sections
+from epub.reader import parse_toc
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 

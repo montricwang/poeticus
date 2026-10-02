@@ -13,13 +13,19 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from bs4 import (
-    BeautifulSoup, Comment, Declaration, Doctype, NavigableString,
-    ProcessingInstruction, Tag, XMLParsedAsHTMLWarning,
+    BeautifulSoup,
+    Comment,
+    Declaration,
+    Doctype,
+    NavigableString,
+    ProcessingInstruction,
+    Tag,
+    XMLParsedAsHTMLWarning,
 )
 from ebooklib import epub
 
-from css_styles import StyleResolver
-from inspect_epub import parse_toc
+from epub.css import StyleResolver
+from epub.reader import parse_toc
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
@@ -30,7 +36,23 @@ HEADINGS = {f"h{i}" for i in range(1, 7)}
 YEAR_PATTERN = re.compile(r"[（(]\d{4}[）)]$")
 SAMPLE_LIMIT = 4
 STYLE_KEYS = ("font-family", "font-size", "font-weight", "font-style", "color")
-INLINE_TAGS = {"span", "small", "big", "strong", "b", "em", "i", "font", "ruby", "rt", "a", "br", "img", "sup", "sub"}
+INLINE_TAGS = {
+    "span",
+    "small",
+    "big",
+    "strong",
+    "b",
+    "em",
+    "i",
+    "font",
+    "ruby",
+    "rt",
+    "a",
+    "br",
+    "img",
+    "sup",
+    "sub",
+}
 
 
 def gather_links(node):
@@ -82,16 +104,31 @@ def content_runs(heading, styles):
                 continue
             owner = node.parent
             style = styles.style(owner)
-            runs.append({
-                "text": compact(value, 110),
-                "element": node_label(owner),
-                "style": typography(style),
-                "style_sources": {k: styles.provenance(owner).get(k) for k in STYLE_KEYS if k in style},
-            })
+            runs.append(
+                {
+                    "text": compact(value, 110),
+                    "element": node_label(owner),
+                    "style": typography(style),
+                    "style_sources": {
+                        k: styles.provenance(owner).get(k)
+                        for k in STYLE_KEYS
+                        if k in style
+                    },
+                }
+            )
         elif isinstance(node, Tag) and node.name == "br":
-            runs.append({"text": "↵", "element": "br", "style": {}, "style_sources": {}})
+            runs.append(
+                {"text": "↵", "element": "br", "style": {}, "style_sources": {}}
+            )
         elif isinstance(node, Tag) and node.name == "img":
-            runs.append({"text": f"[img:{node.get('src', '')}]", "element": "img", "style": {}, "style_sources": {}})
+            runs.append(
+                {
+                    "text": f"[img:{node.get('src', '')}]",
+                    "element": "img",
+                    "style": {},
+                    "style_sources": {},
+                }
+            )
     return runs
 
 
@@ -126,11 +163,16 @@ def paragraph_feature(tag, text):
 def add_example(record, example):
     """Keep a few cases, including a contextual '又' or multi-run title."""
     samples = record["samples"]
-    if any(x["html"] == example["html"] and x.get("title") == example.get("title") for x in samples):
+    if any(
+        x["html"] == example["html"] and x.get("title") == example.get("title")
+        for x in samples
+    ):
         return
     if len(samples) < SAMPLE_LIMIT:
         samples.append(example)
-    elif example.get("title", "").startswith("又") and not any(x.get("title", "").startswith("又") for x in samples):
+    elif example.get("title", "").startswith("又") and not any(
+        x.get("title", "").startswith("又") for x in samples
+    ):
         samples[-1] = example
 
 
@@ -139,9 +181,11 @@ def unhandled_text(soup):
     grouped = Counter()
     samples = {}
     for text in soup.find_all(string=True):
-        if (not isinstance(text, NavigableString) or
-                isinstance(text, (Comment, Declaration, Doctype, ProcessingInstruction)) or
-                not text.strip()):
+        if (
+            not isinstance(text, NavigableString)
+            or isinstance(text, (Comment, Declaration, Doctype, ProcessingInstruction))
+            or not text.strip()
+        ):
             continue
         if text.parent.find_parent(["p", *sorted(HEADINGS)]):
             continue
@@ -155,7 +199,9 @@ def unhandled_text(soup):
     return grouped, samples
 
 
-def inspect_document(book, html_name, groups, resolver, templates, paragraphs, coverage):
+def inspect_document(
+    book, html_name, groups, resolver, templates, paragraphs, coverage
+):
     item = book.get_item_with_href(html_name)
     if item is None:
         coverage["missing"].append(html_name)
@@ -183,26 +229,45 @@ def inspect_document(book, html_name, groups, resolver, templates, paragraphs, c
                 heading_seen = True
             runs = content_runs(element, styles)
             key, signature = heading_template(element, runs, styles)
-            record = templates.setdefault(key, {"signature": signature, "count": 0, "groups": set(), "samples": []})
+            record = templates.setdefault(
+                key,
+                {"signature": signature, "count": 0, "groups": set(), "samples": []},
+            )
             record["count"] += 1
             record["groups"].update(groups)
-            add_example(record, {
-                "html": html_name,
-                "title": compact(element.get_text(" ", strip=True), 130),
-                "id": element.get("id"),
-                "runs": runs,
-            })
+            add_example(
+                record,
+                {
+                    "html": html_name,
+                    "title": compact(element.get_text(" ", strip=True), 130),
+                    "id": element.get("id"),
+                    "runs": runs,
+                },
+            )
             continue
         text = element.get_text(" ", strip=True)
         feature = paragraph_feature(element, text)
-        nested = Counter(t.name for t in element.descendants if isinstance(t, Tag) and t.name in INLINE_TAGS)
+        nested = Counter(
+            t.name
+            for t in element.descendants
+            if isinstance(t, Tag) and t.name in INLINE_TAGS
+        )
         style = typography(styles.style(element))
         signature = {"element": node_label(element), "feature": feature, "style": style}
         key = json.dumps(signature, ensure_ascii=False, sort_keys=True)
-        record = paragraphs.setdefault(key, {
-            "signature": signature, "count": 0, "groups": set(), "before_first_h2": 0,
-            "after_heading": 0, "before_heading": 0, "inline_tags": Counter(), "samples": [],
-        })
+        record = paragraphs.setdefault(
+            key,
+            {
+                "signature": signature,
+                "count": 0,
+                "groups": set(),
+                "before_first_h2": 0,
+                "after_heading": 0,
+                "before_heading": 0,
+                "inline_tags": Counter(),
+                "samples": [],
+            },
+        )
         record["count"] += 1
         record["groups"].update(groups)
         record["inline_tags"].update(nested)
@@ -212,17 +277,24 @@ def inspect_document(book, html_name, groups, resolver, templates, paragraphs, c
             record["after_heading"] += 1
         if idx + 1 < len(blocks) and blocks[idx + 1].name in HEADINGS:
             record["before_heading"] += 1
-        add_example(record, {"html": html_name, "title": compact(text), "inline_tags": dict(nested)})
+        add_example(
+            record,
+            {"html": html_name, "title": compact(text), "inline_tags": dict(nested)},
+        )
 
     stray, examples = unhandled_text(soup)
     coverage["unhandled_tags"].update(stray)
     for name, sample in examples.items():
-        coverage["unhandled_samples"].setdefault(name, {"html": html_name, "text": sample})
+        coverage["unhandled_samples"].setdefault(
+            name, {"html": html_name, "text": sample}
+        )
 
 
 def finish(records):
     output = []
-    for record in sorted(records.values(), key=lambda r: (-r["count"], str(r["signature"]))):
+    for record in sorted(
+        records.values(), key=lambda r: (-r["count"], str(r["signature"]))
+    ):
         item = dict(record)
         item["groups"] = sorted(record["groups"])
         if "inline_tags" in item:
@@ -234,12 +306,18 @@ def finish(records):
 def profile_volume(book, volume, resolver):
     templates, paragraphs = {}, {}
     coverage = {
-        "files": 0, "missing": [], "linked_css": set(), "heading_tags": Counter(),
-        "unhandled_tags": Counter(), "unhandled_samples": {},
+        "files": 0,
+        "missing": [],
+        "linked_css": set(),
+        "heading_tags": Counter(),
+        "unhandled_tags": Counter(),
+        "unhandled_samples": {},
     }
     files = volume_files(volume)
     for html_name, groups in files.items():
-        inspect_document(book, html_name, groups, resolver, templates, paragraphs, coverage)
+        inspect_document(
+            book, html_name, groups, resolver, templates, paragraphs, coverage
+        )
     return {
         "volume": volume["title"],
         "toc_files": len(files),
@@ -264,61 +342,108 @@ def short_style(style):
 
 def render_md(report):
     lines = [
-        "# EPUB DOM 与 CSS 排版画像", "",
-        "统计对象：EPUB 目录关联的 XHTML；同一文件在同一分册只扫描一次。", "",
-        "提醒：CSS 值仅按静态规则、特异性和继承关系近似求得，不是浏览器实际渲染结果；字体和字号不能单独证明文学语义。", "",
-        "## 总览", "",
+        "# EPUB DOM 与 CSS 排版画像",
+        "",
+        "统计对象：EPUB 目录关联的 XHTML；同一文件在同一分册只扫描一次。",
+        "",
+        "提醒：CSS 值仅按静态规则、特异性和继承关系近似求得，不是浏览器实际渲染结果；字体和字号不能单独证明文学语义。",
+        "",
+        "## 总览",
+        "",
         "| 分册 | XHTML | 标题总数 | 标题模板 | 段落模板 | CSS |",
         "|---|---:|---:|---:|---:|---:|",
     ]
     for v in report["volumes"]:
-        lines.append(f"| {escape_md(v['volume'])} | {v['analyzed_files']} | {sum(v['heading_tags'].values())} | {len(v['heading_templates'])} | {len(v['paragraph_templates'])} | {len(v['linked_css'])} |")
+        lines.append(
+            f"| {escape_md(v['volume'])} | {v['analyzed_files']} | {sum(v['heading_tags'].values())} | {len(v['heading_templates'])} | {len(v['paragraph_templates'])} | {len(v['linked_css'])} |"
+        )
 
     for v in report["volumes"]:
-        lines.extend(["", f"## {escape_md(v['volume'])}", "",
-                      f"文件：{v['analyzed_files']}；样式表：{', '.join(v['linked_css']) or '无'}", "",
-                      "### 标题 DOM + 样式模板", "",
-                      "| 模板 | 数量 | 分组 | 子节点 / 排版差异 |",
-                      "|---|---:|---|---|"])
+        lines.extend(
+            [
+                "",
+                f"## {escape_md(v['volume'])}",
+                "",
+                f"文件：{v['analyzed_files']}；样式表：{', '.join(v['linked_css']) or '无'}",
+                "",
+                "### 标题 DOM + 样式模板",
+                "",
+                "| 模板 | 数量 | 分组 | 子节点 / 排版差异 |",
+                "|---|---:|---|---|",
+            ]
+        )
         for i, rec in enumerate(v["heading_templates"], 1):
             sig = rec["signature"]
-            spans = [f"{x['element']}〔{short_style(x['style'])}〕" for x in sig["runs"]]
-            lines.append(f"| H{i}: `{escape_md(sig['root'])}` | {rec['count']} | {escape_md('、'.join(rec['groups'][:5]))} | {escape_md(' → '.join(spans))} |")
+            spans = [
+                f"{x['element']}〔{short_style(x['style'])}〕" for x in sig["runs"]
+            ]
+            lines.append(
+                f"| H{i}: `{escape_md(sig['root'])}` | {rec['count']} | {escape_md('、'.join(rec['groups'][:5]))} | {escape_md(' → '.join(spans))} |"
+            )
         for i, rec in enumerate(v["heading_templates"], 1):
             lines.append(f"\n**H{i} 代表实例**")
             for example in rec["samples"]:
-                runs = " / ".join(f"{escape_md(x['text'])} ({escape_md(x['element'])})" for x in example["runs"])
+                runs = " / ".join(
+                    f"{escape_md(x['text'])} ({escape_md(x['element'])})"
+                    for x in example["runs"]
+                )
                 lines.append(f"- `{example['html']}`：{runs}")
                 for run in example["runs"]:
                     if run["style"]:
-                        sources = "; ".join(f"{k}: {v} ← {run['style_sources'].get(k)}" for k, v in run["style"].items())
-                        lines.append(f"  - {escape_md(run['element'])}：{escape_md(sources)}")
-        lines.extend(["", "### 段落模板", "",
-                      "| 模板 | 数量 | 首个 h2 前 | 紧接标题 | 紧邻下个标题 | 内嵌标签 | 样例 |",
-                      "|---|---:|---:|---:|---:|---|---|"])
+                        sources = "; ".join(
+                            f"{k}: {v} ← {run['style_sources'].get(k)}"
+                            for k, v in run["style"].items()
+                        )
+                        lines.append(
+                            f"  - {escape_md(run['element'])}：{escape_md(sources)}"
+                        )
+        lines.extend(
+            [
+                "",
+                "### 段落模板",
+                "",
+                "| 模板 | 数量 | 首个 h2 前 | 紧接标题 | 紧邻下个标题 | 内嵌标签 | 样例 |",
+                "|---|---:|---:|---:|---:|---|---|",
+            ]
+        )
         for rec in v["paragraph_templates"]:
             sig = rec["signature"]
             example = rec["samples"][0] if rec["samples"] else {}
             inline = ", ".join(f"{k}:{n}" for k, n in rec["inline_tags"].items())
-            lines.append(f"| `{escape_md(sig['element'])}` / {escape_md(sig['feature'])} / {escape_md(short_style(sig['style']))} | {rec['count']} | {rec['before_first_h2']} | {rec['after_heading']} | {rec['before_heading']} | {inline or '-'} | {escape_md(example.get('title', ''))} |")
+            lines.append(
+                f"| `{escape_md(sig['element'])}` / {escape_md(sig['feature'])} / {escape_md(short_style(sig['style']))} | {rec['count']} | {rec['before_first_h2']} | {rec['after_heading']} | {rec['before_heading']} | {inline or '-'} | {escape_md(example.get('title', ''))} |"
+            )
         if v["other_text_tags"]:
             lines.extend(["", "### 非 p/标题内的文字（需关注）", ""])
             for name, n in v["other_text_tags"].items():
                 sample = v["other_text_samples"].get(name, {})
-                lines.append(f"- `{name}` {n} 处；`{sample.get('html', '?')}`：{escape_md(sample.get('text', ''))}")
+                lines.append(
+                    f"- `{name}` {n} 处；`{sample.get('html', '?')}`：{escape_md(sample.get('text', ''))}"
+                )
         if v["missing_files"]:
             lines.extend(["", "未找到 XHTML：" + "、".join(v["missing_files"])])
     if report["css_warnings"]:
-        lines.extend(["", "## 未完全解释的 CSS", "",
-                      "这些情况需要人工复核，不能误认静态样式为最终浏览器样式。", ""])
+        lines.extend(
+            [
+                "",
+                "## 未完全解释的 CSS",
+                "",
+                "这些情况需要人工复核，不能误认静态样式为最终浏览器样式。",
+                "",
+            ]
+        )
         lines.extend(f"- {escape_md(w)}" for w in report["css_warnings"])
     return "\n".join(lines) + "\n"
 
 
 def run(book, toc, book_filter=None):
     resolver = StyleResolver(book)
-    volumes = [node for node in toc if node["title"] != "总目录" and
-               (book_filter is None or node["title"] == book_filter)]
+    volumes = [
+        node
+        for node in toc
+        if node["title"] != "总目录"
+        and (book_filter is None or node["title"] == book_filter)
+    ]
     if not volumes:
         raise ValueError(f"未找到分册：{book_filter}")
     report = {
@@ -339,8 +464,10 @@ def main():
     args = parser.parse_args()
     book = epub.read_epub(str(args.epub))
     report = run(book, parse_toc(book.toc), args.book)
-    for path, content in ((args.output, render_md(report)),
-                          (args.json_output, json.dumps(report, ensure_ascii=False, indent=2))):
+    for path, content in (
+        (args.output, render_md(report)),
+        (args.json_output, json.dumps(report, ensure_ascii=False, indent=2)),
+    ):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         print(f"报告：{path}")
