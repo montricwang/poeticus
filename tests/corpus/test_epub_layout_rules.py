@@ -402,12 +402,13 @@ def test_nalan_byline_after_unstyled_front_matter_is_not_missed():
     assert poems[1].tune == "金缕曲"
     assert poems[1].content.text == ["附词正文上片", "附词正文下片"]
     assert not any(w["type"] == "missing_inserted_author" for w in poems[1].warnings)
-    assert poems[1].title == "附作前说明文字"
+    assert poems[1].title is None
+    assert poems[1].content.prefaces == ["附作前说明文字"]
     assert not any(w["type"] == "unclassified_before_inserted_author"
                    for w in poems[1].warnings)
     sections = extract_sections(book, "x.html", group)
     assert sections[1]["unknown"] == []
-    assert sections[1]["blocks"][1]["role"] == "inserted_title"
+    assert sections[1]["blocks"][1]["role"] == "inserted_preface"
     assert sections[1]["blocks"][2]["role"] == "inserted_author"
 
 
@@ -442,8 +443,8 @@ def test_nalan_long_right_aligned_sentence_is_not_preclassified_as_an_author():
 
 
 
-def test_nalan_confirmed_title_between_h4_and_three_character_author():
-    """Original short heading paragraphs are titles, not verse or commentary."""
+def test_nalan_confirmed_preface_between_h4_and_three_character_author():
+    """A separate p below h4 is a prefatory note, not an inline title."""
     group = "纳兰词集"
     book = Book({"x.html": (
         '<h4 class="kindle-cn-heading4">金缕曲</h4>'
@@ -457,13 +458,14 @@ def test_nalan_confirmed_title_between_h4_and_three_character_author():
     poem = poems[0]
     assert poem.author == "严某某"
     assert poem.tune == "金缕曲"
-    assert poem.title == "赠知己，次友人韵。"
+    assert poem.title is None
+    assert poem.content.prefaces == ["赠知己，次友人韵。"]
     assert poem.content.text == ["合成正文甲", "合成正文乙"]
     assert not any(w["type"].startswith("unclassified") for w in poem.warnings)
 
 
-def test_nalan_two_separate_title_regions_stay_pending():
-    """An existing h4 subtitle plus another title p is not silently merged."""
+def test_nalan_inline_h4_title_and_separate_preface_remain_distinct():
+    """A subtitle in h4 stays a title; the following p becomes preface."""
     group = "纳兰词集"
     book = Book({"x.html": (
         '<h4 class="kindle-cn-heading4">金缕曲'
@@ -474,9 +476,10 @@ def test_nalan_two_separate_title_regions_stay_pending():
     )})
     section = extract_sections(book, "x.html", group)[0]
     assert section["title"] == "先有词题"
-    assert section["unknown"][0]["text"] == "另有不同的题下注。"
-    assert any(w["type"] == "unclassified_before_inserted_author"
-               for w in section["warnings"])
+    assert section["prefaces"] == ["另有不同的题下注。"]
+    assert section["unknown"] == []
+    assert not any(w["type"] == "unclassified_before_inserted_author"
+                   for w in section["warnings"])
     assert section["author_override"] == "陈某某"
 
 
@@ -541,3 +544,23 @@ def test_zhou_verified_numbering_cannot_bleed_to_other_collections():
     assert s["unknown"][0]["text"] == "其他词集的引文"
     assert not any(w["type"] == "verified_commentary_continuation"
                    for w in s["warnings"])
+
+
+def test_nalan_independent_preface_retains_two_sentences_as_one_paragraph():
+    group = "纳兰词集"
+    book = Book({"x.html": (
+        '<h4 class="kindle-cn-heading4">贺新郎</h4>'
+        '<p>送故友南归，次另一人韵。时故友遭家丧。</p>'
+        '<p class="kindle-cn-para-right">某词人</p>'
+        '<p>模拟上片</p><p>模拟下片</p>'
+    )})
+    poems, _ = extract_collection(
+        book, [node(group, [node("作品", href="x.html")])],
+        group, "na", "纳兰性德",
+    )
+    p = poems[0]
+    assert p.tune == "贺新郎"
+    assert p.title is None
+    assert p.content.prefaces == ["送故友南归，次另一人韵。时故友遭家丧。"]
+    assert p.content.text == ["模拟上片", "模拟下片"]
+    assert p.author == "某词人"
