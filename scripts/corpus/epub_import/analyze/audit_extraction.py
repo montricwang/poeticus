@@ -21,7 +21,7 @@ PRIORITY_WARNINGS = {
     "missing_inserted_author", "ambiguous_toc_attribution", "empty_body",
     "unresolved_tune_repeat", "unclassified_after_notes",
     "ambiguous_reference_after_verse", "missing_image_src",
-    "ambiguous_heading_parts",
+    "ambiguous_heading_parts", "unclassified_before_inserted_author",
 }
 
 
@@ -64,6 +64,29 @@ def audit_collection(book, toc, name, author, slug):
     warnings = Counter()
     review = []
     for poem, section in zip(poems, sections):
+        structural_blocks = section["blocks"]
+        positions = {b["block"]: i for i, b in enumerate(structural_blocks)}
+        unknown_shapes = []
+        for unknown in section["unknown"]:
+            idx = positions.get(unknown["block"])
+            if idx is None:
+                continue
+            def shape(item):
+                if item is None:
+                    return None
+                return {
+                    "role": item["role"],
+                    "tag": item["tag"],
+                    "classes": item["classes"],
+                }
+            unknown_shapes.append({
+                "block": unknown["block"],
+                "length": len(unknown["text"]),
+                "previous": shape(structural_blocks[idx - 1] if idx else None),
+                "current": shape(structural_blocks[idx]),
+                "following": shape(structural_blocks[idx + 1]
+                                   if idx + 1 < len(structural_blocks) else None),
+            })
         for issue in poem.warnings:
             warnings[issue["type"]] += 1
         # Preserve all warning types, without copying every poem's full text.
@@ -78,6 +101,7 @@ def audit_collection(book, toc, name, author, slug):
                 "warning_types": sorted({i["type"] for i in poem.warnings}),
                 "warnings": poem.warnings,
                 "unknown_blocks": section["unknown"],
+                "unknown_shapes": unknown_shapes,
                 # Structure only; no text from commercially published notes.
                 "unsigned_work_structure": [
                     {"role": b["role"], "tag": b["tag"],
@@ -140,6 +164,25 @@ def render_md(report):
                 f'`{src["html"]}` 块 {src["block"]}；'
                 f'{", ".join(review["warning_types"])}'
             )
+            if review.get("unknown_shapes"):
+                shapes = review["unknown_shapes"]
+                def label(piece):
+                    if piece is None:
+                        return "无"
+                    return (piece["role"] + "/" + piece["tag"] + "/" +
+                            (",".join(piece["classes"]) or "-"))
+                lines.append(
+                    "  - 待分类块相邻结构（不含原文）："
+                    + "; ".join(
+                        f'{entry["block"]}: '
+                        f'{label(entry["previous"])} → '
+                        f'{label(entry["current"])}({entry["length"]}字) → '
+                        f'{label(entry["following"])}'
+                        for entry in shapes[:3]
+                    )
+                    + (f'；其余 {len(shapes) - 3} 处见本地 JSON'
+                       if len(shapes) > 3 else "")
+                )
             if not review["author"]:
                 shapes = review.get("unsigned_work_structure", [])
                 lines.append(
