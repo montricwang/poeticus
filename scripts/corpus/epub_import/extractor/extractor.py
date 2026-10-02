@@ -8,8 +8,8 @@ import warnings
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
-from extractor.schema import Poem, PoemContent
-from extractor.rules import (
+from .schema import Poem, PoemContent
+from .rules import (
     interpret_heading,
     is_chronology,
     is_non_poem,

@@ -7,10 +7,10 @@ from dataclasses import asdict
 
 from ebooklib import epub
 
-from epub.reader import parse_toc
-from extractor.extractor import extract_collection
-from extract_images import extract_referenced_images
-from pipeline.normalize import normalize_poems, resolve_mapping, get_output_form
+from .epub.reader import parse_toc
+from .extractor.extractor import extract_collection
+from .extract_images import extract_referenced_images
+from .pipeline.normalize import normalize_poems, resolve_mapping, get_output_form
 
 
 EPUB_PATH = Path("data/raw/历代名家词集精华录.epub")
@@ -42,7 +42,7 @@ def collect_missing_glyphs(poems, glyph_map):
     return missing
 
 
-def resolve_missing_glyphs(missing, map_path, script_dir):
+def resolve_missing_glyphs(missing, map_path):
     """提取未知图片，并让用户在终端中人工确认字形。"""
 
     for html_name, srcs in missing.items():
@@ -71,7 +71,8 @@ def resolve_missing_glyphs(missing, map_path, script_dir):
             # glyph_mapping 目前仍作为独立人工工具运行
             command = [
                 sys.executable,
-                str(script_dir / "pipeline" / "glyph_mapping.py"),
+                "-m",
+                "scripts.corpus.epub_import.pipeline.glyph_mapping",
                 str(image_path),
                 "--source",
                 source,
@@ -135,8 +136,6 @@ def main():
 
     args = parser.parse_args()
 
-    script_dir = Path(__file__).resolve().parent
-
     output_dir = Path("data/output")
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -189,7 +188,6 @@ def main():
         resolve_missing_glyphs(
             missing,
             map_path,
-            script_dir,
         )
 
     # 3. normalization
