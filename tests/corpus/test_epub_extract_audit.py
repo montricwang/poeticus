@@ -99,3 +99,55 @@ def test_ambiguous_note_report_exposes_adjacent_markup_without_its_text():
     assert "unknown/p/other" in md
     assert "合成待分类文字" not in md
     assert one["warning_counts"]["unclassified_after_notes"] == 1
+
+
+
+def test_export_guard_blocks_unclassified_text_without_omitting_evidence():
+    from types import SimpleNamespace
+    import pytest
+    from scripts.corpus.epub_import.import_poems import (
+        ensure_no_unclassified_content,
+    )
+    candidate = SimpleNamespace(id="zhou-001", warnings=[
+        {"type": "inline_image", "src": "glyph-1"},
+        {"type": "unclassified_after_notes", "text": "合成待分类段落"},
+    ])
+    with pytest.raises(RuntimeError, match="zhou-001") as exc:
+        ensure_no_unclassified_content([candidate])
+    assert "禁止直接导出" in str(exc.value)
+    assert "unclassified_after_notes" in str(exc.value)
+
+
+def test_export_guard_allows_non_losing_warning_types_only():
+    from types import SimpleNamespace
+    from scripts.corpus.epub_import.import_poems import (
+        ensure_no_unclassified_content,
+    )
+    candidates = [
+        SimpleNamespace(id="x-001", warnings=[
+            {"type": "inline_body_style_review"},
+            {"type": "doubtful_attribution"},
+            {"type": "inferred_note_continuation"},
+        ]),
+        SimpleNamespace(id="x-002", warnings=[]),
+    ]
+    assert ensure_no_unclassified_content(candidates) is None
+
+
+def test_export_guard_blocks_pre_author_and_post_verse_unknown():
+    from types import SimpleNamespace
+    import pytest
+    from scripts.corpus.epub_import.import_poems import (
+        ensure_no_unclassified_content,
+    )
+    candidate = SimpleNamespace(id="na-001", warnings=[
+        {"type": "unclassified_before_inserted_author", "text": "说明"}
+    ])
+    another = SimpleNamespace(id="x-003", warnings=[
+        {"type": "ambiguous_reference_after_verse", "text": "引文"}
+    ])
+    with pytest.raises(RuntimeError) as exc:
+        ensure_no_unclassified_content([candidate, another])
+    assert "2 首" in str(exc.value)
+    assert "unclassified_before_inserted_author" in str(exc.value)
+    assert "ambiguous_reference_after_verse" in str(exc.value)
