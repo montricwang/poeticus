@@ -197,3 +197,15 @@ python -m scripts.corpus.epub_import.review_glyph_contexts
 ```
 
 脚本利用同一份 `epub_import_preflight.json` 依照字形画廊的原顺序（001—049 等），在原 EPUB 的 h1/h2/h4/p 块里寻找图片，最多展示每个目标两处引用的前后各 16 字，以 `⟦目标字⟧` 占位；其他图片字也用标记表示，不会凭空替字。默认保存 `data/reports/glyph_contexts_private.md`，**包含局部版权文字，仅供私人核字，不提交仓库**。不覆盖已填写的 `glyph_review.tsv`，不需要重新生成画廊。用户与 AI 先确认字形再 `review_glyphs --apply`。
+
+### 11.2 从原 EPUB 批量导出图片字所在的完整段落
+
+字形画廊只展示图片和 XHTML 文件名。每个文件内的完整词句/注释其实仍然在原始本地 EPUB 中；不需要上网搜索，也不需要重新抽取整书。新增可单独运行的上下文导出命令：
+
+```powershell
+python -m scripts.corpus.epub_import.review_glyphs --contexts
+```
+
+输出 `data/reports/glyph_contexts.html`：**49 张图片继续沿用原 `glyph_review.html`、`glyph_review.tsv` 的 001–049 编号，绝不根据字形相似程度合并**。自带离线图片预览、分册、XHTML 文件名、与 `inspect_source` 一致的源块号、最近章节标题及目标图片在整个原书段落中的真实位置；黄色标记为本卡图片，蓝色标记为同段其他图片。如果同一图片在多个文件、多个段落或者同段出现多次，会保留所有原始位置，不只展示一个例子。除 `h1/h2/h4/p` 外的来源不做无依据的猜测：预检记录对应图片但找不到源块时明确抛错。
+
+**与只展示少量邻近文字的 `review_glyph_contexts.py` 不同**，这份 HTML 展示完整段落，适合复制原句搜索通行版本。生成步骤只读取原有 `epub_import_preflight.json` 和原 EPUB，**不改动/覆盖已有字形 TSV 或 HTML 填写页面**，也不写新的 glyph_map，用户可并排打开填写表和原文上下文。本地报告嵌有商业原书文字及图片，必须留在 gitignore 下，不提交公共仓库；讨论某个争议时只分享必要短片段。
