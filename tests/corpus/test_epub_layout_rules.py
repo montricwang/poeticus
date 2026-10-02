@@ -383,3 +383,43 @@ def test_repeat_tune_does_not_cross_inline_doubtful_section():
     assert [p.tune for p in poems] == ["采桑子", None]
     assert any(w["type"] == "unresolved_tune_repeat" for w in poems[1].warnings)
     assert any(w["type"] == "doubtful_attribution" for w in poems[1].warnings)
+
+
+def test_nalan_byline_after_unstyled_front_matter_is_not_missed():
+    """Real audit shape: h4, short plain p, right-aligned byline, two verse p."""
+    group = "纳兰词集"
+    book = Book({"x.html": (
+        '<h2>浣溪沙</h2><p>纳兰作品</p>'
+        '<h4 class="kindle-cn-heading4">金缕曲</h4>'
+        '<p>附作前说明文字</p>'
+        '<p class="kindle-cn-para-right">顾贞观</p>'
+        '<p>附词正文上片</p><p>附词正文下片</p>'
+        '<h2>又</h2><p>纳兰另一首</p>'
+    )})
+    toc = [node(group, [node("卷一", href="x.html")])]
+    poems, _ = extract_collection(book, toc, group, "na", "纳兰性德")
+    assert [p.author for p in poems] == ["纳兰性德", "顾贞观", "纳兰性德"]
+    assert poems[1].tune == "金缕曲"
+    assert poems[1].content.text == ["附词正文上片", "附词正文下片"]
+    assert not any(w["type"] == "missing_inserted_author" for w in poems[1].warnings)
+    assert any(w["type"] == "unclassified_before_inserted_author"
+               for w in poems[1].warnings)
+    sections = extract_sections(book, "x.html", group)
+    assert sections[1]["unknown"][0]["text"] == "附作前说明文字"
+    assert sections[1]["blocks"][1]["role"] == "unknown_before_author"
+    assert sections[1]["blocks"][2]["role"] == "inserted_author"
+
+
+def test_nalan_without_byline_keeps_first_verse_and_unknown_author():
+    group = "纳兰词集"
+    book = Book({"x.html": (
+        '<h4 class="kindle-cn-heading4">贺新郎</h4>'
+        '<p>附词正文上片</p><p>附词正文下片</p>'
+    )})
+    toc = [node(group, [node("附作", href="x.html")])]
+    poems, _ = extract_collection(book, toc, group, "na", "纳兰性德")
+    assert poems[0].author == ""
+    assert poems[0].content.text == ["附词正文上片", "附词正文下片"]
+    assert any(w["type"] == "missing_inserted_author" for w in poems[0].warnings)
+    assert not any(w["type"] == "unclassified_before_inserted_author"
+                   for w in poems[0].warnings)
