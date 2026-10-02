@@ -60,6 +60,25 @@ def normalize_poem(poem, glyph_map):
                 glyph_map,
             )
 
+    raw_paragraphs = poem["content"].get("text", [])
+    # Normalization can replace a long glyph token with one character.
+    # Rebase inline-note offsets *before* changing the body text so the
+    # recorded intervals always refer to the normalized paragraph.
+    for note in poem["content"].get("inline_notes", []):
+        index = note["paragraph_index"]
+        if not (0 <= index < len(raw_paragraphs)):
+            raise ValueError("行内附注的正文段落号越界")
+        raw = raw_paragraphs[index]
+        start, end = note["start"], note["end"]
+        if not (0 <= start < end <= len(raw)
+                and raw[start:end] == note["text"]):
+            raise ValueError("行内附注位置与原文不一致；禁止错误导出")
+        normalized_before = normalize_text(raw[:start], glyph_map)
+        normalized_note = normalize_text(note["text"], glyph_map)
+        note["start"] = len(normalized_before)
+        note["end"] = note["start"] + len(normalized_note)
+        note["text"] = normalized_note
+
     for category in (
         "text",
         "prefaces",
@@ -70,6 +89,10 @@ def normalize_poem(poem, glyph_map):
             normalize_text(text, glyph_map)
             for text in poem["content"].get(category, [])
         ]
+    for note in poem["content"].get("inline_notes", []):
+        source = poem["content"]["text"][note["paragraph_index"]]
+        if source[note["start"]:note["end"]] != note["text"]:
+            raise ValueError("行内附注位置在正文规范化后失效")
 
     for warning in poem.get("warnings", []):
         if warning.get("type") != "inline_image":
