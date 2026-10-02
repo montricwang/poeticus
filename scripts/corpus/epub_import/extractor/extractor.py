@@ -178,12 +178,14 @@ def extract_sections(book, html_name, collection=""):
         if block.tag != "p":
             continue
         if is_chronology(element, preview):
+            note_classes = None  # A chronology breaks note adjacency.
             chronology = preview
             # A dated heading belongs to subsequent works, not the previous poem.
             if current is not None:
                 add_evidence(current, block, "chronology_for_next_work", preview)
             continue
         if "纳兰" in collection and preview == "【附】":
+            note_classes = None  # A new author/work marker is a hard boundary.
             awaiting_supplement = True
             if current is not None:
                 add_evidence(current, block, "inserted_work_marker", preview)
@@ -246,6 +248,7 @@ def extract_sections(book, html_name, collection=""):
                 add_evidence(current, block, "note_continuation", text)
             else:
                 current["unknown"].append({**block.location(), "text": text})
+                note_classes = None  # Only adjacent blocks may be continued.
                 current["warnings"].append({
                     "type": "unclassified_after_notes", **block.location(),
                     "text": text
