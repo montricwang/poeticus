@@ -16,6 +16,7 @@ from .rules import (
     is_non_poem,
     is_preface,
     is_separate_title,
+    is_verified_zhou_commentary,
 )
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
@@ -228,14 +229,26 @@ def extract_sections(book, html_name, collection=""):
                     and all("\u3400" <= ch <= "\u9fff" or ch == "·"
                             for ch in next_block.text.strip())
                     and not preview.startswith(("◎", "◆"))):
-                text, image_warnings = paragraph_text(element, html_name, "unknown")
-                current["warnings"].extend(image_warnings)
-                current["unknown"].append({**block.location(), "text": text})
-                current["warnings"].append({
-                    "type": "unclassified_before_inserted_author",
-                    **block.location(), "text": text,
-                })
-                add_evidence(current, block, "unknown_before_author", text)
+                if not current["title"]:
+                    # Verified appended-work layout: h4 tune, an unstyled
+                    # dedicatory title, a short right-aligned author byline.
+                    # Keep the complete title text; do not invent a split
+                    # between occasion, rhyme exchange, and background.
+                    text, image_warnings = paragraph_text(element, html_name, "title")
+                    current["warnings"].extend(image_warnings)
+                    current["title"] = text
+                    add_evidence(current, block, "inserted_title", text)
+                else:
+                    # An h4 may already contain a subtitle. Two distinct
+                    # titles are ambiguous without further evidence.
+                    text, image_warnings = paragraph_text(element, html_name, "unknown")
+                    current["warnings"].extend(image_warnings)
+                    current["unknown"].append({**block.location(), "text": text})
+                    current["warnings"].append({
+                        "type": "unclassified_before_inserted_author",
+                        **block.location(), "text": text,
+                    })
+                    add_evidence(current, block, "unknown_before_author", text)
                 continue
         if preview.startswith("◎"):
             category = "annotations"
@@ -263,13 +276,27 @@ def extract_sections(book, html_name, collection=""):
             )
             text, image_warnings = paragraph_text(element, html_name, note_category)
             current["warnings"].extend(image_warnings)
-            if matching_markup and current[note_category]:
+            verified_commentary = (
+                note_category == "commentaries"
+                and is_verified_zhou_commentary(
+                    collection, html_name, current["ordinal"],
+                    block.ordinal, classes,
+                )
+            )
+            if (matching_markup or verified_commentary) and current[note_category]:
                 current[note_category][-1] += "\n" + text
                 current["warnings"].append({
-                    "type": "inferred_note_continuation", **block.location(),
-                    "category": note_category
+                    "type": (
+                        "verified_commentary_continuation"
+                        if verified_commentary else "inferred_note_continuation"
+                    ),
+                    **block.location(), "category": note_category,
                 })
-                add_evidence(current, block, "note_continuation", text)
+                add_evidence(
+                    current, block,
+                    ("verified_commentary_continuation"
+                     if verified_commentary else "note_continuation"), text,
+                )
             else:
                 current["unknown"].append({**block.location(), "text": text})
                 note_classes = None  # Only adjacent blocks may be continued.
