@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
 from .schema import Poem, PoemContent
 from .blocks import iter_source_blocks
+from .inline_notes import inspect_inline_font1
 from .rules import (
     INLINE_EDITORIAL_GAP,
     INLINE_AUTHOR_NOTE_REVIEWS,
@@ -172,7 +173,8 @@ def extract_sections(book, html_name, collection=""):
             current = {
                 "heading": preview, "tune": tune, "title": title,
                 "text": [], "prefaces": [], "annotations": [],
-                "commentaries": [], "unknown": [], "blocks": [],
+                "commentaries": [], "inline_notes": [],
+                "unknown": [], "blocks": [],
                 "warnings": issues, "html": html_name,
                 "anchor": block.anchor, "ordinal": block.ordinal,
                 "chronology": chronology, "inserted": is_supplement_heading,
@@ -322,6 +324,13 @@ def extract_sections(book, html_name, collection=""):
             current[category].append(text)
         current["warnings"].extend(image_warnings)
         add_evidence(current, block, category, text)
+        if category == "text" and text:
+            records, inline_issues = inspect_inline_font1(
+                element, text, block, collection, current["tune"],
+                len(current["text"]) - 1,
+            )
+            current["inline_notes"].extend(records)
+            current["warnings"].extend(inline_issues)
         if category in ("annotations", "commentaries"):
             note_category = category
             note_classes = block.classes
@@ -457,6 +466,7 @@ def convert_to_poem(
             text=section["text"], prefaces=section["prefaces"],
             annotations=section["annotations"],
             commentaries=section["commentaries"],
+            inline_notes=section.get("inline_notes", []),
         ),
         collection=collection, source="历代名家词集精华录",
         warnings=issues,
