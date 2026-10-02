@@ -81,3 +81,27 @@ def test_unknown_family_gives_clear_empty_plan():
     assert "没有找到候选" in render_plan(
         select_inline_samples({"sites": []}, families=("kaiti",))
     )
+
+
+
+def test_remaining_flag_skips_real_checked_coordinates_only():
+    audit = {"sites": [
+        site("黄庭坚", "text00214.html", 696, "font1"),
+        site("辛弃疾", "text00279.html", 243, "font1"),
+        site("辛弃疾", "text00279.html", 777, "font1"),
+        site("黄庭坚", "text00214.html", 999, "font1"),
+        site("纳兰", "unknown.html", 23, "kaiti"),
+    ]}
+    remaining = select_inline_samples(
+        audit, families=("font1",), per_style=15, remaining=True,
+    )
+    assert [(case["html"], case["block"]) for case in remaining] == [
+        ("text00279.html", 777),
+        ("text00214.html", 999),
+    ]
+    assert len(select_inline_samples(
+        audit, families=("font1",), per_style=15
+    )) == 4
+    assert len(select_inline_samples(
+        audit, families=("kaiti",), remaining=True
+    )) == 1
