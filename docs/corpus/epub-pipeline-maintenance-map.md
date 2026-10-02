@@ -94,3 +94,32 @@
 - 如需保留历次输出，可以单独备份 `data/output/`，但这份输出可以在上述输入齐备时重建。
 
 上述资料包含私人来源或者来源文字，不得提交公开仓库。特别注意：当前每首 ID 是“分册 slug + 提取顺序号”，**在同一版本同一规则下稳定，但当原书顺序/作品切分规则改变时可能整体后移**。未来数据库需要自己的稳定身份策略，至少存作品源锚点、版本来源以及可能的跨版本映射，不要只按旧 ID 把两次导出盲目覆盖。
+
+
+## 8. 贺铸「寓声名—原词调—题目」的源头结构化（2026-10-02）
+
+《半死桐》《翦朝霞》等贺铸词作的题头含三种不同的名字；最初的中间 Schema 只有 `tune/title`，已知会把「翦朝霞」误并进「牡丹」的 `title`。**修正不是再写一层修补已生成 JSON 的脚本，而是修改现有来源抽取器**：
+
+- `extractor/schema.py::Poem.yusheng: Optional[str]`：贺铸另拟的寓声名；普通词作填 `null`。不要与 `tune`（原词调）或 `title`（作品题注）混同。
+- `extractor/rules.py::interpret_heading`：对贺铸的多段来源标题，按首段寓声名、后续段落原词调和作品题注抽取。支持独立 `span` 及“思越人　牡丹”**全角空格明确分隔**的情况；其他分册保持既有行为。若源 EPUB 题头没有可判定分隔，不能仅凭连写字面臆断。
+- `extractor/extractor.py` 将 `yusheng` 写进 `section`、中间 Poem；`pipeline/normalize.py` 同样处理位于 `yusheng` 内的图片字。
+- 「思越人，亦名鹧鸪天」只取此来源的主要 `tune=思越人`，**不引入全书 `cipai_alias` 字段**；异名体系属于后续词谱知识。
+- 回归用例 `tests/corpus/test_epub_he_zhu_yusheng.py` 全部采用合成正文，覆盖《半死桐》、三段题头、图片字与批量导出。项目 CI 仅能验证合成排版，**仍需用户本地真实 EPUB 复核**。
+
+复核命令（在 PR 分支拉取后，使用现有 EPUB 和 glyph map，无须重做辨字）：
+
+```powershell
+python -m scripts.corpus.epub_import.import_poems --all --check
+python -m scripts.corpus.epub_import.import_poems --all
+@'
+import json
+p = json.load(open("data/output/all_normalized.json", encoding="utf-8"))
+h = [x for x in p if x["author"] == "贺铸"]
+print("贺铸总首数：", len(h), "具有寓声名：", sum(bool(x["yusheng"]) for x in h))
+for x in h:
+    if x["yusheng"] in {"半死桐", "翦朝霞"}:
+        print(x["id"], "tune=", x["tune"], "yusheng=", x["yusheng"], "title=", x["title"])
+'@ | python -
+```
+
+如本地《翦朝霞》未得到 `tune=思越人/yusheng=翦朝霞/title=牡丹`，需使用 `analyze.inspect_source --show-html` 对照该作品的真实 `h2` 标签再修改，不得声称合成测试等于源版本核对。此次变更只影响中间数据，今后数据库是否有专门的 `yusheng` 列应由下游 schema 决定。
