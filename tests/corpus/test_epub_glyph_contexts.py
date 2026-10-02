@@ -31,7 +31,7 @@ def test_source_contexts_are_short_bounded_and_cover_multiple_glyphs():
     result = find_contexts(book, sites, window=3)
     assert len(result) == 2
     first = result[0]["examples"][0]
-    assert first["before"] == "二字"
+    assert first["before"] == "十二字"
     assert first["after"].startswith("夹心")
     assert "后缀九字" not in first["after"]
     assert result[1]["examples"][0]["before"].endswith("夹心")
