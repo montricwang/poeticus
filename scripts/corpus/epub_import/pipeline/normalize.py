@@ -63,7 +63,7 @@ def normalize_text(text, glyph_map):
 
 
 def normalize_poem(poem, glyph_map):
-    for field in ("tune", "title"):
+    for field in ("tune", "title", "yusheng"):
         if poem.get(field) is not None:
             poem[field] = normalize_text(
                 poem[field],
@@ -136,6 +136,7 @@ def unresolved_glyphs(poems):
         fields = [
             ("tune", poem.get("tune")),
             ("title", poem.get("title")),
+            ("yusheng", poem.get("yusheng")),
         ]
 
         fields.extend(
