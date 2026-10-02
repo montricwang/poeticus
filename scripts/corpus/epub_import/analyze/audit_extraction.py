@@ -142,8 +142,8 @@ def audit_book(book, toc, only=None):
 def render_md(report):
     lines = [
         "# EPUB 15 册抽取审计（候选结果，未经文学校勘）", "",
-        "| 分册 | XHTML | 候选词作 | 告警涉及作品 | 作者待定 | 空正文 | 正文混入注评标记 | 未追踪源块 |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|",
+        "| 分册 | XHTML | 候选词作 | 告警涉及作品 | 作者待定 | 空正文 | 正文混入注评标记 | 未追踪源块 | 其他标签文字 |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for item in report["results"]:
         lines.append(
@@ -151,7 +151,8 @@ def render_md(report):
             f'{item["candidate_poems"]} | {len(item["review_items"])} | '
             f'{item["unassigned_author"]} | {item["empty_body"]} | '
             f'{item["note_marker_in_body"]} | '
-            f'{item["source_coverage"]["untracked_blocks"]} |'
+            f'{item["source_coverage"]["untracked_blocks"]} | '
+            f'{item["source_coverage"]["unsupported_text_nodes"]} |'
         )
     for item in report["results"]:
         lines.extend(["", f'## {item["collection"]}', "",
@@ -164,7 +165,8 @@ def render_md(report):
                       f'{item["source_coverage"]["total_blocks"]} 块中，'
                       f'{item["source_coverage"]["handled_blocks"]} 块有抽取证据，'
                       f'{item["source_coverage"]["excluded_blocks"]} 块按已知版式排除，'
-                      f'{item["source_coverage"]["untracked_blocks"]} 块未追踪。', ""])
+                      f'{item["source_coverage"]["untracked_blocks"]} 块未追踪；'
+                      f'{item["source_coverage"]["unsupported_text_nodes"]} 处文字位于非扫描标签内。', ""])
         missing = item["source_coverage"]["untracked_sites"]
         if missing:
             lines.append("未追踪源块（仅结构，不含原文；需确认后才允许忽略）：")
@@ -177,6 +179,19 @@ def render_md(report):
                 )
             if len(missing) > 10:
                 lines.append(f'- 其余 {len(missing) - 10} 处见本地 JSON')
+            lines.append("")
+        dangling = item["source_coverage"]["unsupported_text_sites"]
+        if dangling:
+            lines.append("其他标签中的独立文字（仅结构，不含原文）：")
+            for site in dangling[:10]:
+                lines.append(
+                    f'- `{site["html"]}` '
+                    f'父标签=`{site["parent_tag"]}` '
+                    f'class=`{",".join(site["parent_classes"]) or "-"}` '
+                    f'（{site["text_length"]}字）'
+                )
+            if len(dangling) > 10:
+                lines.append(f'- 其余 {len(dangling)-10} 处见本地 JSON')
             lines.append("")
         # Put records likely to affect meaning or authorship first. Keep
         # original source order among records of equal severity.
