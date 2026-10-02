@@ -136,8 +136,10 @@ def test_images_and_linebreaks_survive_and_normalize():
     sections = extract_sections(book, "x.html", "周邦彦词集")
     assert sections[0]["text"] == [
         "首句{{glyph:Image0001.jpg}}末句\n第二行",
-        "不会成为小序，因为已有正文",
     ]
+    assert sections[0]["unknown"][0]["text"] == "不会成为小序，因为已有正文"
+    assert any(w["type"] == "ambiguous_reference_after_verse"
+               for w in sections[0]["warnings"])
     assert sections[0]["warnings"][0]["src"] == "Image0001.jpg"
     toc = [{"title": "周邦彦词集", "children": [{"title": "调名", "href": "x.html"}]}]
     poem, _ = extract_collection(book, toc, "周邦彦词集", "z", "周邦彦")
