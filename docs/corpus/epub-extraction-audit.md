@@ -57,3 +57,15 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction --book "纳兰词�
 第四次审计输入（2026-10-02，本地人工复核具体原文）：纳兰三个附作 `h4 → 普通 p → 署名 p` 中，普通段落实际是赠答对象、和韵关系与作词缘由，因此完整保留为 `title`，不再标为 `unknown`；如果 h4 本来已有另一词题，则仍保留待分类并阻止导出，避免静默覆盖。周邦彦两首词后的 19+2 个段落已由本地原文核实为 `◆` 评论延续中的文献引证及考辨，分别确认 `text00241.html` 的作品起始块 2（段落块 20–38）、作品起始块 504（段落块 511–512）。因此仅在这两个 **具体来源和块号范围**，且确实已进入 `commentaries` 状态、块 class 符合既定格式时并入评论；保留 `verified_commentary_continuation` 审计依据。若版本或排版变化，仍归为 unknown 并触发导入拦截。不要把这次确认扩大为“凡 `kindle-cn-ref` 都是注评”或“凡 ◆ 后所有 p 都是评论”。
 
 以上两处调整尚需重新在本地真实 EPUB 上运行审计，以验证两个分册的待分类块归零；新增合成测试只能验证规则，不代替这一步。
+## DOM 层级诊断：区分兄弟节点与真实嵌套
+
+审计 JSON 只含单个段落的 `tag/classes/block`，不能据此宣称原 XHTML 没有评论容器。现在可以在**本地原 EPUB** 执行只读的父节点诊断，它直接沿 BeautifulSoup 节点的 `.parent` 查找完整祖先链与最近共同祖先，不读取内容判断语义，也不会导出商业文本：
+
+```bash
+python -m scripts.corpus.epub_import.analyze.inspect_dom_hierarchy --html text00241.html --group 19-22 --group 36-38 --group 510-512 --output data/reports/zhou_dom_hierarchy.md
+python -m scripts.corpus.epub_import.analyze.inspect_dom_hierarchy --html text00307.html --group 211-214 --group 224-227 --group 229-232 --output data/reports/nalan_dom_hierarchy.md
+```
+
+该工具的块号与语义抽取器一致，扫描 `h1/h2/h4/p`。输出仅包含标签、class、id、兄弟元素次序、直接父节点、最近共同祖先，允许分享结构摘要；**它只能证明 DOM 结构，不能自行证明哪一层代表词题、小序、注释或评论**。即使全部 `p` 共享 `div`，该 `div` 也可能只是整页排版容器；只有定位到专用容器、结合上下文才能升级语义规则。
+
+纳兰人工核实的三段属于交代赠答、和韵、写作情境的短题注，当前归入 `title`。`title` 与 `prefaces` 是 Poem 中不同的语义槽位：标题可以说明作词缘由；不要仅因文字提到背景就自动改入小序。若要把「时某人丁忧」从同一段中单独拆成小序，必须先定义产品上的分界并确认原书表示，不能直接按标点猜。
