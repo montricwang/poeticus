@@ -12,6 +12,27 @@ HE_ZHU_ALIAS_NOTE = re.compile(r"^(?P<tune>[^，,]+)[，,]\s*亦名\s*(?P<alias>
 EDITORIAL_HEADINGS = {"总评"}
 NON_POEMS = {"欧阳修词集": {"西湖念语"}}
 
+# A manual check of the *private* source on 2026-10-02 established that
+# these two runs are extended scholarly commentary after a ◆ paragraph.
+# Match original XHTML + work-start block + paragraph block range so no other
+# work in this volume (or even the same file) acquires inferred commentary.
+# If the source layout changes, fail closed instead of inventing attribution.
+VERIFIED_ZHOU_COMMENTARY_RUNS = {
+    ("text00241.html", 2): range(20, 39),     # 少年游, 19 paragraphs
+    ("text00241.html", 504): range(511, 513),  # 红林檎近, 2 paragraphs
+}
+
+
+def is_verified_zhou_commentary(collection, html_name, work_block, block, classes):
+    if collection != "周邦彦词集":
+        return False
+    run = VERIFIED_ZHOU_COMMENTARY_RUNS.get((html_name, work_block))
+    if run is None or block not in run:
+        return False
+    allowed = {"kindle-cn-ref", "kindle-cn-para-no-indent"}
+    return not classes or classes <= allowed
+
+
 
 def is_non_poem(collection, heading):
     name = heading.strip()
