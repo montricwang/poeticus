@@ -48,3 +48,7 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction --book "纳兰词�
 第二次真实审计（同日）：二晏候选作品数 400→398；李煜合刊 132→131；欧阳修、秦观、贺铸的大量整段字体样式告警清零。**这些是结构修复和告警口径改变的验证，不是对真实文学语义准确性的证明。**
 
 纳兰的 3 个 `missing_inserted_author` 均符合 `h4 → 普通短 p → p.kindle-cn-para-right（三字署名）→ 两段正文`。现允许在这种窄范围内识别后一段署名，把前一段保留为 `unknown_before_author` 并发出 `unclassified_before_inserted_author`；不擅自决定前段究竟是题名、小序还是编辑说明。长篇右对齐文字不视为这种作者署名证据。周邦彦仍有 21 次 `unclassified_after_notes`，新的 Markdown 报告会列出这些待分类块及其前后块的标签、class 与长度，不含原文，以供后续判断，暂不批量自动归类。
+
+第三次真实审计（同日，纳兰与周邦彦定点复跑）：纳兰 356 首的作者待定数从 3 降为 0，之前三处署名分别识别为严绳孙、陈维崧、严绳孙；原本在署名前的 3 个短段落仍列为 `unclassified_before_inserted_author`，不得无证据当成正文或小序。周邦彦虽然出现 21 个 `unclassified_after_notes`，但集中在两首（`zhou-bangyan-001` 19 块、`zhou-bangyan-055` 2 块）；这批段落在 `◆` 后交错使用 `kindle-cn-ref` 与普通 `p`，不能由排版 alone 判断到底是续注、引用还是其他编辑材料。
+
+**导出安全线：** `extract_sections` 将这些未归类文字留在本地临时 evidence，`PoemContent` 不含 `unknown` 字段。为了避免 `import_poems` 静默抛弃文本，正常导入只要遇到 `unclassified_after_notes`、`unclassified_before_inserted_author` 或 `ambiguous_reference_after_verse` 就必须在写任何 JSON 前停止。用户需在私有 EPUB 中复核，再落实真实的语义规则或有依据的跳过决定；不提供默认绕过选项。审计报告按册显示受影响作品数与待分类段落数。这不等于要求这些现代注评未来全部进入面向用户的 Poem Schema。
