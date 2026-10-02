@@ -1,4 +1,4 @@
-"""Account for every top-level source block in parsed XHTML documents.
+"""Account for source blocks and otherwise unrecognized text in parsed XHTML.
 
 This report answers a structural question: where did a source block go?
 It does not assert that a field assignment is semantically correct.
@@ -6,7 +6,7 @@ It intentionally exposes only locations, markup and character counts.
 """
 from collections import Counter
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment, NavigableString
 
 from ..extractor.blocks import iter_source_blocks
 from ..extractor.extractor import raw_xhtml
@@ -33,6 +33,7 @@ def source_block_coverage(book, files, sections, collection):
     }
     counters = Counter()
     untracked = []
+    unsupported_text = []
 
     for filename in files:
         item = book.get_item_with_href(filename)
@@ -68,6 +69,28 @@ def source_block_coverage(book, files, sections, collection):
                     "tag": block.tag, "classes": list(block.classes),
                     "anchor": block.anchor, "text_length": len(block.text),
                 })
+        # iter_source_blocks intentionally scans h1/h2/h4/p. Inventory text
+        # outside *all* those tags as a separate signal; otherwise a div, li
+        # or direct body text could disappear without any coverage warning.
+        body = soup.body or soup
+        for text_node in body.descendants:
+            if (not isinstance(text_node, NavigableString)
+                    or isinstance(text_node, Comment)
+                    or not str(text_node).strip()):
+                continue
+            ancestry = list(text_node.parents)
+            if any(parent.name in {"h1", "h2", "h4", "p",
+                                   "script", "style", "noscript", "svg"}
+                   for parent in ancestry):
+                continue
+            parent = text_node.parent
+            unsupported_text.append({
+                "html": filename,
+                "parent_tag": parent.name if parent else "unknown",
+                "parent_classes": list(parent.get("class", [])) if parent else [],
+                "parent_id": parent.get("id") if parent else None,
+                "text_length": len(str(text_node).strip()),
+            })
 
     total = sum(counters.values())
     excluded = sum(n for label, n in counters.items()
@@ -82,5 +105,11 @@ def source_block_coverage(book, files, sections, collection):
             if label.startswith("excluded_")
         },
         "untracked_sites": untracked,
-        "scope": "XHTML selected by the collection TOC; not every file in EPUB",
+        "unsupported_text_nodes": len(unsupported_text),
+        "unsupported_text_sites": unsupported_text,
+        "scope": (
+            "XHTML selected by collection TOC; tracked tags are h1/h2/h4/p, "
+            "other non-whitespace text nodes inventoried separately; "
+            "not every XHTML file in EPUB"
+        ),
     }
