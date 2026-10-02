@@ -158,7 +158,7 @@ def extract_sections(book, html_name, collection=""):
             continue
         if any("picture-txt" in css for css in classes):
             add_evidence(current, block, "figure_caption", preview)
-            note_classes = ()  # prevents merging across a figure boundary
+            note_classes = None  # prevents merging across a figure boundary
             continue
         if current["inserted"] and not has_verse and not current["author_override"]:
             if "kindle-cn-para-right" in classes:
