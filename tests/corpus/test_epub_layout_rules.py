@@ -281,3 +281,32 @@ def test_h1_editorial_region_skips_internal_h2_until_next_work_region():
     assert len(poems) == 1
     assert poems[0].tune == "菩萨蛮"
     assert poems[0].content.text == ["真正作品"]
+
+
+def test_unknown_paragraph_breaks_note_adjacency():
+    book = Book({"x.html": (
+        "<h2>调</h2><p>词正文</p>"
+        '<p class="review">◆评论</p>'
+        '<p class="other">不明段落</p>'
+        '<p class="review">较远段落不得回接评论</p>'
+    )})
+    s = extract_sections(book, "x.html", "晏殊词集·晏幾道词集")[0]
+    assert s["commentaries"] == ["◆评论"]
+    assert [b["text"] for b in s["unknown"]] == [
+        "不明段落", "较远段落不得回接评论"
+    ]
+
+
+def test_chronology_breaks_note_continuation_even_with_same_class():
+    book = Book({"x.html": (
+        "<h2>调</h2><p>词正文</p>"
+        '<p class="review">◆评论</p>'
+        '<p class="kindle-cn-para-no-indent1">某年（1180）</p>'
+        '<p class="review">不可接续前作评论</p>'
+        "<h2>次调</h2><p>另一首</p>"
+    )})
+    first, second = extract_sections(book, "x.html", "姜夔词集")
+    assert first["commentaries"] == ["◆评论"]
+    assert first["unknown"][0]["text"] == "不可接续前作评论"
+    assert second["text"] == ["另一首"]
+    assert second["chronology"] == "某年（1180）"
