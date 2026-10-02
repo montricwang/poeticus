@@ -228,3 +228,43 @@ def test_missing_image_src_never_disappears_silently():
     section = extract_sections(book, "x.html", "柳永词集")[0]
     assert section["text"] == ["起句{{glyph:missing-src}}末句"]
     assert any(w["type"] == "missing_image_src" for w in section["warnings"])
+
+
+def test_h1_author_change_within_one_shared_xhtml_is_respected():
+    group = "温庭筠词集·韦庄词集"
+    book = Book({"shared.html": (
+        "<h1>温庭筠词集</h1><h2>菩萨蛮</h2><p>温词</p>"
+        "<h1>韦庄词集</h1><h2>浣溪沙</h2><p>韦词</p>"
+    )})
+    toc = [node(group, [
+        node("温庭筠词集", [node("甲", href="shared.html#wen")]),
+        node("韦庄词集", [node("乙", href="shared.html#wei")]),
+    ])]
+    poems, files = extract_collection(book, toc, group, "both", "温庭筠")
+    assert files == ["shared.html"]
+    assert [p.author for p in poems] == ["温庭筠", "韦庄"]
+
+
+def test_conflicting_toc_authorship_without_h1_does_not_guess():
+    group = "温庭筠词集·韦庄词集"
+    book = Book({"shared.html": "<h2>菩萨蛮</h2><p>一首正文</p>"})
+    toc = [node(group, [
+        node("温庭筠词集", [node("甲", href="shared.html#a")]),
+        node("韦庄词集", [node("乙", href="shared.html#b")]),
+    ])]
+    poems, _ = extract_collection(book, toc, group, "both", "温庭筠")
+    assert poems[0].author == ""
+    assert any(w["type"] == "ambiguous_toc_attribution"
+               for w in poems[0].warnings)
+
+
+def test_inline_doubtful_heading_overrides_main_toc_zone():
+    book = Book({"x.html": (
+        "<h2>如梦令</h2><p>甲</p>"
+        "<h1>存疑词作</h1><h2>蝶恋花</h2><p>乙</p>"
+    )})
+    toc = [node("李清照词集", [node("全卷", href="x.html")])]
+    poems, _ = extract_collection(book, toc, "李清照词集", "li", "李清照")
+    assert len(poems) == 2
+    assert not any(w["type"] == "doubtful_attribution" for w in poems[0].warnings)
+    assert any(w["type"] == "doubtful_attribution" for w in poems[1].warnings)
