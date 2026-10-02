@@ -35,17 +35,16 @@ def paragraph_text(element, html_name, category):
     image_warnings = []
     for img in list(node.find_all("img")):
         src = img.get("src")
-        if src:
-            img.replace_with(f"{{{{glyph:{src}}}}}")
-            image_warnings.append(
-                {
-                    "type": "inline_image",
-                    "html": html_name,
-                    "src": src,
-                    "category": category,
-                    "status": "unresolved",
-                }
-            )
+        img.replace_with("{{glyph:" + (src or "missing-src") + "}}")
+        image_warnings.append(
+            {
+                "type": "inline_image" if src else "missing_image_src",
+                "html": html_name,
+                "src": src,
+                "category": category,
+                "status": "unresolved",
+            }
+        )
     for br in node.find_all("br"):
         br.replace_with("[EPUB_BR]")
     result = node.get_text("", strip=True).replace("[EPUB_BR]", "\n").strip()
@@ -106,13 +105,13 @@ def extract_sections(book, html_name, collection=""):
             tune, title, issues = interpret_heading(element, collection)
             for image in element.find_all("img"):
                 src = image.get("src")
-                if src:
-                    glyph = f"{{{{glyph:{src}}}}}"
-                    category = "title" if title and glyph in title else "tune"
-                    issues.append({
-                        "type": "inline_image", "html": html_name, "src": src,
-                        "category": category, "status": "unresolved"
-                    })
+                glyph = "{{glyph:" + (src or "missing-src") + "}}"
+                category = "title" if title and glyph in title else "tune"
+                issues.append({
+                    "type": "inline_image" if src else "missing_image_src",
+                    "html": html_name, "src": src,
+                    "category": category, "status": "unresolved"
+                })
             if is_supplement_heading:
                 issues.append({
                     "type": "inserted_author_work", "html": html_name,
@@ -181,7 +180,7 @@ def extract_sections(book, html_name, collection=""):
             continue
         elif not has_verse and is_preface(element, collection):
             category = "prefaces"
-        elif note_category is not None and has_verse:
+        elif note_category is not None:
             # Continuation is credible only when the direct paragraph markup
             # matches the immediately previous note. Do not infer across a
             # different class/style, an illustration, or a document boundary.
@@ -205,6 +204,19 @@ def extract_sections(book, html_name, collection=""):
                     "text": text
                 })
                 add_evidence(current, block, "unknown", text)
+            continue
+        elif has_verse and classes.intersection({
+            "kindle-cn-ref", "kindle-cn-ref1", "kindle-cn-ref2"
+        }):
+            # Reference-styled material after verse is not automatically verse.
+            text, image_warnings = paragraph_text(element, html_name, "unknown")
+            current["warnings"].extend(image_warnings)
+            current["unknown"].append({**block.location(), "text": text})
+            current["warnings"].append({
+                "type": "ambiguous_reference_after_verse",
+                **block.location(), "text": text,
+            })
+            add_evidence(current, block, "unknown", text)
             continue
         else:
             category = "text"
@@ -266,9 +278,13 @@ def convert_to_poem(
             "type": "doubtful_attribution", "html": section["html"],
             "block": section.get("ordinal")
         })
+    # Never attribute an unsigned inserted work to the volume's main author.
+    safe_author = section.get("author_override") or author_name
+    if section.get("inserted") and not section.get("author_override"):
+        safe_author = ""
     return Poem(
         id=f"{author_slug}-{index:03d}",
-        author=section.get("author_override") or author_name,
+        author=safe_author,
         tune=tune, title=section["title"],
         content=PoemContent(
             text=section["text"], prefaces=section["prefaces"],
@@ -361,7 +377,9 @@ def extract_collection(book, toc, group_name, author_slug, author_name):
         author, zone = file_context[html_name]
         for section in extract_sections(book, html_name, collection=group_name):
             section["zone"] = zone
-            effective_author = section.get("author_override") or author
+            effective_author = section.get("author_override") or (
+                "" if section.get("inserted") else author
+            )
             key = effective_author, zone
             previous_tune = previous_tunes.get(key)
             if html_name in conflicts:
@@ -372,7 +390,7 @@ def extract_collection(book, toc, group_name, author_slug, author_name):
                 section, len(poems) + 1, author_slug, effective_author,
                 group_name, previous_tune,
             )
-            if poem.tune:
+            if poem.tune and effective_author:
                 previous_tunes[key] = poem.tune
             poems.append(poem)
     return poems, files
