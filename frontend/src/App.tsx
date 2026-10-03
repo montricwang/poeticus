@@ -294,6 +294,13 @@ function App() {
     catalogToggleRef.current?.focus();
   }, []);
 
+  // 搜索/翻页也会触发 App 重新渲染；稳定此回调，避免阅读器重复订阅选区事件。
+  const handleReaderSelect = useCallback((value: SelectedText) => {
+    if (!inFlightRef.current && !switchControllerRef.current) {
+      setSelected(value);
+    }
+  }, []);
+
   function handlePoemChange(nextId: string) {
     if (inFlightRef.current || analyzing || !nextId || nextId === poemId) return;
 
@@ -667,9 +674,7 @@ function App() {
                     <PoemReader
                       key={activePoem.id}
                       work={activePoem}
-                      onSelect={(value) => {
-                        if (!chatLoading && !switchTarget) setSelected(value);
-                      }}
+                      onSelect={handleReaderSelect}
                     />
                   ) : (
                     <div
