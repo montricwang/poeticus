@@ -125,7 +125,7 @@ export function PoemCatalog({
         </p>
       </form>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" aria-busy={loading}>
         {error ? (
           <div role="alert" className="space-y-3 p-4 text-sm text-destructive">
             <p>目录获取失败：{error}</p>
@@ -150,7 +150,7 @@ export function PoemCatalog({
               <li key={work.id} className="border-b border-border/40 last:border-0">
                 <button
                   type="button"
-                  disabled={loading || selectionBlocked}
+                  disabled={selectionBlocked}
                   aria-current={work.id === activePoemId ? "true" : undefined}
                   onClick={() => onSelect(work.id)}
                   className={
