@@ -149,13 +149,13 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
                 {work.cipai ?? "词牌未核实"}
               </h1>
               {work.yusheng_title && (
-                <span className="font-serif text-lg font-normal tracking-normal text-muted-foreground">
+                <span className="font-serif text-4xl font-normal tracking-normal text-muted-foreground">
                   {work.yusheng_title}
                 </span>
               )}
             </div>
             {work.title && (
-              <p className="mt-3 whitespace-pre-line font-serif text-base leading-7 text-foreground/85">
+              <p className="mt-3 whitespace-pre-line font-serif text-lg leading-8 text-foreground/85">
                 {work.title}
               </p>
             )}
