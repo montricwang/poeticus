@@ -110,6 +110,9 @@ def test_catalog_defaults_and_empty_result(client):
     "q=" + "a" * 101,
 ])
 def test_invalid_pagination_and_query_returns_422(client, query):
+    # Isolate HTTP validation from the database dependency: FastAPI may
+    # resolve Depends() before reporting invalid query parameters.
+    override_connection(client, FakeConnection())
     assert client.get("/api/poems?" + query).status_code == 422
 
 
