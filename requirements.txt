@@ -11,3 +11,4 @@ beautifulsoup4
 lxml
 tinycss2
 cssselect2
+psycopg[binary]>=3,<4
