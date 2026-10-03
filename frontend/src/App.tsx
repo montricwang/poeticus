@@ -224,15 +224,17 @@ function App() {
     persistenceRef.current = {
       conversationId,
       poemId,
+      readyPoemId: activePoem?.id ?? null,
       turns,
       question,
       selected,
     };
-  }, [conversationId, poemId, question, selected, turns]);
+  }, [activePoem, conversationId, poemId, question, selected, turns]);
 
   // 本地存储只是 v0.1 的 persistence adapter。
   // 轻微延迟可避免流式 token 到达时同步写 localStorage 过于频繁。
   useEffect(() => {
+    if (!poemId || activePoem?.id !== poemId) return;
     const timer = window.setTimeout(() => {
       saveLastActivePoemId(poemId);
       savePoemConversation({
@@ -247,12 +249,13 @@ function App() {
     }, 200);
 
     return () => window.clearTimeout(timer);
-  }, [conversationId, poemId, question, selected, turns]);
+  }, [activePoem, conversationId, poemId, question, selected, turns]);
 
   // 刷新/关闭页面时，把尚未等到定时写入的最新状态再保存一次。
   useEffect(() => {
     function handlePageHide() {
       const current = persistenceRef.current;
+      if (!current.poemId || current.readyPoemId !== current.poemId) return;
       saveLastActivePoemId(current.poemId);
       savePoemConversation({
         conversationId: current.conversationId,
@@ -270,6 +273,7 @@ function App() {
   }, []);
 
   function persistCurrentConversation() {
+    if (!poemId || activePoem?.id !== poemId) return;
     saveLastActivePoemId(poemId);
     savePoemConversation({
       conversationId,
@@ -283,28 +287,20 @@ function App() {
   }
 
   function handlePoemChange(nextId: string) {
-    if (inFlightRef.current || analyzing || nextId === activePoem.id) return;
+    if (inFlightRef.current || analyzing || nextId === poemId || !nextId) return;
 
-    const nextPoem = poems.find((item) => item.id === nextId);
-    if (!nextPoem) return;
-
-    // 切换作品前先保存当前会话，再恢复目标作品自己的会话和草稿。
     persistCurrentConversation();
-
     const storedConversation = loadPoemConversation(nextId);
     const nextTurns = storedConversation?.turns ?? [];
     saveLastActivePoemId(nextId);
-    const nextSelection = validSelectionForPoem(
-      storedConversation?.draft.selection ?? null,
-      poemText(nextPoem),
-    );
 
     window.getSelection()?.removeAllRanges();
+    setActivePoem(null);
     setPoemId(nextId);
     setConversationId(
       storedConversation?.conversationId ?? createConversationId(),
     );
-    setSelected(nextSelection);
+    setSelected(null);
     setQuestion(storedConversation?.draft.question ?? "");
     setTurns(nextTurns);
     nextTurnId.current = maxTurnId(nextTurns);
@@ -318,7 +314,7 @@ function App() {
   }
 
   async function requestReply(turn: ChatTurn, regenerate = false) {
-    if (inFlightRef.current) return;
+    if (inFlightRef.current || !activePoem || activePoem.id !== poemId) return;
 
     const history = buildHistory(turns, turn.id);
 
@@ -358,7 +354,7 @@ function App() {
         body: JSON.stringify({
           poem,
           question: turn.question,
-          selection: turn.selection,
+          selection: selectionForPython(turn.selection, poem),
           context: poemContext(activePoem),
           history,
         }),
@@ -430,7 +426,7 @@ function App() {
   }
 
   function handleSend() {
-    if (!question.trim() || inFlightRef.current) return;
+    if (!question.trim() || inFlightRef.current || !activePoem) return;
 
     const turn: ChatTurn = {
       id: ++nextTurnId.current,
@@ -504,6 +500,7 @@ function App() {
   }
 
   async function handleAnalyze() {
+    if (!activePoem || activePoem.id !== poemId) return;
     setActiveView("analysis");
     setAnalyzing(true);
     setAnalysisError("");
