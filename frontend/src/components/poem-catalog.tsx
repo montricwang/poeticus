@@ -17,6 +17,7 @@ type PoemCatalogProps = {
   onFiltersChange: (filters: PoemFilters) => void;
   onSelect: (id: string) => void;
   onClose: () => void;
+  open: boolean;
 };
 
 export function PoemCatalog({
@@ -31,17 +32,19 @@ export function PoemCatalog({
   onFiltersChange,
   onSelect,
   onClose,
+  open,
 }: PoemCatalogProps) {
   const panelRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!open) return;
+
+    // 侧栏始终保持挂载；只有真正打开移动抽屉时才需要主动聚焦。
     if (window.matchMedia("(max-width: 1023px)").matches) {
       inputRef.current?.focus();
     }
-  }, []);
 
-  useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
@@ -66,7 +69,7 @@ export function PoemCatalog({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+  }, [onClose, open]);
 
   const hasQuery = !!filters.q?.trim();
   const page = catalog ? Math.floor(catalog.offset / filters.limit) + 1 : 1;
