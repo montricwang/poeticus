@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { Card } from "@/components/ui/card";
-import { poemText, poemTitle } from "@/data/poem-library";
+import { poemText } from "@/data/poem-library";
 import type { Poem } from "@/data/poem-library";
 
 export type SelectedText = {
@@ -143,12 +143,24 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
       >
         <article className="mx-auto w-full max-w-xl px-7 py-12 sm:px-12 sm:py-14">
           <header className="mb-9 text-center">
-            <h1 className="font-serif text-4xl font-medium tracking-widest">
-              {poemTitle(work)}
-            </h1>
-            <p className="mt-4 text-sm text-muted-foreground">
+            {/* 词牌、寓声、词题与作者各自来自独立字段，不拼成一条标题。 */}
+            <div className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
+              <h1 className="font-serif text-4xl font-medium tracking-widest">
+                {work.cipai ?? "词牌未核实"}
+              </h1>
+              {work.yusheng_title && (
+                <span className="font-serif text-lg font-normal tracking-normal text-muted-foreground">
+                  {work.yusheng_title}
+                </span>
+              )}
+            </div>
+            {work.title && (
+              <p className="mt-3 whitespace-pre-line font-serif text-base leading-7 text-foreground/85">
+                {work.title}
+              </p>
+            )}
+            <p className="mt-3 text-sm text-muted-foreground">
               {work.author ?? "作者未核实"}
-              {work.yusheng_title ? ` · 寓声：${work.yusheng_title}` : ""}
             </p>
             {work.review_status !== "reviewed" && (
               <p className="mt-2 text-xs text-muted-foreground/75">
