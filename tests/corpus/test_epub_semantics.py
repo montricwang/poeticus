@@ -53,7 +53,7 @@ def test_headings_tune_repetition_and_epub_anchor():
     ]
     poems, files = extract_collection(book, toc, "苏轼词集", "su-shi", "苏轼")
     assert len(poems) == 2 and len(files) == 1
-    assert [p.tune for p in poems] == ["采桑子", "采桑子"]
+    assert [p.cipai for p in poems] == ["采桑子", "采桑子"]
     assert [p.title for p in poems] == [None, "其二"]
     assert not hasattr(poems[0], "title_raw")
     assert [p.content.text for p in poems] == [["正文甲"], ["正文乙"]]
@@ -122,7 +122,7 @@ def test_first_repeat_is_uncertain_not_misleading():
     book = Book(**{"x.html": "<h2>又</h2><p>正文</p>"})
     toc = [{"title": "苏轼词集", "children": [{"title": "一", "href": "x.html"}]}]
     poems, _ = extract_collection(book, toc, "苏轼词集", "s", "苏轼")
-    assert poems[0].tune is None
+    assert poems[0].cipai is None
     assert poems[0].warnings[0]["type"] == "unresolved_tune_repeat"
 
 
@@ -188,7 +188,7 @@ def test_flatten_nested_volume_and_skip_front_matter():
         }
     ]
     poems, names = extract_collection(book, toc, "苏轼词集", "su", "苏轼")
-    assert names == ["main.html"] and len(poems) == 1 and poems[0].tune == "词牌"
+    assert names == ["main.html"] and len(poems) == 1 and poems[0].cipai == "词牌"
 
 
 def test_source_only_unicode_glyph_map_resolves():

@@ -105,6 +105,8 @@ Poeticus 仍在持续开发。目前已实现单轮诗词问答、划词交互�
 
 更多开发计划与已知问题见 [GitHub Issues](https://github.com/montricwang/poeticus/issues)。
 
+数据库已支持本地 PostgreSQL 词库导入及只读作品 API（前端目前仍使用静态作品 JSON）。建库、接口与本地测试说明见 [作品数据库架构文档](docs/architecture/corpus-database.md)。
+
 ## 技术与开发文档
 
 Poeticus 使用 React、TypeScript 和 Vite 构建前端，使用 FastAPI 提供后端服务，并通过 LangGraph 组织 AI Agent 的工具调用与回答过程。

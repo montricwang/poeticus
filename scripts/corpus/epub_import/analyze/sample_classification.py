@@ -36,7 +36,7 @@ def _make_candidate(kind, collection, poem, section, ordinal, role):
         "kind": kind,
         "collection": collection,
         "poem_id": poem.id,
-        "tune": poem.tune or "未定",
+        "tune": poem.cipai or "未定",
         "html": section["html"],
         "block": ordinal,
         "role": role,

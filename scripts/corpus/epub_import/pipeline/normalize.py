@@ -62,8 +62,22 @@ def normalize_text(text, glyph_map):
     return GLYPH_PATTERN.sub(replace, text)
 
 
+def canonicalize_heading_fields(poem):
+    """Old private exports remain readable; new JSON uses canonical names."""
+    for canonical, legacy in (("cipai", "tune"), ("yusheng_title", "yusheng")):
+        if legacy in poem:
+            if canonical in poem and poem[canonical] != poem[legacy]:
+                raise ValueError(
+                    f"{poem.get('id', '?')}: {canonical} 与 {legacy} 的值冲突"
+                )
+            poem.setdefault(canonical, poem[legacy])
+            del poem[legacy]
+    return poem
+
+
 def normalize_poem(poem, glyph_map):
-    for field in ("tune", "title", "yusheng"):
+    canonicalize_heading_fields(poem)
+    for field in ("cipai", "title", "yusheng_title"):
         if poem.get(field) is not None:
             poem[field] = normalize_text(
                 poem[field],
@@ -134,9 +148,9 @@ def normalize_poem(poem, glyph_map):
 def unresolved_glyphs(poems):
     for poem in poems:
         fields = [
-            ("tune", poem.get("tune")),
+            ("cipai", poem.get("cipai")),
             ("title", poem.get("title")),
-            ("yusheng", poem.get("yusheng")),
+            ("yusheng_title", poem.get("yusheng_title")),
         ]
 
         fields.extend(

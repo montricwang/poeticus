@@ -16,8 +16,8 @@ from pathlib import Path
 from .adapter import ConvertedPoem, convert_corpus
 
 DEFAULT_INPUT = Path("data/output/all_normalized.json")
-MIGRATION = Path(__file__).resolve().parents[2] / "db/migrations/0001_corpus.sql"
-VERSION = "0001_corpus"
+MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "db/migrations"
+LATEST_VERSION = "0003_yusheng_title"
 
 
 def read_corpus(path: Path) -> list[ConvertedPoem]:
@@ -26,20 +26,28 @@ def read_corpus(path: Path) -> list[ConvertedPoem]:
 
 
 def migrate(conn) -> None:
-    """Schema changes are transactional and versioned."""
+    """Apply pending numbered SQL migrations; keep prior versions immutable."""
+    migration_files = sorted(MIGRATIONS_DIR.glob("[0-9][0-9][0-9][0-9]_*.sql"))
+    if not migration_files or migration_files[-1].stem != LATEST_VERSION:
+        raise RuntimeError("数据库迁移脚本不完整")
     with conn.transaction():
         conn.execute(
             "CREATE TABLE IF NOT EXISTS schema_migrations "
             "(version TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())"
         )
-        if conn.execute(
-            "SELECT 1 FROM schema_migrations WHERE version = %s", (VERSION,)
-        ).fetchone():
-            print(f"已应用数据库迁移：{VERSION}")
-            return
-        conn.execute(MIGRATION.read_text(encoding="utf-8"))
-        conn.execute("INSERT INTO schema_migrations (version) VALUES (%s)", (VERSION,))
-        print(f"数据库迁移完成：{VERSION}")
+        applied = {
+            row[0] for row in conn.execute(
+                "SELECT version FROM schema_migrations"
+            ).fetchall()
+        }
+        for migration in migration_files:
+            version = migration.stem
+            if version in applied:
+                print(f"已应用数据库迁移：{version}")
+                continue
+            conn.execute(migration.read_text(encoding="utf-8"))
+            conn.execute("INSERT INTO schema_migrations (version) VALUES (%s)", (version,))
+            print(f"数据库迁移完成：{version}")
 
 
 def import_records(conn, entries: list[ConvertedPoem]) -> tuple[int, int]:
@@ -76,13 +84,13 @@ def import_records(conn, entries: list[ConvertedPoem]) -> tuple[int, int]:
             conn.execute(
                 """INSERT INTO poems (
                     id, source_record_id, source_order, collection, author,
-                    tune, title, yusheng, body_segments, prefaces, inline_notes,
+                    cipai, title, yusheng_title, body_segments, prefaces, inline_notes,
                     lacunae, review_status, text_version
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )""",
-                (poem_id, key, order, p["collection"], p["author"], p["tune"],
-                 p["title"], p["yusheng"], Jsonb(p["body_segments"]),
+                (poem_id, key, order, p["collection"], p["author"], p["cipai"],
+                 p["title"], p["yusheng_title"], Jsonb(p["body_segments"]),
                  Jsonb(p["prefaces"]), Jsonb(p["inline_notes"]),
                  Jsonb(p["lacunae"]), p["review_status"], p["text_version"]),
             )
@@ -106,7 +114,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Poeticus 本地私人词库导入")
     modes = parser.add_mutually_exclusive_group(required=True)
     modes.add_argument("--check", action="store_true", help="不连接数据库")
-    modes.add_argument("--migrate", action="store_true", help="创建初始数据库结构")
+    modes.add_argument("--migrate", action="store_true", help="执行尚未应用的数据库结构迁移")
     modes.add_argument("--import", dest="do_import", action="store_true", help="事务导入词库")
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     args = parser.parse_args()
@@ -131,6 +139,11 @@ def main() -> None:
         if args.migrate:
             migrate(conn)
         else:
+            if not conn.execute(
+                "SELECT 1 FROM schema_migrations WHERE version = %s",
+                (LATEST_VERSION,),
+            ).fetchone():
+                raise SystemExit("数据库结构尚未更新；请先运行 --migrate")
             added, skipped = import_records(conn, records)
             print(f"导入完成：新增 {added} 首；已存在且一致 {skipped} 首")
 

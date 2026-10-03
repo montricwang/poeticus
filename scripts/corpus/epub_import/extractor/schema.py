@@ -17,11 +17,11 @@ class PoemContent:
 class Poem:
     id: str
     author: str
-    tune: Optional[str]
+    cipai: Optional[str]
     title: Optional[str]
     content: PoemContent
     collection: str
     source: str = ""
-    # He Zhu's author-coined tune heading, distinct from tune and poem title.
-    yusheng: Optional[str] = None
+    # He Zhu's author-coined heading is not the source cipai or the poem title.
+    yusheng_title: Optional[str] = None
     warnings: List[Dict[str, Any]] = field(default_factory=list)

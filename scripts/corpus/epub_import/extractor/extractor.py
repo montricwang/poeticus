@@ -464,8 +464,8 @@ def convert_to_poem(
     return Poem(
         id=f"{author_slug}-{index:03d}",
         author=safe_author,
-        tune=tune, title=section["title"],
-        yusheng=section.get("yusheng"),
+        cipai=tune, title=section["title"],
+        yusheng_title=section.get("yusheng"),
         content=PoemContent(
             text=section["text"], prefaces=section["prefaces"],
             annotations=section["annotations"],
@@ -578,7 +578,7 @@ def extract_collection(book, toc, group_name, author_slug, author_name):
                 section, len(poems) + 1, author_slug, effective_author,
                 group_name, previous_tune,
             )
-            if poem.tune and effective_author:
-                previous_tunes[key] = poem.tune
+            if poem.cipai and effective_author:
+                previous_tunes[key] = poem.cipai
             poems.append(poem)
     return poems, files

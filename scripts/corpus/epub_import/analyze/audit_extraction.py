@@ -95,7 +95,7 @@ def audit_collection(book, toc, name, author, slug):
         if poem.warnings:
             review.append({
                 "id": poem.id, "author": poem.author,
-                "tune": poem.tune, "title": poem.title,
+                "tune": poem.cipai, "title": poem.title,
                 "source": {"html": section["html"], "block": section["ordinal"],
                            "anchor": section["anchor"]},
                 "zone": section.get("zone_override") or
@@ -118,7 +118,7 @@ def audit_collection(book, toc, name, author, slug):
         "candidate_poems": len(poems), "author_counts": dict(Counter(
             p.author for p in poems
         )), "warning_counts": dict(warnings),
-        "missing_tune": sum(p.tune is None for p in poems),
+        "missing_tune": sum(p.cipai is None for p in poems),
         "unassigned_author": sum(not p.author for p in poems),
         "empty_body": sum(not p.content.text for p in poems),
         "unclassified_work_count": sum(bool(section["unknown"]) for section in sections),
