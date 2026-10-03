@@ -618,18 +618,20 @@ function App() {
               tabIndex={-1}
               aria-label="关闭作品目录遮罩"
               className={
-                "pointer-events-auto absolute inset-0 bg-black/55 transition-opacity duration-200 " +
+                "absolute inset-0 bg-black/55 transition-opacity duration-200 " +
                 "motion-reduce:transition-none lg:hidden " +
-                (catalogOpen ? "opacity-100" : "opacity-0")
+                (catalogOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
               }
               onClick={closeCatalog}
             />
             <div
               className={
-                "pointer-events-auto relative h-full w-[min(88vw,360px)] " +
+                "relative h-full w-[min(88vw,360px)] " +
                 "transform transition-transform duration-200 ease-out " +
                 "motion-reduce:transition-none lg:w-80 lg:translate-x-0 lg:pr-5 " +
-                (catalogOpen ? "translate-x-0" : "-translate-x-full")
+                (catalogOpen
+                  ? "pointer-events-auto translate-x-0"
+                  : "pointer-events-none -translate-x-full")
               }
             >
               <PoemCatalog
