@@ -535,6 +535,7 @@ function App() {
           className="mb-4 flex flex-wrap items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault();
+            setCatalog(null);
             setCatalogLoading(true);
             setCatalogError("");
             setFilters({
@@ -604,6 +605,7 @@ function App() {
             variant="outline"
             disabled={catalogLoading || filters.offset === 0}
             onClick={() => {
+              setCatalog(null);
               setCatalogLoading(true);
               setCatalogError("");
               setFilters((current) => ({
@@ -624,6 +626,7 @@ function App() {
               filters.offset + PAGE_SIZE >= catalog.total
             }
             onClick={() => {
+              setCatalog(null);
               setCatalogLoading(true);
               setCatalogError("");
               setFilters((current) => ({
@@ -642,6 +645,7 @@ function App() {
           <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
             <span>目录获取失败：{catalogError}</span>
             <Button type="button" size="sm" variant="outline" onClick={() => {
+              setCatalog(null);
               setCatalogLoading(true);
               setCatalogError("");
               setFilters((current) => ({ ...current }));
