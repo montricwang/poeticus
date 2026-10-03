@@ -23,10 +23,10 @@ def client(monkeypatch):
     api.app.dependency_overrides.clear()
 
 
-def summary(identity=ONE, order=1, tune="念奴娇"):
+def summary(identity=ONE, order=1, cipai="念奴娇"):
     return {
         "id": identity, "source_order": order,
-        "collection": "合成词集", "author": "词人甲", "tune": tune,
+        "collection": "合成词集", "author": "词人甲", "cipai": cipai,
         "title": None, "yusheng": None, "incipit": "合成起句。",
         "review_status": "imported_unreviewed",
     }
@@ -69,7 +69,7 @@ def test_catalog_page_filters_order_and_no_private_data(client):
     override_connection(client, fake)
     response = client.get(
         "/api/poems",
-        params={"author": "词人甲", "tune": "念奴娇", "q": "合成",
+        params={"author": "词人甲", "cipai": "念奴娇", "q": "合成",
                 "limit": 1, "offset": 1},
     )
     assert response.status_code == 200
@@ -86,7 +86,7 @@ def test_catalog_page_filters_order_and_no_private_data(client):
         assert "FROM poems" in sql
         assert "poem_source_texts" not in sql
         assert "source_sha256" not in sql
-        assert "author = %s" in sql and "tune = %s" in sql
+        assert "author = %s" in sql and "cipai = %s" in sql
         assert params[:2] == ["词人甲", "念奴娇"] or params[:2] == (
             "词人甲", "念奴娇"
         )
@@ -169,7 +169,7 @@ def test_connection_failure_is_503_without_leaking_password(client, monkeypatch)
 def test_repository_literal_search_and_parameter_binding():
     fake = FakeConnection(pages=[], count=0)
     rows, count = repository.list_poems(
-        fake, author=None, tune=None, q="100%_测试", limit=5, offset=0
+        fake, author=None, cipai=None, q="100%_测试", limit=5, offset=0
     )
     assert rows == [] and count == 0
     assert "STRPOS" in fake.calls[0][0]

@@ -16,7 +16,7 @@ class PoemSummary(BaseModel):
     source_order: int
     collection: str
     author: str | None
-    tune: str | None
+    cipai: str | None
     title: str | None
     yusheng: str | None
     incipit: str
@@ -35,7 +35,7 @@ class PoemDetail(BaseModel):
     source_order: int
     collection: str
     author: str | None
-    tune: str | None
+    cipai: str | None
     title: str | None
     yusheng: str | None
     body_segments: list[str]
@@ -47,7 +47,7 @@ class PoemDetail(BaseModel):
 @router.get("", response_model=PoemPage)
 def catalog(
     author: str | None = Query(default=None, max_length=80),
-    tune: str | None = Query(default=None, max_length=80),
+    cipai: str | None = Query(default=None, max_length=80),
     q: str | None = Query(default=None, max_length=100),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
@@ -57,7 +57,7 @@ def catalog(
     records, total = list_poems(
         conn,
         author=author.strip() or None if author is not None else None,
-        tune=tune.strip() or None if tune is not None else None,
+        cipai=cipai.strip() or None if cipai is not None else None,
         q=q.strip() or None if q is not None else None,
         limit=limit, offset=offset,
     )

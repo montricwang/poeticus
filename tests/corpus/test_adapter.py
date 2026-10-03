@@ -23,6 +23,8 @@ def test_preserve_default_and_order_without_modifying_input():
     assert [v.reader["source_order"] for v in records] == [1, 2]
     assert records[0].reader["body_segments"] == original["content"]["text"]
     assert records[0].reader["prefaces"] == ["合成小序"]
+    assert records[0].reader["cipai"] == original["tune"]
+    assert "tune" not in records[0].reader
     assert records[0].source["original_segments"] == original["content"]["text"]
     assert "annotations" not in records[0].reader
     assert "commentaries" not in records[0].source

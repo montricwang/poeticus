@@ -1,12 +1,14 @@
 # Poeticus 作品数据库：初始 Schema 与本地导入
 
-本文记录 2026-10-03 的作品库决策。旧 docs/roadmap.md 仍将 PostgreSQL 放在 v0.2；用户已在本轮决定提前为 3491 首候选作品准备数据库。当前 PR 仅实现建表和私有本地导入，**没有接入前端阅读列表或 API**。
+本文记录 2026-10-03 的作品库决策。原本只实现建表与私有导入；PR #66 增加只读 FastAPI 查询，尚未接入前端阅读列表。
 
 ## 两张业务表
 
 - poems：每首阅读作品一行。永久 UUID、来源中间记录 ID、原书全局顺序、作者/词牌/词题/寓声名、body_segments（阅读正文片段数组）、prefaces、inline_notes、lacunae、review_status、text_version。
 - poem_source_texts：对应的本地来源证据。一行对应 poems 的一行，保留 original_segments、original_inline_notes、source_title、source_sha256，以及目前可能为空的 source_locator 和 source_edition。
 - schema_migrations：技术表，仅管理已经运行过的数据库结构变更版本；不是第三张文学业务表。
+
+**字段命名**：数据库与作品读取 API 使用 `cipai` 表示词牌（如《念奴娇》）；源 EPUB 导出 JSON 仍使用历史键 `tune`，`adapter.py` 在导入时明确转换为 `cipai`。不能把「大石调、般涉调」等宫调写入 `cipai`；将来有可靠宫调证据时，单独设计 `gongdiao` 信息，不预先填充未知值。
 
 原书顺序直接采用 all_normalized.json 中已有的数组顺序，导入时生成从 1 开始的 source_order。Poem UUID 首次插入时随机生成并持久化。原始 su-shi-001 一类编号与顺序有关，不是永久 UUID；source_sha256 是来源内容变化检查，也不是作品 ID。
 
@@ -35,7 +37,9 @@ python -m scripts.corpus.db_import --migrate
 python -m scripts.corpus.db_import --import
 ~~~
 
---check 完全离线，不需要启动 PostgreSQL；默认输入是 data/output/all_normalized.json。--migrate 和 --import 使用本地 .env 数据库连接，不会自动创建数据库。SQL 脚本在 db/migrations/0001_corpus.sql。
+--check 完全离线，不需要启动 PostgreSQL；默认输入是 data/output/all_normalized.json。--migrate 和 --import 使用本地 .env 数据库连接，不会自动创建数据库。迁移脚本按顺序位于 db/migrations/，0001 创建原有 Schema，0002_cipai 将既有 poems.tune 重命名为 cipai，并重命名相应索引。**已执行的 0001 不能直接改写**。已经导入词库的用户只需再次运行 `python -m scripts.corpus.db_import --migrate`；无需重新导入，UUID/3491 行均保持不变。新部署的空库依次运行两个迁移。
+
+执行迁移后可以在 pgAdmin 用 `SELECT cipai, COUNT(*) FROM poems GROUP BY cipai ORDER BY COUNT(*) DESC LIMIT 10;` 验证；旧的 `SELECT tune ...` 将不再可用。
 
 --import 使用一个 PostgreSQL 事务写入两张表。再次运行相同文件会跳过已有且一致的记录。如果来源文本、书中顺序或相同来源 ID 的身份信息变化，则拒绝自动覆盖并回滚。这是有意的安全限制：来源 ID 可能因重新抽取而漂移，在 Issue #62 完成来源坐标和匹配策略前不能无条件 UPSERT。重新建空库会产生新的 UUID；如需跨重建维持身份，应备份数据库或在后续任务中导出持久身份映射。
 
@@ -52,7 +56,7 @@ uvicorn api:app --reload
 确保本地 .env 包含 POETICUS_DATABASE_URL 且 PostgreSQL 已启动。
 
 - GET /api/poems?limit=20&offset=0：目录页，返回 items / total / limit / offset。items 只包含 UUID、原书排序、词人、词牌、词题、寓声名、正文开头不超过 60 字和校审状态，不携带全部正文。默认 20 条，最多 100 条。
-- GET /api/poems?author=苏轼&tune=念奴娇：作者与词牌精确筛选；q=... 则按作者、词牌、词题、正文做不区分大小写的字面包含搜索，不要求全文索引。
+- GET /api/poems?author=苏轼&cipai=念奴娇：作者与词牌精确筛选；q=... 则按作者、词牌、词题、正文做不区分大小写的字面包含搜索，不要求全文索引。
 - GET /api/poems/{UUID}：返回一首阅读作品的 body_segments、prefaces、review_status 和 text_version 等。未知 UUID 返回 404；无效分页或 UUID 返回 422；数据库未配置或暂时不可用返回 503。
 - 访问 http://127.0.0.1:8000/docs 可以使用 FastAPI 自动生成的交互式 API 页面验证，不需要自己拼接全部 URL。
 
