@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PanelLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -289,10 +289,10 @@ function App() {
     setFilters(next);
   }
 
-  function closeCatalog() {
+  const closeCatalog = useCallback(() => {
     setCatalogOpen(false);
     catalogToggleRef.current?.focus();
-  }
+  }, []);
 
   function handlePoemChange(nextId: string) {
     if (inFlightRef.current || analyzing || !nextId || nextId === poemId) return;
