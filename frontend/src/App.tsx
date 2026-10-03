@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { PanelLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PoemReader } from "@/components/poem-reader";
+import { PoemCatalog } from "@/components/poem-catalog";
 import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
 
@@ -10,7 +12,6 @@ import {
   fetchPoem,
   fetchPoemPage,
   poemContext,
-  poemLabel,
   poemText,
 } from "@/data/poem-library";
 import type { Poem, PoemFilters, PoemPage } from "@/data/poem-library";
@@ -128,8 +129,13 @@ function App() {
     offset: 0,
   });
   const [searchInput, setSearchInput] = useState("");
-  const [authorInput, setAuthorInput] = useState("");
-  const [cipaiInput, setCipaiInput] = useState("");
+  const [catalogOpen, setCatalogOpen] = useState(
+    () => window.matchMedia("(min-width: 1024px)").matches,
+  );
+  const catalogToggleRef = useRef<HTMLButtonElement>(null);
+  const switchControllerRef = useRef<AbortController | null>(null);
+  const [switchTarget, setSwitchTarget] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
   const [detailError, setDetailError] = useState("");
@@ -183,9 +189,9 @@ function App() {
     return () => controller.abort();
   }, [filters]);
 
-  // 详情按 UUID 加载；取消旧请求防止出现标题与正文错配。
+  // 首屏／刷新时恢复 UUID；点击切诗由 handlePoemChange 先预取再提交。
   useEffect(() => {
-    if (!poemId) return;
+    if (!poemId || activePoem?.id === poemId) return;
     const controller = new AbortController();
 
     void fetchPoem(poemId, controller.signal)
@@ -204,7 +210,11 @@ function App() {
         setDetailError(error instanceof Error ? error.message : "无法加载作品");
       })
     return () => controller.abort();
-  }, [poemId, detailAttempt]);
+  }, [poemId, activePoem?.id, detailAttempt]);
+
+  useEffect(() => {
+    return () => switchControllerRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     persistenceRef.current = {
@@ -272,36 +282,83 @@ function App() {
     });
   }
 
+  function updateCatalogFilters(next: PoemFilters) {
+    // 上一页目录在请求期间继续存在，避免空列表导致侧栏重排。
+    setCatalogLoading(true);
+    setCatalogError("");
+    setFilters(next);
+  }
+
+  const closeCatalog = useCallback(() => {
+    setCatalogOpen(false);
+    catalogToggleRef.current?.focus();
+  }, []);
+
+  // 搜索/翻页也会触发 App 重新渲染；稳定此回调，避免阅读器重复订阅选区事件。
+  const handleReaderSelect = useCallback((value: SelectedText) => {
+    if (!inFlightRef.current && !switchControllerRef.current) {
+      setSelected(value);
+    }
+  }, []);
+
   function handlePoemChange(nextId: string) {
-    if (inFlightRef.current || analyzing || nextId === poemId || !nextId) return;
+    if (inFlightRef.current || analyzing || !nextId || nextId === poemId) return;
 
-    persistCurrentConversation();
-    const storedConversation = loadPoemConversation(nextId);
-    const nextTurns = storedConversation?.turns ?? [];
-    saveLastActivePoemId(nextId);
+    // 先读取新作品；在请求完成前仍显示当前作品，不卸载正文／聊天面板。
+    // 最新请求替代旧请求，只有成功的请求才能提交 UUID 与会话状态。
+    switchControllerRef.current?.abort();
+    const controller = new AbortController();
+    switchControllerRef.current = controller;
+    setSwitchTarget(nextId);
+    setSwitchError("");
 
-    window.getSelection()?.removeAllRanges();
-    setActivePoem(null);
-    setDetailError("");
-    setPoemId(nextId);
-    setConversationId(
-      storedConversation?.conversationId ?? createConversationId(),
-    );
-    setSelected(null);
-    setQuestion(storedConversation?.draft.question ?? "");
-    setTurns(nextTurns);
-    nextTurnId.current = maxTurnId(nextTurns);
+    void fetchPoem(nextId, controller.signal)
+      .then((work) => {
+        if (controller.signal.aborted) return;
+        persistCurrentConversation();
+        const storedConversation = loadPoemConversation(work.id);
+        const nextTurns = storedConversation?.turns ?? [];
 
-    setAnalysis(null);
-    setAnalysisError("");
-    setHasUnreadReply(false);
-    setActiveView("chat");
-    seenAnimationsRef.current.clear();
-    chatViewportRef.current = { scrollTop: 0, atBottom: true };
+        window.getSelection()?.removeAllRanges();
+        setActivePoem(work);
+        setPoemId(work.id);
+        setDetailError("");
+        setConversationId(
+          storedConversation?.conversationId ?? createConversationId(),
+        );
+        setSelected(
+          validSelectionForPoem(
+            storedConversation?.draft.selection ?? null,
+            poemText(work),
+          ),
+        );
+        setQuestion(storedConversation?.draft.question ?? "");
+        setTurns(nextTurns);
+        nextTurnId.current = maxTurnId(nextTurns);
+
+        setAnalysis(null);
+        setAnalysisError("");
+        setHasUnreadReply(false);
+        setActiveView("chat");
+        seenAnimationsRef.current.clear();
+        chatViewportRef.current = { scrollTop: 0, atBottom: true };
+        if (window.innerWidth < 1024) closeCatalog();
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setSwitchError(
+          error instanceof Error ? error.message : "切换作品失败，请重试",
+        );
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return;
+        switchControllerRef.current = null;
+        setSwitchTarget(null);
+      });
   }
 
   async function requestReply(turn: ChatTurn, regenerate = false) {
-    if (inFlightRef.current || !activePoem || activePoem.id !== poemId) return;
+    if (inFlightRef.current || switchControllerRef.current || !activePoem || activePoem.id !== poemId) return;
 
     const history = buildHistory(turns, turn.id);
 
@@ -413,7 +470,7 @@ function App() {
   }
 
   function handleSend() {
-    if (!question.trim() || inFlightRef.current || !activePoem) return;
+    if (!question.trim() || inFlightRef.current || switchControllerRef.current || !activePoem) return;
 
     const turn: ChatTurn = {
       id: ++nextTurnId.current,
@@ -487,7 +544,7 @@ function App() {
   }
 
   async function handleAnalyze() {
-    if (!activePoem || activePoem.id !== poemId) return;
+    if (!activePoem || activePoem.id !== poemId || switchControllerRef.current) return;
     setActiveView("analysis");
     setAnalyzing(true);
     setAnalysisError("");
@@ -524,247 +581,213 @@ function App() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
-          <span className="text-lg font-semibold tracking-tight">Poeticus</span>
+          <div className="flex items-center gap-2">
+            <Button
+              ref={catalogToggleRef}
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={catalogOpen ? "收起作品目录" : "展开作品目录"}
+              aria-controls="poem-catalog"
+              aria-expanded={catalogOpen}
+              onClick={() => setCatalogOpen((current) => !current)}
+            >
+              <PanelLeft className="size-5" aria-hidden="true" />
+            </Button>
+            <span className="text-lg font-semibold tracking-tight">Poeticus</span>
+          </div>
           <ThemeSwitcher />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl px-5 pb-10 pt-7 md:px-8">
-        <form
-          className="mb-4 flex flex-wrap items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setCatalogLoading(true);
-            setCatalogError("");
-            setFilters({
-              limit: PAGE_SIZE,
-              offset: 0,
-              q: searchInput,
-              author: authorInput,
-              cipai: cipaiInput,
-            });
-          }}
+      <main className="mx-auto w-full max-w-[1600px] px-5 pb-10 pt-7 md:px-8">
+        <div
+          className={
+            "grid min-w-0 grid-cols-1 items-start gap-0 " +
+            "lg:transition-[grid-template-columns] lg:duration-[360ms] lg:ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none " +
+            (catalogOpen
+              ? "lg:grid-cols-[320px_minmax(0,1fr)]"
+              : "lg:grid-cols-[0px_minmax(0,1fr)]")
+          }
         >
-          <input
-            aria-label="搜索作者、词牌、词题或正文"
-            placeholder="搜索作品或正文"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            className="min-w-36 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-          <input
-            aria-label="按作者筛选"
-            placeholder="作者（精确）"
-            value={authorInput}
-            onChange={(event) => setAuthorInput(event.target.value)}
-            className="w-32 rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-          <input
-            aria-label="按词牌筛选"
-            placeholder="词牌（精确）"
-            value={cipaiInput}
-            onChange={(event) => setCipaiInput(event.target.value)}
-            className="w-32 rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-          <Button type="submit" size="sm" disabled={catalogLoading}>查找</Button>
-        </form>
-
-        {/* 搜索结果只属于目录，绝不把目录外的当前阅读作品插入候选列表。 */}
-        <section aria-label="作品搜索结果" className="mb-6 rounded-lg border border-border/60 bg-card">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-sm font-medium">
-                {filters.q || filters.author || filters.cipai ? "搜索结果" : "作品目录"}
-              </h2>
-              <span className="text-xs text-muted-foreground" aria-live="polite">
-                {catalog ? `共 ${catalog.total} 首 · 第 ${Math.floor(catalog.offset / PAGE_SIZE) + 1} 页` : "正在获取目录"}
-              </span>
-              {catalogLoading && <span role="status" className="text-xs text-muted-foreground">加载中……</span>}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={catalogLoading || filters.offset === 0}
-                onClick={() => {
-                  setCatalogLoading(true);
-                  setCatalogError("");
-                  setFilters((current) => ({
-                    ...current,
-                    offset: Math.max(0, current.offset - PAGE_SIZE),
-                  }));
-                }}
-              >
-                上一页
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={
-                  catalogLoading ||
-                  !catalog ||
-                  filters.offset + PAGE_SIZE >= catalog.total
-                }
-                onClick={() => {
-                  setCatalogLoading(true);
-                  setCatalogError("");
-                  setFilters((current) => ({
-                    ...current,
-                    offset: current.offset + PAGE_SIZE,
-                  }));
-                }}
-              >
-                下一页
-              </Button>
-            </div>
-          </div>
-
-          <div className="h-52 overflow-y-auto">
-            {catalogError ? (
-              <div role="alert" className="flex items-center gap-3 px-4 py-5 text-sm text-destructive">
-                <span>目录获取失败：{catalogError}</span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setCatalogLoading(true);
-                    setCatalogError("");
-                    setFilters((current) => ({ ...current }));
-                  }}
-                >
-                  重试
-                </Button>
-              </div>
-            ) : catalog && catalog.total === 0 && !catalogLoading ? (
-              <p className="px-4 py-5 text-sm text-muted-foreground">
-                没有匹配的作品，请调整筛选条件。
-              </p>
-            ) : !catalog ? (
-              <p className="px-4 py-5 text-sm text-muted-foreground" role="status">
-                正在加载作品目录……
-              </p>
-            ) : (
-              <ul key={`${catalog.offset}:${catalog.items[0]?.id ?? ""}`} aria-label="本页作品">
-                {catalog.items.map((work) => (
-                  <li key={work.id}>
-                    <button
-                      type="button"
-                      disabled={catalogLoading || chatLoading || analyzing}
-                      aria-current={work.id === poemId ? "true" : undefined}
-                      onClick={() => handlePoemChange(work.id)}
-                      className={
-                        "flex w-full items-center justify-between gap-4 border-b border-border/40 px-4 py-2.5 text-left text-sm last:border-0 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 " +
-                        (work.id === poemId ? "bg-muted/50" : "")
-                      }
-                    >
-                      <span className="min-w-0 truncate">{poemLabel(work)}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {work.author ?? "作者未核实"}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
-
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-          {activePoem && activePoem.id === poemId ? (
-            <PoemReader
-              key={activePoem.id}
-              work={activePoem}
-              onSelect={(value) => {
-                if (!chatLoading) setSelected(value);
-              }}
+          {/* 侧栏保持挂载；只改变 grid 宽度，避免每次开关都重建搜索状态。 */}
+          <div
+            inert={!catalogOpen}
+            aria-hidden={!catalogOpen}
+            className={
+              "pointer-events-none fixed inset-0 z-50 lg:sticky lg:top-5 lg:z-auto " +
+              // 桌面只用 Grid 列宽控制侧栏可见区域，避免 opacity 先于宽度把目录隐去。
+              "lg:min-w-0 lg:overflow-hidden"
+            }
+          >
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label="关闭作品目录遮罩"
+              className={
+                "absolute inset-0 bg-black/55 transition-opacity duration-[360ms] ease-[cubic-bezier(0.4,0,0.2,1)] " +
+                "motion-reduce:transition-none lg:hidden " +
+                (catalogOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
+              }
+              onClick={closeCatalog}
             />
-          ) : (
-            <div role={detailError ? "alert" : "status"} className="min-h-155 rounded-md border border-border/60 bg-card px-8 py-12 text-sm text-muted-foreground">
-              {detailLoading ? "正在加载作品正文……" : detailError ? `作品加载失败：${detailError}` : "请从目录中选择作品"}
-              {detailError && (
-                <Button className="ml-3" type="button" variant="outline" size="sm" onClick={() => {
-                  setDetailError("");
-                  setActivePoem(null);
-                  setSelected(null);
-                  setDetailAttempt((count) => count + 1);
-                }}>重试</Button>
+            <div
+              className={
+                "relative h-full w-[min(88vw,360px)] " +
+                "transform transition-transform duration-[360ms] ease-[cubic-bezier(0.4,0,0.2,1)] " +
+                "motion-reduce:transition-none lg:w-80 lg:translate-x-0 lg:pr-5 " +
+                (catalogOpen
+                  ? "pointer-events-auto translate-x-0"
+                  : "pointer-events-none -translate-x-full")
+              }
+            >
+              <PoemCatalog
+                catalog={catalog}
+                filters={filters}
+                query={searchInput}
+                loading={catalogLoading}
+                error={catalogError}
+                activePoemId={poemId}
+                selectionBlocked={chatLoading || analyzing || !!switchTarget}
+                onQueryChange={setSearchInput}
+                onFiltersChange={updateCatalogFilters}
+                onSelect={handlePoemChange}
+                onClose={closeCatalog}
+                open={catalogOpen}
+              />
+            </div>
+          </div>
+
+          <div className="min-w-0 lg:pl-5">
+            <div className="relative min-w-0" aria-busy={!!switchTarget}>
+              {switchError && (
+                <div role="alert" className="mb-3 text-sm text-destructive">
+                  作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
+                </div>
+              )}
+              <div
+                inert={!!switchTarget}
+                className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]"
+              >
+                <div className="min-w-0">
+                  {activePoem && activePoem.id === poemId ? (
+                    <PoemReader
+                      key={activePoem.id}
+                      work={activePoem}
+                      onSelect={handleReaderSelect}
+                    />
+                  ) : (
+                    <div
+                      role={detailError ? "alert" : "status"}
+                      className="min-h-155 rounded-md border border-border/60 bg-card px-8 py-12 text-sm text-muted-foreground"
+                    >
+                      {detailLoading
+                        ? "正在加载作品正文……"
+                        : detailError
+                          ? `作品加载失败：${detailError}`
+                          : "请从目录中选择作品"}
+                      {detailError && (
+                        <Button
+                          className="ml-3"
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setDetailError("");
+                            setActivePoem(null);
+                            setSelected(null);
+                            setDetailAttempt((count) => count + 1);
+                          }}
+                        >
+                          重试
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  {activePoem && activePoem.id === poemId ? (
+                    <>
+                      <div
+                        className="mb-3 flex items-center gap-2"
+                        role="group"
+                        aria-label="右侧视图"
+                      >
+                        <Button
+                          type="button"
+                          variant={activeView === "chat" ? "default" : "ghost"}
+                          size="sm"
+                          aria-pressed={activeView === "chat"}
+                          onClick={() => setActiveView("chat")}
+                        >
+                          对话
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={activeView === "analysis" ? "default" : "ghost"}
+                          size="sm"
+                          aria-pressed={activeView === "analysis"}
+                          onClick={() => setActiveView("analysis")}
+                        >
+                          赏析
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="ml-auto"
+                          onClick={handleAnalyze}
+                          disabled={analyzing || !!switchTarget}
+                        >
+                          {analyzing ? "正在生成……" : "生成整首赏析"}
+                        </Button>
+                      </div>
+
+                      {activeView === "chat" ? (
+                        <ChatPanel
+                          key={activePoem.id}
+                          selected={selected}
+                          question={question}
+                          turns={turns}
+                          loading={chatLoading || !!switchTarget}
+                          onQuestionChange={setQuestion}
+                          onClearQuote={() => setSelected(null)}
+                          onSend={handleSend}
+                          onRetry={handleRetry}
+                          onRegenerate={handleRegenerate}
+                          onEdit={handleEdit}
+                          seenAnimationsRef={seenAnimationsRef}
+                          viewportRef={chatViewportRef}
+                          hasUnreadReply={hasUnreadReply}
+                          onClearUnreadReply={() => setHasUnreadReply(false)}
+                        />
+                      ) : (
+                        <AnalysisPanel
+                          analysis={analysis}
+                          analyzing={analyzing}
+                          error={analysisError}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <div className="flex h-165 items-center justify-center rounded-md border border-border/60 bg-card text-sm text-muted-foreground">
+                      加载作品后，即可开始阅读与 AI 讨论。
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 轻量状态标识，不遮盖／闪白旧页面；原内容暂不允许交互。 */}
+              {switchTarget && (
+                <div
+                  role="status"
+                  className="pointer-events-none absolute right-3 top-12 z-10 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
+                >
+                  正在载入下一首……
+                </div>
               )}
             </div>
-          )}
-
-          <div className="min-w-0">
-            {activePoem && activePoem.id === poemId ? (
-              <>
-            <div
-              className="mb-3 flex items-center gap-2"
-              role="group"
-              aria-label="右侧视图"
-            >
-              <Button
-                type="button"
-                variant={activeView === "chat" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeView === "chat"}
-                onClick={() => setActiveView("chat")}
-              >
-                对话
-              </Button>
-
-              <Button
-                type="button"
-                variant={activeView === "analysis" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeView === "analysis"}
-                onClick={() => setActiveView("analysis")}
-              >
-                赏析
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="ml-auto"
-                onClick={handleAnalyze}
-                disabled={analyzing}
-              >
-                {analyzing ? "正在生成……" : "生成整首赏析"}
-              </Button>
-            </div>
-
-            {activeView === "chat" ? (
-              <ChatPanel
-                key={activePoem.id}
-                selected={selected}
-                question={question}
-                turns={turns}
-                loading={chatLoading}
-                onQuestionChange={setQuestion}
-                onClearQuote={() => setSelected(null)}
-                onSend={handleSend}
-                onRetry={handleRetry}
-                onRegenerate={handleRegenerate}
-                onEdit={handleEdit}
-                seenAnimationsRef={seenAnimationsRef}
-                viewportRef={chatViewportRef}
-                hasUnreadReply={hasUnreadReply}
-                onClearUnreadReply={() => setHasUnreadReply(false)}
-              />
-            ) : (
-              <AnalysisPanel
-                analysis={analysis}
-                analyzing={analyzing}
-                error={analysisError}
-              />
-            )}
-              </>
-            ) : (
-              <div className="flex h-165 items-center justify-center rounded-md border border-border/60 bg-card text-sm text-muted-foreground">
-                加载作品后，即可开始阅读与 AI 讨论。
-              </div>
-            )}
           </div>
         </div>
       </main>
