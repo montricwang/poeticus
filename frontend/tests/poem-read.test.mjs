@@ -18,7 +18,22 @@ test("无词题时目录补首句，不凭首句生成正式题目", () => {
     incipit: "瞬息浮生，薄命如斯",
   };
   assert.equal(poemTitle(summary), "沁园春");
-  assert.equal(poemLabel(summary), "沁园春 · 瞬息浮生，薄命如斯");
+  assert.equal(poemLabel(summary), "沁园春 · 瞬息浮生");
+});
+
+
+test("有词题时只使用词牌与词题，不拼入 incipit", () => {
+  const summary = {
+    cipai: "思越人",
+    title: "牡丹",
+    incipit: "今日春光，往事如烟",
+  };
+  assert.equal(poemLabel(summary), "思越人·牡丹");
+});
+
+test("缺少逗号时目录首句有兜底长度限制", () => {
+  const summary = { cipai: "浣溪沙", title: null, incipit: "花".repeat(50) };
+  assert.equal(poemLabel(summary), "浣溪沙 · " + "花".repeat(18));
 });
 
 test("UTF-16 位置转换为 Python code point 位置", () => {
