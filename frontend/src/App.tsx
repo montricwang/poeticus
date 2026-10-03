@@ -543,38 +543,136 @@ function App() {
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-5 pb-10 pt-7 md:px-8">
+        <form
+          className="mb-4 flex flex-wrap items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setFilters({
+              limit: PAGE_SIZE,
+              offset: 0,
+              q: searchInput,
+              author: authorInput,
+              cipai: cipaiInput,
+            });
+          }}
+        >
+          <input
+            aria-label="搜索作者、词牌、词题或正文"
+            placeholder="搜索作品或正文"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            className="min-w-36 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+          />
+          <input
+            aria-label="按作者筛选"
+            placeholder="作者（精确）"
+            value={authorInput}
+            onChange={(event) => setAuthorInput(event.target.value)}
+            className="w-32 rounded-md border border-border bg-background px-3 py-2 text-sm"
+          />
+          <input
+            aria-label="按词牌筛选"
+            placeholder="词牌（精确）"
+            value={cipaiInput}
+            onChange={(event) => setCipaiInput(event.target.value)}
+            className="w-32 rounded-md border border-border bg-background px-3 py-2 text-sm"
+          />
+          <Button type="submit" size="sm" disabled={catalogLoading}>
+            查找
+          </Button>
+        </form>
+
         <div className="mb-6 flex flex-wrap items-center gap-3">
-          <label
-            htmlFor="poem-picker"
-            className="text-sm text-muted-foreground"
-          >
+          <label htmlFor="poem-picker" className="text-sm text-muted-foreground">
             当前作品
           </label>
           <select
             id="poem-picker"
-            value={activePoem.id}
-            disabled={chatLoading || analyzing}
+            value={poemId ?? ""}
+            disabled={chatLoading || analyzing || catalogLoading}
             onChange={(event) => handlePoemChange(event.target.value)}
-            className="max-w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground disabled:opacity-50"
+            className="max-w-full min-w-0 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground disabled:opacity-50"
           >
-            {poems.map((work) => (
+            <option value="" disabled>请选择作品</option>
+            {poemId && !catalog?.items.some((item) => item.id === poemId) && (
+              <option value={poemId}>
+                {activePoem ? poemTitle(activePoem) : "上次阅读的作品"}
+              </option>
+            )}
+            {(catalog?.items ?? []).map((work) => (
               <option key={work.id} value={work.id}>
-                {work.title} · {work.author ?? "作者未核实"}
+                {poemLabel(work)} · {work.author ?? "作者未核实"}
               </option>
             ))}
           </select>
+          <span className="text-xs text-muted-foreground">
+            {catalog ? `共 ${catalog.total} 首 · 第 ${Math.floor(catalog.offset / PAGE_SIZE) + 1} 页` : "目录未加载"}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={catalogLoading || filters.offset === 0}
+            onClick={() => setFilters((current) => ({
+              ...current,
+              offset: Math.max(0, current.offset - PAGE_SIZE),
+            }))}
+          >
+            上一页
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={
+              catalogLoading ||
+              !catalog ||
+              filters.offset + PAGE_SIZE >= catalog.total
+            }
+            onClick={() => setFilters((current) => ({
+              ...current,
+              offset: current.offset + PAGE_SIZE,
+            }))}
+          >
+            下一页
+          </Button>
         </div>
+        {catalogLoading && (
+          <p role="status" className="mb-4 text-sm text-muted-foreground">正在加载目录……</p>
+        )}
+        {catalogError && (
+          <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
+            <span>目录获取失败：{catalogError}</span>
+            <Button type="button" size="sm" variant="outline" onClick={() => setFilters((current) => ({ ...current }))}>
+              重试
+            </Button>
+          </div>
+        )}
+        {catalog && catalog.total === 0 && !catalogLoading && (
+          <p className="mb-4 text-sm text-muted-foreground">没有匹配的作品，请调整筛选条件。</p>
+        )}
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-          <PoemReader
-            key={activePoem.id}
-            work={activePoem}
-            onSelect={(value) => {
-              if (!chatLoading) setSelected(value);
-            }}
-          />
+          {activePoem && activePoem.id === poemId ? (
+            <PoemReader
+              key={activePoem.id}
+              work={activePoem}
+              onSelect={(value) => {
+                if (!chatLoading) setSelected(value);
+              }}
+            />
+          ) : (
+            <div role={detailError ? "alert" : "status"} className="min-h-155 rounded-md border border-border/60 bg-card px-8 py-12 text-sm text-muted-foreground">
+              {detailLoading ? "正在加载作品正文……" : detailError ? `作品加载失败：${detailError}` : "请从目录中选择作品"}
+              {detailError && (
+                <Button className="ml-3" type="button" variant="outline" size="sm" onClick={() => setDetailAttempt((count) => count + 1)}>重试</Button>
+              )}
+            </div>
+          )}
 
           <div className="min-w-0">
+            {activePoem && activePoem.id === poemId ? (
+              <>
             <div
               className="mb-3 flex items-center gap-2"
               role="group"
@@ -635,6 +733,12 @@ function App() {
                 analyzing={analyzing}
                 error={analysisError}
               />
+            )}
+              </>
+            ) : (
+              <div className="flex h-165 items-center justify-center rounded-md border border-border/60 bg-card text-sm text-muted-foreground">
+                加载作品后，即可开始阅读与 AI 讨论。
+              </div>
             )}
           </div>
         </div>
