@@ -617,7 +617,8 @@ function App() {
             className={
               "pointer-events-none fixed inset-0 z-50 lg:sticky lg:top-5 lg:z-auto " +
               // 桌面只用 Grid 列宽控制侧栏可见区域，避免 opacity 先于宽度把目录隐去。
-              "lg:min-w-0 lg:overflow-hidden"
+              "lg:min-w-0 lg:overflow-hidden " +
+              (catalogOpen ? "lg:border-r lg:border-border/60" : "lg:border-r-0")
             }
           >
             <button
@@ -658,7 +659,7 @@ function App() {
             </div>
           </div>
 
-          <div className="min-w-0 lg:pl-5">
+          <div className="min-w-0 lg:pl-6">
             <div className="relative min-w-0" aria-busy={!!switchTarget}>
               {switchError && (
                 <div role="alert" className="mb-3 text-sm text-destructive">
@@ -706,7 +707,7 @@ function App() {
                   )}
                 </div>
 
-                <div className="min-w-0">
+                <div className="min-w-0 border-t border-border/60 pt-6 xl:border-l xl:border-t-0 xl:pl-7 xl:pt-0">
                   {activePoem && activePoem.id === poemId ? (
                     <>
                       <div

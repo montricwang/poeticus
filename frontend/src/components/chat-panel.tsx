@@ -7,7 +7,6 @@ import {
 } from "react";
 import { ArrowDown } from "lucide-react";
 
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MessageEntrance } from "@/components/message-entrance";
 import { UserMessage } from "@/components/user-message";
@@ -148,14 +147,14 @@ export function ChatPanel({
   }
 
   return (
-    <Card className="flex h-165 min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm">
+    <section aria-label="阅读讨论" className="flex h-165 min-h-0 min-w-0 flex-col bg-transparent">
 
       {/* 相对定位容器负责固定悬浮按钮，内部列表才允许滚动。 */}
       <div className="relative flex min-h-0 flex-1">
         <div
           ref={chatListRef}
           onScroll={(event) => handleScroll(event.currentTarget)}
-          className="flex min-h-0 w-full flex-1 flex-col gap-5 overflow-y-auto px-5 py-6"
+          className="flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto pr-2 py-5"
         >
           {turns.length === 0 && (
             <div className="flex flex-1 items-center justify-center text-center">
@@ -165,8 +164,11 @@ export function ChatPanel({
             </div>
           )}
 
-          {turns.map((turn) => (
-            <div key={turn.id} className="space-y-5">
+          {turns.map((turn, index) => (
+            <div key={turn.id} className="space-y-4">
+              {index > 0 && (
+                <div className="mb-6 h-px w-12 bg-border/80" aria-hidden="true" />
+              )}
               <MessageEntrance
                 animationId={`user:${turn.id}`}
                 seenAnimationsRef={seenAnimationsRef}
@@ -258,6 +260,6 @@ export function ChatPanel({
         onClearQuote={onClearQuote}
         onSend={handleSendFromComposer}
       />
-    </Card>
+    </section>
   );
 }

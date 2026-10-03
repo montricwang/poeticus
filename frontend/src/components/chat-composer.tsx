@@ -23,7 +23,7 @@ export function ChatComposer({
   onSend,
 }: ChatComposerProps) {
   return (
-    <div className="shrink-0 border-t border-border/60 bg-card/50 p-4">
+    <div className="shrink-0 border-t border-border/60 bg-transparent px-0 py-4">
       {/* 引用很长时在卡片内部滚动，不挤占整个对话区域。 */}
       {selected && (
         <div className="mb-3 rounded-xl border border-violet-400/20 bg-violet-500/5 p-3">
