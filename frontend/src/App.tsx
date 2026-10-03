@@ -6,7 +6,16 @@ import { PoemReader } from "@/components/poem-reader";
 import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
 
-import { poems, poemContext, poemText } from "@/data/poem-library";
+import {
+  fetchPoem,
+  fetchPoemPage,
+  poemContext,
+  poemLabel,
+  poemText,
+  poemTitle,
+} from "@/data/poem-library";
+import type { Poem, PoemFilters, PoemPage } from "@/data/poem-library";
+import { selectionForPython } from "@/lib/selection-offset";
 import { readChatStream } from "@/lib/chat-stream";
 import {
   createConversationId,
@@ -26,7 +35,8 @@ import type { PoemAnalysis } from "@/components/analysis-panel";
 
 type ActiveView = "chat" | "analysis";
 
-const DEFAULT_POEM_ID = "su-shi-huan-xi-sha-feng-juan-zhu-lian";
+const PAGE_SIZE = 20;
+const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 const MAX_HISTORY_TURNS = 6;
 
@@ -93,40 +103,44 @@ function maxTurnId(turns: ChatTurn[]): number {
 }
 
 function loadInitialChatState() {
-  const storedPoemId = loadLastActivePoemId();
-  const initialPoem =
-    poems.find((item) => item.id === storedPoemId) ??
-    poems.find((item) => item.id === DEFAULT_POEM_ID) ??
-    poems[0];
-
-  const storedConversation = loadPoemConversation(initialPoem.id);
+  const lastId = loadLastActivePoemId();
+  // 旧 demo 作品使用短字符串 ID；保留旧会话，不将其自动映射到 UUID。
+  const poemId = lastId && UUID_PATTERN.test(lastId) ? lastId : null;
+  const storedConversation = poemId ? loadPoemConversation(poemId) : null;
   const turns = storedConversation?.turns ?? [];
 
   return {
-    poemId: initialPoem.id,
-    conversationId:
-      storedConversation?.conversationId ?? createConversationId(),
+    poemId,
+    conversationId: storedConversation?.conversationId ?? createConversationId(),
     turns,
     question: storedConversation?.draft.question ?? "",
-    selected: validSelectionForPoem(
-      storedConversation?.draft.selection ?? null,
-      poemText(initialPoem),
-    ),
   };
 }
 
 function App() {
   const [initialChatState] = useState(loadInitialChatState);
-  const [poemId, setPoemId] = useState(initialChatState.poemId);
-  const activePoem = poems.find((item) => item.id === poemId) ?? poems[0];
-  const poem = poemText(activePoem);
+  const [poemId, setPoemId] = useState<string | null>(initialChatState.poemId);
+  const [activePoem, setActivePoem] = useState<Poem | null>(null);
+  const poem = activePoem ? poemText(activePoem) : "";
+
+  const [catalog, setCatalog] = useState<PoemPage | null>(null);
+  const [filters, setFilters] = useState<PoemFilters>({
+    limit: PAGE_SIZE,
+    offset: 0,
+  });
+  const [searchInput, setSearchInput] = useState("");
+  const [authorInput, setAuthorInput] = useState("");
+  const [cipaiInput, setCipaiInput] = useState("");
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState("");
+  const [detailLoading, setDetailLoading] = useState(!!initialChatState.poemId);
+  const [detailError, setDetailError] = useState("");
+  const [detailAttempt, setDetailAttempt] = useState(0);
 
   const [conversationId, setConversationId] = useState(
     initialChatState.conversationId,
   );
-  const [selected, setSelected] = useState<SelectedText | null>(
-    initialChatState.selected,
-  );
+  const [selected, setSelected] = useState<SelectedText | null>(null);
   const [question, setQuestion] = useState(initialChatState.question);
   const [turns, setTurns] = useState<ChatTurn[]>(initialChatState.turns);
   const [chatLoading, setChatLoading] = useState(false);
@@ -140,6 +154,7 @@ function App() {
   const persistenceRef = useRef({
     conversationId,
     poemId,
+    readyPoemId: activePoem?.id ?? null,
     turns,
     question,
     selected,
@@ -149,6 +164,61 @@ function App() {
   const [analysis, setAnalysis] = useState<PoemAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
+
+  // 目录轻量分页，不携带完整正文。
+  useEffect(() => {
+    const controller = new AbortController();
+    setCatalogLoading(true);
+    setCatalogError("");
+    void fetchPoemPage(filters, controller.signal)
+      .then((page) => {
+        if (controller.signal.aborted) return;
+        setCatalog(page);
+        setPoemId((current) => current ?? page.items[0]?.id ?? null);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setCatalogError(error instanceof Error ? error.message : "无法获取目录");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCatalogLoading(false);
+      });
+    return () => controller.abort();
+  }, [filters]);
+
+  // 详情按 UUID 加载；取消旧请求防止出现标题与正文错配。
+  useEffect(() => {
+    if (!poemId) {
+      setActivePoem(null);
+      setDetailLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    setActivePoem(null);
+    setDetailLoading(true);
+    setDetailError("");
+    setSelected(null);
+
+    void fetchPoem(poemId, controller.signal)
+      .then((work) => {
+        if (controller.signal.aborted) return;
+        setActivePoem(work);
+        setSelected(
+          validSelectionForPoem(
+            loadPoemConversation(work.id)?.draft.selection ?? null,
+            poemText(work),
+          ),
+        );
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setDetailError(error instanceof Error ? error.message : "无法加载作品");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDetailLoading(false);
+      });
+    return () => controller.abort();
+  }, [poemId, detailAttempt]);
 
   useEffect(() => {
     persistenceRef.current = {
