@@ -604,7 +604,7 @@ function App() {
         <div
           className={
             "grid min-w-0 grid-cols-1 items-start gap-0 " +
-            "lg:transition-[grid-template-columns] lg:duration-200 lg:ease-out motion-reduce:transition-none " +
+            "lg:transition-[grid-template-columns] lg:duration-[360ms] lg:ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none " +
             (catalogOpen
               ? "lg:grid-cols-[320px_minmax(0,1fr)]"
               : "lg:grid-cols-[0px_minmax(0,1fr)]")
@@ -616,7 +616,7 @@ function App() {
             aria-hidden={!catalogOpen}
             className={
               "pointer-events-none fixed inset-0 z-50 lg:sticky lg:top-5 lg:z-auto " +
-              "lg:min-w-0 lg:overflow-hidden lg:transition-opacity lg:duration-200 motion-reduce:transition-none " +
+              "lg:min-w-0 lg:overflow-hidden lg:transition-opacity lg:duration-[360ms] lg:ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none " +
               (catalogOpen ? "lg:opacity-100" : "lg:opacity-0")
             }
           >
@@ -625,7 +625,7 @@ function App() {
               tabIndex={-1}
               aria-label="关闭作品目录遮罩"
               className={
-                "absolute inset-0 bg-black/55 transition-opacity duration-200 " +
+                "absolute inset-0 bg-black/55 transition-opacity duration-[360ms] ease-[cubic-bezier(0.4,0,0.2,1)] " +
                 "motion-reduce:transition-none lg:hidden " +
                 (catalogOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
               }
@@ -634,7 +634,7 @@ function App() {
             <div
               className={
                 "relative h-full w-[min(88vw,360px)] " +
-                "transform transition-transform duration-200 ease-out " +
+                "transform transition-transform duration-[360ms] ease-[cubic-bezier(0.4,0,0.2,1)] " +
                 "motion-reduce:transition-none lg:w-80 lg:translate-x-0 lg:pr-5 " +
                 (catalogOpen
                   ? "pointer-events-auto translate-x-0"
