@@ -616,8 +616,8 @@ function App() {
             aria-hidden={!catalogOpen}
             className={
               "pointer-events-none fixed inset-0 z-50 lg:sticky lg:top-5 lg:z-auto " +
-              "lg:min-w-0 lg:overflow-hidden lg:transition-opacity lg:duration-[360ms] lg:ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none " +
-              (catalogOpen ? "lg:opacity-100" : "lg:opacity-0")
+              // 桌面只用 Grid 列宽控制侧栏可见区域，避免 opacity 先于宽度把目录隐去。
+              "lg:min-w-0 lg:overflow-hidden"
             }
           >
             <button
