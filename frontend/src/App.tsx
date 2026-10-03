@@ -658,7 +658,10 @@ function App() {
                   作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
                 </div>
               )}
-              <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+              <div
+                inert={!!switchTarget}
+                className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]"
+              >
                 <div className="min-w-0">
                   {activePoem && activePoem.id === poemId ? (
                     <PoemReader
@@ -770,15 +773,13 @@ function App() {
                 </div>
               </div>
 
-              {/* 预取时保留原文与对话，不将新 UUID 与旧正文混合展示。 */}
+              {/* 轻量状态标识，不遮盖／闪白旧页面；原内容暂不允许交互。 */}
               {switchTarget && (
                 <div
                   role="status"
-                  className="absolute inset-0 z-10 flex items-start justify-center rounded-lg bg-background/65 pt-24 backdrop-blur-[1px]"
+                  className="pointer-events-none absolute right-3 top-12 z-10 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
                 >
-                  <span className="rounded-md border border-border/60 bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm">
-                    正在切换作品……
-                  </span>
+                  正在载入下一首……
                 </div>
               )}
             </div>
