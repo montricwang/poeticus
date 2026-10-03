@@ -133,7 +133,7 @@ function App() {
   const [cipaiInput, setCipaiInput] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
-  const [detailLoading, setDetailLoading] = useState(!!initialChatState.poemId);
+  const detailLoading = !!poemId && !activePoem && !detailError;
   const [detailError, setDetailError] = useState("");
   const [detailAttempt, setDetailAttempt] = useState(0);
 
@@ -168,8 +168,6 @@ function App() {
   // 目录轻量分页，不携带完整正文。
   useEffect(() => {
     const controller = new AbortController();
-    setCatalogLoading(true);
-    setCatalogError("");
     void fetchPoemPage(filters, controller.signal)
       .then((page) => {
         if (controller.signal.aborted) return;
@@ -188,16 +186,8 @@ function App() {
 
   // 详情按 UUID 加载；取消旧请求防止出现标题与正文错配。
   useEffect(() => {
-    if (!poemId) {
-      setActivePoem(null);
-      setDetailLoading(false);
-      return;
-    }
+    if (!poemId) return;
     const controller = new AbortController();
-    setActivePoem(null);
-    setDetailLoading(true);
-    setDetailError("");
-    setSelected(null);
 
     void fetchPoem(poemId, controller.signal)
       .then((work) => {
@@ -214,9 +204,6 @@ function App() {
         if (controller.signal.aborted) return;
         setDetailError(error instanceof Error ? error.message : "无法加载作品");
       })
-      .finally(() => {
-        if (!controller.signal.aborted) setDetailLoading(false);
-      });
     return () => controller.abort();
   }, [poemId, detailAttempt]);
 
@@ -296,6 +283,7 @@ function App() {
 
     window.getSelection()?.removeAllRanges();
     setActivePoem(null);
+    setDetailError("");
     setPoemId(nextId);
     setConversationId(
       storedConversation?.conversationId ?? createConversationId(),
@@ -547,6 +535,8 @@ function App() {
           className="mb-4 flex flex-wrap items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault();
+            setCatalogLoading(true);
+            setCatalogError("");
             setFilters({
               limit: PAGE_SIZE,
               offset: 0,
@@ -613,10 +603,14 @@ function App() {
             size="sm"
             variant="outline"
             disabled={catalogLoading || filters.offset === 0}
-            onClick={() => setFilters((current) => ({
-              ...current,
-              offset: Math.max(0, current.offset - PAGE_SIZE),
-            }))}
+            onClick={() => {
+              setCatalogLoading(true);
+              setCatalogError("");
+              setFilters((current) => ({
+                ...current,
+                offset: Math.max(0, current.offset - PAGE_SIZE),
+              }));
+            }}
           >
             上一页
           </Button>
@@ -629,10 +623,14 @@ function App() {
               !catalog ||
               filters.offset + PAGE_SIZE >= catalog.total
             }
-            onClick={() => setFilters((current) => ({
-              ...current,
-              offset: current.offset + PAGE_SIZE,
-            }))}
+            onClick={() => {
+              setCatalogLoading(true);
+              setCatalogError("");
+              setFilters((current) => ({
+                ...current,
+                offset: current.offset + PAGE_SIZE,
+              }));
+            }}
           >
             下一页
           </Button>
@@ -643,7 +641,11 @@ function App() {
         {catalogError && (
           <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
             <span>目录获取失败：{catalogError}</span>
-            <Button type="button" size="sm" variant="outline" onClick={() => setFilters((current) => ({ ...current }))}>
+            <Button type="button" size="sm" variant="outline" onClick={() => {
+              setCatalogLoading(true);
+              setCatalogError("");
+              setFilters((current) => ({ ...current }));
+            }}>
               重试
             </Button>
           </div>
@@ -665,7 +667,12 @@ function App() {
             <div role={detailError ? "alert" : "status"} className="min-h-155 rounded-md border border-border/60 bg-card px-8 py-12 text-sm text-muted-foreground">
               {detailLoading ? "正在加载作品正文……" : detailError ? `作品加载失败：${detailError}` : "请从目录中选择作品"}
               {detailError && (
-                <Button className="ml-3" type="button" variant="outline" size="sm" onClick={() => setDetailAttempt((count) => count + 1)}>重试</Button>
+                <Button className="ml-3" type="button" variant="outline" size="sm" onClick={() => {
+                  setDetailError("");
+                  setActivePoem(null);
+                  setSelected(null);
+                  setDetailAttempt((count) => count + 1);
+                }}>重试</Button>
               )}
             </div>
           )}
