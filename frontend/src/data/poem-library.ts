@@ -49,9 +49,10 @@ export function poemLabel(work: PoemSummary): string {
   const title = poemTitle(work);
   if (work.title) return title;
 
-  // 无独立词题时，只取首个逗号前的短句作目录辨识，不修改正文。
-  // 缺少逗号的长段保留长度上限，避免标题意外撑满列表。
-  const firstPhrase = work.incipit.split(/[，,]/, 1)[0].trim();
+  // 无独立词题时，截取第一个主要句读标点前的文字作短标签。
+  // 同时兼容中文/英文标点与换行；无句读时才依赖下方长度上限。
+  // 这只是目录展示规则，不改变词正文，也不判定词句/上下阕。
+  const firstPhrase = work.incipit.split(/[，,。.!！?？；;\r\n]/, 1)[0].trim();
   const shortPhrase = Array.from(firstPhrase).slice(0, 18).join("");
   return shortPhrase ? `${title} · ${shortPhrase}` : title;
 }
