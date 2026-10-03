@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { Card } from "@/components/ui/card";
-import { poemText } from "@/data/poem-library";
+import { poemText, poemTitle } from "@/data/poem-library";
 import type { Poem } from "@/data/poem-library";
 
 export type SelectedText = {
@@ -144,13 +144,11 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
         <article className="mx-auto w-full max-w-xl px-7 py-12 sm:px-12 sm:py-14">
           <header className="mb-9 text-center">
             <h1 className="font-serif text-4xl font-medium tracking-widest">
-              {work.title}
+              {poemTitle(work)}
             </h1>
             <p className="mt-4 text-sm text-muted-foreground">
               {work.author ?? "作者未核实"}
-              {work.subtitle && !work.title.includes(work.subtitle)
-                ? ` · ${work.subtitle}`
-                : ""}
+              {work.yusheng_title ? ` · 寓声：${work.yusheng_title}` : ""}
             </p>
             {work.review_status !== "reviewed" && (
               <p className="mt-2 text-xs text-muted-foreground/75">
@@ -159,11 +157,11 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
             )}
           </header>
 
-          {work.preface && (
-            <p className="mb-8 whitespace-pre-line font-serif text-sm leading-8 text-muted-foreground">
-              {work.preface}
+          {work.prefaces.map((preface, index) => (
+            <p key={index} className="mb-8 whitespace-pre-line font-serif text-sm leading-8 text-muted-foreground">
+              {preface}
             </p>
-          )}
+          ))}
 
           <p
             ref={poemRef}
