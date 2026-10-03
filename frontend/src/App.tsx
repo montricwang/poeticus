@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { PanelLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { PoemReader } from "@/components/poem-reader";
+import { PoemCatalog } from "@/components/poem-catalog";
 import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
 
@@ -10,7 +12,6 @@ import {
   fetchPoem,
   fetchPoemPage,
   poemContext,
-  poemLabel,
   poemText,
 } from "@/data/poem-library";
 import type { Poem, PoemFilters, PoemPage } from "@/data/poem-library";
@@ -128,8 +129,10 @@ function App() {
     offset: 0,
   });
   const [searchInput, setSearchInput] = useState("");
-  const [authorInput, setAuthorInput] = useState("");
-  const [cipaiInput, setCipaiInput] = useState("");
+  const [catalogOpen, setCatalogOpen] = useState(
+    () => window.matchMedia("(min-width: 1024px)").matches,
+  );
+  const catalogToggleRef = useRef<HTMLButtonElement>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
   const [detailError, setDetailError] = useState("");
@@ -272,6 +275,18 @@ function App() {
     });
   }
 
+  function updateCatalogFilters(next: PoemFilters) {
+    setCatalog(null);
+    setCatalogLoading(true);
+    setCatalogError("");
+    setFilters(next);
+  }
+
+  function closeCatalog() {
+    setCatalogOpen(false);
+    catalogToggleRef.current?.focus();
+  }
+
   function handlePoemChange(nextId: string) {
     if (inFlightRef.current || analyzing || nextId === poemId || !nextId) return;
 
@@ -284,6 +299,9 @@ function App() {
     setActivePoem(null);
     setDetailError("");
     setPoemId(nextId);
+    if (window.innerWidth < 1024) {
+      closeCatalog();
+    }
     setConversationId(
       storedConversation?.conversationId ?? createConversationId(),
     );
@@ -524,154 +542,59 @@ function App() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
-          <span className="text-lg font-semibold tracking-tight">Poeticus</span>
+          <div className="flex items-center gap-2">
+            <Button
+              ref={catalogToggleRef}
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={catalogOpen ? "收起作品目录" : "展开作品目录"}
+              aria-controls="poem-catalog"
+              aria-expanded={catalogOpen}
+              onClick={() => setCatalogOpen((current) => !current)}
+            >
+              <PanelLeft className="size-5" aria-hidden="true" />
+            </Button>
+            <span className="text-lg font-semibold tracking-tight">Poeticus</span>
+          </div>
           <ThemeSwitcher />
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-7xl px-5 pb-10 pt-7 md:px-8">
-        <form
-          className="mb-4 flex flex-wrap items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setCatalogLoading(true);
-            setCatalogError("");
-            setFilters({
-              limit: PAGE_SIZE,
-              offset: 0,
-              q: searchInput,
-              author: authorInput,
-              cipai: cipaiInput,
-            });
-          }}
+        <div
+          className={
+            "grid min-w-0 items-start gap-5 " +
+            (catalogOpen
+              ? "lg:grid-cols-[320px_minmax(0,1fr)]"
+              : "lg:grid-cols-1")
+          }
         >
-          <input
-            aria-label="搜索作者、词牌、词题或正文"
-            placeholder="搜索作品或正文"
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            className="min-w-36 flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-          <input
-            aria-label="按作者筛选"
-            placeholder="作者（精确）"
-            value={authorInput}
-            onChange={(event) => setAuthorInput(event.target.value)}
-            className="w-32 rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-          <input
-            aria-label="按词牌筛选"
-            placeholder="词牌（精确）"
-            value={cipaiInput}
-            onChange={(event) => setCipaiInput(event.target.value)}
-            className="w-32 rounded-md border border-border bg-background px-3 py-2 text-sm"
-          />
-          <Button type="submit" size="sm" disabled={catalogLoading}>查找</Button>
-        </form>
-
-        {/* 搜索结果只属于目录，绝不把目录外的当前阅读作品插入候选列表。 */}
-        <section aria-label="作品搜索结果" className="mb-6 rounded-lg border border-border/60 bg-card">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <h2 className="text-sm font-medium">
-                {filters.q || filters.author || filters.cipai ? "搜索结果" : "作品目录"}
-              </h2>
-              <span className="text-xs text-muted-foreground" aria-live="polite">
-                {catalog ? `共 ${catalog.total} 首 · 第 ${Math.floor(catalog.offset / PAGE_SIZE) + 1} 页` : "正在获取目录"}
-              </span>
-              {catalogLoading && <span role="status" className="text-xs text-muted-foreground">加载中……</span>}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
+          {catalogOpen && (
+            <div className="fixed inset-0 z-50 lg:static lg:z-auto lg:min-w-0">
+              <button
                 type="button"
-                size="sm"
-                variant="outline"
-                disabled={catalogLoading || filters.offset === 0}
-                onClick={() => {
-                  setCatalogLoading(true);
-                  setCatalogError("");
-                  setFilters((current) => ({
-                    ...current,
-                    offset: Math.max(0, current.offset - PAGE_SIZE),
-                  }));
-                }}
-              >
-                上一页
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={
-                  catalogLoading ||
-                  !catalog ||
-                  filters.offset + PAGE_SIZE >= catalog.total
-                }
-                onClick={() => {
-                  setCatalogLoading(true);
-                  setCatalogError("");
-                  setFilters((current) => ({
-                    ...current,
-                    offset: current.offset + PAGE_SIZE,
-                  }));
-                }}
-              >
-                下一页
-              </Button>
+                tabIndex={-1}
+                aria-label="关闭作品目录遮罩"
+                className="absolute inset-0 bg-black/55 lg:hidden"
+                onClick={closeCatalog}
+              />
+              <PoemCatalog
+                catalog={catalog}
+                filters={filters}
+                query={searchInput}
+                loading={catalogLoading}
+                error={catalogError}
+                activePoemId={poemId}
+                selectionBlocked={chatLoading || analyzing}
+                onQueryChange={setSearchInput}
+                onFiltersChange={updateCatalogFilters}
+                onSelect={handlePoemChange}
+                onClose={closeCatalog}
+              />
             </div>
-          </div>
-
-          <div className="h-52 overflow-y-auto">
-            {catalogError ? (
-              <div role="alert" className="flex items-center gap-3 px-4 py-5 text-sm text-destructive">
-                <span>目录获取失败：{catalogError}</span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setCatalogLoading(true);
-                    setCatalogError("");
-                    setFilters((current) => ({ ...current }));
-                  }}
-                >
-                  重试
-                </Button>
-              </div>
-            ) : catalog && catalog.total === 0 && !catalogLoading ? (
-              <p className="px-4 py-5 text-sm text-muted-foreground">
-                没有匹配的作品，请调整筛选条件。
-              </p>
-            ) : !catalog ? (
-              <p className="px-4 py-5 text-sm text-muted-foreground" role="status">
-                正在加载作品目录……
-              </p>
-            ) : (
-              <ul key={`${catalog.offset}:${catalog.items[0]?.id ?? ""}`} aria-label="本页作品">
-                {catalog.items.map((work) => (
-                  <li key={work.id}>
-                    <button
-                      type="button"
-                      disabled={catalogLoading || chatLoading || analyzing}
-                      aria-current={work.id === poemId ? "true" : undefined}
-                      onClick={() => handlePoemChange(work.id)}
-                      className={
-                        "flex w-full items-center justify-between gap-4 border-b border-border/40 px-4 py-2.5 text-left text-sm last:border-0 hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 " +
-                        (work.id === poemId ? "bg-muted/50" : "")
-                      }
-                    >
-                      <span className="min-w-0 truncate">{poemLabel(work)}</span>
-                      <span className="shrink-0 text-xs text-muted-foreground">
-                        {work.author ?? "作者未核实"}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
-
+          )}
+          <div className="min-w-0">
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
           {activePoem && activePoem.id === poemId ? (
             <PoemReader
@@ -765,6 +688,7 @@ function App() {
                 加载作品后，即可开始阅读与 AI 讨论。
               </div>
             )}
+          </div>
           </div>
         </div>
       </main>
