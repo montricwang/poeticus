@@ -88,11 +88,13 @@ def test_catalog_page_filters_order_and_no_private_data(client):
         assert "FROM poems" in sql
         assert "poem_source_texts" not in sql
         assert "source_sha256" not in sql
-        assert "author = %s" in sql and "cipai = %s" in sql
-        assert params[:2] == ["词人甲", "念奴娇"] or params[:2] == (
-            "词人甲", "念奴娇"
+        assert "author = %s" in sql
+        assert "(cipai = %s OR yusheng_title = %s)" in sql
+        assert tuple(params[:3]) == ("词人甲", "念奴娇", "念奴娇")
+        assert tuple(params[3:]) == ("合成",) * 5 or (
+            tuple(params[3:]) == ("合成",) * 5 + (1, 1)
         )
-        assert "合成" in params and "合成" not in sql
+        assert "合成" not in sql
     assert "ORDER BY source_order LIMIT %s OFFSET %s" in fake.calls[1][0]
     assert fake.calls[1][1][-2:] == (1, 1)
 
@@ -179,5 +181,31 @@ def test_repository_literal_search_and_parameter_binding():
     assert "STRPOS" in fake.calls[0][0]
     assert "%s" in fake.calls[0][0]
     assert "100%_测试" not in fake.calls[0][0]
-    assert fake.calls[0][1] == ("100%_测试",) * 4
+    assert fake.calls[0][1] == ("100%_测试",) * 5
     assert fake.calls[1][1][-2:] == (5, 0)
+
+
+def test_repository_tune_filter_matches_cipai_or_yusheng_without_conflating_fields():
+    fake = FakeConnection(pages=[summary()], count=1)
+    rows, count = repository.list_poems(
+        fake, author="贺铸", cipai="翦朝霞", q=None, limit=20, offset=0,
+    )
+    assert len(rows) == 1 and count == 1
+    for sql, params in fake.calls:
+        assert "author = %s" in sql
+        assert "(cipai = %s OR yusheng_title = %s)" in sql
+        assert "翦朝霞" not in sql
+        assert tuple(params[:3]) == ("贺铸", "翦朝霞", "翦朝霞")
+    assert fake.calls[0][1] == ("贺铸", "翦朝霞", "翦朝霞")
+    assert fake.calls[1][1] == ("贺铸", "翦朝霞", "翦朝霞", 20, 0)
+
+
+def test_repository_keyword_search_includes_yusheng_and_uses_literal_matching():
+    fake = FakeConnection(pages=[], count=0)
+    repository.list_poems(
+        fake, author=None, cipai=None, q="翦朝霞", limit=20, offset=0,
+    )
+    sql, params = fake.calls[0]
+    assert "STRPOS(LOWER(COALESCE(yusheng_title, '')), LOWER(%s)) > 0" in sql
+    assert tuple(params) == ("翦朝霞",) * 5
+    assert "翦朝霞" not in sql
