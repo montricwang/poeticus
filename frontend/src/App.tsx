@@ -133,8 +133,8 @@ function App() {
   const [cipaiInput, setCipaiInput] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
-  const detailLoading = !!poemId && !activePoem && !detailError;
   const [detailError, setDetailError] = useState("");
+  const detailLoading = !!poemId && !activePoem && !detailError;
   const [detailAttempt, setDetailAttempt] = useState(0);
 
   const [conversationId, setConversationId] = useState(
