@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from collections.abc import Iterator
 from typing import Literal
 
@@ -15,8 +16,27 @@ from poem_context import PoemContext
 from backend.corpus.router import router as corpus_router
 
 logger = logging.getLogger(__name__)
-app = FastAPI(title="Poeticus")
+app = FastAPI(
+    title="Poeticus",
+    version=os.getenv("POETICUS_VERSION", "0.1.0-dev"),
+)
 app.include_router(corpus_router)
+
+
+@app.get("/health", tags=["service"])
+def health():
+    """Liveness only: no database, model API or external tools."""
+    return {"status": "ok"}
+
+
+@app.get("/api/info", tags=["service"])
+def public_info():
+    """Public product metadata; never expose runtime configuration."""
+    return {
+        "name": "Poeticus",
+        "version": app.version,
+        "repository": "https://github.com/montricwang/poeticus",
+    }
 
 
 class AnalyzeRequest(BaseModel):
