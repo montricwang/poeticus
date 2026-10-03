@@ -1,121 +1,44 @@
-
 # Poeticus
 
 **在诗词中阅读，也在诗词中追问。**
 
-Poeticus 是一款面向中国古典诗词的 AI 辅助阅读工具。它将诗词原文、划词提问、典故检索和作品赏析放在同一个界面中，让读者不必频繁离开原文，就能围绕感兴趣的字句展开探索。
+Poeticus 是一个面向中国古典诗词的 AI 辅助阅读器。读者可以在阅读作品时直接划选字句、提出问题，围绕原文展开连续讨论；不必为了查询一个典故或理解一处措辞而反复离开阅读页面。
 
-项目目前处于 MVP 开发阶段。
+**项目状态：v0.1.0 上线准备中。** 在线体验网址将在公网部署和安全验收完成后公布。当前仓库提供源代码、测试及架构文档，尚不是一个已开放的公共网站。
 
-## 功能介绍
+## 阅读体验
 
-### 阅读与划词提问
+- **作品目录与检索**：从 PostgreSQL 读取作品目录和正文，按作品标识切换阅读；支持目录分页及作品字段检索。
+- **划词追问**：选中诗词中的字词或句子，将引用、作品信息和问题一起交给 AI。
+- **连续讨论**：围绕同一作品保留最近几轮有效问答作为上下文；阅读历史和草稿在当前浏览器本地保存。
+- **典故查证**：Agent 根据问题决定是否使用 CNKGraph 典故检索。检索结果是参考线索，不等于已经完成文献校勘。
+- **整首赏析**：生成现代汉语译文、词语解释和作品赏析；AI 回答支持流式呈现。
 
-选择一首诗词，在阅读过程中直接选中感兴趣的字词或诗句，向 AI 提问。
+Poeticus 尝试让**作品成为阅读中心，AI 成为可以随时交谈的伴读者**。界面仍在持续调整，见 [设计讨论 #63](https://github.com/montricwang/poeticus/issues/63)。
 
-例如，阅读苏轼《浣溪沙·新秋》时，可以选中「三星当户」，询问：
+> 产品截图和在线体验链接将在首版公开部署后补充；这里不提供未上线的演示地址。
 
-> 「三星当户」是什么意思？它与下句的「绸缪」有什么联系？
+## 工程架构
 
-Poeticus 会结合当前作品、选中的文字和你的问题组织回答，而不只是孤立地解释一个词语。
+| 层次 | 使用的技术 | 主要职责 |
+| --- | --- | --- |
+| 前端 | React、TypeScript、Vite | 作品阅读、划词引用、对话与流式展示 |
+| HTTP 后端 | FastAPI、Pydantic | 作品查询、请求校验、聊天与赏析 API |
+| AI 工作流 | LangGraph、LLM API | 结合作品上下文生成回答，按需调用查证工具 |
+| 作品存储 | PostgreSQL、psycopg | 作品目录分页、正文读取、字段搜索 |
+| 验证 | pytest、前端 lint/build、Node 测试 | 回归检查与数据处理验证 |
 
-### 典故检索
+作品读取采用 `GET /api/poems` 与 `GET /api/poems/{UUID}`；聊天使用 `POST /chat/stream` 提供 SSE。前端开发环境将该聊天入口代理为 `/api/chat/stream`；正式部署时需要配置生产环境的 HTTP 路由。服务状态与公开版本信息分别可通过 `GET /health`、`GET /api/info` 获取（正在部署分支中开发）。
 
-遇到典故时，可以要求 AI 查询相关资料，再结合诗词的具体语境解释。
+了解技术细节，可阅读 [LangGraph 架构](docs/architecture/langgraph.md)、[作品数据库架构](docs/architecture/corpus-database.md) 和 [开发日志](docs/devlog/)。
 
-Poeticus 当前接入了 CNKGraph 典故检索服务。AI 可以根据问题决定是否调用检索工具，并在获得资料后继续分析。
+## 当前阶段与边界
 
-检索结果属于候选参考资料，并不意味着相关出处、版本或解释已经经过完整的文献校勘。
+- 当前以古典词作为主要阅读对象，仍有作品字段与文本尚待核对；不要将 AI 解释或检索候选视为可靠的校勘结论。
+- 会话历史目前存储在**当前浏览器的 localStorage**，没有账号登录、跨设备同步或服务端长期记忆。
+- 公开仓库不包含私有商业 EPUB、来源证据、批量抽取结果、数据库凭证或开发者的本地作品库。要运行数据库阅读功能，需自行准备具有使用权限的作品数据。
+- 第一个公开演示版本的部署、访问限制和发布验收见 [#76](https://github.com/montricwang/poeticus/issues/76)、[#77](https://github.com/montricwang/poeticus/issues/77)、[#78](https://github.com/montricwang/poeticus/issues/78)。后续功能与缺陷由 [GitHub Issues](https://github.com/montricwang/poeticus/issues) 跟踪。
 
-### 整首赏析
+## 面向开发者
 
-除了围绕局部字句提问，还可以生成整首作品的阅读辅助内容，包括：
-
-- 现代汉语译文
-- 重要词语解释
-- 作品整体赏析
-
-### 流式回答
-
-AI 生成回答时，内容会逐步显示，无须等待整篇回答全部生成后才能开始阅读。
-
-## 如何使用
-
-目前可以在本地运行 Poeticus。
-
-### 1. 获取项目
-
-```bash
-git clone https://github.com/montricwang/poeticus.git
-cd poeticus
-```
-
-### 2. 配置后端
-
-安装 Python 依赖：
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-在项目根目录创建 `.env` 文件，配置模型 API Key：
-
-```dotenv
-LLM_API_KEY=你的_API_Key
-```
-
-项目默认使用 DeepSeek API。如果需要使用其他兼容的服务地址，可另外设置 `LLM_BASE_URL`。
-
-启动后端：
-
-```bash
-uvicorn api:app --reload
-```
-
-后端默认运行于 `http://127.0.0.1:8000`。
-
-### 3. 启动前端
-
-打开另一个终端，在项目根目录执行：
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-按照终端显示的地址打开页面，通常为 `http://localhost:5173`。
-
-### 4. 开始阅读
-
-1. 从作品列表中选择一首诗词。
-2. 阅读原文，选中想进一步了解的字词或诗句。
-3. 在对话区输入问题，或直接询问整首作品的内容。
-4. 如需整体阅读辅助，可以使用「生成整首赏析」。
-
-## 当前开发状态
-
-Poeticus 仍在持续开发。目前已实现单轮诗词问答、划词交互、典故工具调用、流式回答和整首赏析。
-
-现阶段还有一些限制：
-
-- 对话尚未支持完整的跨轮次上下文。
-- 外部资料检索目前主要限于 CNKGraph 典故服务。
-- AI 生成的文学解释和文献引用仍可能存在错误，重要结论应进一步核对原始文献。
-
-更多开发计划与已知问题见 [GitHub Issues](https://github.com/montricwang/poeticus/issues)。
-
-数据库已支持本地 PostgreSQL 词库导入及只读作品 API（前端目前仍使用静态作品 JSON）。建库、接口与本地测试说明见 [作品数据库架构文档](docs/architecture/corpus-database.md)。
-
-## 技术与开发文档
-
-Poeticus 使用 React、TypeScript 和 Vite 构建前端，使用 FastAPI 提供后端服务，并通过 LangGraph 组织 AI Agent 的工具调用与回答过程。
-
-关于 Graph 的具体设计、执行流程和技术限制，请参阅 [LangGraph 架构文档](docs/architecture/langgraph.md)。
-
-运行自动化测试：
-
-```bash
-python -m pip install -r requirements-dev.txt
-python -m pytest -q
-```
+本地环境准备、运行命令、数据库初始化与自动化测试见 [开发者指南](docs/development.md)。首次正式发布前，此仓库仍可能存在尚未合并的 Draft PR；请以 `main` 和具体 Release 中的版本说明为准。
