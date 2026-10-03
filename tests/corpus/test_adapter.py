@@ -25,6 +25,8 @@ def test_preserve_default_and_order_without_modifying_input():
     assert records[0].reader["prefaces"] == ["合成小序"]
     assert records[0].reader["cipai"] == original["tune"]
     assert "tune" not in records[0].reader
+    assert records[0].reader["yusheng_title"] is None
+    assert "yusheng" not in records[0].reader
     assert records[0].source["original_segments"] == original["content"]["text"]
     assert "annotations" not in records[0].reader
     assert "commentaries" not in records[0].source
@@ -107,3 +109,12 @@ def test_reject_li_edge_separator():
                 content={**example()["content"], "text": ["", "甲。"]})
     with pytest.raises(ValueError, match="首尾空段"):
         convert_record(r, 1)
+
+
+def test_legacy_epub_yusheng_becomes_reader_yusheng_title_without_changing_source_digest():
+    source = example(yusheng="合成寓声名")
+    converted = convert_record(source, 1)
+    assert converted.reader["yusheng_title"] == "合成寓声名"
+    assert "yusheng" not in converted.reader
+    assert source["yusheng"] == "合成寓声名"
+    assert converted.source["source_sha256"] == convert_record(source, 1).source["source_sha256"]

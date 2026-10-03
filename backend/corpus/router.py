@@ -18,7 +18,7 @@ class PoemSummary(BaseModel):
     author: str | None
     cipai: str | None
     title: str | None
-    yusheng: str | None
+    yusheng_title: str | None
     incipit: str
     review_status: str
 
@@ -37,7 +37,7 @@ class PoemDetail(BaseModel):
     author: str | None
     cipai: str | None
     title: str | None
-    yusheng: str | None
+    yusheng_title: str | None
     body_segments: list[str]
     prefaces: list[str]
     review_status: str

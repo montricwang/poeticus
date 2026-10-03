@@ -150,7 +150,7 @@ def convert_record(record: dict, order: int) -> ConvertedPoem:
         "collection": record.get("collection") or "",
         "author": record.get("author") or None,
         "cipai": record.get("tune"), "title": record.get("title"),
-        "yusheng": record.get("yusheng"),
+        "yusheng_title": record.get("yusheng"),
         "body_segments": rendered, "prefaces": prefaces,
         "inline_notes": notes, "lacunae": lacunae,
         "review_status": "imported_unreviewed", "text_version": 1,

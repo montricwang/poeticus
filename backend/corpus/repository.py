@@ -46,7 +46,7 @@ def list_poems(
         "SELECT COUNT(*) AS total FROM poems" + where_sql, tuple(params)
     ).fetchone()["total"]
     rows = conn.execute(
-        """SELECT id, source_order, collection, author, cipai, title, yusheng,
+        """SELECT id, source_order, collection, author, cipai, title, yusheng_title,
                   COALESCE(LEFT(body_segments->>0, 60), '') AS incipit,
                   review_status
            FROM poems"""
@@ -60,7 +60,7 @@ def list_poems(
 def get_poem(conn: Connection, poem_id: UUID) -> dict | None:
     """Input: permanent UUID; output: one reader record or None."""
     return conn.execute(
-        """SELECT id, source_order, collection, author, cipai, title, yusheng,
+        """SELECT id, source_order, collection, author, cipai, title, yusheng_title,
                   body_segments, prefaces, review_status, text_version
            FROM poems WHERE id = %s""",
         (poem_id,),

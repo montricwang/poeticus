@@ -27,7 +27,7 @@ def summary(identity=ONE, order=1, cipai="念奴娇"):
     return {
         "id": identity, "source_order": order,
         "collection": "合成词集", "author": "词人甲", "cipai": cipai,
-        "title": None, "yusheng": None, "incipit": "合成起句。",
+        "title": None, "yusheng_title": "合成寓声", "incipit": "合成起句。",
         "review_status": "imported_unreviewed",
     }
 
@@ -79,6 +79,8 @@ def test_catalog_page_filters_order_and_no_private_data(client):
     assert len(data["items"]) == 1
     assert data["items"][0]["id"] == str(ONE)
     assert "body_segments" not in data["items"][0]
+    assert data["items"][0]["yusheng_title"] == "合成寓声"
+    assert "yusheng" not in data["items"][0]
     assert "original_segments" not in data["items"][0]
     assert "source_locator" not in data["items"][0]
     assert len(fake.calls) == 2
@@ -125,6 +127,8 @@ def test_detail_returns_only_reader_fields(client):
     assert data["id"] == str(ONE)
     assert data["body_segments"] == ["合成上段。", "合成下段。"]
     assert data["prefaces"] == []
+    assert data["yusheng_title"] == "合成寓声"
+    assert "yusheng" not in data
     assert "original_segments" not in data
     assert "inline_notes" not in data
     assert "lacunae" not in data

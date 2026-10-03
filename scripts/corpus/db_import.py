@@ -17,7 +17,7 @@ from .adapter import ConvertedPoem, convert_corpus
 
 DEFAULT_INPUT = Path("data/output/all_normalized.json")
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "db/migrations"
-LATEST_VERSION = "0002_cipai"
+LATEST_VERSION = "0003_yusheng_title"
 
 
 def read_corpus(path: Path) -> list[ConvertedPoem]:
@@ -84,13 +84,13 @@ def import_records(conn, entries: list[ConvertedPoem]) -> tuple[int, int]:
             conn.execute(
                 """INSERT INTO poems (
                     id, source_record_id, source_order, collection, author,
-                    cipai, title, yusheng, body_segments, prefaces, inline_notes,
+                    cipai, title, yusheng_title, body_segments, prefaces, inline_notes,
                     lacunae, review_status, text_version
                 ) VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                 )""",
                 (poem_id, key, order, p["collection"], p["author"], p["cipai"],
-                 p["title"], p["yusheng"], Jsonb(p["body_segments"]),
+                 p["title"], p["yusheng_title"], Jsonb(p["body_segments"]),
                  Jsonb(p["prefaces"]), Jsonb(p["inline_notes"]),
                  Jsonb(p["lacunae"]), p["review_status"], p["text_version"]),
             )

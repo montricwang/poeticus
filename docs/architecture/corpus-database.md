@@ -10,6 +10,8 @@
 
 **字段命名**：数据库与作品读取 API 使用 `cipai` 表示词牌（如《念奴娇》）；源 EPUB 导出 JSON 仍使用历史键 `tune`，`adapter.py` 在导入时明确转换为 `cipai`。不能把「大石调、般涉调」等宫调写入 `cipai`；将来有可靠宫调证据时，单独设计 `gongdiao` 信息，不预先填充未知值。
 
+**贺铸寓声字段**：正式阅读表和 API 使用 `yusheng_title`，表示贺铸另拟的寓声名，独立于原词牌 `cipai` 与具体作品的 `title`。历史 EPUB 中间 JSON 仍使用 `yusheng`，由 `adapter.py` 转为 `yusheng_title`。保存原始输入键既避免要求重新导出私有语料，也确保来源 `source_sha256` 算法不因改名而改变。
+
 原书顺序直接采用 all_normalized.json 中已有的数组顺序，导入时生成从 1 开始的 source_order。Poem UUID 首次插入时随机生成并持久化。原始 su-shi-001 一类编号与顺序有关，不是永久 UUID；source_sha256 是来源内容变化检查，也不是作品 ID。
 
 ## 转换边界
@@ -37,9 +39,9 @@ python -m scripts.corpus.db_import --migrate
 python -m scripts.corpus.db_import --import
 ~~~
 
---check 完全离线，不需要启动 PostgreSQL；默认输入是 data/output/all_normalized.json。--migrate 和 --import 使用本地 .env 数据库连接，不会自动创建数据库。迁移脚本按顺序位于 db/migrations/，0001 创建原有 Schema，0002_cipai 将既有 poems.tune 重命名为 cipai，并重命名相应索引。**已执行的 0001 不能直接改写**。已经导入词库的用户只需再次运行 `python -m scripts.corpus.db_import --migrate`；无需重新导入，UUID/3491 行均保持不变。新部署的空库依次运行两个迁移。
+--check 完全离线，不需要启动 PostgreSQL；默认输入是 data/output/all_normalized.json。--migrate 和 --import 使用本地 .env 数据库连接，不会自动创建数据库。迁移脚本按顺序位于 db/migrations/，0001 创建原有 Schema，0002_cipai 将既有 poems.tune 重命名为 cipai（并重命名索引），0003_yusheng_title 将 poems.yusheng 重命名为 yusheng_title。**已执行的迁移文件不能直接改写**。已经导入词库的用户只需再次运行 `python -m scripts.corpus.db_import --migrate`；无需重新导入，UUID/3491 行均保持不变。新部署的空库依次运行三个迁移。
 
-执行迁移后可以在 pgAdmin 用 `SELECT cipai, COUNT(*) FROM poems GROUP BY cipai ORDER BY COUNT(*) DESC LIMIT 10;` 验证；旧的 `SELECT tune ...` 将不再可用。
+执行迁移后可以在 pgAdmin 用 `SELECT cipai, yusheng_title, title FROM poems WHERE yusheng_title IS NOT NULL LIMIT 10;` 验证；旧的 `SELECT tune ...` 与 `SELECT yusheng ...` 将不再可用。
 
 --import 使用一个 PostgreSQL 事务写入两张表。再次运行相同文件会跳过已有且一致的记录。如果来源文本、书中顺序或相同来源 ID 的身份信息变化，则拒绝自动覆盖并回滚。这是有意的安全限制：来源 ID 可能因重新抽取而漂移，在 Issue #62 完成来源坐标和匹配策略前不能无条件 UPSERT。重新建空库会产生新的 UUID；如需跨重建维持身份，应备份数据库或在后续任务中导出持久身份映射。
 
