@@ -31,7 +31,24 @@ test("有词题时只使用词牌与词题，不拼入 incipit", () => {
   assert.equal(poemLabel(summary), "思越人·牡丹");
 });
 
-test("缺少逗号时目录首句有兜底长度限制", () => {
+test("目录首句在逗号、句号等主要句读处截止", () => {
+  for (const [incipit, expected] of [
+    ["梦草池南璧月堂。绿阴深蔽日，啼鹂黄。", "梦草池南璧月堂"],
+    ["□波飞□□□□向。□□□□、□□□□在会", "□波飞□□□□向"],
+    ["花影摇红，春日渐长。", "花影摇红"],
+    ["谁知此意？唯有故人。", "谁知此意"],
+    ["无言以对！一夜秋风。", "无言以对"],
+    ["朝暮；千里之外。", "朝暮"],
+    ["初遇。第二句。", "初遇"],
+  ]) {
+    assert.equal(
+      poemLabel({ cipai: "小重山", title: null, incipit }),
+      `小重山 · ${expected}`,
+    );
+  }
+});
+
+test("无主要句读时目录首句有兜底长度限制", () => {
   const summary = { cipai: "浣溪沙", title: null, incipit: "花".repeat(50) };
   assert.equal(poemLabel(summary), "浣溪沙 · " + "花".repeat(18));
 });
