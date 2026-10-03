@@ -60,3 +60,7 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+      - name: Test poem mapping and Unicode offsets
+        run: node --experimental-strip-types --test tests/*.test.mjs
+
