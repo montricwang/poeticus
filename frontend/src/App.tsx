@@ -646,6 +646,7 @@ function App() {
                 onFiltersChange={updateCatalogFilters}
                 onSelect={handlePoemChange}
                 onClose={closeCatalog}
+                open={catalogOpen}
               />
             </div>
           </div>
