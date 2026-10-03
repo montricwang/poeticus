@@ -133,6 +133,9 @@ function App() {
     () => window.matchMedia("(min-width: 1024px)").matches,
   );
   const catalogToggleRef = useRef<HTMLButtonElement>(null);
+  const switchControllerRef = useRef<AbortController | null>(null);
+  const [switchTarget, setSwitchTarget] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState("");
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState("");
   const [detailError, setDetailError] = useState("");
@@ -186,9 +189,9 @@ function App() {
     return () => controller.abort();
   }, [filters]);
 
-  // 详情按 UUID 加载；取消旧请求防止出现标题与正文错配。
+  // 首屏／刷新时恢复 UUID；点击切诗由 handlePoemChange 先预取再提交。
   useEffect(() => {
-    if (!poemId) return;
+    if (!poemId || activePoem?.id === poemId) return;
     const controller = new AbortController();
 
     void fetchPoem(poemId, controller.signal)
@@ -207,7 +210,11 @@ function App() {
         setDetailError(error instanceof Error ? error.message : "无法加载作品");
       })
     return () => controller.abort();
-  }, [poemId, detailAttempt]);
+  }, [poemId, activePoem?.id, detailAttempt]);
+
+  useEffect(() => {
+    return () => switchControllerRef.current?.abort();
+  }, []);
 
   useEffect(() => {
     persistenceRef.current = {
@@ -276,7 +283,8 @@ function App() {
   }
 
   function updateCatalogFilters(next: PoemFilters) {
-    setCatalog(null);
+    // 上一页目录在请求期间继续存在，避免空列表导致侧栏重排。
+    
     setCatalogLoading(true);
     setCatalogError("");
     setFilters(next);
@@ -288,38 +296,63 @@ function App() {
   }
 
   function handlePoemChange(nextId: string) {
-    if (inFlightRef.current || analyzing || nextId === poemId || !nextId) return;
+    if (inFlightRef.current || analyzing || !nextId || nextId === poemId) return;
 
-    persistCurrentConversation();
-    const storedConversation = loadPoemConversation(nextId);
-    const nextTurns = storedConversation?.turns ?? [];
-    saveLastActivePoemId(nextId);
+    // 先读取新作品；在请求完成前仍显示当前作品，不卸载正文／聊天面板。
+    // 最新请求替代旧请求，只有成功的请求才能提交 UUID 与会话状态。
+    switchControllerRef.current?.abort();
+    const controller = new AbortController();
+    switchControllerRef.current = controller;
+    setSwitchTarget(nextId);
+    setSwitchError("");
 
-    window.getSelection()?.removeAllRanges();
-    setActivePoem(null);
-    setDetailError("");
-    setPoemId(nextId);
-    if (window.innerWidth < 1024) {
-      closeCatalog();
-    }
-    setConversationId(
-      storedConversation?.conversationId ?? createConversationId(),
-    );
-    setSelected(null);
-    setQuestion(storedConversation?.draft.question ?? "");
-    setTurns(nextTurns);
-    nextTurnId.current = maxTurnId(nextTurns);
+    void fetchPoem(nextId, controller.signal)
+      .then((work) => {
+        if (controller.signal.aborted) return;
+        persistCurrentConversation();
+        const storedConversation = loadPoemConversation(work.id);
+        const nextTurns = storedConversation?.turns ?? [];
 
-    setAnalysis(null);
-    setAnalysisError("");
-    setHasUnreadReply(false);
-    setActiveView("chat");
-    seenAnimationsRef.current.clear();
-    chatViewportRef.current = { scrollTop: 0, atBottom: true };
+        window.getSelection()?.removeAllRanges();
+        setActivePoem(work);
+        setPoemId(work.id);
+        setDetailError("");
+        setConversationId(
+          storedConversation?.conversationId ?? createConversationId(),
+        );
+        setSelected(
+          validSelectionForPoem(
+            storedConversation?.draft.selection ?? null,
+            poemText(work),
+          ),
+        );
+        setQuestion(storedConversation?.draft.question ?? "");
+        setTurns(nextTurns);
+        nextTurnId.current = maxTurnId(nextTurns);
+
+        setAnalysis(null);
+        setAnalysisError("");
+        setHasUnreadReply(false);
+        setActiveView("chat");
+        seenAnimationsRef.current.clear();
+        chatViewportRef.current = { scrollTop: 0, atBottom: true };
+        if (window.innerWidth < 1024) closeCatalog();
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setSwitchError(
+          error instanceof Error ? error.message : "切换作品失败，请重试",
+        );
+      })
+      .finally(() => {
+        if (controller.signal.aborted) return;
+        switchControllerRef.current = null;
+        setSwitchTarget(null);
+      });
   }
 
   async function requestReply(turn: ChatTurn, regenerate = false) {
-    if (inFlightRef.current || !activePoem || activePoem.id !== poemId) return;
+    if (inFlightRef.current || switchControllerRef.current || !activePoem || activePoem.id !== poemId) return;
 
     const history = buildHistory(turns, turn.id);
 
@@ -431,7 +464,7 @@ function App() {
   }
 
   function handleSend() {
-    if (!question.trim() || inFlightRef.current || !activePoem) return;
+    if (!question.trim() || inFlightRef.current || switchControllerRef.current || !activePoem) return;
 
     const turn: ChatTurn = {
       id: ++nextTurnId.current,
@@ -505,7 +538,7 @@ function App() {
   }
 
   async function handleAnalyze() {
-    if (!activePoem || activePoem.id !== poemId) return;
+    if (!activePoem || activePoem.id !== poemId || switchControllerRef.current) return;
     setActiveView("analysis");
     setAnalyzing(true);
     setAnalysisError("");
