@@ -1,0 +1,176 @@
+"""API and SQL contract tests with synthetic records; no local database needed."""
+from types import SimpleNamespace
+from uuid import UUID
+
+import psycopg
+import pytest
+from fastapi.testclient import TestClient
+
+from backend.corpus import repository
+from backend.corpus.connection import get_connection
+
+ONE = UUID("11111111-1111-4111-8111-111111111111")
+TWO = UUID("22222222-2222-4222-8222-222222222222")
+
+
+@pytest.fixture
+def client(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
+    monkeypatch.setenv("LANGSMITH_TRACING", "false")
+    import api
+    with TestClient(api.app) as test_client:
+        yield test_client
+    api.app.dependency_overrides.clear()
+
+
+def summary(identity=ONE, order=1, tune="念奴娇"):
+    return {
+        "id": identity, "source_order": order,
+        "collection": "合成词集", "author": "词人甲", "tune": tune,
+        "title": None, "yusheng": None, "incipit": "合成起句。",
+        "review_status": "imported_unreviewed",
+    }
+
+
+def full_record():
+    return {
+        **{key: val for key, val in summary().items() if key != "incipit"},
+        "body_segments": ["合成上段。", "合成下段。"],
+        "prefaces": [], "text_version": 1,
+    }
+
+
+class FakeConnection:
+    """Minimal cursor stand-in for verifying SQL and bound params."""
+    def __init__(self, *, pages=None, details=None, count=2):
+        self.pages = pages if pages is not None else [summary(), summary(TWO, 2)]
+        self.details = details or {}
+        self.count = count
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        self.calls.append((sql, params))
+        if "COUNT(*)" in sql:
+            return SimpleNamespace(fetchone=lambda: {"total": self.count})
+        if "FROM poems WHERE id =" in sql:
+            return SimpleNamespace(fetchone=lambda: self.details.get(params[0]))
+        if "ORDER BY source_order" in sql:
+            return SimpleNamespace(fetchall=lambda: self.pages)
+        raise AssertionError("Unexpected SQL in read-only repository")
+
+
+def override_connection(client, fake):
+    import api
+    api.app.dependency_overrides[get_connection] = lambda: fake
+
+
+def test_catalog_page_filters_order_and_no_private_data(client):
+    fake = FakeConnection(pages=[summary()], count=2)
+    override_connection(client, fake)
+    response = client.get(
+        "/api/poems",
+        params={"author": "词人甲", "tune": "念奴娇", "q": "合成",
+                "limit": 1, "offset": 1},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 2
+    assert data["limit"] == 1 and data["offset"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["id"] == str(ONE)
+    assert "body_segments" not in data["items"][0]
+    assert "original_segments" not in data["items"][0]
+    assert "source_locator" not in data["items"][0]
+    assert len(fake.calls) == 2
+    for sql, params in fake.calls:
+        assert "FROM poems" in sql
+        assert "poem_source_texts" not in sql
+        assert "source_sha256" not in sql
+        assert "author = %s" in sql and "tune = %s" in sql
+        assert params[:2] == ["词人甲", "念奴娇"] or params[:2] == (
+            "词人甲", "念奴娇"
+        )
+        assert "合成" in params and "合成" not in sql
+    assert "ORDER BY source_order LIMIT %s OFFSET %s" in fake.calls[1][0]
+    assert fake.calls[1][1][-2:] == (1, 1)
+
+
+def test_catalog_defaults_and_empty_result(client):
+    fake = FakeConnection(pages=[], count=0)
+    override_connection(client, fake)
+    response = client.get("/api/poems")
+    assert response.status_code == 200
+    assert response.json() == {"items": [], "total": 0, "limit": 20, "offset": 0}
+    assert fake.calls[0][1] == ()
+    assert fake.calls[1][1] == (20, 0)
+
+
+@pytest.mark.parametrize("query", [
+    "limit=0", "limit=101", "offset=-1", "limit=abc",
+    "q=" + "a" * 101,
+])
+def test_invalid_pagination_and_query_returns_422(client, query):
+    assert client.get("/api/poems?" + query).status_code == 422
+
+
+def test_detail_returns_only_reader_fields(client):
+    fake = FakeConnection(details={ONE: full_record()})
+    override_connection(client, fake)
+    resp = client.get(f"/api/poems/{ONE}")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["id"] == str(ONE)
+    assert data["body_segments"] == ["合成上段。", "合成下段。"]
+    assert data["prefaces"] == []
+    assert "original_segments" not in data
+    assert "inline_notes" not in data
+    assert "lacunae" not in data
+    assert "FROM poems WHERE id = %s" in fake.calls[0][0]
+    assert fake.calls[0][1] == (ONE,)
+
+
+def test_detail_not_found_and_invalid_uuid(client):
+    fake = FakeConnection()
+    override_connection(client, fake)
+    assert client.get(f"/api/poems/{ONE}").status_code == 404
+    assert client.get("/api/poems/not-a-uuid").status_code == 422
+
+
+def test_connection_not_configured_is_503(client, monkeypatch):
+    import backend.corpus.connection as connection
+    monkeypatch.setattr(connection, "load_dotenv", lambda: None)
+    monkeypatch.delenv("POETICUS_DATABASE_URL", raising=False)
+    response = client.get("/api/poems")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "作品数据库尚未配置"
+
+
+def test_connection_failure_is_503_without_leaking_password(client, monkeypatch):
+    import backend.corpus.connection as connection
+    monkeypatch.setattr(connection, "load_dotenv", lambda: None)
+    monkeypatch.setenv(
+        "POETICUS_DATABASE_URL",
+        "postgresql://poeticus:SECRET_PASSWORD@localhost:5432/poeticus",
+    )
+
+    def fail(*args, **kwargs):
+        raise psycopg.OperationalError("connection failed; password SECRET_PASSWORD")
+
+    monkeypatch.setattr(connection.psycopg, "connect", fail)
+    response = client.get("/api/poems")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "作品数据库暂时不可用"
+    assert "SECRET_PASSWORD" not in response.text
+
+
+def test_repository_literal_search_and_parameter_binding():
+    fake = FakeConnection(pages=[], count=0)
+    rows, count = repository.list_poems(
+        fake, author=None, tune=None, q="100%_测试", limit=5, offset=0
+    )
+    assert rows == [] and count == 0
+    assert "STRPOS" in fake.calls[0][0]
+    assert "%s" in fake.calls[0][0]
+    assert "100%_测试" not in fake.calls[0][0]
+    assert fake.calls[0][1] == ("100%_测试",) * 4
+    assert fake.calls[1][1][-2:] == (5, 0)

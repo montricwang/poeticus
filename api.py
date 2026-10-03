@@ -12,9 +12,11 @@ from pydantic import BaseModel, Field
 from main import PoemAnalysis, analyze_poem
 from intent_router import graph, RouterState
 from poem_context import PoemContext
+from backend.corpus.router import router as corpus_router
 
 logger = logging.getLogger(__name__)
 app = FastAPI(title="Poeticus")
+app.include_router(corpus_router)
 
 
 class AnalyzeRequest(BaseModel):
