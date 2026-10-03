@@ -58,7 +58,7 @@ uvicorn api:app --reload
 确保本地 .env 包含 POETICUS_DATABASE_URL 且 PostgreSQL 已启动。
 
 - GET /api/poems?limit=20&offset=0：目录页，返回 items / total / limit / offset。items 只包含 UUID、原书排序、词人、词牌、词题、寓声名、正文开头不超过 60 字和校审状态，不携带全部正文。默认 20 条，最多 100 条。
-- GET /api/poems?author=苏轼&cipai=念奴娇：作者与词牌精确筛选；q=... 则按作者、词牌、词题、正文做不区分大小写的字面包含搜索，不要求全文索引。
+- GET /api/poems?author=苏轼&cipai=念奴娇：作者精确筛选；`cipai` 在查询层同时精确匹配词牌 `cipai` 或寓声名 `yusheng_title`（两列任选一列命中），两字段不合并。`q=...` 对作者、词牌、寓声名、词题、正文做不区分大小写的字面包含搜索，不要求全文索引。搜索匹配仅改变 SQL 筛选条件，不改变数据库中的词牌和寓声字段。
 - GET /api/poems/{UUID}：返回一首阅读作品的 body_segments、prefaces、review_status 和 text_version 等。未知 UUID 返回 404；无效分页或 UUID 返回 422；数据库未配置或暂时不可用返回 503。
 - 访问 http://127.0.0.1:8000/docs 可以使用 FastAPI 自动生成的交互式 API 页面验证，不需要自己拼接全部 URL。
 

@@ -143,14 +143,24 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
       >
         <article className="mx-auto w-full max-w-xl px-7 py-12 sm:px-12 sm:py-14">
           <header className="mb-9 text-center">
-            <h1 className="font-serif text-4xl font-medium tracking-widest">
-              {work.title}
-            </h1>
-            <p className="mt-4 text-sm text-muted-foreground">
+            {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
+            <div className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
+              <h1 className="font-serif text-4xl font-medium tracking-widest">
+                {work.yusheng_title ?? work.cipai ?? "词牌未核实"}
+              </h1>
+              {work.yusheng_title && work.cipai && (
+                <span className="font-serif text-4xl font-normal tracking-normal text-muted-foreground">
+                  {work.cipai}
+                </span>
+              )}
+            </div>
+            {work.title && (
+              <p className="mt-3 whitespace-pre-line font-serif text-lg leading-8 text-foreground/85">
+                {work.title}
+              </p>
+            )}
+            <p className="mt-3 text-sm text-muted-foreground">
               {work.author ?? "作者未核实"}
-              {work.subtitle && !work.title.includes(work.subtitle)
-                ? ` · ${work.subtitle}`
-                : ""}
             </p>
             {work.review_status !== "reviewed" && (
               <p className="mt-2 text-xs text-muted-foreground/75">
@@ -159,11 +169,11 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
             )}
           </header>
 
-          {work.preface && (
-            <p className="mb-8 whitespace-pre-line font-serif text-sm leading-8 text-muted-foreground">
-              {work.preface}
+          {work.prefaces.map((preface, index) => (
+            <p key={index} className="mb-8 whitespace-pre-line font-serif text-sm leading-8 text-muted-foreground">
+              {preface}
             </p>
-          )}
+          ))}
 
           <p
             ref={poemRef}
