@@ -177,7 +177,7 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
 
           <p
             ref={poemRef}
-            className="cursor-text select-text whitespace-pre-line font-serif text-lg leading-[3] tracking-wide text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white sm:text-xl"
+            className="mx-auto w-fit max-w-full cursor-text select-text whitespace-pre-line font-serif text-lg leading-[3] tracking-wide text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white sm:text-xl"
           >
             {poem}
           </p>
