@@ -143,14 +143,14 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
       >
         <article className="mx-auto w-full max-w-xl px-7 py-12 sm:px-12 sm:py-14">
           <header className="mb-9 text-center">
-            {/* 词牌、寓声、词题与作者各自来自独立字段，不拼成一条标题。 */}
+            {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
             <div className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
               <h1 className="font-serif text-4xl font-medium tracking-widest">
-                {work.cipai ?? "词牌未核实"}
+                {work.yusheng_title ?? work.cipai ?? "词牌未核实"}
               </h1>
-              {work.yusheng_title && (
+              {work.yusheng_title && work.cipai && (
                 <span className="font-serif text-4xl font-normal tracking-normal text-muted-foreground">
-                  {work.yusheng_title}
+                  {work.cipai}
                 </span>
               )}
             </div>
