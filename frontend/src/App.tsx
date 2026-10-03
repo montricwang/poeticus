@@ -571,7 +571,7 @@ function App() {
           }
         >
           {catalogOpen && (
-            <div className="fixed inset-0 z-50 lg:static lg:z-auto lg:min-w-0">
+            <div className="fixed inset-0 z-50 lg:sticky lg:top-5 lg:z-auto lg:min-w-0">
               <button
                 type="button"
                 tabIndex={-1}
@@ -595,7 +595,14 @@ function App() {
             </div>
           )}
           <div className="min-w-0">
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+        <div
+          className={
+            "grid grid-cols-1 items-start gap-6 " +
+            (catalogOpen
+              ? "xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]"
+              : "lg:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]")
+          }
+        >
           {activePoem && activePoem.id === poemId ? (
             <PoemReader
               key={activePoem.id}
