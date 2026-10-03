@@ -8,7 +8,7 @@
 - poem_source_texts：对应的本地来源证据。一行对应 poems 的一行，保留 original_segments、original_inline_notes、source_title、source_sha256，以及目前可能为空的 source_locator 和 source_edition。
 - schema_migrations：技术表，仅管理已经运行过的数据库结构变更版本；不是第三张文学业务表。
 
-**字段命名**：数据库与作品读取 API 使用 `cipai` 表示词牌（如《念奴娇》）；源 EPUB 导出 JSON 仍使用历史键 `tune`，`adapter.py` 在导入时明确转换为 `cipai`。不能把「大石调、般涉调」等宫调写入 `cipai`；将来有可靠宫调证据时，单独设计 `gongdiao` 信息，不预先填充未知值。
+**字段命名**：数据库、作品读取 API 和**今后新导出的** `all_normalized.json` 均使用 `cipai` 表示词牌（如《念奴娇》），使用 `yusheng_title` 表示贺铸等特殊的自拟寓声名。EPUB 内部标题解析的临时 `section['tune']` / `section['yusheng']` 仍保持原实现，`convert_to_poem` 输出时转换；它们并不是最终 JSON 的字段。此前导出的私有 JSON 可能仍使用 `tune` / `yusheng`，`adapter.py` 兼容两种形式，并以旧来源摘要格式计算 SHA-256：**只改键名不应改变同一作品的来源哈希**，以免误判为正文变化；新旧值冲突时拒绝导入。不能把「大石调、般涉调」等宫调写入 `cipai`；有可靠宫调证据时另行设计 `gongdiao`。
 
 **贺铸寓声字段**：正式阅读表和 API 使用 `yusheng_title`，表示贺铸另拟的寓声名，独立于原词牌 `cipai` 与具体作品的 `title`。历史 EPUB 中间 JSON 仍使用 `yusheng`，由 `adapter.py` 转为 `yusheng_title`。保存原始输入键既避免要求重新导出私有语料，也确保来源 `source_sha256` 算法不因改名而改变。
 
@@ -74,3 +74,7 @@ API **只查询 poems**，不读取或暴露 poem_source_texts，且目前不返
 - 用户本地执行完后，核对 --check 的作品数、行内注记数、缺文标记数，以及数据库两张表的行数。首次期望候选作品数量为 3491，但仍是 imported_unreviewed，不能说已经逐首校勘。
 - 后续另做 FastAPI 目录/查询与前端路由，不在本 PR 混改静态 reader 和聊天行为。
 - 源 EPUB、完整正文 JSON、现代编者注评、私有报告和 .env 不得提交到公开仓库；部署前应另行评估来源版本和公开使用权限。
+
+## 旧版私有 JSON 与新版导出的关系
+
+数据库 Schema 0002/0003 只重命名列，不要求重新跑 EPUB 批量抽取或重新插入作品。原有 3491 首仍在库中，UUID 不变。下一次执行 `python -m scripts.corpus.epub_import.import_poems --all` 时，新版 `all_normalized.json` 会生成 `cipai` 与 `yusheng_title` 两个键；旧文件仍受导入器支持。单首 normalize 命令也会将旧键统一成新键。生成前须保留旧私有资料备份，不提交 `data/output/` 下的文件。旧 SHA-256 字段名仅为兼容既有数据库摘要所保留的内部实现细节。

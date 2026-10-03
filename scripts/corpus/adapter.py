@@ -79,11 +79,24 @@ def _map_range(originals, rendered, mapping, index, start, end):
     return segment, left, right, quote
 
 
+def _heading_value(record, canonical, legacy):
+    """Resolve both normalized JSON revisions without silently losing data."""
+    if canonical in record and legacy in record and record[canonical] != record[legacy]:
+        raise ValueError(
+            f"{record.get('id', '?')}: {canonical} 与 {legacy} 的值冲突"
+        )
+    return record[canonical] if canonical in record else record.get(legacy)
+
+
 def _source_digest(record):
+    # Keep 0001's digest field names so a header *key* rename does not make
+    # all existing PostgreSQL rows look like modified source text.
     fields = {
         key: record.get(key)
-        for key in ("id", "author", "tune", "title", "yusheng", "collection", "source")
+        for key in ("id", "author", "title", "collection", "source")
     }
+    fields["tune"] = _heading_value(record, "cipai", "tune")
+    fields["yusheng"] = _heading_value(record, "yusheng_title", "yusheng")
     fields["content"] = {
         key: record["content"].get(key, [])
         for key in ("text", "prefaces", "inline_notes")
@@ -149,8 +162,9 @@ def convert_record(record: dict, order: int) -> ConvertedPoem:
         "source_record_id": record["id"], "source_order": order,
         "collection": record.get("collection") or "",
         "author": record.get("author") or None,
-        "cipai": record.get("tune"), "title": record.get("title"),
-        "yusheng_title": record.get("yusheng"),
+        "cipai": _heading_value(record, "cipai", "tune"),
+        "title": record.get("title"),
+        "yusheng_title": _heading_value(record, "yusheng_title", "yusheng"),
         "body_segments": rendered, "prefaces": prefaces,
         "inline_notes": notes, "lacunae": lacunae,
         "review_status": "imported_unreviewed", "text_version": 1,

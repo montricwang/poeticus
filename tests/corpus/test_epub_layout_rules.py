@@ -58,7 +58,7 @@ def test_multi_author_toc_routes_and_resets_repeat():
     poems, files = extract_collection(book, toc, group, "wen-wei", "温庭筠")
     assert files == ["wen.html", "wei.html"]
     assert [p.author for p in poems] == ["温庭筠", "韦庄", "韦庄"]
-    assert [p.tune for p in poems] == ["菩萨蛮", None, "浣溪沙"]
+    assert [p.cipai for p in poems] == ["菩萨蛮", None, "浣溪沙"]
     assert any(w["type"] == "unresolved_tune_repeat" for w in poems[1].warnings)
 
 
@@ -135,7 +135,7 @@ def test_nalan_supplement_author_is_not_main_author():
     toc = [node(group, [node("卷一", [node("词", href="x.html")])])]
     poems, _ = extract_collection(book, toc, group, "nalan", "纳兰性德")
     assert [p.author for p in poems] == ["纳兰性德", "顾贞观", "纳兰性德"]
-    assert [p.tune for p in poems] == ["菩萨蛮", "金缕曲", "菩萨蛮"]
+    assert [p.cipai for p in poems] == ["菩萨蛮", "金缕曲", "菩萨蛮"]
     assert poems[1].title == "和容若韵"
     assert poems[1].content.text == ["顾氏词"]
 
@@ -208,7 +208,7 @@ def test_unsigned_inserted_work_has_no_fabricated_author_or_tune_inheritance():
     toc = [node(group, [node("正文", href="x.html")])]
     poems, _ = extract_collection(book, toc, group, "nalan", "纳兰性德")
     assert [p.author for p in poems] == ["纳兰性德", "", "纳兰性德"]
-    assert [p.tune for p in poems] == ["采桑子", "附作调名", "采桑子"]
+    assert [p.cipai for p in poems] == ["采桑子", "附作调名", "采桑子"]
     assert any(w["type"] == "missing_inserted_author" for w in poems[1].warnings)
 
 
@@ -279,7 +279,7 @@ def test_h1_editorial_region_skips_internal_h2_until_next_work_region():
     toc = [node(group, [node("全文", href="one.html")])]
     poems, _ = extract_collection(book, toc, group, "wen", "温庭筠")
     assert len(poems) == 1
-    assert poems[0].tune == "菩萨蛮"
+    assert poems[0].cipai == "菩萨蛮"
     assert poems[0].content.text == ["真正作品"]
 
 
@@ -323,7 +323,7 @@ def test_literal_summary_h2_is_not_an_additional_poem():
         node("采桑子", href="yan.html")])])]
     poems, _ = extract_collection(book, toc, group, "yan", "晏殊")
     assert len(poems) == 1
-    assert poems[0].tune == "采桑子"
+    assert poems[0].cipai == "采桑子"
     assert poems[0].content.text == ["词句甲"]
 
 
@@ -380,7 +380,7 @@ def test_repeat_tune_does_not_cross_inline_doubtful_section():
     )})
     toc = [node("李清照词集", [node("正文", href="x.html")])]
     poems, _ = extract_collection(book, toc, "李清照词集", "li", "李清照")
-    assert [p.tune for p in poems] == ["采桑子", None]
+    assert [p.cipai for p in poems] == ["采桑子", None]
     assert any(w["type"] == "unresolved_tune_repeat" for w in poems[1].warnings)
     assert any(w["type"] == "doubtful_attribution" for w in poems[1].warnings)
 
@@ -399,7 +399,7 @@ def test_nalan_byline_after_unstyled_front_matter_is_not_missed():
     toc = [node(group, [node("卷一", href="x.html")])]
     poems, _ = extract_collection(book, toc, group, "na", "纳兰性德")
     assert [p.author for p in poems] == ["纳兰性德", "顾贞观", "纳兰性德"]
-    assert poems[1].tune == "金缕曲"
+    assert poems[1].cipai == "金缕曲"
     assert poems[1].content.text == ["附词正文上片", "附词正文下片"]
     assert not any(w["type"] == "missing_inserted_author" for w in poems[1].warnings)
     assert poems[1].title is None
@@ -457,7 +457,7 @@ def test_nalan_confirmed_preface_between_h4_and_three_character_author():
     assert len(poems) == 1
     poem = poems[0]
     assert poem.author == "严某某"
-    assert poem.tune == "金缕曲"
+    assert poem.cipai == "金缕曲"
     assert poem.title is None
     assert poem.content.prefaces == ["赠知己，次友人韵。"]
     assert poem.content.text == ["合成正文甲", "合成正文乙"]
@@ -559,7 +559,7 @@ def test_nalan_independent_preface_retains_two_sentences_as_one_paragraph():
         group, "na", "纳兰性德",
     )
     p = poems[0]
-    assert p.tune == "贺新郎"
+    assert p.cipai == "贺新郎"
     assert p.title is None
     assert p.content.prefaces == ["送故友南归，次另一人韵。时故友遭家丧。"]
     assert p.content.text == ["模拟上片", "模拟下片"]

@@ -88,7 +88,7 @@ def test_yusheng_image_glyph_is_normalized_and_audited():
     from dataclasses import asdict
     poem = asdict(convert_to_poem(record, 1, "he-zhu", "贺铸", "贺铸词集"))
     output = normalize_poem(poem, {"rare.jpg": {"source_form": "𠂉"}})
-    assert output["yusheng"] == "翦𠂉霞"
+    assert output["yusheng_title"] == "翦𠂉霞"
     assert output["warnings"][0]["status"] == "resolved"
     assert output["warnings"][0]["resolved_form"] == "𠂉"
 
@@ -121,8 +121,9 @@ def test_batch_reexport_preserves_yusheng_as_optional_field(tmp_path):
     poems = json.loads((tmp_path / "out" / "all_normalized.json").read_text(
         encoding="utf-8"
     ))
-    assert [(x["tune"], x["yusheng"], x["title"]) for x in poems] == [
+    assert [(x["cipai"], x["yusheng_title"], x["title"]) for x in poems] == [
         ("思越人", "翦朝霞", "牡丹"),
         ("菩萨蛮", None, None),
     ]
     assert len(poems) == 2
+    assert all("tune" not in poem and "yusheng" not in poem for poem in poems)

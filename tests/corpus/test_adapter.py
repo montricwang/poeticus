@@ -118,3 +118,22 @@ def test_legacy_epub_yusheng_becomes_reader_yusheng_title_without_changing_sourc
     assert "yusheng" not in converted.reader
     assert source["yusheng"] == "合成寓声名"
     assert converted.source["source_sha256"] == convert_record(source, 1).source["source_sha256"]
+
+def test_old_and_new_heading_keys_have_the_same_stable_source_digest():
+    legacy = example(tune="思越人", yusheng="翦朝霞", title="牡丹")
+    modern = deepcopy(legacy)
+    modern["cipai"] = modern.pop("tune")
+    modern["yusheng_title"] = modern.pop("yusheng")
+    old = convert_record(legacy, 1)
+    new = convert_record(modern, 1)
+    assert old.reader == new.reader
+    assert old.source["source_sha256"] == new.source["source_sha256"]
+
+
+def test_conflicting_heading_aliases_refused():
+    bad = example(cipai="菩萨蛮", yusheng_title="其他别名")
+    with pytest.raises(ValueError, match="cipai 与 tune"):
+        convert_record(bad, 1)
+    bad = example(yusheng_title="不是原名")
+    with pytest.raises(ValueError, match="yusheng_title 与 yusheng"):
+        convert_record(bad, 1)
