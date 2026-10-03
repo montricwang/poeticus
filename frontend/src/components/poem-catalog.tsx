@@ -39,7 +39,9 @@ export function PoemCatalog({
     if (window.matchMedia("(max-width: 1023px)").matches) {
       inputRef.current?.focus();
     }
+  }, []);
 
+  useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
@@ -164,9 +166,9 @@ export function PoemCatalog({
                       {work.author ?? "佚名"}
                     </span>
                   </div>
-                  <p className="mt-1.5 truncate font-serif text-sm text-muted-foreground" title={work.incipit}>
+                  <span className="mt-1.5 block truncate font-serif text-sm text-muted-foreground" title={work.incipit}>
                     {poemIncipit(work)}
-                  </p>
+                  </span>
                 </button>
               </li>
             ))}
