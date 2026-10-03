@@ -15,19 +15,22 @@ def _filters(author: str | None, cipai: str | None, q: str | None):
         terms.append("author = %s")
         values.append(author)
     if cipai:
-        terms.append("cipai = %s")
-        values.append(cipai)
+        # One visible '词牌' field accepts either the original tune or an
+        # author-coined yusheng title, without conflating the stored columns.
+        terms.append("(cipai = %s OR yusheng_title = %s)")
+        values.extend([cipai, cipai])
     if q:
         # STRPOS checks literal substrings: % and _ are not LIKE wildcards.
         terms.append(
             "("
             "STRPOS(LOWER(COALESCE(author, '')), LOWER(%s)) > 0 OR "
             "STRPOS(LOWER(COALESCE(cipai, '')), LOWER(%s)) > 0 OR "
+            "STRPOS(LOWER(COALESCE(yusheng_title, '')), LOWER(%s)) > 0 OR "
             "STRPOS(LOWER(COALESCE(title, '')), LOWER(%s)) > 0 OR "
             "STRPOS(LOWER(body_segments::text), LOWER(%s)) > 0"
             ")"
         )
-        values.extend([q] * 4)
+        values.extend([q] * 5)
     return (" WHERE " + " AND ".join(terms)) if terms else "", values
 
 
