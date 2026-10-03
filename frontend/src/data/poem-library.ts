@@ -47,9 +47,13 @@ export function poemTitle(work: Pick<PoemSummary, "cipai" | "title">): string {
 
 export function poemLabel(work: PoemSummary): string {
   const title = poemTitle(work);
-  return work.title
-    ? title
-    : `${title} · ${work.incipit.slice(0, 18)}`;
+  if (work.title) return title;
+
+  // 无独立词题时，只取首个逗号前的短句作目录辨识，不修改正文。
+  // 缺少逗号的长段保留长度上限，避免标题意外撑满列表。
+  const firstPhrase = work.incipit.split(/[，,]/, 1)[0].trim();
+  const shortPhrase = Array.from(firstPhrase).slice(0, 18).join("");
+  return shortPhrase ? `${title} · ${shortPhrase}` : title;
 }
 
 /** 这一份字符串同时进入阅读器、聊天、赏析及原文选区校验。 */
