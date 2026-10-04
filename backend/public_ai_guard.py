@@ -7,6 +7,8 @@ header is trusted. The ASGI wrapper owns the whole SSE response lifetime.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 import ipaddress
 import logging
 import os
@@ -35,24 +37,47 @@ def _positive_env(name: str, default: int, maximum: int) -> int:
     return min(max(value, 1), maximum)
 
 
-def _reserve_daily_slot(dsn: str, limit: int) -> bool:
-    """Atomic reservation in the existing DB, shared across restarts/instances.
+class _PerIpDailyLimit(Exception):
+    """Roll back global reservation if the caller's daily quota is exhausted."""
 
-    Missing table/unreachable database -> caller fails closed. Failed or
-    client-aborted calls still consume a slot (conservative cost accounting).
+
+def _reserve_daily_slot(
+    dsn: str, total_limit: int, per_ip_limit: int, day, client_hash: str
+) -> str:
+    """Reserve global and per-IP UTC-day quotas in one PostgreSQL transaction.
+
+    Return "ok", "global" or "ip". Rejected per-IP requests must NOT spend
+    the global allotment. Failed/aborted model calls still spend both slots.
     """
     with psycopg.connect(dsn, connect_timeout=5, autocommit=True) as conn:
-        row = conn.execute(
-            """INSERT INTO ai_daily_quotas (day_utc, used_requests)
-               VALUES (%s, 1)
-               ON CONFLICT (day_utc)
-               DO UPDATE SET used_requests = ai_daily_quotas.used_requests + 1
-               WHERE ai_daily_quotas.used_requests < %s
-               RETURNING used_requests""",
-            (datetime.now(timezone.utc).date(), limit),
-        ).fetchone()
-        return row is not None
+        try:
+            with conn.transaction():
+                global_row = conn.execute(
+                    """INSERT INTO ai_daily_quotas (day_utc, used_requests)
+                       VALUES (%s, 1)
+                       ON CONFLICT (day_utc)
+                       DO UPDATE SET used_requests = ai_daily_quotas.used_requests + 1
+                       WHERE ai_daily_quotas.used_requests < %s
+                       RETURNING used_requests""",
+                    (day, total_limit),
+                ).fetchone()
+                if global_row is None:
+                    return "global"
 
+                ip_row = conn.execute(
+                    """INSERT INTO ai_ip_daily_quotas (day_utc, client_hash, used_requests)
+                       VALUES (%s, %s, 1)
+                       ON CONFLICT (day_utc, client_hash)
+                       DO UPDATE SET used_requests = ai_ip_daily_quotas.used_requests + 1
+                       WHERE ai_ip_daily_quotas.used_requests < %s
+                       RETURNING used_requests""",
+                    (day, client_hash, per_ip_limit),
+                ).fetchone()
+                if ip_row is None:
+                    raise _PerIpDailyLimit()
+        except _PerIpDailyLimit:
+            return "ip"
+    return "ok"
 
 class PublicAIGuard:
     """Limit POST paid actions; public GET poems and /health stay unaffected."""
@@ -70,6 +95,8 @@ class PublicAIGuard:
         self.per_minute = _positive_env("POETICUS_AI_PER_IP_PER_MINUTE", 5, 100)
         self.concurrent = _positive_env("POETICUS_AI_MAX_CONCURRENT", 2, 16)
         self.daily = _positive_env("POETICUS_AI_DAILY_REQUESTS", 60, 10000)
+        self.per_ip_daily = _positive_env("POETICUS_AI_PER_IP_PER_DAY", 20, 1000)
+        self.ip_hash_secret = os.getenv("POETICUS_AI_IP_HASH_SECRET", "")
         self.lock = Lock()
         self.active = 0
         self.windows: dict[str, deque[float]] = defaultdict(deque)
@@ -154,17 +181,29 @@ class PublicAIGuard:
             return
         try:
             dsn = os.getenv("POETICUS_DATABASE_URL")
-            if not dsn:
+            if not dsn or not self.ip_hash_secret:
                 await self._reject(scope, replay_receive, send, 503, "AI 预算服务不可用")
                 return
+            day = datetime.now(timezone.utc).date()
+            client_hash = hmac.new(
+                self.ip_hash_secret.encode("utf-8"),
+                f"{day.isoformat()}:{client}".encode("utf-8"),
+                hashlib.sha256,
+            ).hexdigest()
             try:
-                budget_ok = await asyncio.to_thread(_reserve_daily_slot, dsn, self.daily)
+                result = await asyncio.to_thread(
+                    _reserve_daily_slot, dsn, self.daily, self.per_ip_daily,
+                    day, client_hash,
+                )
             except psycopg.Error:
                 logger.warning("AI budget store unavailable")
                 await self._reject(scope, replay_receive, send, 503, "AI 预算服务暂时不可用")
                 return
-            if not budget_ok:
+            if result == "global":
                 await self._reject(scope, replay_receive, send, 429, "今日 AI 体验额度已用完", 3600)
+                return
+            if result == "ip":
+                await self._reject(scope, replay_receive, send, 429, "您今日的 AI 体验次数已用完", 3600)
                 return
             # Holds concurrency until StreamingResponse is done/disconnected.
             await self.app(scope, replay_receive, send)
