@@ -12,6 +12,7 @@ type StoredTurn = {
   answer: string | null;
   status: ChatTurn["status"];
   error: string | null;
+  usageLimitNotice?: boolean;
 };
 
 type StoredDraft = {
@@ -89,7 +90,8 @@ function isStoredTurn(value: unknown): value is StoredTurn {
       value.status === "streaming" ||
       value.status === "done" ||
       value.status === "failed") &&
-    (typeof value.error === "string" || value.error === null)
+    (typeof value.error === "string" || value.error === null) &&
+    (value.usageLimitNotice === undefined || typeof value.usageLimitNotice === "boolean")
   );
 }
 
@@ -168,6 +170,7 @@ function restoreTurn(turn: StoredTurn): ChatTurn {
       ...turn,
       status: "failed",
       error: INTERRUPTED_ERROR,
+      usageLimitNotice: false,
       regenerating: false,
       regenerateError: null,
       streamDraft: null,
@@ -190,6 +193,7 @@ function storeTurn(turn: ChatTurn): StoredTurn {
     answer: turn.answer,
     status: turn.status,
     error: turn.error,
+    usageLimitNotice: turn.usageLimitNotice === true,
   };
 }
 
