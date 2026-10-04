@@ -125,6 +125,7 @@ Python 会自行提示粘贴**窗口 A 输出的 `127.0.0.1:55432` PostgreSQL �
 | `POETICUS_AI_ENABLED` | `false`（部署先关闭） | 只有用户确认后改 `true` |
 | `POETICUS_AI_PER_IP_PER_MINUTE` | `5` | 同一进程内按 ASGI socket peer 的滑动分钟窗口 |
 | `POETICUS_AI_MAX_CONCURRENT` | `2` | 同一进程同时进行的收费请求数，持续占用到 SSE 完成 |
+| `POETICUS_TRUST_RAILWAY_REAL_IP` | `true`（仅 Railway 官方 HTTPS 域） | 经 Railway Edge 转发时使用其 `X-Real-IP` 辨别不同读者；其他环境应为 `false` |
 | `POETICUS_AI_DAILY_REQUESTS` | `60` | PostgreSQL 按 UTC 日的持久请求次数上限，跨进程/重启共享 |
 | `POETICUS_LLM_MAX_OUTPUT_TOKENS` | `1200` | 每次模型调用的最大输出数，强制限制到 128–2048 内 |
 | `LLM_API_KEY` | 服务端私密变量 | 用新的真实 DeepSeek Key 替代临时占位；**不许设置 `VITE_` 变量传前端** |
@@ -133,7 +134,7 @@ Python 会自行提示粘贴**窗口 A 输出的 `127.0.0.1:55432` PostgreSQL �
 
 **公网验收**：使用全新浏览器、陌生网络，先确认读作品不受 AI 开关影响；AI 默认 503；开启后按顺序验证一个短问答、引用问题、工具查询、整首赏析、SSE 断开重试、超长请求 413、超额 429/当日配额、模型不可用 502/客户端有友好错误。验收时避免把大量真实用户请求或 Key 写入日志。检查模型回答链接与 Markdown：当前前端用 `react-markdown` 的 `skipHtml`，不启用 `rehype-raw`，远程图片不显示，且外链有 `noopener noreferrer`；新发现的安全问题按 #77 记录，不能只靠静态检查断言无 XSS 风险。
 
-**客户端 IP 的局限**：不信任用户自行提供的 `X-Forwarded-For`，因此只用 ASGI socket peer。Railway 代理环境可能使多个真实读者被识别为一个 peer；上线验收要观察 429 是否误伤，进一步评估可信代理 IP 配置。进程内限流和并发上限只适用于一个 Web 进程；若水平扩容，需改为共享存储/网关限流，不能夸称全局一致。Postgres 每日 quota 本身是跨实例原子保留的。
+**客户端 IP 的局限**：从 Railway 网络文档可知其 Edge 设置 `X-Real-IP` 作为真实读者 IP。只有部署者明确设置 `POETICUS_TRUST_RAILWAY_REAL_IP=true` 时，才读该单值并校验其为有效 IP；缺失/无效回落到 socket peer。**必须仅在 Railway HTTPS Edge 是唯一公网入口时开启**，不能让未受信任的反向代理或直连服务自填同名头。绝不信任随意传来的 `X-Forwarded-For`。上线仍须测试多个读者是否受错误归并的 429 影响。进程内限流和并发上限只适用于一个 Web 进程；若水平扩容，需改为共享存储/网关限流，不能夸称全局一致。Postgres 每日 quota 本身是跨实例原子保留的。
 
 **凭证安全**：之前 Railway PG 完整 URL 已在对话/截图中暴露，首发前必须通过 Railway Postgres → Config → Connection → Regenerate 完整轮换，随后重新部署依赖服务；不能只改变量或只在 SQL 中 `ALTER USER`。刷新 3491 首目录成功后才能公开访问。
 
