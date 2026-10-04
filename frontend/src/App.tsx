@@ -16,7 +16,7 @@ import {
 } from "@/data/poem-library";
 import type { Poem, PoemFilters, PoemPage } from "@/data/poem-library";
 import { selectionForPython } from "@/lib/selection-offset";
-import { readChatStream } from "@/lib/chat-stream";
+import { readChatStream, UsageLimitNotice } from "@/lib/chat-stream";
 import {
   createConversationId,
   loadLastActivePoemId,
@@ -169,6 +169,7 @@ function App() {
   const [analysis, setAnalysis] = useState<PoemAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
+  const [analysisLimitNotice, setAnalysisLimitNotice] = useState(false);
 
   // 目录轻量分页，不携带完整正文。
   useEffect(() => {
@@ -338,6 +339,7 @@ function App() {
 
         setAnalysis(null);
         setAnalysisError("");
+        setAnalysisLimitNotice(false);
         setHasUnreadReply(false);
         setActiveView("chat");
         seenAnimationsRef.current.clear();
@@ -375,6 +377,7 @@ function App() {
             ...item,
             regenerating: true,
             regenerateError: null,
+            regenerateLimitNotice: false,
             streamDraft: "",
           };
         }
@@ -384,8 +387,10 @@ function App() {
           answer: null,
           status: "pending",
           error: null,
+          usageLimitNotice: false,
           regenerating: false,
           regenerateError: null,
+          regenerateLimitNotice: false,
           streamDraft: null,
         };
       }),
@@ -433,8 +438,10 @@ function App() {
                 streamDraft: null,
                 status: "done",
                 error: null,
+                usageLimitNotice: false,
                 regenerating: false,
                 regenerateError: null,
+                regenerateLimitNotice: false,
               }
             : item,
         ),
@@ -450,6 +457,7 @@ function App() {
               ...item,
               regenerating: false,
               regenerateError: message,
+              regenerateLimitNotice: error instanceof UsageLimitNotice,
               streamDraft: received || null,
             };
           }
@@ -458,6 +466,7 @@ function App() {
             answer: received || null,
             status: "failed",
             error: message,
+            usageLimitNotice: error instanceof UsageLimitNotice,
             streamDraft: null,
             regenerating: false,
           };
@@ -479,8 +488,10 @@ function App() {
       answer: null,
       status: "pending",
       error: null,
+      usageLimitNotice: false,
       regenerating: false,
       regenerateError: null,
+      regenerateLimitNotice: false,
       streamDraft: null,
     };
 
@@ -534,8 +545,10 @@ function App() {
       answer: null,
       status: "pending",
       error: null,
+      usageLimitNotice: false,
       regenerating: false,
       regenerateError: null,
+      regenerateLimitNotice: false,
       streamDraft: null,
     };
 
@@ -548,6 +561,7 @@ function App() {
     setActiveView("analysis");
     setAnalyzing(true);
     setAnalysisError("");
+    setAnalysisLimitNotice(false);
 
     try {
       const response = await fetch("/api/analyze", {
@@ -561,17 +575,20 @@ function App() {
 
       if (!response.ok) {
         const error = await response.json().catch(() => null);
-        throw new Error(
+        const message =
           typeof error?.detail === "string"
             ? error.detail
-            : `请求失败：HTTP ${response.status}`,
-        );
+            : `请求失败：HTTP ${response.status}`;
+        throw response.status === 429
+          ? new UsageLimitNotice(message)
+          : new Error(message);
       }
 
       const result: PoemAnalysis = await response.json();
       setAnalysis(result);
     } catch (error) {
       setAnalysisError(error instanceof Error ? error.message : "赏析请求失败");
+      setAnalysisLimitNotice(error instanceof UsageLimitNotice);
     } finally {
       setAnalyzing(false);
     }
@@ -768,6 +785,7 @@ function App() {
                           analysis={analysis}
                           analyzing={analyzing}
                           error={analysisError}
+                          limitNotice={analysisLimitNotice}
                         />
                       )}
                     </>

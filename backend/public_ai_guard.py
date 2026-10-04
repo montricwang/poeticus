@@ -177,7 +177,16 @@ class PublicAIGuard:
         client = self._client_identity(scope)
         ok, retry = self._acquire(client)
         if not ok:
-            await self._reject(scope, replay_receive, send, 429, "请求过于频繁，请稍后再试", retry)
+            await self._reject(
+                scope, replay_receive, send, 429,
+                (
+                    f"稍等一会儿，刚才的提问有点密集。每分钟最多提问 {self.per_minute} 次，"
+                    "约一分钟后就能继续聊了。"
+                    if retry == 60 else
+                    "AI 伴读正在处理另一条提问，稍等片刻就能继续聊了。"
+                ),
+                retry,
+            )
             return
         try:
             dsn = os.getenv("POETICUS_DATABASE_URL")
@@ -200,10 +209,20 @@ class PublicAIGuard:
                 await self._reject(scope, replay_receive, send, 503, "AI 预算服务暂时不可用")
                 return
             if result == "global":
-                await self._reject(scope, replay_receive, send, 429, "今日 AI 体验额度已用完", 3600)
+                await self._reject(
+                    scope, replay_receive, send, 429,
+                    "今天大家的 AI 提问次数已经用完了，每天北京时间早上 8 点恢复。"
+                    "诗词还可以照常阅读，等额度恢复后再接着聊吧。",
+                    3600,
+                )
                 return
             if result == "ip":
-                await self._reject(scope, replay_receive, send, 429, "您今日的 AI 体验次数已用完", 3600)
+                await self._reject(
+                    scope, replay_receive, send, 429,
+                    "今天从这个网络发起的 AI 提问次数已经用完了，"
+                    "每天北京时间早上 8 点恢复。诗词还可以照常阅读。",
+                    3600,
+                )
                 return
             # Holds concurrency until StreamingResponse is done/disconnected.
             await self.app(scope, replay_receive, send)

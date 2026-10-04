@@ -12,8 +12,11 @@ export type ChatTurn = {
   answer: string | null;
   status: "pending" | "streaming" | "done" | "failed";
   error: string | null;
+  /** HTTP 429 属于正常用量提示，不显示为红色故障。 */
+  usageLimitNotice?: boolean;
   regenerating: boolean;
   regenerateError: string | null;
+  regenerateLimitNotice?: boolean;
   /** 重新生成期间保留旧 answer，新版本写到这里。 */
   streamDraft: string | null;
 };

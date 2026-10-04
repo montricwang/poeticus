@@ -66,6 +66,7 @@ def test_per_peer_rate_limit_is_server_side(monkeypatch):
     second = cli.post("/api/chat/stream", json={"question": "x"})
     assert second.status_code == 429
     assert second.headers["retry-after"] == "60"
+    assert "每分钟最多提问 1 次" in second.json()["detail"]
     assert len(spent) == 1
 
 
@@ -73,7 +74,8 @@ def test_daily_budget_exhaustion_blocks_paid_routes(monkeypatch):
     cli, spent = make_app(monkeypatch, daily_result="global")
     response = cli.post("/api/chat/stream", json={"question": "x"})
     assert response.status_code == 429
-    assert "今日" in response.json()["detail"]
+    assert "今天大家的 AI 提问次数" in response.json()["detail"]
+    assert "北京时间早上 8 点" in response.json()["detail"]
     assert len(spent) == 1
     assert cli.get("/api/poems").status_code == 200
 
@@ -119,7 +121,8 @@ def test_ip_daily_quota_exhaustion_shows_distinct_message(monkeypatch):
     cli, spent = make_app(monkeypatch, daily_result="ip")
     response = cli.post("/analyze", json={"poem": "test"})
     assert response.status_code == 429
-    assert "您今日" in response.json()["detail"]
+    assert "今天从这个网络发起的" in response.json()["detail"]
+    assert "北京时间早上 8 点" in response.json()["detail"]
     assert len(spent) == 1
     assert cli.get("/api/poems").status_code == 200
 
@@ -234,8 +237,19 @@ def test_two_clients_share_total_but_have_separate_daily_quotas(monkeypatch):
     denied = cli.post("/analyze", json={"poem": "text"},
                       headers={"x-real-ip": "203.0.113.11"})
     assert denied.status_code == 429
-    assert "您今日" in denied.json()["detail"]
+    assert "今天从这个网络发起的" in denied.json()["detail"]
     other = cli.post("/analyze", json={"poem": "text"},
                      headers={"x-real-ip": "203.0.113.12"})
     assert other.status_code == 200
     assert counters["total"] == 21
+
+
+def test_busy_is_distinct_from_minute_limit(monkeypatch):
+    cli, spent = make_app(monkeypatch)
+    monkeypatch.setattr(public_ai_guard.PublicAIGuard, "_acquire",
+                        lambda self, client: (False, 5))
+    response = cli.post("/api/chat/stream", json={"question": "test"})
+    assert response.status_code == 429
+    assert "正在处理另一条提问" in response.json()["detail"]
+    assert response.headers["retry-after"] == "5"
+    assert spent == []

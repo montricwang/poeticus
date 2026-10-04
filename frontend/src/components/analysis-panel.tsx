@@ -14,12 +14,14 @@ type AnalysisPanelProps = {
   analysis: PoemAnalysis | null;
   analyzing: boolean;
   error: string;
+  limitNotice: boolean;
 };
 
 export function AnalysisPanel({
   analysis,
   analyzing,
   error,
+  limitNotice,
 }: AnalysisPanelProps) {
   return (
     <Card className="flex h-165 min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm">
@@ -33,9 +35,16 @@ export function AnalysisPanel({
             <p className="text-sm text-muted-foreground">正在生成译文、注释和文学赏析……</p>
           </div>
         ) : error ? (
-          <div role="alert" className="rounded-xl bg-destructive/10 p-4">
-            <h3 className="font-medium text-destructive">赏析失败</h3>
-            <p className="mt-2 text-sm leading-7 text-destructive">{error}</p>
+          <div
+            role={limitNotice ? "status" : "alert"}
+            className={`rounded-xl p-4 ${limitNotice ? "border border-border/60 bg-muted/30" : "bg-destructive/10"}`}
+          >
+            <h3 className={`font-medium ${limitNotice ? "text-foreground" : "text-destructive"}`}>
+              {limitNotice ? "稍等一会儿" : "赏析失败"}
+            </h3>
+            <p className={`mt-2 text-sm leading-7 ${limitNotice ? "text-muted-foreground" : "text-destructive"}`}>
+              {error}
+            </p>
           </div>
         ) : analysis ? (
           <div className="space-y-10">
