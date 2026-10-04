@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 
-import { Card } from "@/components/ui/card";
 import { poemText } from "@/data/poem-library";
 import type { Poem } from "@/data/poem-library";
 
@@ -137,11 +136,8 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
 
   return (
     <div className="min-w-0">
-      <Card
-        ref={readerRef}
-        className="min-h-155 gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm"
-      >
-        <article className="mx-auto w-full max-w-xl px-7 py-12 sm:px-12 sm:py-14">
+      <div ref={readerRef} className="min-h-155 bg-transparent">
+        <article className="mx-auto w-full min-w-0 px-4 py-12 sm:px-8 sm:py-14">
           <header className="mb-9 text-center">
             {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
             <div className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
@@ -177,12 +173,12 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
 
           <p
             ref={poemRef}
-            className="cursor-text select-text whitespace-pre-line font-serif text-lg leading-[3] tracking-wide text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white sm:text-xl"
+            className="mx-auto w-fit max-w-full cursor-text select-text whitespace-pre-line font-serif text-lg leading-[3] tracking-wide text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white sm:text-xl"
           >
             {poem}
           </p>
         </article>
-      </Card>
+      </div>
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
         划选诗句，即可引用提问

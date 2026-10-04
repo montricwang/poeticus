@@ -40,21 +40,27 @@ export type PoemFilters = {
   offset: number;
 };
 
-/** 词牌和题目分别保存；无题目时借首句区分目录中的同调作品。 */
-export function poemTitle(work: Pick<PoemSummary, "cipai" | "title">): string {
-  return [work.cipai, work.title].filter(Boolean).join("·") || "未题作品";
+/** 题录只组合展示字段，不改变作品的词牌、寓声与词题。 */
+export function poemTitle(
+  work: Pick<PoemSummary, "cipai" | "yusheng_title" | "title">,
+): string {
+  const tune = work.yusheng_title
+    ? work.cipai
+      ? `${work.yusheng_title}（${work.cipai}）`
+      : work.yusheng_title
+    : work.cipai || "未题作品";
+  return work.title ? `${tune}·${work.title}` : tune;
 }
 
+/** 目录第一行仅显示题录；正文首句固定放在第二行。 */
 export function poemLabel(work: PoemSummary): string {
-  const title = poemTitle(work);
-  if (work.title) return title;
+  return poemTitle(work);
+}
 
-  // 无独立词题时，截取第一个主要句读标点前的文字作短标签。
-  // 同时兼容中文/英文标点与换行；无句读时才依赖下方长度上限。
-  // 这只是目录展示规则，不改变词正文，也不判定词句/上下阕。
+export function poemIncipit(work: Pick<PoemSummary, "incipit">): string {
+  // 截取首个主要句读前的短句。不要改变正文或把句子误归为词题。
   const firstPhrase = work.incipit.split(/[，,。.!！?？；;\r\n]/, 1)[0].trim();
-  const shortPhrase = Array.from(firstPhrase).slice(0, 18).join("");
-  return shortPhrase ? `${title} · ${shortPhrase}` : title;
+  return Array.from(firstPhrase).slice(0, 28).join("") || "暂无正文";
 }
 
 /** 这一份字符串同时进入阅读器、聊天、赏析及原文选区校验。 */
