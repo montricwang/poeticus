@@ -209,3 +209,29 @@ def test_repository_keyword_search_includes_yusheng_and_uses_literal_matching():
     assert "STRPOS(LOWER(COALESCE(yusheng_title, '')), LOWER(%s)) > 0" in sql
     assert tuple(params) == ("翦朝霞",) * 5
     assert "翦朝霞" not in sql
+
+
+def test_repository_space_separated_terms_use_and_across_fields():
+    """每词可以匹配不同字段；同一词在允许列间 OR，多词之间 AND。"""
+    fake = FakeConnection(pages=[], count=0)
+    repository.list_poems(
+        fake, author=None, cipai=None, q="  苏轼　念奴娇  大江东去  ",
+        limit=20, offset=0,
+    )
+    sql, params = fake.calls[0]
+    assert sql.count("STRPOS") == 15
+    assert " AND " in sql
+    assert params == ("苏轼",) * 5 + ("念奴娇",) * 5 + ("大江东去",) * 5
+    assert fake.calls[1][1] == params + (20, 0)
+    assert "大江东去" not in sql
+
+
+def test_repository_unspaced_query_remains_one_literal_term():
+    """未来无空格跨字段组合命中由单独的搜索研究 Issue 决定。"""
+    fake = FakeConnection(pages=[], count=0)
+    repository.list_poems(
+        fake, author=None, cipai=None, q="虞美人春花", limit=20, offset=0,
+    )
+    sql, params = fake.calls[0]
+    assert sql.count("STRPOS") == 5
+    assert params == ("虞美人春花",) * 5

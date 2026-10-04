@@ -50,8 +50,9 @@ export function UserMessage({
     copyStatus?.key === copyKey && copyStatus.status === "error";
 
   return (
-    <div className="flex justify-end">
-      <div className="group flex max-w-[90%] flex-col items-end gap-1">
+    <div className="group flex min-w-0 w-full flex-col items-start gap-2" aria-label="读者提问">
+      <span className="text-xs font-medium tracking-wide text-muted-foreground">读者</span>
+      <div className="flex min-w-0 w-full flex-col items-start gap-2">
         {editing ? (
           /* 编辑模式 */
           <div className="w-full min-w-64 space-y-3 rounded-2xl border border-violet-400/40 bg-secondary p-3">
@@ -94,11 +95,11 @@ export function UserMessage({
         ) : (
           /* 普通消息模式 */
           <>
-            <div className="w-full space-y-3 rounded-2xl rounded-tr-md bg-secondary px-4 py-3">
+            <div className="w-full min-w-0 space-y-3 py-0.5">
               {turn.selection && (
-                <div className="rounded-lg border-l-2 border-violet-400 bg-background/60 px-3 py-2 text-sm leading-6 text-muted-foreground">
+                <blockquote className="border-l-2 border-border pl-3 text-sm leading-6 text-muted-foreground">
                   {turn.selection.text}
-                </div>
+                </blockquote>
               )}
 
               <AssistantMarkdown content={turn.question} variant="user" />

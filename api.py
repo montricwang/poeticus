@@ -2,11 +2,14 @@
 
 import json
 import logging
+import os
+from pathlib import Path
 from collections.abc import Iterator
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from main import PoemAnalysis, analyze_poem
@@ -15,15 +18,35 @@ from poem_context import PoemContext
 from backend.corpus.router import router as corpus_router
 
 logger = logging.getLogger(__name__)
-app = FastAPI(title="Poeticus")
+app = FastAPI(
+    title="Poeticus",
+    version=os.getenv("POETICUS_VERSION", "0.1.0-dev"),
+)
 app.include_router(corpus_router)
 
 
+@app.get("/health", tags=["service"])
+def health():
+    """Liveness only: no database, model API or external tools."""
+    return {"status": "ok"}
+
+
+@app.get("/api/info", tags=["service"])
+def public_info():
+    """Public product metadata; never expose runtime configuration."""
+    return {
+        "name": "Poeticus",
+        "version": app.version,
+        "repository": "https://github.com/montricwang/poeticus",
+    }
+
+
 class AnalyzeRequest(BaseModel):
-    poem: str
+    poem: str = Field(max_length=12000)
     context: PoemContext | None = None
 
 
+@app.post("/api/analyze", response_model=PoemAnalysis)
 @app.post("/analyze", response_model=PoemAnalysis)
 def analyze(request: AnalyzeRequest):
     if not request.poem.strip():
@@ -31,11 +54,18 @@ def analyze(request: AnalyzeRequest):
     try:
         return analyze_poem(request.poem, request.context)
     except (ValueError, RuntimeError) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        # Operator-only diagnostic metadata. Never expose input, model
+        # response body, provider error detail or credentials to readers.
+        logger.warning(
+            "analysis_failed type=%s upstream_type=%s",
+            type(exc).__name__,
+            type(exc.__cause__).__name__ if exc.__cause__ else "none",
+        )
+        raise HTTPException(status_code=502, detail="AI 生成暂时失败，请稍后再试") from exc
 
 
 class QuoteSelection(BaseModel):
-    text: str
+    text: str = Field(max_length=3000)
     start: int
     end: int
 
@@ -46,8 +76,8 @@ class HistoryMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    poem: str
-    question: str
+    poem: str = Field(max_length=12000)
+    question: str = Field(max_length=1200)
     selection: QuoteSelection | None = None
     context: PoemContext | None = None
     history: list[HistoryMessage] = Field(default_factory=list)
@@ -148,6 +178,7 @@ def graph_input(request: ChatRequest) -> RouterState:
     }
 
 
+@app.post("/api/chat", response_model=ChatResponse)
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
     """原有非流式接口不变，供旧客户端与回归测试使用。"""
@@ -159,7 +190,7 @@ def chat(request: ChatRequest):
             raise RuntimeError("工作流没有返回答案")
         return ChatResponse(answer=answer)
     except (ValueError, RuntimeError) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail="AI 生成暂时失败，请稍后再试") from exc
 
 
 def sse(event: str, data: dict) -> str:
@@ -230,14 +261,15 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
         yield sse("done", {})
 
     except (ValueError, RuntimeError) as exc:
-        logger.warning("聊天流中断：%s", exc)
-        yield sse("error", {"message": str(exc)})
+        logger.warning("聊天流中断：%s", type(exc).__name__)
+        yield sse("error", {"message": "生成中断，请稍后重试"})
 
     except Exception:
         logger.exception("聊天流发生未预期异常")
         yield sse("error", {"message": "生成过程中发生服务器错误"})
 
 
+@app.post("/api/chat/stream")
 @app.post("/chat/stream")
 def chat_stream(request: ChatRequest):
     validate_chat_request(request)
@@ -248,4 +280,27 @@ def chat_stream(request: ChatRequest):
             "Cache-Control": "no-cache, no-transform",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+# Production only: serve Vite's built files from this FastAPI process.
+# Mount last so it does not shadow the API, /health, or OpenAPI routes.
+# Developers keep using Vite dev server; tests do not require a frontend build.
+if os.getenv("POETICUS_SERVE_FRONTEND", "").lower() in ("1", "true", "yes"):
+    from backend.public_ai_guard import PublicAIGuard
+    app.add_middleware(PublicAIGuard)
+    frontend_dir = Path(__file__).resolve().parent / "frontend" / "dist"
+    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
+
+
+# Temporary authenticated, read-only smoke preview. Unset this variable
+# after Issue #77 security controls have been implemented and verified.
+if preview_password := os.getenv("POETICUS_PREVIEW_PASSWORD"):
+    from backend.preview_guard import PreviewGuard
+
+    app.add_middleware(
+        PreviewGuard,
+        username=os.getenv("POETICUS_PREVIEW_USER", "preview"),
+        password=preview_password,
+        allow_ai_post=os.getenv("POETICUS_PREVIEW_ALLOW_AI", "").lower() == "true",
     )

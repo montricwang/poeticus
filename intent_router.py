@@ -10,7 +10,7 @@ from openai.types.chat import (
     ChatCompletionMessageParam,
 )
 
-from main import client
+from main import client, MAX_LLM_OUTPUT_TOKENS
 from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
 from poem_context import PoemContext, format_poem_context
@@ -99,6 +99,7 @@ def _stream_agent_decision(
     try:
         stream = client.chat.completions.create(
             model="deepseek-flash",
+            max_tokens=MAX_LLM_OUTPUT_TOKENS,
             messages=messages,
             tools=TOOLS,
             tool_choice=tool_choice,
@@ -225,7 +226,7 @@ def agent_decide(state: RouterState) -> dict:
     )
 
     tool_choice: Literal["auto", "none"] = (
-        "none" if state.get("tool_count", 0) >= 8 else "auto"
+        "none" if state.get("tool_count", 0) >= 2 else "auto"
     )
 
     stream_reply = state.get("stream_reply", False)
@@ -236,6 +237,7 @@ def agent_decide(state: RouterState) -> dict:
         try:
             response = client.chat.completions.create(
                 model="deepseek-flash",
+            max_tokens=MAX_LLM_OUTPUT_TOKENS,
                 messages=messages,
                 tools=TOOLS,
                 tool_choice=tool_choice,
@@ -322,7 +324,7 @@ def execute_tools(state: RouterState) -> dict:
     tool_count = state.get("tool_count", 0)
 
     # 一次用户请求最多执行 8 次实际工具调用。
-    max_tool_calls = 8
+    max_tool_calls = 2
 
     # 防止重复 ID 使工具结果无法正确对应。
     ids = [call["id"] for call in calls]
@@ -366,7 +368,17 @@ def execute_tools(state: RouterState) -> dict:
                         evidence_type="allusion",
                     )
 
-                    items = [item.model_dump() for item in evidences]
+                    # Upper-bound tool material fed back into subsequent LLM
+                    # turns; external evidence might contain huge passages.
+                    items = []
+                    for item in evidences[:3]:
+                        data = item.model_dump()
+                        data["text"] = data["text"][:1600]
+                        if isinstance(data.get("source"), dict):
+                            title = data["source"].get("title")
+                            if isinstance(title, str):
+                                data["source"]["title"] = title[:200]
+                        items.append(data)
 
                     all_evidences.extend(items)
 
