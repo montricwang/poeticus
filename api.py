@@ -295,4 +295,5 @@ if preview_password := os.getenv("POETICUS_PREVIEW_PASSWORD"):
         PreviewGuard,
         username=os.getenv("POETICUS_PREVIEW_USER", "preview"),
         password=preview_password,
+        allow_ai_post=os.getenv("POETICUS_PREVIEW_ALLOW_AI", "").lower() == "true",
     )
