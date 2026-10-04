@@ -54,6 +54,13 @@ def analyze(request: AnalyzeRequest):
     try:
         return analyze_poem(request.poem, request.context)
     except (ValueError, RuntimeError) as exc:
+        # Operator-only diagnostic metadata. Never expose input, model
+        # response body, provider error detail or credentials to readers.
+        logger.warning(
+            "analysis_failed type=%s upstream_type=%s",
+            type(exc).__name__,
+            type(exc.__cause__).__name__ if exc.__cause__ else "none",
+        )
         raise HTTPException(status_code=502, detail="AI 生成暂时失败，请稍后再试") from exc
 
 
