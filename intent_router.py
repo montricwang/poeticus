@@ -368,7 +368,17 @@ def execute_tools(state: RouterState) -> dict:
                         evidence_type="allusion",
                     )
 
-                    items = [item.model_dump() for item in evidences]
+                    # Upper-bound tool material fed back into subsequent LLM
+                    # turns; external evidence might contain huge passages.
+                    items = []
+                    for item in evidences[:3]:
+                        data = item.model_dump()
+                        data["text"] = data["text"][:1600]
+                        if isinstance(data.get("source"), dict):
+                            title = data["source"].get("title")
+                            if isinstance(title, str):
+                                data["source"]["title"] = title[:200]
+                        items.append(data)
 
                     all_evidences.extend(items)
 
