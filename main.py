@@ -30,7 +30,10 @@ load_dotenv()
 
 api_key = os.environ["LLM_API_KEY"]
 base_url = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
-client = wrap_openai(OpenAI(api_key=api_key, base_url=base_url))
+# Upper bound on output per completion; one user request may have up to
+# three Agent completions (initial, after each of at most two tool rounds).
+MAX_LLM_OUTPUT_TOKENS = min(max(int(os.getenv("POETICUS_LLM_MAX_OUTPUT_TOKENS", "1200")), 128), 2048)
+client = wrap_openai(OpenAI(api_key=api_key, base_url=base_url, timeout=30.0, max_retries=0))
 
 
 def answer_with_evidence(
@@ -58,6 +61,7 @@ def answer_with_evidence(
 
     response = client.chat.completions.create(
         model="deepseek-flash",
+        max_tokens=MAX_LLM_OUTPUT_TOKENS,
         messages=[
             {
                 "role": "system",
@@ -97,6 +101,7 @@ def analyze_poem(poem: str, context: PoemContext | None = None) -> PoemAnalysis:
     try:
         response = client.chat.completions.create(
             model="deepseek-flash",
+        max_tokens=MAX_LLM_OUTPUT_TOKENS,
             messages=[
                 {
                     "role": "system",
@@ -174,6 +179,7 @@ def chat_about_poem(
     try:
         response = client.chat.completions.create(
             model="deepseek-flash",
+        max_tokens=MAX_LLM_OUTPUT_TOKENS,
             messages=_chat_messages(poem, question, selection, context),
         )
     except APIError as exc:
@@ -204,6 +210,7 @@ def stream_chat_about_poem(
     try:
         stream = client.chat.completions.create(
             model="deepseek-flash",
+        max_tokens=MAX_LLM_OUTPUT_TOKENS,
             messages=_chat_messages(poem, question, selection, context),
             stream=True,
         )
