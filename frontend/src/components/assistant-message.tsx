@@ -1,4 +1,4 @@
-import { Check, Copy, LoaderCircle, RotateCcw, Sparkles } from "lucide-react";
+import { Check, Copy, LoaderCircle, RotateCcw } from "lucide-react";
 
 import { AssistantMarkdown } from "@/components/assistant-markdown";
 import { Button } from "@/components/ui/button";
@@ -34,16 +34,20 @@ export function AssistantMessage({
 
   if (turn.status === "pending") {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-muted-foreground">
-        <LoaderCircle className="size-4 animate-spin text-violet-500" />
-        AI 正在思考……
+      <div role="status" className="space-y-2">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground">AI 伴读</p>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <LoaderCircle className="size-4 animate-spin" />
+          正在思考……
+        </div>
       </div>
     );
   }
 
   if (turn.status === "failed") {
     return (
-      <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3">
+      <div className="space-y-2 border-l-2 border-destructive/40 py-1 pl-3">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground">AI 伴读 · 请求失败</p>
         {/* 网络中断后保留已经收到的正文，而不是清空历史输出。 */}
         {turn.answer && (
           <div className="mb-3 select-text">
@@ -71,12 +75,11 @@ export function AssistantMessage({
   if (!turn.answer) return null;
 
   return (
-    <div className="flex items-start gap-3">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
-        <Sparkles className="size-4" />
+    <div className="min-w-0 space-y-2" aria-label="AI 伴读回复">
+      <div className="text-xs font-medium tracking-wide text-muted-foreground">
+        AI 伴读
       </div>
-
-      <div className="group min-w-0 flex-1 select-text pt-1">
+      <div className="group min-w-0 select-text">
         <AssistantMarkdown content={turn.answer} />
 
         {turn.status === "streaming" && (
