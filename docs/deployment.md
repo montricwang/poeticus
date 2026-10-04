@@ -139,3 +139,20 @@ Python 会自行提示粘贴**窗口 A 输出的 `127.0.0.1:55432` PostgreSQL �
 **凭证安全**：之前 Railway PG 完整 URL 已在对话/截图中暴露，首发前必须通过 Railway Postgres → Config → Connection → Regenerate 完整轮换，随后重新部署依赖服务；不能只改变量或只在 SQL 中 `ALTER USER`。刷新 3491 首目录成功后才能公开访问。
 
 **发布顺序**：#80 数据/部署 → #82 安全合成 CI → Railway 0004 迁移 + 测试开关 → 真正限额的模型调用验收 → #78 README/Release。主仓库与线上运行版本必须一致；Draft PR、旧预览门禁和未通过的安全条目不作为已发布能力。
+
+
+## v0.1.0 上线后配额调整：全站每天 200、每个 IP 每天 20（2026-10-04）
+
+这是**发布后的限额修正**，不修改已发布的 `v0.1.0` Tag。聊天和整首赏析共用以下额度，均在发送 DeepSeek 请求前检查：
+
+| Railway Web 环境变量 | 生产设置 | 含义 |
+| --- | --- | --- |
+| `POETICUS_AI_DAILY_REQUESTS` | `200` | 全站 UTC 每日上限，PostgreSQL 持久保存 |
+| `POETICUS_AI_PER_IP_PER_DAY` | `20` | 每个真实客户端 IP 的 UTC 每日上限，PostgreSQL 持久保存 |
+| `POETICUS_AI_PER_IP_PER_MINUTE` | `3` | 单 IP 每分钟滑动窗口，防止短时间连发 |
+| `POETICUS_AI_MAX_CONCURRENT` | `1` | 单进程同时进行的模型生成最多一次 |
+| `POETICUS_AI_IP_HASH_SECRET` | 服务器专用随机密钥，**不得入库或日志** | 将当日日期和可信客户端 IP 计算成 HMAC-SHA256 后写入数据库；未设置时 AI fail-closed，HTTP 503 |
+
+发布前执行新的 `0005_ai_ip_daily_quotas.sql` migration（Railway preDeploy command `python -m scripts.corpus.db_import --migrate` 会自动执行），再启用上述变量。全站与单 IP 配额在一次事务中扣除；如果单 IP 已达到 20 次，整个事务回滚，因此不浪费全站剩余额度。失败/中断的模型请求仍消耗已经预留的名额。
+
+既有全站当天已消耗次数不会清零；新增单 IP 计数**从新版本部署后开始**，无法反推之前已经产生的请求。UTC 每日配额按北京时间早上 8 点换日。多个访客共用 NAT/企业出口 IP 时，也共用一个 20 次额度；这一限制需要向测试者解释。请求限制不等于人民币硬上限；模型账户需独立控制余额和自动充值策略。

@@ -22,7 +22,7 @@ class FakeMigrationConnection:
         return SimpleNamespace(fetchall=lambda: [])
 
 
-ALL = {"0001_corpus", "0002_cipai", "0003_yusheng_title", "0004_ai_daily_quotas"}
+ALL = {"0001_corpus", "0002_cipai", "0003_yusheng_title", "0004_ai_daily_quotas", "0005_ai_ip_daily_quotas"}
 
 
 def _ddl(conn):
@@ -70,3 +70,11 @@ def test_existing_0003_database_adds_only_quota_table():
     assert conn.versions == ALL
     assert len(_ddl(conn)) == 0
     assert any("CREATE TABLE ai_daily_quotas" in sql for sql, _ in conn.executed)
+
+
+def test_existing_0004_database_adds_only_ip_quota_table():
+    conn = FakeMigrationConnection(["0001_corpus", "0002_cipai", "0003_yusheng_title", "0004_ai_daily_quotas"])
+    db_import.migrate(conn)
+    assert conn.versions == ALL
+    assert len(_ddl(conn)) == 0
+    assert any("CREATE TABLE ai_ip_daily_quotas" in sql for sql, _ in conn.executed)

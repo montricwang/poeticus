@@ -17,7 +17,7 @@ from .adapter import ConvertedPoem, convert_corpus
 
 DEFAULT_INPUT = Path("data/output/all_normalized.json")
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "db/migrations"
-LATEST_VERSION = "0004_ai_daily_quotas"
+LATEST_VERSION = "0005_ai_ip_daily_quotas"
 
 
 def read_corpus(path: Path) -> list[ConvertedPoem]:
