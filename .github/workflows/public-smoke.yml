@@ -1,0 +1,67 @@
+name: Public site smoke (read only)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/public-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  public-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify public website, health and real corpus without AI calls
+        shell: bash
+        env:
+          BASE: https://poeticus-web-production.up.railway.app
+        run: |
+          set -euo pipefail
+          # Railway may be rolling out a new deployment or waking a sleeping web app.
+          ready=false
+          for attempt in $(seq 1 18); do
+            code=$(curl -sS -L --connect-timeout 10 --max-time 25 -o /tmp/poeticus-index.html -w '%{http_code}' "$BASE/" || true)
+            if [[ "$code" == "200" ]] && grep -qi '<html' /tmp/poeticus-index.html; then
+              ready=true
+              break
+            fi
+            echo "Public homepage is not ready (attempt $attempt, HTTP $code)"
+            sleep 10
+          done
+          if [[ "$ready" != true ]]; then
+            echo "::error::Anonymous homepage did not return HTML 200"
+            exit 1
+          fi
+          echo "PASS anonymous homepage HTTP 200"
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 --retry-all-errors --max-time 30 "$BASE/health" \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("status")=="ok",d; print("PASS health")'
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 --retry-all-errors --max-time 30 "$BASE/api/info" \
+            | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("name")=="Poeticus",d; print("PASS public info:",d.get("version"))'
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 --retry-all-errors --max-time 30 "$BASE/api/poems?limit=1" \
+            > /tmp/poeticus-page.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("/tmp/poeticus-page.json").read_text())
+          assert data["total"] == 3491, f"Corpus total was {data['total']}, expected 3491"
+          assert len(data["items"]) == 1, "List endpoint should return one item"
+          Path("/tmp/poeticus-poem-id").write_text(str(data["items"][0]["id"]))
+          print("PASS public corpus: 3491 poems, one summary")
+          PY
+          poem_id=$(cat /tmp/poeticus-poem-id)
+          curl --fail --silent --show-error --retry 4 --retry-delay 3 --retry-all-errors --max-time 30 "$BASE/api/poems/$poem_id" \
+            > /tmp/poeticus-poem.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data = json.loads(Path("/tmp/poeticus-poem.json").read_text())
+          assert data.get("body_segments"), "Poem body was empty"
+          forbidden = {"poem_source_texts", "source_book_id", "source_segment_id", "original_segments", "original_inline_notes"}
+          assert not forbidden.intersection(data), "Private-source fields unexpectedly present"
+          print("PASS public poem detail: nonempty text and no private-source fields")
+          PY
+          echo "All public, no-credential GET checks passed. No paid AI calls were made."
