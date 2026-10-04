@@ -42,7 +42,7 @@ def public_info():
 
 
 class AnalyzeRequest(BaseModel):
-    poem: str
+    poem: str = Field(max_length=12000)
     context: PoemContext | None = None
 
 
@@ -54,11 +54,11 @@ def analyze(request: AnalyzeRequest):
     try:
         return analyze_poem(request.poem, request.context)
     except (ValueError, RuntimeError) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail="AI 生成暂时失败，请稍后再试") from exc
 
 
 class QuoteSelection(BaseModel):
-    text: str
+    text: str = Field(max_length=3000)
     start: int
     end: int
 
@@ -69,8 +69,8 @@ class HistoryMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    poem: str
-    question: str
+    poem: str = Field(max_length=12000)
+    question: str = Field(max_length=1200)
     selection: QuoteSelection | None = None
     context: PoemContext | None = None
     history: list[HistoryMessage] = Field(default_factory=list)
@@ -183,7 +183,7 @@ def chat(request: ChatRequest):
             raise RuntimeError("工作流没有返回答案")
         return ChatResponse(answer=answer)
     except (ValueError, RuntimeError) as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(status_code=502, detail="AI 生成暂时失败，请稍后再试") from exc
 
 
 def sse(event: str, data: dict) -> str:
@@ -254,8 +254,8 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
         yield sse("done", {})
 
     except (ValueError, RuntimeError) as exc:
-        logger.warning("聊天流中断：%s", exc)
-        yield sse("error", {"message": str(exc)})
+        logger.warning("聊天流中断：%s", type(exc).__name__)
+        yield sse("error", {"message": "生成中断，请稍后重试"})
 
     except Exception:
         logger.exception("聊天流发生未预期异常")
@@ -280,6 +280,8 @@ def chat_stream(request: ChatRequest):
 # Mount last so it does not shadow the API, /health, or OpenAPI routes.
 # Developers keep using Vite dev server; tests do not require a frontend build.
 if os.getenv("POETICUS_SERVE_FRONTEND", "").lower() in ("1", "true", "yes"):
+    from backend.public_ai_guard import PublicAIGuard
+    app.add_middleware(PublicAIGuard)
     frontend_dir = Path(__file__).resolve().parent / "frontend" / "dist"
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
 
