@@ -22,14 +22,14 @@ class FakeMigrationConnection:
         return SimpleNamespace(fetchall=lambda: [])
 
 
-ALL = {"0001_corpus", "0002_cipai", "0003_yusheng_title"}
+ALL = {"0001_corpus", "0002_cipai", "0003_yusheng_title", "0004_ai_daily_quotas"}
 
 
 def _ddl(conn):
     return [sql for sql, _ in conn.executed if "ALTER TABLE poems" in sql]
 
 
-def test_existing_0001_database_applies_two_rename_migrations_once():
+def test_existing_0001_database_applies_two_renames_and_ai_quota_once():
     conn = FakeMigrationConnection(["0001_corpus"])
     db_import.migrate(conn)
     assert conn.versions == ALL
@@ -43,7 +43,7 @@ def test_existing_0001_database_applies_two_rename_migrations_once():
     assert not any("ALTER TABLE poems" in sql for sql, _ in conn.executed[before:])
 
 
-def test_existing_0002_database_only_applies_yusheng_title_migration():
+def test_existing_0002_database_applies_yusheng_and_ai_quota():
     conn = FakeMigrationConnection(["0001_corpus", "0002_cipai"])
     db_import.migrate(conn)
     assert conn.versions == ALL
@@ -61,3 +61,12 @@ def test_fresh_database_applies_all_migrations_in_sequence():
         next(sql for sql, _ in conn.executed if "RENAME COLUMN tune TO cipai" in sql),
         next(sql for sql, _ in conn.executed if "RENAME COLUMN yusheng TO yusheng_title" in sql),
     ]
+
+
+
+def test_existing_0003_database_adds_only_quota_table():
+    conn = FakeMigrationConnection(["0001_corpus", "0002_cipai", "0003_yusheng_title"])
+    db_import.migrate(conn)
+    assert conn.versions == ALL
+    assert len(_ddl(conn)) == 0
+    assert any("CREATE TABLE ai_daily_quotas" in sql for sql, _ in conn.executed)
