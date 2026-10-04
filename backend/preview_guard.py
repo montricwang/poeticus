@@ -15,12 +15,13 @@ from starlette.responses import JSONResponse, PlainTextResponse
 class PreviewGuard:
     """One lightweight ASGI gate in front of static assets and all app routes."""
 
-    def __init__(self, app, *, username: str, password: str) -> None:
+    def __init__(self, app, *, username: str, password: str, allow_ai_post: bool = False) -> None:
         if not password:
             raise ValueError("A preview password is required")
         self.app = app
         self.username = username
         self.password = password
+        self.allow_ai_post = allow_ai_post
 
     def _authorized(self, scope) -> bool:
         headers = dict(scope.get("headers", []))
@@ -56,7 +57,14 @@ class PreviewGuard:
             return
 
         # The test preview can read synthetic works, never spend model tokens.
-        if scope.get("method") not in {"GET", "HEAD"}:
+        if scope.get("method") not in {"GET", "HEAD"} and not (
+            self.allow_ai_post
+            and scope.get("method") == "POST"
+            and scope.get("path") in {
+                "/api/chat", "/chat", "/api/chat/stream", "/chat/stream",
+                "/api/analyze", "/analyze",
+            }
+        ):
             response = JSONResponse(
                 {"detail": "当前为只读测试预览，AI 问答尚未开放"},
                 status_code=503,
