@@ -74,3 +74,56 @@ Railway 2026 年已弃用新项目使用的 `railway.json` / `railway.toml` **Co
 - 验收完成后应更换/停用口令，并在 #77 的限流、成本熔断和错误隔离通过后，才撤掉只读门禁。正式版本要移除云端临时 `preDeployCommand` 和 `POETICUS_ENABLE_DEMO_SEED`，改为经过审核的真实数据发布方式。
 
 验证项目最小路径：匿名请求主页应返回 401（提示登录）；正确凭证访问主页和 `GET /api/poems` 获得页面与 3 首标有「测试」的作品；`GET /api/poems/{UUID}` 返回片段；任意 `POST /api/chat/stream` 返回 503；`GET /health` 不需要登录返回 200。请勿把这里的合成测试截图当作正式作品库。
+
+
+## 从本地 3491 首读取库迁移到 Railway（2026-10-04 方案，尚未实跑）
+
+**边界**：本地 `poems` 已有稳定 UUID、source_order、校勘状态和正文；本地 `poem_source_texts` 仅为私人来源证据。常规 `db_import.py --import` 会同时写这两张表并生成新 UUID，**不能直接用于云端公开迁移**。新脚本 `scripts/corpus/public_corpus_transfer.py` 只查询 `poems` 中指定的 12 列（ID、来源排序、作品集、作者、词牌、标题、寓声、正文、词序、审核状态、版本等），且只插入云端 `poems`。不查询也不迁入原始 source text、source_locator、inline_notes、lacunae、modern annotations/commentary。云端现有 3 条合成数据只有全部符合已知测试标识时才会在同一个事务内删除；如果目标已有非预期数据，直接拒绝覆盖。
+
+这套迁移**在用户本地运行**。浏览器仍会用临时口令保护，AI 端点仍关闭。无需把商业原书、全量 JSON、连接密码提交到公开 GitHub 或贴到聊天里。
+
+### 1. 本地只读预检（不连接 Railway）
+
+在已有 `POETICUS_DATABASE_URL` 的 Poeticus 项目根目录运行：
+
+```powershell
+git fetch origin
+git switch chore/public-deployment
+git pull --ff-only
+python -m scripts.corpus.public_corpus_transfer --check
+```
+
+脚本默认要求作品数 **3491**、source_order 连续、UUID/source_record_id 唯一、正文非空、词序合法，报告审核状态计数、词序数、最长正文片段、可能带现代编辑用语的记录序号，以及阅读数据 SHA-256。**报告只有统计和序号，不打印或存储原文**。疑似编辑用语检测只是关键词启发式，不是许可或文学校勘结论；必须结合原始来源及使用权作出发布判断，不能靠“没有 annotations 字段”就自动证明全部文本授权无问题。
+
+### 2. 建立短时、经 Railway 账号认证的 DB 通道
+
+Railway Postgres 当前**无公网 TCP proxy**。用 Railway 官方 CLI 的 SSH 隧道比临时给数据库开放公网端口更合适：
+
+```powershell
+npm install --global @railway/cli
+railway login
+railway link
+railway connect Postgres --tunnel-only -P 55432
+```
+
+最后一条在**第一个 PowerShell 窗口持续运行**，会打印本机 tunnel 地址、端口、用户、数据库与连接 URL。将这个连接 URL **只保存在第二个 PowerShell 窗口的本地环境变量中**，不要发给 AI、复制到 Issue 或写入公开 .env。Railway CLI 会自动通过 SSH 隧道连接没有 TCP 代理的数据库。关闭第一个窗口即可停止隧道。
+
+第二个 PowerShell（仓库根目录）：
+
+```powershell
+# 在自己的终端输入 Railway CLI 刚打印出的本地隧道连接 URL：
+$env:POETICUS_PUBLIC_TARGET_URL = Read-Host "Railway tunnel PostgreSQL URL（勿贴到聊天）"
+# 同一个 shell 仍会从本地私有 .env 读取 POETICUS_DATABASE_URL
+python -m scripts.corpus.public_corpus_transfer --apply --confirm-publish
+Remove-Item Env:POETICUS_PUBLIC_TARGET_URL
+```
+
+**开跑前的配置检查**：务必先从 Railway `poeticus-web` 移除 `preDeployCommand=python -m scripts.corpus.cloud_smoke_seed --apply` 并禁用 `POETICUS_ENABLE_DEMO_SEED`，否则后续部署可能重新插入 3 首合成作品、或与原书位置冲突。该操作可以在下一轮先由 AI 调整并验证。
+
+### 3. 验收和恢复
+
+导入过程是**单个云端事务**：匹配已知测试行 → 删除 → 直接传输允许公开的 12 列 → 重新读取并校验所有行的 SHA-256 → 提交。不生成全文中间 JSON，也不修改本地库。若失败则回滚；第二次执行如果数据完全一致会打印 `already_identical` 而不是重复插入。如果目标有未知行或现存内容漂移，拒绝覆盖并请人工调查。
+
+用受控 Railway 预览验证 `GET /api/poems?limit=20` 的 `total=3491`、作品搜索、UUID 详情、原文划词与短/长词显示；另检查 `poem_source_texts` 云表依然为空。已知来源字段的语义性误分层（例如原作小序误入正文）继续走 #67 等内容 Bug，不将未校勘作品标为“已校勘”。
+
+**证据等级**：脚本单元/合成测试绿灯不能证明用户本地 3491 行预检已经通过；真实导入和公网阅读验收必须以用户电脑和 Railway 返回的统计为准。
