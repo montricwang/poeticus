@@ -1,4 +1,6 @@
-# Railway 临时 UI 集成预览验收
+# Railway 临时 UI 集成预览验收（历史归档）
+
+> **归档说明（2026-10-04）**：本文记录正式发布前的受控预览分支与三首合成作品验收流程，不是当前网站的操作指南。v0.1.0 已通过 [PR #84](https://github.com/montricwang/poeticus/pull/84) 集成，并在 [Railway 公网](https://poeticus-web-production.up.railway.app/) 发布；对应 Draft PR #72、#75、#80、#81、#82 均已作为历史候选关闭。以下叙述保留当时语境，不代表当前仍要求输入 Basic Auth 或只有三首作品。
 
 本分支专供测试，**不要合并到 main**，也不改变 Draft PR #72 / #75 / #80 的验收状态。
 
