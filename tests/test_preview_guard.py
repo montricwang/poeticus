@@ -69,3 +69,27 @@ def test_ai_post_disabled_even_with_valid_preview_credentials():
     assert response.status_code == 503
     assert response.json() == {"detail": "当前为只读测试预览，AI 问答尚未开放"}
     assert response.headers["cache-control"] == "no-store"
+
+
+
+def test_authorized_ai_test_is_opt_in_and_still_password_protected():
+    app = FastAPI()
+
+    @app.post("/api/chat/stream")
+    def fake_no_model():
+        return {"ok": True}
+
+    app.add_middleware(
+        PreviewGuard,
+        username="preview",
+        password="test-secret",
+        allow_ai_post=True,
+    )
+    http = TestClient(app)
+    assert http.post("/api/chat/stream").status_code == 401
+    assert http.post(
+        "/api/chat/stream", auth=("preview", "test-secret")
+    ).json() == {"ok": True}
+    assert http.post(
+        "/api/not-an-ai-route", auth=("preview", "test-secret")
+    ).status_code == 503
