@@ -1,6 +1,22 @@
-# Poeticus 首次公网部署（Railway）
+# Poeticus｜Railway 生产部署与首次发布记录
 
-> 状态：**已完成 Railway 临时受控预览与合成数据库验证；正式作品库迁移和对外发布尚未完成**。关联 [#76](https://github.com/montricwang/poeticus/issues/76)、[#77](https://github.com/montricwang/poeticus/issues/77)。不能在完成 API 费用保护和公网验收之前宣布公开上线。
+> **当前状态（2026-10-04）**：Poeticus `v0.1.0` 已公开发布。公网地址：https://poeticus-web-production.up.railway.app/；[正式 Release](https://github.com/montricwang/poeticus/releases/tag/v0.1.0)；首次发布由 [PR #84](https://github.com/montricwang/poeticus/pull/84) 集成完成。
+>
+> **阅读说明**：本文件前半部分保留首次部署时的方案、预览、安全闸门与验收过程。那些章节中的「尚未发布」「待验证」「预览口令」和 `0.1.0-rc` 等均为**当时的历史状态**，不能作为当前部署指令；实际项目现状以本节、[README](../README.md)、[Release Notes](releases/v0.1.0.md) 及 Railway 生产环境为准。
+
+## 当前生产环境（已核对）
+
+- **形态**：Railway `poeticus-web`（同源提供前端构建产物和 FastAPI）+ Railway PostgreSQL；HTTPS 公网开放，已移除临时预览 Basic Auth。
+- **发布**：GitHub `v0.1.0` Tag 仍指向正式首发代码。发布后的小幅改动会继续进入 `main` 并部署，**不修改已经发布的 Tag**。
+- **数据**：作品目录包含 3491 首宋词，可搜索和读取；文本仍标记 `imported_unreviewed`，不代表逐首人工校勘。
+- **AI 控制**：`POETICUS_AI_DAILY_REQUESTS=200`（全站/UTC 天）、`POETICUS_AI_PER_IP_PER_DAY=20`（每公网 IP/UTC 天）、`POETICUS_AI_PER_IP_PER_MINUTE=3`、`POETICUS_AI_MAX_CONCURRENT=1`；聊天和整首赏析共用配额。UTC 0:00 即北京时间 08:00 更新日配额。
+- **计数持久化**：迁移 `0004_ai_daily_quotas` 和 `0005_ai_ip_daily_quotas` 已执行；全站与单 IP 每日占额为同一 PostgreSQL 事务。IP 用服务端密钥产生 HMAC 摘要后写库，不保存明文。
+- **日志与安全**：`LANGSMITH_TRACING=false`；模型凭证、数据库连接及 IP 摘要密钥只在后端环境中。部署健康检查 /health 可用，但安全跟进 [#77](https://github.com/montricwang/poeticus/issues/77) 仍保留，不把未验证的异常与多用户场景冒充已通过。
+- **变更约束**：文档整理不重新部署、不修改生产数据库或限额；新增功能另走 Issue/PR 和验收流程。
+
+---
+
+## 首次部署的历史方案与实施笔记（以下保留当时状态）
 
 ## 目标与服务边界
 
