@@ -20,6 +20,7 @@ jobs:
         shell: bash
         env:
           BASE: https://poeticus-web-production.up.railway.app
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           ready=false
@@ -49,8 +50,6 @@ jobs:
             echo "::error::Tag v0.1.0 already exists; refusing to move it"
             exit 1
           fi
-        env:
-          GH_TOKEN: ${{ github.token }}
       - name: Create GitHub tag and release
         shell: bash
         env:
