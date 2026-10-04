@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from collections.abc import Iterator
 from dotenv import load_dotenv
 from openai import OpenAI, APIError
@@ -10,6 +11,8 @@ from openai.types.chat import (
     ChatCompletionSystemMessageParam,
     ChatCompletionUserMessageParam,
 )
+
+logger = logging.getLogger(__name__)
 
 from prompt_loader import compose_prompt
 from poem_context import PoemContext, format_poem_context
@@ -119,6 +122,10 @@ def analyze_poem(poem: str, context: PoemContext | None = None) -> PoemAnalysis:
                 },
             ],
             response_format={"type": "json_object"},
+            # Unlike the Agent route, analysis previously left DeepSeek's
+            # default reasoning enabled: the 1200-token budget could be
+            # consumed by hidden reasoning, yielding finish_reason=length.
+            extra_body={"thinking": {"type": "disabled"}},
         )
     except APIError as exc:
         raise RuntimeError("DeepSeek API 调用失败") from exc
@@ -129,12 +136,19 @@ def analyze_poem(poem: str, context: PoemContext | None = None) -> PoemAnalysis:
     choice = response.choices[0]
 
     if choice.finish_reason != "stop":
-        raise ValueError(f"模型未正常完成生成：{choice.finish_reason}")
+        # Do not log or echo poem text, user input, or model response.
+        logger.warning("analysis_completion_incomplete finish_reason=%s", choice.finish_reason)
+        raise ValueError("模型未正常完成生成")
 
     if not choice.message.content:
+        logger.warning("analysis_completion_empty")
         raise ValueError("模型返回了空内容")
 
-    return PoemAnalysis.model_validate_json(choice.message.content)
+    try:
+        return PoemAnalysis.model_validate_json(choice.message.content)
+    except ValueError:
+        logger.warning("analysis_response_schema_invalid")
+        raise
 
 
 def _chat_messages(
