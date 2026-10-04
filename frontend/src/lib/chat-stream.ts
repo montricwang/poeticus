@@ -1,3 +1,11 @@
+/** 正常的额度限制不是生成故障，前端应以中性提示呈现。 */
+export class UsageLimitNotice extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UsageLimitNotice";
+  }
+}
+
 /** 读取 POST /chat/stream 的 SSE。HTTP 数据块边界不等于 SSE 事件边界。 */
 export async function readChatStream(
   response: Response,
@@ -9,11 +17,13 @@ export async function readChatStream(
       typeof body === "object" && body !== null && "detail" in body
         ? body.detail
         : null;
-    throw new Error(
+    const message =
       typeof detail === "string"
         ? detail
-        : `请求失败：HTTP ${response.status}`,
-    );
+        : `请求失败：HTTP ${response.status}`;
+    throw response.status === 429
+      ? new UsageLimitNotice(message)
+      : new Error(message);
   }
 
   if (!response.headers.get("content-type")?.includes("text/event-stream")) {
