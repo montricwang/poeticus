@@ -1,5 +1,9 @@
 # Poeticus Roadmap
 
+> **发布状态快照（2026-10-04）**：Poeticus `v0.1.0` 已在 [Railway](https://poeticus-web-production.up.railway.app/) 正式公开，并有 [GitHub Release](https://github.com/montricwang/poeticus/releases/tag/v0.1.0)。当前已交付宋词目录（3491 首）、查询/阅读、原文选区提问、多轮 SSE 伴读、整首赏析和最小匿名调用保护；不等于长期的个人研究工作区、专业检索或正式评测已经全部完成。
+>
+> **当前工作方式**：先进行已发布架构的学习与复盘，暂不新增功能；发现的问题留在 [Issues](https://github.com/montricwang/poeticus/issues) 中。移动端文字越界/目录分页 [#85](https://github.com/montricwang/poeticus/issues/85)、iOS 划词同步 [#86](https://github.com/montricwang/poeticus/issues/86)、匿名 AI 安全跟进 [#77](https://github.com/montricwang/poeticus/issues/77) 仍待处理。以下原有路线保留了此前阶段的规划语言，不能把计划当作已实现事实。
+
 > 更新日期：2026-09-30  
 > 当前目标：在 2026-10-31 前，把 Poeticus 做成一个可以公开展示、可以用于求职面试、并真正支撑 AI 应用工程学习的项目。
 
