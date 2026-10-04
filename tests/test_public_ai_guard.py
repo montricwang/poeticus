@@ -11,11 +11,11 @@ from fastapi.testclient import TestClient
 from backend import public_ai_guard
 
 
-def make_app(monkeypatch, *, enabled=True, minute=5, daily_result="ok"):
+def make_app(monkeypatch, *, enabled=True, minute=5, daily=3, daily_result="ok"):
     monkeypatch.setenv("POETICUS_AI_ENABLED", "true" if enabled else "false")
     monkeypatch.setenv("POETICUS_AI_PER_IP_PER_MINUTE", str(minute))
     monkeypatch.setenv("POETICUS_AI_MAX_CONCURRENT", "2")
-    monkeypatch.setenv("POETICUS_AI_DAILY_REQUESTS", "3")
+    monkeypatch.setenv("POETICUS_AI_DAILY_REQUESTS", str(daily))
     monkeypatch.setenv("POETICUS_AI_PER_IP_PER_DAY", "20")
     monkeypatch.setenv("POETICUS_AI_IP_HASH_SECRET", "testing-only-secret")
     monkeypatch.setenv("POETICUS_DATABASE_URL", "postgresql://fake/not-connected")
@@ -212,8 +212,7 @@ def test_atomic_quota_transaction_rolls_back_global_on_ip_limit(monkeypatch):
 
 def test_two_clients_share_total_but_have_separate_daily_quotas(monkeypatch):
     monkeypatch.setenv("POETICUS_TRUST_RAILWAY_REAL_IP", "true")
-    cli, _spent = make_app(monkeypatch, minute=100)
-    monkeypatch.setenv("POETICUS_AI_DAILY_REQUESTS", "200")
+    cli, _spent = make_app(monkeypatch, minute=100, daily=200)
     counters = {"total": 0, "per_ip": defaultdict(int)}
 
     def fake_reserve(_dsn, total_limit, per_ip_limit, _day, client_hash):
