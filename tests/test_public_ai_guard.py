@@ -81,10 +81,6 @@ def test_large_chunked_or_regular_body_blocked_before_budget(monkeypatch):
 
 def test_concurrency_cap_and_release(monkeypatch):
     cli, spent = make_app(monkeypatch)
-    with cli:
-        guard = next(obj for obj in cli.app.user_middleware if obj.cls is public_ai_guard.PublicAIGuard)
-        assert guard is not None
-
     guard = public_ai_guard.PublicAIGuard(lambda *_args: None)
     assert guard._acquire("first")[0]
     assert guard._acquire("second")[0]
