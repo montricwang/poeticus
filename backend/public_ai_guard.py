@@ -7,7 +7,7 @@ header is trusted. The ASGI wrapper owns the whole SSE response lifetime.
 from __future__ import annotations
 
 import asyncio
-import json
+import ipaddress
 import logging
 import os
 import time
@@ -62,6 +62,11 @@ class PublicAIGuard:
         # Explicitly opt into spending. Unset means read-only; PreviewGuard
         # remains an independent earlier deployment gate.
         self.enabled = os.getenv("POETICUS_AI_ENABLED", "").lower() == "true"
+        # The Railway HTTPS edge documents X-Real-IP as its client IP
+        # header. Only trust it in an explicitly Railway-only deployment.
+        self.trust_railway_real_ip = (
+            os.getenv("POETICUS_TRUST_RAILWAY_REAL_IP", "").lower() == "true"
+        )
         self.per_minute = _positive_env("POETICUS_AI_PER_IP_PER_MINUTE", 5, 100)
         self.concurrent = _positive_env("POETICUS_AI_MAX_CONCURRENT", 2, 16)
         self.daily = _positive_env("POETICUS_AI_DAILY_REQUESTS", 60, 10000)
@@ -94,6 +99,22 @@ class PublicAIGuard:
         with self.lock:
             self.active -= 1
 
+    def _client_identity(self, scope) -> str:
+        peer = str((scope.get("client") or ("unknown", 0))[0])
+        if not self.trust_railway_real_ip:
+            return peer
+        values = [
+            value for key, value in scope.get("headers", [])
+            if key.lower() == b"x-real-ip"
+        ]
+        if len(values) != 1:
+            return peer
+        try:
+            address = values[0].decode("ascii")
+            return str(ipaddress.ip_address(address))
+        except (UnicodeDecodeError, ValueError):
+            return peer
+
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http" or scope.get("method") != "POST" or scope.get("path") not in AI_PATHS:
             await self.app(scope, receive, send)
@@ -124,10 +145,10 @@ class PublicAIGuard:
                 return buffered.pop(0)
             return await receive()
 
-        # Socket peer is the only default identity source. Never accept
-        # arbitrary X-Forwarded-For strings from anonymous clients.
-        client = (scope.get("client") or ("unknown", 0))[0]
-        ok, retry = self._acquire(str(client))
+        # Never use anonymous, potentially spoofed X-Forwarded-For values.
+        # Railway X-Real-IP is only used when the operator opts in.
+        client = self._client_identity(scope)
+        ok, retry = self._acquire(client)
         if not ok:
             await self._reject(scope, replay_receive, send, 429, "请求过于频繁，请稍后再试", retry)
             return
