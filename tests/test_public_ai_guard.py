@@ -1,23 +1,29 @@
 """Public Web AI admission tests; never connect to DeepSeek or real Postgres."""
 from __future__ import annotations
 
+from collections import defaultdict
+from contextlib import contextmanager
+from datetime import date
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend import public_ai_guard
 
 
-def make_app(monkeypatch, *, enabled=True, minute=5, daily_ok=True):
+def make_app(monkeypatch, *, enabled=True, minute=5, daily_result="ok"):
     monkeypatch.setenv("POETICUS_AI_ENABLED", "true" if enabled else "false")
     monkeypatch.setenv("POETICUS_AI_PER_IP_PER_MINUTE", str(minute))
     monkeypatch.setenv("POETICUS_AI_MAX_CONCURRENT", "2")
     monkeypatch.setenv("POETICUS_AI_DAILY_REQUESTS", "3")
+    monkeypatch.setenv("POETICUS_AI_PER_IP_PER_DAY", "20")
+    monkeypatch.setenv("POETICUS_AI_IP_HASH_SECRET", "testing-only-secret")
     monkeypatch.setenv("POETICUS_DATABASE_URL", "postgresql://fake/not-connected")
 
     reservations = []
-    def fake_reserve(dsn, limit):
-        reservations.append((dsn, limit))
-        return daily_ok
+    def fake_reserve(dsn, total_limit, per_ip_limit, day, client_hash):
+        reservations.append((dsn, total_limit, per_ip_limit, day, client_hash))
+        return daily_result
 
     monkeypatch.setattr(public_ai_guard, "_reserve_daily_slot", fake_reserve)
     app = FastAPI()
@@ -64,7 +70,7 @@ def test_per_peer_rate_limit_is_server_side(monkeypatch):
 
 
 def test_daily_budget_exhaustion_blocks_paid_routes(monkeypatch):
-    cli, spent = make_app(monkeypatch, daily_ok=False)
+    cli, spent = make_app(monkeypatch, daily_result="global")
     response = cli.post("/api/chat/stream", json={"question": "x"})
     assert response.status_code == 429
     assert "今日" in response.json()["detail"]
@@ -107,3 +113,130 @@ def test_railway_real_ip_only_when_explicitly_trusted(monkeypatch):
     assert guard._client_identity(scope) == "203.0.113.8"
     scope["headers"] = [(b"x-real-ip", b"invalid,1.2.3.4")]
     assert guard._client_identity(scope) == "10.0.0.2"
+
+
+def test_ip_daily_quota_exhaustion_shows_distinct_message(monkeypatch):
+    cli, spent = make_app(monkeypatch, daily_result="ip")
+    response = cli.post("/analyze", json={"poem": "test"})
+    assert response.status_code == 429
+    assert "您今日" in response.json()["detail"]
+    assert len(spent) == 1
+    assert cli.get("/api/poems").status_code == 200
+
+
+def test_ip_daily_hash_differs_between_clients_and_days(monkeypatch):
+    cli, spent = make_app(monkeypatch, minute=100)
+    monkeypatch.setenv("POETICUS_TRUST_RAILWAY_REAL_IP", "true")
+    # A fresh middleware instance reads the real-IP trust flag.
+    cli, spent = make_app(monkeypatch, minute=100)
+    # make_app constructs its middleware before the request is handled.
+    assert cli.post("/analyze", json={"poem": "test"},
+                    headers={"x-real-ip": "203.0.113.11"}).status_code == 200
+    assert cli.post("/analyze", json={"poem": "test"},
+                    headers={"x-real-ip": "203.0.113.12"}).status_code == 200
+    assert spent[0][4] != spent[1][4]
+    assert len(spent[0][4]) == 64
+    assert "203.0.113" not in spent[0][4]
+
+
+def test_missing_ip_hash_secret_fails_closed(monkeypatch):
+    cli, spent = make_app(monkeypatch)
+    monkeypatch.delenv("POETICUS_AI_IP_HASH_SECRET")
+    # middleware already initialized; use a fresh app to re-read settings.
+    inner = FastAPI()
+    @inner.post("/analyze")
+    def paid():
+        return {"ok": True}
+    inner.add_middleware(public_ai_guard.PublicAIGuard)
+    response = TestClient(inner).post("/analyze", json={"poem": "text"})
+    assert response.status_code == 503
+    assert spent == []
+
+
+def test_atomic_quota_transaction_rolls_back_global_on_ip_limit(monkeypatch):
+    """Synthetic Postgres transaction verifies no lost global slots."""
+    class FakeDb:
+        def __init__(self):
+            self.global_used = 0
+            self.per_ip = defaultdict(int)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        @contextmanager
+        def transaction(self):
+            snapshot = (self.global_used, self.per_ip.copy())
+            try:
+                yield
+            except BaseException:
+                self.global_used, self.per_ip = snapshot
+                raise
+
+        def execute(self, statement, params):
+            if "INSERT INTO ai_daily_quotas " in statement:
+                _day, limit = params
+                if self.global_used >= limit:
+                    return FakeResult(None)
+                self.global_used += 1
+                return FakeResult((self.global_used,))
+            if "INSERT INTO ai_ip_daily_quotas " in statement:
+                _day, client_hash, limit = params
+                if self.per_ip[client_hash] >= limit:
+                    return FakeResult(None)
+                self.per_ip[client_hash] += 1
+                return FakeResult((self.per_ip[client_hash],))
+            raise AssertionError("Unexpected SQL")
+
+    class FakeResult:
+        def __init__(self, value):
+            self.value = value
+
+        def fetchone(self):
+            return self.value
+
+    db = FakeDb()
+    monkeypatch.setattr(public_ai_guard.psycopg, "connect", lambda *_a, **_k: db)
+    day = date(2026, 10, 4)
+    reserve = public_ai_guard._reserve_daily_slot
+    assert reserve("synthetic", 3, 2, day, "ip-A") == "ok"
+    assert reserve("synthetic", 3, 2, day, "ip-A") == "ok"
+    assert reserve("synthetic", 3, 2, day, "ip-A") == "ip"
+    assert db.global_used == 2  # rejected client does not spend global budget
+    assert reserve("synthetic", 3, 2, day, "ip-B") == "ok"
+    assert reserve("synthetic", 3, 2, day, "ip-B") == "global"
+    assert db.global_used == 3
+
+
+def test_two_clients_share_total_but_have_separate_daily_quotas(monkeypatch):
+    monkeypatch.setenv("POETICUS_TRUST_RAILWAY_REAL_IP", "true")
+    cli, _spent = make_app(monkeypatch, minute=100)
+    monkeypatch.setenv("POETICUS_AI_DAILY_REQUESTS", "200")
+    counters = {"total": 0, "per_ip": defaultdict(int)}
+
+    def fake_reserve(_dsn, total_limit, per_ip_limit, _day, client_hash):
+        assert total_limit == 200
+        assert per_ip_limit == 20
+        if counters["total"] >= total_limit:
+            return "global"
+        if counters["per_ip"][client_hash] >= per_ip_limit:
+            return "ip"
+        counters["total"] += 1
+        counters["per_ip"][client_hash] += 1
+        return "ok"
+
+    monkeypatch.setattr(public_ai_guard, "_reserve_daily_slot", fake_reserve)
+    for _ in range(20):
+        response = cli.post("/analyze", json={"poem": "text"},
+                            headers={"x-real-ip": "203.0.113.11"})
+        assert response.status_code == 200
+    denied = cli.post("/analyze", json={"poem": "text"},
+                      headers={"x-real-ip": "203.0.113.11"})
+    assert denied.status_code == 429
+    assert "您今日" in denied.json()["detail"]
+    other = cli.post("/analyze", json={"poem": "text"},
+                     headers={"x-real-ip": "203.0.113.12"})
+    assert other.status_code == 200
+    assert counters["total"] == 21
