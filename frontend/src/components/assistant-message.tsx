@@ -45,17 +45,23 @@ export function AssistantMessage({
   }
 
   if (turn.status === "failed") {
+    const notice = turn.usageLimitNotice === true;
     return (
-      <div className="space-y-2 border-l-2 border-destructive/40 py-1 pl-3">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground">AI 伴读 · 请求失败</p>
+      <div className={`space-y-2 border-l-2 py-1 pl-3 ${notice ? "border-border" : "border-destructive/40"}`}>
+        <p className="text-xs font-medium tracking-wide text-muted-foreground">
+          {notice ? "AI 伴读 · 稍等一会儿" : "AI 伴读 · 请求失败"}
+        </p>
         {/* 网络中断后保留已经收到的正文，而不是清空历史输出。 */}
         {turn.answer && (
           <div className="mb-3 select-text">
             <AssistantMarkdown content={turn.answer} />
           </div>
         )}
-        <p role="alert" className="mb-3 text-sm leading-6 text-destructive">
-          {turn.answer ? "回答未完成：" : "请求失败："}
+        <p
+          role={notice ? "status" : "alert"}
+          className={`mb-3 text-sm leading-6 ${notice ? "text-muted-foreground" : "text-destructive"}`}
+        >
+          {!notice && (turn.answer ? "回答未完成：" : "请求失败：")}
           {turn.error ?? "消息发送失败"}
         </p>
         <Button
@@ -66,7 +72,7 @@ export function AssistantMessage({
           onClick={onRetry}
         >
           <RotateCcw className="mr-2 size-4" />
-          重新请求
+          {notice ? "稍后再试" : "重新请求"}
         </Button>
       </div>
     );
@@ -139,8 +145,13 @@ export function AssistantMessage({
         )}
 
         {turn.regenerateError && (
-          <div role="alert" className="mt-2 text-xs text-destructive">
-            重新生成失败：{turn.regenerateError}。原答案已保留，可再次重新生成。
+          <div
+            role={turn.regenerateLimitNotice ? "status" : "alert"}
+            className={`mt-2 text-xs ${turn.regenerateLimitNotice ? "text-muted-foreground" : "text-destructive"}`}
+          >
+            {turn.regenerateLimitNotice
+              ? turn.regenerateError
+              : `重新生成失败：${turn.regenerateError}。原答案已保留，可再次重新生成。`}
             {turn.streamDraft && (
               <details className="mt-2 rounded-lg border border-destructive/20 p-2">
                 <summary className="cursor-pointer">查看未完成的新回答</summary>
