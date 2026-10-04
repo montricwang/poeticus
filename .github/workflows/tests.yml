@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [main, feat/public-ai-safety]
+    branches: [main, feat/public-ai-safety, release/v0.1.0-rc-integration]
   pull_request:
     branches: [main, release/v0.1.0-rc-integration]
 
