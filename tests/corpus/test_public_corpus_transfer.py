@@ -48,10 +48,46 @@ class Result:
         return deepcopy(self.rows)
 
 
+class FakeCopy:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def write_row(self, params):
+        if self.conn.fail_after is not None and self.conn.writes >= self.conn.fail_after:
+            raise RuntimeError("synthetic COPY interruption")
+        row = dict(zip(PUBLIC_COLUMNS, params, strict=True))
+        for key in ("body_segments", "prefaces"):
+            row[key] = row[key].obj
+        self.conn.rows.append(row)
+        self.conn.writes += 1
+
+
+class FakeCursor:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def copy(self, sql):
+        assert sql.startswith("COPY poems (") and sql.endswith(") FROM STDIN")
+        return FakeCopy(self.conn)
+
+
 class FakeConn:
-    def __init__(self, rows):
+    def __init__(self, rows, fail_after=None):
         self.rows = deepcopy(rows)
         self.writes = 0
+        self.fail_after = fail_after
 
     @contextmanager
     def transaction(self):
@@ -62,20 +98,17 @@ class FakeConn:
             self.rows = backup
             raise
 
+    def cursor(self):
+        return FakeCursor(self)
+
     def execute(self, sql, params=None):
+        if sql.startswith("SET LOCAL"):
+            return Result()
         if sql.startswith("SELECT"):
             return Result(sorted(self.rows, key=lambda r: r["source_order"]))
         if sql.startswith("DELETE"):
             deleted = set(params[0])
             self.rows = [r for r in self.rows if r["id"] not in deleted]
-            self.writes += 1
-            return Result()
-        if sql.startswith("INSERT"):
-            values = dict(zip(PUBLIC_COLUMNS, params, strict=True))
-            # Psycopg adapters are not JSON data; fake server decodes JSONB.
-            for key in ("body_segments", "prefaces"):
-                values[key] = values[key].obj
-            self.rows.append(values)
             self.writes += 1
             return Result()
         raise AssertionError(f"Unexpected SQL: {sql}")
@@ -144,3 +177,11 @@ def test_refuse_non_demo_records_without_mutating_them():
         transfer(source, dest)
     assert dest.rows == cloud_rows
     assert dest.writes == 0
+
+
+def test_copy_interrupt_rolls_back_deleted_demo_and_partial_records():
+    original = [demo(1), demo(2), demo(3)]
+    dest = FakeConn(original, fail_after=2)
+    with pytest.raises(RuntimeError, match="COPY interruption"):
+        transfer([example(1), example(2)], dest)
+    assert dest.rows == original
