@@ -61,3 +61,16 @@ Railway 2026 年已弃用新项目使用的 `railway.json` / `railway.toml` **Co
 - 用外部网络验证真实流式响应；前端构建与后端启动都成功不代表 Agent 调用成功。
 
 **文档状态**：Railway 部署步骤未在真实账户中执行，命令和环境变量应以当次构建日志核验。没有 Railway URL、域名或生产权限的情况下，不声称已部署。
+
+
+## 临时只读预览（#76 测试阶段，非正式发布）
+
+为实际用浏览器验证 React → FastAPI → PostgreSQL，同时避免尚未完成 #77 限流时有人调用 LLM，本阶段设置：
+
+- `POETICUS_PREVIEW_PASSWORD`：只存在 Railway 服务端变量中的一次性预览口令，**不写进仓库**；启用后全站除 `/health` 外都会要求 HTTP Basic Auth，用户名默认为 `preview`。
+- 通过口令后仅允许 `GET` / `HEAD`，任何 AI 问答、赏析 POST 都返回 503，不执行模型调用。浏览器会弹出标准用户名/密码输入窗口。
+- 公开 URL 是可以被互联网访问的，但内容受临时口令保护；这不是公网正式安全方案。不要将预览口令复用于 API Key、GitHub 或其他账号。
+- 合成作品来自 `scripts/corpus/cloud_smoke_seed.py`，不包含商业 EPUB、私人来源证据或真实已校勘语料。
+- 验收完成后应更换/停用口令，并在 #77 的限流、成本熔断和错误隔离通过后，才撤掉只读门禁。正式版本要移除云端临时 `preDeployCommand` 和 `POETICUS_ENABLE_DEMO_SEED`，改为经过审核的真实数据发布方式。
+
+验证项目最小路径：匿名请求主页应返回 401（提示登录）；正确凭证访问主页和 `GET /api/poems` 获得页面与 3 首标有「测试」的作品；`GET /api/poems/{UUID}` 返回片段；任意 `POST /api/chat/stream` 返回 503；`GET /health` 不需要登录返回 200。请勿把这里的合成测试截图当作正式作品库。
