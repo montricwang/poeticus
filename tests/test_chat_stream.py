@@ -197,7 +197,7 @@ def test_failure_after_partial_keeps_tokens_and_sends_error(monkeypatch, api_mod
     )
     assert parse_sse(response.text) == [
         ("token", {"text": "前半句"}),
-        ("error", {"message": "生成中途断开"}),
+        ("error", {"message": "生成中断，请稍后重试"}),
     ]
 
 
