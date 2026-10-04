@@ -282,3 +282,15 @@ def chat_stream(request: ChatRequest):
 if os.getenv("POETICUS_SERVE_FRONTEND", "").lower() in ("1", "true", "yes"):
     frontend_dir = Path(__file__).resolve().parent / "frontend" / "dist"
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
+
+
+# Temporary authenticated, read-only smoke preview. Unset this variable
+# after Issue #77 security controls have been implemented and verified.
+if preview_password := os.getenv("POETICUS_PREVIEW_PASSWORD"):
+    from backend.preview_guard import PreviewGuard
+
+    app.add_middleware(
+        PreviewGuard,
+        username=os.getenv("POETICUS_PREVIEW_USER", "preview"),
+        password=preview_password,
+    )
