@@ -212,7 +212,7 @@ class PublicAIGuard:
                 await self._reject(
                     scope, replay_receive, send, 429,
                     "今天大家的 AI 提问次数已经用完了，每天北京时间早上 8 点恢复。"
-                    "诗词还可以照常阅读，明天再接着聊吧。",
+                    "诗词还可以照常阅读，等额度恢复后再接着聊吧。",
                     3600,
                 )
                 return
