@@ -90,3 +90,20 @@ def test_concurrency_cap_and_release(monkeypatch):
     guard._release()
     guard._release()
     assert guard.active == 0
+
+
+
+def test_railway_real_ip_only_when_explicitly_trusted(monkeypatch):
+    monkeypatch.setenv("POETICUS_AI_ENABLED", "true")
+    monkeypatch.delenv("POETICUS_TRUST_RAILWAY_REAL_IP", raising=False)
+    guard = public_ai_guard.PublicAIGuard(lambda *_args: None)
+    scope = {
+        "client": ("10.0.0.2", 43000),
+        "headers": [(b"x-real-ip", b"203.0.113.8"), (b"x-forwarded-for", b"1.1.1.1")],
+    }
+    assert guard._client_identity(scope) == "10.0.0.2"
+    monkeypatch.setenv("POETICUS_TRUST_RAILWAY_REAL_IP", "true")
+    guard = public_ai_guard.PublicAIGuard(lambda *_args: None)
+    assert guard._client_identity(scope) == "203.0.113.8"
+    scope["headers"] = [(b"x-real-ip", b"invalid,1.2.3.4")]
+    assert guard._client_identity(scope) == "10.0.0.2"
