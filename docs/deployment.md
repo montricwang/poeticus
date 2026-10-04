@@ -110,3 +110,31 @@ Python 会自行提示粘贴**窗口 A 输出的 `127.0.0.1:55432` PostgreSQL �
 **成功输出**：`云端事务完成：replaced_known_demo；作品 3491 首；校验 SHA-256 一致。`（若上次已经成功提交，则可能是 `already_identical`。）
 
 **成功以后**：验证受控在线预览 `GET /api/poems` 的 `total=3491`，抽查搜索/详情、词序/正文，再处理已经进入聊天或终端截图的旧 Railway PostgreSQL 密码的**轮换**，确保应用的内网 DSN 同步生效；在 #77 完成前不得取消只读预览门禁。不要把本地连接 URL、私有数据或完整测试正文提交到公开仓库。
+
+
+## v0.1.0 匿名 AI 上线门槛（安全 Draft PR #82）
+
+**默认安全状态**：在 Railway 生产 Web 中必须设 `POETICUS_SERVE_FRONTEND=true`，应用会自动添加 `PublicAIGuard`。未设置 `POETICUS_AI_ENABLED=true` 前，所有聊天、SSE、赏析 POST 均为 503，不调用 DeepSeek。现有 `POETICUS_PREVIEW_PASSWORD` 是更外层的只读预览门禁，不可为了测试而直接移除它。
+
+**先迁移 Schema，再开启 AI**：部署新的 Web 代码之前，将 Web 的 Railway `preDeployCommand` 设置为 `python -m scripts.corpus.db_import --migrate`（原脚本可重复执行已有迁移，v0004 仅增加 `ai_daily_quotas` 计数表）。如果 DB 连接/表不可用，AI 请求 503，不能绕过配额直接生成。只读作品 API 不依赖此表。
+
+**关键 Web 环境变量**（显式设置，再验证；无需添加 Redis/新账号）：
+
+| 变量 | 首版参考值 | 作用 |
+| --- | --- | --- |
+| `POETICUS_AI_ENABLED` | `false`（部署先关闭） | 只有用户确认后改 `true` |
+| `POETICUS_AI_PER_IP_PER_MINUTE` | `5` | 同一进程内按 ASGI socket peer 的滑动分钟窗口 |
+| `POETICUS_AI_MAX_CONCURRENT` | `2` | 同一进程同时进行的收费请求数，持续占用到 SSE 完成 |
+| `POETICUS_AI_DAILY_REQUESTS` | `60` | PostgreSQL 按 UTC 日的持久请求次数上限，跨进程/重启共享 |
+| `POETICUS_LLM_MAX_OUTPUT_TOKENS` | `1200` | 每次模型调用的最大输出数，强制限制到 128–2048 内 |
+| `LLM_API_KEY` | 服务端私密变量 | 用新的真实 DeepSeek Key 替代临时占位；**不许设置 `VITE_` 变量传前端** |
+
+实际请求消耗一个数据库每日 slot（包含失败/断开的请求），模型最多调用三轮（两个工具调用上限）、每轮至多 1200 输出 Token。配合模型 SDK 30 秒超时和零自动重试，避免意外无限耗费；**请求次数不是人民币硬上限**，还需对 DeepSeek 账户余额/账单启用实际额度控制，特别关注供应商额外输入/缓存等计费口径。
+
+**公网验收**：使用全新浏览器、陌生网络，先确认读作品不受 AI 开关影响；AI 默认 503；开启后按顺序验证一个短问答、引用问题、工具查询、整首赏析、SSE 断开重试、超长请求 413、超额 429/当日配额、模型不可用 502/客户端有友好错误。验收时避免把大量真实用户请求或 Key 写入日志。检查模型回答链接与 Markdown：当前前端用 `react-markdown` 的 `skipHtml`，不启用 `rehype-raw`，远程图片不显示，且外链有 `noopener noreferrer`；新发现的安全问题按 #77 记录，不能只靠静态检查断言无 XSS 风险。
+
+**客户端 IP 的局限**：不信任用户自行提供的 `X-Forwarded-For`，因此只用 ASGI socket peer。Railway 代理环境可能使多个真实读者被识别为一个 peer；上线验收要观察 429 是否误伤，进一步评估可信代理 IP 配置。进程内限流和并发上限只适用于一个 Web 进程；若水平扩容，需改为共享存储/网关限流，不能夸称全局一致。Postgres 每日 quota 本身是跨实例原子保留的。
+
+**凭证安全**：之前 Railway PG 完整 URL 已在对话/截图中暴露，首发前必须通过 Railway Postgres → Config → Connection → Regenerate 完整轮换，随后重新部署依赖服务；不能只改变量或只在 SQL 中 `ALTER USER`。刷新 3491 首目录成功后才能公开访问。
+
+**发布顺序**：#80 数据/部署 → #82 安全合成 CI → Railway 0004 迁移 + 测试开关 → 真正限额的模型调用验收 → #78 README/Release。主仓库与线上运行版本必须一致；Draft PR、旧预览门禁和未通过的安全条目不作为已发布能力。
