@@ -237,3 +237,36 @@ def test_agent_includes_conversation_history_before_current_user(
 
     assert messages[3]["role"] == "user"
     assert "那它和绸缪有什么关系？" in messages[3]["content"]
+
+
+
+def test_external_tool_payload_is_bounded_before_return_to_model(monkeypatch, agent):
+    calls = []
+
+    def fake_create(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 1:
+            return _tool_call_response(
+                "cap-1", "lookup_allusion", json.dumps({"term": "刘郎"})
+            )
+        return _text_response("证据应当节选。")
+
+    async def fake_search(query, *, provider_name, evidence_type=None):
+        return [
+            EvidenceItem(
+                anchor=query, type="allusion",
+                text="甲" * 5000, provider="cnkgraph", status="candidate"
+            )
+            for _ in range(6)
+        ]
+
+    monkeypatch.setattr(agent, "client", _fake_client(fake_create))
+    monkeypatch.setattr(agent.evidence_service, "search", fake_search)
+    agent.graph.invoke({"poem": POEM, "question": "请查典故", "selection": None})
+
+    tool_msg = next(
+        m for m in calls[1]["messages"] if m.get("role") == "tool"
+    )
+    data = json.loads(tool_msg["content"])
+    assert len(data["evidences"]) == 3
+    assert all(len(item["text"]) == 1600 for item in data["evidences"])
