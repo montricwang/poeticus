@@ -3,11 +3,13 @@
 import json
 import logging
 import os
+from pathlib import Path
 from collections.abc import Iterator
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from main import PoemAnalysis, analyze_poem
@@ -44,6 +46,7 @@ class AnalyzeRequest(BaseModel):
     context: PoemContext | None = None
 
 
+@app.post("/api/analyze", response_model=PoemAnalysis)
 @app.post("/analyze", response_model=PoemAnalysis)
 def analyze(request: AnalyzeRequest):
     if not request.poem.strip():
@@ -168,6 +171,7 @@ def graph_input(request: ChatRequest) -> RouterState:
     }
 
 
+@app.post("/api/chat", response_model=ChatResponse)
 @app.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
     """原有非流式接口不变，供旧客户端与回归测试使用。"""
@@ -258,6 +262,7 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
         yield sse("error", {"message": "生成过程中发生服务器错误"})
 
 
+@app.post("/api/chat/stream")
 @app.post("/chat/stream")
 def chat_stream(request: ChatRequest):
     validate_chat_request(request)
@@ -269,3 +274,11 @@ def chat_stream(request: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# Production only: serve Vite's built files from this FastAPI process.
+# Mount last so it does not shadow the API, /health, or OpenAPI routes.
+# Developers keep using Vite dev server; tests do not require a frontend build.
+if os.getenv("POETICUS_SERVE_FRONTEND", "").lower() in ("1", "true", "yes"):
+    frontend_dir = Path(__file__).resolve().parent / "frontend" / "dist"
+    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
