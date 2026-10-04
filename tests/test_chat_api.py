@@ -92,7 +92,7 @@ def test_chat_graph_failure_returns_502(monkeypatch, api_module, client):
     )
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "意图识别 API 调用失败"}
+    assert response.json() == {"detail": "AI 生成暂时失败，请稍后再试"}
 
 
 @pytest.mark.parametrize(
