@@ -6,6 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.ai.context import PoemContext
+from backend.ai.model import PoemAnalysis
+from backend.config import CHAT_MAX_HISTORY_TURNS
 
 SAMPLE_CONTEXT = {
     "id": "su-shi-huan-xi-sha-feng-juan-zhu-lian",
@@ -39,26 +41,18 @@ def client(api_module):
     return TestClient(api_module.app)
 
 
-@pytest.mark.parametrize(
-    ("intent", "reply"),
-    [
-        ("text_reading", "这个字在这里使用了拟人的写法。"),
-        ("source_lookup", "需要先核对文献出处。"),
-        ("needs_clarification", "你具体指哪个词？"),
-    ],
-)
 def test_chat_returns_graph_reply_without_changing_frontend_contract(
-    monkeypatch, api_module, client, intent, reply
+    monkeypatch, api_module, client
 ):
     received = []
 
     def fake_invoke(state):
         received.append(state)
-        return {"intent": intent, "reply": reply}
+        return {"reply": "这个字在这里使用了拟人的写法。"}
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(invoke=fake_invoke))
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "poem": "萧萧乱叶报新秋。",
             "question": "解释报字",
@@ -68,7 +62,7 @@ def test_chat_returns_graph_reply_without_changing_frontend_contract(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"answer": reply}
+    assert response.json() == {"answer": "这个字在这里使用了拟人的写法。"}
     assert len(received) == 1
     assert received[0]["poem"] == "萧萧乱叶报新秋。"
     assert received[0]["question"] == "解释报字"
@@ -79,11 +73,11 @@ def test_chat_returns_graph_reply_without_changing_frontend_contract(
 
 def test_chat_graph_failure_returns_502(monkeypatch, api_module, client):
     def fake_failure(state):
-        raise RuntimeError("意图识别 API 调用失败")
+        raise RuntimeError("Agent 调用失败")
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(invoke=fake_failure))
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "poem": "萧萧乱叶报新秋。",
             "question": "解释报字",
@@ -124,14 +118,14 @@ def test_chat_rejects_invalid_requests_before_running_graph(
         pytest.fail("无效请求不应该调用 Graph")
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(invoke=unexpected_invoke))
-    response = client.post("/chat", json=payload)
+    response = client.post("/api/chat", json=payload)
 
     assert response.status_code == 422
     assert response.json() == {"detail": detail}
 
 
 def test_chat_accepts_request_without_context(monkeypatch, api_module, client):
-    """旧客户端只发送正文和问题时仍按原行为工作。"""
+    """context 为可选字段；只发送正文和问题仍可回答。"""
     received = []
 
     def fake_invoke(state):
@@ -140,7 +134,7 @@ def test_chat_accepts_request_without_context(monkeypatch, api_module, client):
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(invoke=fake_invoke))
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={"poem": "萧萧乱叶报新秋。", "question": "解释报字"},
     )
 
@@ -159,7 +153,7 @@ def test_chat_accepts_null_author_context(monkeypatch, api_module, client):
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(invoke=fake_invoke))
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "poem": "萧萧乱叶报新秋。",
             "question": "作者是谁？",
@@ -177,7 +171,7 @@ def test_analyze_receives_context(monkeypatch, api_module, client):
 
     def fake_analyze(poem, context):
         received.append((poem, context))
-        return api_module.PoemAnalysis(
+        return PoemAnalysis(
             translation="译文",
             glosses=[],
             commentary="赏析",
@@ -207,7 +201,7 @@ def test_analyze_accepts_request_without_context(monkeypatch, api_module, client
 
     def fake_analyze(poem, context):
         received.append((poem, context))
-        return api_module.PoemAnalysis(
+        return PoemAnalysis(
             translation="译文",
             glosses=[],
             commentary="赏析",
@@ -227,7 +221,7 @@ def test_analyze_accepts_null_author_context(monkeypatch, api_module, client):
 
     def fake_analyze(poem, context):
         received.append(context)
-        return api_module.PoemAnalysis(
+        return PoemAnalysis(
             translation="译文",
             glosses=[],
             commentary="赏析",
@@ -259,7 +253,7 @@ def test_chat_passes_valid_history_to_graph(
     )
 
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "poem": "三星当户照绸缪。",
             "question": "那它和绸缪是什么关系？",
@@ -302,7 +296,7 @@ def test_chat_rejects_invalid_history_order(
     )
 
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "poem": "三星当户照绸缪。",
             "question": "继续解释",
@@ -318,7 +312,7 @@ def test_chat_rejects_invalid_history_order(
     assert response.status_code == 422
 
 
-def test_chat_rejects_more_than_six_history_turns(
+def test_chat_rejects_history_over_turn_limit(
     monkeypatch,
     api_module,
     client,
@@ -332,7 +326,7 @@ def test_chat_rejects_more_than_six_history_turns(
 
     history = []
 
-    for index in range(7):
+    for index in range(CHAT_MAX_HISTORY_TURNS + 1):
         history.extend(
             [
                 {
@@ -347,7 +341,7 @@ def test_chat_rejects_more_than_six_history_turns(
         )
 
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "poem": "三星当户照绸缪。",
             "question": "继续",
@@ -356,12 +350,12 @@ def test_chat_rejects_more_than_six_history_turns(
     )
 
     assert response.status_code == 422
-    assert response.json() == {"detail": "历史消息最多保留 6 轮"}
+    assert response.json() == {"detail": f"历史消息最多保留 {CHAT_MAX_HISTORY_TURNS} 轮"}
 
 
 def test_chat_rejects_system_role_in_history(client):
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "poem": "三星当户照绸缪。",
             "question": "继续解释",
@@ -391,7 +385,7 @@ def test_chat_rejects_history_over_total_char_limit(
     ]
 
     response = client.post(
-        "/chat",
+        "/api/chat",
         json={
             "poem": "三星当户照绸缪。",
             "question": "继续",
