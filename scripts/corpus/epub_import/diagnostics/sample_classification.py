@@ -1,8 +1,8 @@
 """为 EPUB 字段分类生成小规模、可重复的人工复核批次。
 
-The shareable PLAN contains source positions, predicted roles and questions;
-the separate PRIVATE packet contains licensed book excerpts for local review.
-Neither is a precision estimate or a substitute for a labelled evaluation set.
+可分享的 PLAN 只包含来源位置、预测角色与复核问题；
+单独的 PRIVATE 材料包含授权书籍摘录，仅供本地人工检查。
+两者都不是精度评估，也不能替代有标注的评测集。
 """
 import argparse
 from pathlib import Path
@@ -46,8 +46,8 @@ def _make_candidate(kind, collection, poem, section, ordinal, role):
 def build_candidates(book, toc, collection_specs=COLLECTIONS):
     """只收集候选位置，不保留来源段落正文。
 
-    This includes both uncertain and apparently successful classifications,
-    because success-only warnings cannot measure false positives.
+    同时收集不确定样本与表面成功样本，因为只看 warning
+    无法发现误判为“成功”的情况。
     """
     result = {kind: [] for kind, _, _ in KINDS}
     for collection, author, slug in collection_specs:
