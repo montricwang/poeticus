@@ -57,7 +57,7 @@ def test_stream_sends_incremental_tokens_and_done(monkeypatch, api_module):
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
-        "/chat/stream",
+        "/api/chat/stream",
         json={
             "poem": "三星当户照绸缪。",
             "question": "解释三星",
@@ -101,7 +101,7 @@ def test_stream_accepts_request_without_context(monkeypatch, api_module):
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
-        "/chat/stream",
+        "/api/chat/stream",
         json={"poem": "三星当户。", "question": "解释"},
     )
     assert response.status_code == 200
@@ -148,7 +148,7 @@ def test_tool_round_emits_final_answer_once(monkeypatch, api_module):
         )
 
         # 第二轮 Agent 返回最终回答。
-        # 这里故意不发送 custom token，以测试 API 的全文补发逻辑。
+        # 这里故意不发送 custom 事件，以测试 API 的全文补发逻辑。
         yield (
             "updates",
             {
@@ -164,7 +164,7 @@ def test_tool_round_emits_final_answer_once(monkeypatch, api_module):
     )
 
     response = TestClient(api_module.app).post(
-        "/chat/stream",
+        "/api/chat/stream",
         json={
             "poem": "三星当户。",
             "question": "出处？",
@@ -186,7 +186,7 @@ def test_failure_after_partial_keeps_tokens_and_sends_error(monkeypatch, api_mod
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
-        "/chat/stream",
+        "/api/chat/stream",
         json={
             "poem": "三星当户。",
             "question": "解释",
@@ -217,7 +217,7 @@ def test_stream_validation_matches_chat(monkeypatch, api_module, payload):
         pytest.fail("无效请求不应该进入 Graph")
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(stream=unexpected_stream))
-    response = TestClient(api_module.app).post("/chat/stream", json=payload)
+    response = TestClient(api_module.app).post("/api/chat/stream", json=payload)
     assert response.status_code == 422
     assert response.headers["content-type"].startswith("application/json")
 
@@ -242,7 +242,7 @@ def test_stream_passes_history_to_graph(monkeypatch, api_module):
     )
 
     response = TestClient(api_module.app).post(
-        "/chat/stream",
+        "/api/chat/stream",
         json={
             "poem": "三星当户照绸缪。",
             "question": "那第二点呢？",
