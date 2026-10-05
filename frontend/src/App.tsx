@@ -414,7 +414,7 @@ function App() {
               "absolute inset-0 z-40 transition-[visibility] duration-0 " +
               (catalogOpen
                 ? "visible delay-0"
-                : "invisible delay-[760ms]")
+                : "invisible delay-[1050ms] sm:delay-[820ms]")
             }
           >
             <button
@@ -422,7 +422,7 @@ function App() {
               tabIndex={-1}
               aria-label="关闭作品目录遮罩"
               className={
-                "absolute inset-0 bg-black/55 transition-opacity duration-[560ms] " +
+                "absolute inset-0 bg-black/55 transition-opacity duration-[900ms] sm:duration-[680ms] " +
                 "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
                 (catalogOpen
                   ? "pointer-events-auto opacity-100"
@@ -434,11 +434,11 @@ function App() {
             <div
               className={
                 "relative h-full w-screen sm:w-[min(88vw,420px)] " +
-                "transform transition-[transform,opacity] duration-[760ms] " +
+                "transition-opacity duration-[1050ms] sm:duration-[820ms] " +
                 "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
                 (catalogOpen
-                  ? "pointer-events-auto translate-x-0 opacity-100"
-                  : "pointer-events-none -translate-x-full opacity-0")
+                  ? "pointer-events-auto opacity-100"
+                  : "pointer-events-none opacity-0")
               }
             >
               {renderCatalog(catalogOpen)}
@@ -487,12 +487,12 @@ function App() {
               <div
                 className={
                   "relative h-full w-screen sm:w-[min(88vw,420px)] " +
-                  "transform transition-[transform,opacity] duration-[620ms] " +
+                  "transition-opacity duration-[720ms] " +
                   "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
-                  "2xl:w-80 2xl:translate-x-0 2xl:pr-5 " +
+                  "2xl:w-80 2xl:pr-5 " +
                   (catalogOpen
-                    ? "pointer-events-auto translate-x-0 opacity-100 2xl:opacity-100"
-                    : "pointer-events-none -translate-x-full opacity-0 2xl:opacity-100")
+                    ? "pointer-events-auto opacity-100 2xl:opacity-100"
+                    : "pointer-events-none opacity-0 2xl:opacity-100")
                 }
               >
                 {renderCatalog(catalogOpen)}
