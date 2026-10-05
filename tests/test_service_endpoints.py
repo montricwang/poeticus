@@ -1,5 +1,3 @@
-from backend.api import analysis as analysis_routes
-from backend.api import chat as chat_routes
 """Public service endpoints must remain cheap and disclose no runtime secrets."""
 
 from types import SimpleNamespace
@@ -50,7 +48,7 @@ def test_canonical_public_chat_path_and_legacy_path_both_work(monkeypatch, clien
         calls.append(state["question"])
         return {"reply": "合成回答"}
 
-    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(invoke=fake_invoke))
+    monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(invoke=fake_invoke))
     payload = {"poem": "春风吹。", "question": "解释春风"}
     for path in ("/chat", "/api/chat"):
         response = client.post(path, json=payload)
@@ -62,9 +60,7 @@ def test_canonical_public_chat_path_and_legacy_path_both_work(monkeypatch, clien
 def test_canonical_public_analyze_path(monkeypatch, client):
     import api
 
-    monkeypatch.setattr(
-        analysis_routes,
-        "analyze_poem",
+    monkeypatch.setattr("backend.api.analysis.analyze_poem",
         lambda poem, context: api.PoemAnalysis(
             translation="合成译文", glosses=[], commentary="合成赏析"
         ),
@@ -81,7 +77,7 @@ def test_canonical_public_sse_path(monkeypatch, client):
         yield "custom", {"type": "token", "text": "合成"}
         yield "updates", {"agent": {"reply": "合成", "tool_calls": []}}
 
-    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(stream=fake_stream))
+    monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(stream=fake_stream))
     response = client.post(
         "/api/chat/stream", json={"poem": "春风吹。", "question": "解释"}
     )
