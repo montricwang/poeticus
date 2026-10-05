@@ -9,6 +9,7 @@ type MobileDiscussionDockProps = {
   hasUnreadReply: boolean;
   hasSelection: boolean;
   hasConversation: boolean;
+  height: string;
   children: ReactNode;
 };
 
@@ -18,6 +19,7 @@ export function MobileDiscussionDock({
   hasUnreadReply,
   hasSelection,
   hasConversation,
+  height,
   children,
 }: MobileDiscussionDockProps) {
   return (
@@ -53,14 +55,10 @@ export function MobileDiscussionDock({
         aria-label="阅读讨论"
         aria-hidden={!open}
         inert={!open}
+        style={{ height }}
         className={
           "fixed inset-x-0 bottom-0 z-40 flex min-h-0 flex-col overflow-hidden bg-background " +
           "will-change-transform transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
-          (hasConversation
-            ? "h-[clamp(18rem,44dvh,30rem)] "
-            : hasSelection
-              ? "h-[clamp(16rem,36dvh,22rem)] "
-              : "h-[clamp(12rem,26dvh,15rem)] ") +
           (open
             ? "translate-y-0"
             : "pointer-events-none translate-y-full")
