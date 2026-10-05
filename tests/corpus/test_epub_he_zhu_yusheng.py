@@ -1,4 +1,4 @@
-"""Regression tests for He Zhu's three-part tune-heading convention.
+"""贺铸三段式词牌题头约定的回归测试。
 
 All poetry below is artificial, including the example headings: no book
 verses, modern annotations, or commercial EPUB pages are stored in Git.
