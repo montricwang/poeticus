@@ -7,6 +7,7 @@ import { PoemReader } from "@/components/poem-reader";
 import { PoemCatalog } from "@/components/poem-catalog";
 import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
+import { MobileDiscussionSheet } from "@/components/mobile-discussion-sheet";
 import { ViewToolbar } from "@/components/view-toolbar";
 import type { ActiveView } from "@/components/view-toolbar";
 
@@ -36,6 +37,10 @@ function App() {
   const [catalogOpen, setCatalogOpen] = useState(
     () => window.matchMedia("(min-width: 1024px)").matches,
   );
+  const [wideDiscussionLayout, setWideDiscussionLayout] = useState(
+    () => window.matchMedia("(min-width: 1280px)").matches,
+  );
+  const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false);
   const catalogToggleRef = useRef<HTMLButtonElement>(null);
   const switchControllerRef = useRef<AbortController | null>(null);
   const [switchTarget, setSwitchTarget] = useState<string | null>(null);
@@ -98,6 +103,18 @@ function App() {
     return () => switchControllerRef.current?.abort();
   }, []);
 
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1280px)");
+
+    function handleLayoutChange(event: MediaQueryListEvent) {
+      setWideDiscussionLayout(event.matches);
+      if (event.matches) setMobileDiscussionOpen(false);
+    }
+
+    query.addEventListener("change", handleLayoutChange);
+    return () => query.removeEventListener("change", handleLayoutChange);
+  }, []);
+
   const closeCatalog = useCallback(() => {
     setCatalogOpen(false);
     catalogToggleRef.current?.focus();
@@ -144,6 +161,66 @@ function App() {
     if (!activePoem || activePoem.id !== poemId || switchControllerRef.current) return;
     setActiveView("analysis");
     void analyzePoem();
+  }
+
+  function handleMobileDiscussionOpenChange(open: boolean) {
+    if (open) setActiveView("chat");
+    setMobileDiscussionOpen(open);
+  }
+
+  const poemReady = !!activePoem && activePoem.id === poemId;
+
+  function renderDiscussionContent(fillAvailableHeight: boolean) {
+    if (!activePoem || activePoem.id !== poemId) {
+      return (
+        <div className="flex h-165 items-center justify-center rounded-md border border-border/60 bg-card text-sm text-muted-foreground">
+          加载作品后，即可开始阅读与 AI 讨论。
+        </div>
+      );
+    }
+
+    const fillClassName = fillAvailableHeight ? "h-auto flex-1" : undefined;
+
+    return (
+      <>
+        <ViewToolbar
+          activeView={activeView}
+          onViewChange={setActiveView}
+          onAnalyze={handleAnalyze}
+          analyzing={analyzing}
+          switching={!!switchTarget}
+        />
+
+        {activeView === "chat" ? (
+          <ChatPanel
+            key={activePoem.id}
+            className={fillClassName}
+            selected={selected}
+            question={question}
+            turns={turns}
+            loading={chatLoading || !!switchTarget}
+            onQuestionChange={setQuestion}
+            onClearQuote={() => setSelected(null)}
+            onSend={handleSend}
+            onRetry={handleRetry}
+            onRegenerate={handleRegenerate}
+            onEdit={handleEdit}
+            seenAnimationsRef={seenAnimationsRef}
+            viewportRef={chatViewportRef}
+            hasUnreadReply={hasUnreadReply}
+            onClearUnreadReply={() => setHasUnreadReply(false)}
+          />
+        ) : (
+          <AnalysisPanel
+            className={fillClassName}
+            analysis={analysis}
+            analyzing={analyzing}
+            error={analysisError}
+            limitNotice={analysisLimitNotice}
+          />
+        )}
+      </>
+    );
   }
 
   return (
@@ -271,50 +348,11 @@ function App() {
                   )}
                 </div>
 
-                <div className="min-w-0 border-t border-border/60 pt-6 xl:border-l xl:border-t-0 xl:pl-7 xl:pt-0">
-                  {activePoem && activePoem.id === poemId ? (
-                    <>
-                      <ViewToolbar
-                        activeView={activeView}
-                        onViewChange={setActiveView}
-                        onAnalyze={handleAnalyze}
-                        analyzing={analyzing}
-                        switching={!!switchTarget}
-                      />
-
-                      {activeView === "chat" ? (
-                        <ChatPanel
-                          key={activePoem.id}
-                          selected={selected}
-                          question={question}
-                          turns={turns}
-                          loading={chatLoading || !!switchTarget}
-                          onQuestionChange={setQuestion}
-                          onClearQuote={() => setSelected(null)}
-                          onSend={handleSend}
-                          onRetry={handleRetry}
-                          onRegenerate={handleRegenerate}
-                          onEdit={handleEdit}
-                          seenAnimationsRef={seenAnimationsRef}
-                          viewportRef={chatViewportRef}
-                          hasUnreadReply={hasUnreadReply}
-                          onClearUnreadReply={() => setHasUnreadReply(false)}
-                        />
-                      ) : (
-                        <AnalysisPanel
-                          analysis={analysis}
-                          analyzing={analyzing}
-                          error={analysisError}
-                          limitNotice={analysisLimitNotice}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <div className="flex h-165 items-center justify-center rounded-md border border-border/60 bg-card text-sm text-muted-foreground">
-                      加载作品后，即可开始阅读与 AI 讨论。
-                    </div>
-                  )}
-                </div>
+                {wideDiscussionLayout && (
+                  <div className="min-w-0 border-l border-border/60 pl-7">
+                    {renderDiscussionContent(false)}
+                  </div>
+                )}
               </div>
 
               {/* 轻量状态标识，不遮盖／闪白旧页面；原内容暂不允许交互。 */}
@@ -330,6 +368,17 @@ function App() {
           </div>
         </div>
       </main>
+
+      {poemReady && !wideDiscussionLayout && (
+        <MobileDiscussionSheet
+          open={mobileDiscussionOpen}
+          onOpenChange={handleMobileDiscussionOpenChange}
+          hasUnreadReply={hasUnreadReply}
+          hasSelection={!!selected}
+        >
+          {renderDiscussionContent(true)}
+        </MobileDiscussionSheet>
+      )}
     </div>
   );
 }
