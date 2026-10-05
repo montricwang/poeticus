@@ -1,4 +1,4 @@
-"""Synthetic source-block coverage tests: no copyrighted EPUB passages."""
+"""来源块覆盖测试只使用合成数据，不包含受版权保护的 EPUB 段落。"""
 from scripts.corpus.epub_import.diagnostics.coverage import source_block_coverage
 from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection, render_md
 from scripts.corpus.epub_import.extractor.extractor import extract_sections
@@ -124,7 +124,7 @@ def test_bold_and_emphasis_inside_handled_paragraph_are_not_double_counted():
 
 
 def test_chronology_labels_are_not_mislabeled_as_missing_or_fully_exported():
-    """A dated marker before the first h2 is used as intermediate context."""
+    """第一个 h2 之前的年代标记应作为中间上下文保留。"""
     book = Book({"x.html": (
         "<h1>姜夔词集</h1>"
         '<p class="kindle-cn-para-no-indent1">绍熙某年（1191）</p>'
