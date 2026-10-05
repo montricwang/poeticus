@@ -71,7 +71,7 @@ def answer_with_evidence(
 
     response = client.chat.completions.create(
         model=LLM_MODEL,
-            max_tokens=MAX_LLM_OUTPUT_TOKENS,
+        max_tokens=MAX_LLM_OUTPUT_TOKENS,
         messages=[
             {
                 "role": "system",
