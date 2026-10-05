@@ -41,7 +41,7 @@ export function PoemCatalog({
     if (!open) return;
 
     // 侧栏始终保持挂载；只有真正打开移动抽屉时才需要主动聚焦。
-    if (window.matchMedia("(max-width: 1023px)").matches) {
+    if (window.matchMedia("(max-width: 1535px)").matches) {
       inputRef.current?.focus();
     }
 
@@ -49,7 +49,7 @@ export function PoemCatalog({
       if (event.key === "Escape") {
         onClose();
       }
-      if (event.key !== "Tab" || !window.matchMedia("(max-width: 1023px)").matches) {
+      if (event.key !== "Tab" || !window.matchMedia("(max-width: 1535px)").matches) {
         return;
       }
       const elements = panelRef.current?.querySelectorAll<HTMLElement>(
@@ -79,7 +79,7 @@ export function PoemCatalog({
       id="poem-catalog"
       ref={panelRef}
       aria-label="作品目录"
-      className="flex h-full min-h-0 w-[min(88vw,360px)] flex-col border-r border-border bg-background 2xl:sticky 2xl:top-5 2xl:h-[calc(100vh-7rem)] 2xl:max-h-[900px] 2xl:w-full 2xl:border-0 2xl:bg-transparent"
+      className="flex h-full min-h-0 w-screen flex-col sm:w-[min(88vw,420px)] border-r border-border bg-background 2xl:sticky 2xl:top-5 2xl:h-[calc(100vh-7rem)] 2xl:max-h-[900px] 2xl:w-full 2xl:border-0 2xl:bg-transparent"
     >
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
         <div className="flex min-w-0 items-baseline gap-2">
