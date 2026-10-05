@@ -153,6 +153,119 @@
   }
 }
 
+
+@layer components {
+  /*
+   * 阅读器排版调参区。
+   * 结构布局仍由组件负责；字号、字重、行高、字距和垂直节奏集中在这里，
+   * 方便在浏览器热更新时只改这一组参数。
+   */
+  .poem-reader {
+    --reader-page-padding-top: 1rem;
+    --reader-page-padding-bottom: 2rem;
+
+    --reader-heading-size: 1.875rem;
+    --reader-heading-weight: 500;
+    --reader-heading-letter-spacing: 0.08em;
+    --reader-heading-gap: 1em;
+    --reader-heading-row-gap: 0.25rem;
+
+    --reader-title-margin-top: 0.5rem;
+    --reader-title-size: 1.125rem;
+    --reader-title-line-height: 1.75;
+    --reader-title-weight: 400;
+
+    --reader-author-margin-top: 0.375rem;
+    --reader-author-size: 0.875rem;
+    --reader-author-weight: 400;
+
+    --reader-status-margin-top: 0.25rem;
+    --reader-status-size: 0.75rem;
+
+    --reader-header-body-gap: 1.25rem;
+
+    --reader-preface-size: 0.9375rem;
+    --reader-preface-line-height: 1.9;
+    --reader-preface-weight: 400;
+    --reader-preface-body-gap: 1.25rem;
+
+    --reader-poem-size: 1.125rem;
+    --reader-poem-line-height: 2;
+    --reader-poem-letter-spacing: 0.025em;
+    --reader-poem-weight: 400;
+  }
+
+  .poem-reader-page {
+    padding-top: var(--reader-page-padding-top);
+    padding-bottom: var(--reader-page-padding-bottom);
+  }
+
+  .poem-reader-header {
+    margin-bottom: var(--reader-header-body-gap);
+  }
+
+  .poem-reader-heading-row {
+    column-gap: var(--reader-heading-gap);
+    row-gap: var(--reader-heading-row-gap);
+  }
+
+  .poem-reader-heading,
+  .poem-reader-secondary-heading {
+    font-size: var(--reader-heading-size);
+  }
+
+  .poem-reader-heading {
+    font-weight: var(--reader-heading-weight);
+    letter-spacing: var(--reader-heading-letter-spacing);
+  }
+
+  .poem-reader-secondary-heading {
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  .poem-reader-title {
+    margin-top: var(--reader-title-margin-top);
+    font-size: var(--reader-title-size);
+    font-weight: var(--reader-title-weight);
+    line-height: var(--reader-title-line-height);
+  }
+
+  .poem-reader-author {
+    margin-top: var(--reader-author-margin-top);
+    font-size: var(--reader-author-size);
+    font-weight: var(--reader-author-weight);
+  }
+
+  .poem-reader-status {
+    margin-top: var(--reader-status-margin-top);
+    font-size: var(--reader-status-size);
+  }
+
+  .poem-reader-preface {
+    margin-bottom: var(--reader-preface-body-gap);
+    font-size: var(--reader-preface-size);
+    font-weight: var(--reader-preface-weight);
+    line-height: var(--reader-preface-line-height);
+  }
+
+  .poem-reader-body {
+    font-size: var(--reader-poem-size);
+    font-weight: var(--reader-poem-weight);
+    line-height: var(--reader-poem-line-height);
+    letter-spacing: var(--reader-poem-letter-spacing);
+  }
+
+  @media (min-width: 40rem) {
+    .poem-reader {
+      --reader-page-padding-top: 1.25rem;
+      --reader-page-padding-bottom: 2.5rem;
+      --reader-heading-size: 2.25rem;
+      --reader-poem-size: 1.25rem;
+    }
+  }
+}
+
 @keyframes chat-message-enter {
   from {
     opacity: 0;
