@@ -24,7 +24,7 @@ export function useConversationPersistence({
   const persistenceRef = useRef({
     conversationId,
     poemId,
-    readyPoemId: readyPoemId,
+    readyPoemId,
     turns,
     question,
     selected,
@@ -34,7 +34,7 @@ export function useConversationPersistence({
     persistenceRef.current = {
       conversationId,
       poemId,
-      readyPoemId: readyPoemId,
+      readyPoemId,
       turns,
       question,
       selected,
