@@ -1,4 +1,4 @@
-"""Lossless-enough block evidence for EPUB semantic extraction.
+"""为 EPUB 语义抽取保留尽量无损的块级证据。
 
 Keep source locations, immediate inline nodes and structural boundaries before
 assigning literary roles. This representation is local to the extraction stage.
@@ -25,7 +25,7 @@ class SourceBlock:
 
 
 def inline_runs(element: Tag) -> list[dict]:
-    """Record direct parts rather than flattening a composite title."""
+    """记录直接组成部分，不把复合标题提前拍平成字符串。"""
     result = []
     for child in element.children:
         if isinstance(child, NavigableString):
@@ -44,7 +44,7 @@ def inline_runs(element: Tag) -> list[dict]:
 
 
 def iter_source_blocks(soup: Tag, html_name: str):
-    """Yield ordered paragraph/heading blocks; never assign semantic roles."""
+    """按顺序产出段落与标题块，本层不分配语义角色。"""
     body = soup.body or soup
     for ordinal, tag in enumerate(body.find_all(["h1", "h2", "h4", "p"]), 1):
         yield SourceBlock(
