@@ -1,4 +1,4 @@
-"""Poeticus local PostgreSQL connection for read-only corpus queries.
+"""Poeticus 作品只读查询使用的 PostgreSQL 连接。
 
 No database connection is created during module import or application startup.
 Each request gets a short-lived connection; at this scale a pool is unnecessary.
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_connection() -> Iterator[psycopg.Connection]:
-    """Yield one read-only DB connection; expose no credentials in errors.
+    """提供一个只读数据库连接；异常中不得暴露凭据。
 
     Input: POETICUS_DATABASE_URL in process env or private .env.
     Output: a psycopg Connection yielding dictionaries for SELECT results.
