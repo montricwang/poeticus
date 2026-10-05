@@ -1,4 +1,4 @@
-"""Profile TOC-linked EPUB XHTML/typography before designing extraction rules.
+"""在设计抽取规则前分析 TOC 关联的 EPUB XHTML 与排版特征。
 
 Outputs aggregate templates and bounded examples; NEVER writes the full source text.
 DOM and CSS patterns are evidence, not automatic tune/title/preface labels.
@@ -68,7 +68,7 @@ def gather_links(node):
 
 
 def volume_files(volume):
-    """File -> top-level TOC groups; each XHTML is analyzed only once per volume."""
+    """文件映射到顶层 TOC 分组；每册中的每个 XHTML 只分析一次。"""
     found = defaultdict(set)
     for group in volume.get("children", []):
         for href in gather_links(group):
@@ -100,7 +100,7 @@ def typography(style):
 
 
 def content_runs(heading, styles):
-    """Preserve each text run's nearest styled element, not get_text() flattening."""
+    """保留每段文字最近的样式元素，不用 get_text() 直接拍平。"""
     runs = []
     for node in heading.descendants:
         if isinstance(node, NavigableString):
@@ -138,7 +138,7 @@ def content_runs(heading, styles):
 
 
 def heading_template(heading, runs, styles):
-    """Structural and typographic signature, independent of title wording."""
+    """只描述结构与排版特征，不依赖标题文字。"""
     root_style = typography(styles.style(heading))
     run_signatures = []
     for run in runs:
@@ -206,7 +206,7 @@ def selected_templates(records, top_n=10):
 
 
 def unhandled_text(soup):
-    """Detect text not nested in p or headings, which the existing parser might miss."""
+    """检测不在 p 或标题标签中的文字，避免现有解析器漏掉。"""
     grouped = Counter()
     samples = {}
     for text in soup.find_all(string=True):
