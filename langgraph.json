@@ -1,7 +1,7 @@
 {
     "dependencies": ["."],
     "graphs": {
-      "poeticus": "./intent_router.py:graph"
+      "poeticus": "./backend/ai/graph.py:graph"
     },
     "env": "./.env"
   }

@@ -283,7 +283,7 @@ def test_streaming_preamble_then_tool_call(monkeypatch, agent):
         ]
 
     monkeypatch.setattr(agent.evidence_service, "search", fake_search)
-    monkeypatch.setattr(api_module, "graph", agent.graph)
+    monkeypatch.setattr("backend.api.chat.graph", agent.graph)
 
     preamble = "I'll look up the allusion for 「三星当户」."
     answer_parts = ["「三星当户」化用《诗经·绸缪》。", "它借星象写相聚。"]
