@@ -21,10 +21,7 @@ export function AnalysisReveal({
   const [revealed, setRevealed] = useState(!animate);
 
   useEffect(() => {
-    if (!animate) {
-      setRevealed(true);
-      return;
-    }
+    if (!animate) return;
 
     const element = elementRef.current;
     if (!element) return;
