@@ -1,4 +1,4 @@
-"""/chat 与 /analyze 回归测试：在 API 边界替换 Graph，不调用真实模型。"""
+"""聊天与整首赏析 API 回归测试：在接口边界替换 Graph/模型，不调用真实服务。"""
 
 from types import SimpleNamespace
 
@@ -6,8 +6,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.ai.context import PoemContext
-from backend.ai.model import PoemAnalysis
-from backend.config import CHAT_MAX_HISTORY_TURNS
 from backend.ai.model import PoemAnalysis
 from backend.config import CHAT_MAX_HISTORY_TURNS
 
@@ -132,7 +130,7 @@ def test_chat_accepts_request_without_context(monkeypatch, api_module, client):
 
     def fake_invoke(state):
         received.append(state)
-        return {"reply": "旧请求仍可用。"}
+        return {"reply": "未提供作品元数据时仍可回答。"}
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(invoke=fake_invoke))
     response = client.post(
@@ -141,7 +139,7 @@ def test_chat_accepts_request_without_context(monkeypatch, api_module, client):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"answer": "旧请求仍可用。"}
+    assert response.json() == {"answer": "未提供作品元数据时仍可回答。"}
     assert len(received) == 1
     assert received[0]["context"] is None
 
@@ -181,7 +179,7 @@ def test_analyze_receives_context(monkeypatch, api_module, client):
 
     monkeypatch.setattr("backend.api.analysis.analyze_poem", fake_analyze)
     response = client.post(
-        "/analyze",
+        "/api/analyze",
         json={"poem": "萧萧乱叶报新秋。", "context": SAMPLE_CONTEXT},
     )
 
@@ -198,7 +196,7 @@ def test_analyze_receives_context(monkeypatch, api_module, client):
 
 
 def test_analyze_accepts_request_without_context(monkeypatch, api_module, client):
-    """旧客户端只发送正文时，赏析仍按原行为工作。"""
+    """context 是可选字段；只发送正文时仍可生成赏析。"""
     received = []
 
     def fake_analyze(poem, context):
@@ -210,7 +208,7 @@ def test_analyze_accepts_request_without_context(monkeypatch, api_module, client
         )
 
     monkeypatch.setattr("backend.api.analysis.analyze_poem", fake_analyze)
-    response = client.post("/analyze", json={"poem": "萧萧乱叶报新秋。"})
+    response = client.post("/api/analyze", json={"poem": "萧萧乱叶报新秋。"})
 
     assert response.status_code == 200
     assert len(received) == 1
@@ -231,7 +229,7 @@ def test_analyze_accepts_null_author_context(monkeypatch, api_module, client):
 
     monkeypatch.setattr("backend.api.analysis.analyze_poem", fake_analyze)
     response = client.post(
-        "/analyze",
+        "/api/analyze",
         json={"poem": "萧萧乱叶报新秋。", "context": NULL_AUTHOR_CONTEXT},
     )
 
