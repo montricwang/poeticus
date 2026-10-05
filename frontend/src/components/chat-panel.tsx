@@ -159,7 +159,7 @@ export function ChatPanel({
         fillAvailableHeight
           ? "flex-1"
           : turns.length > 0
-            ? "h-auto max-h-[min(42rem,calc(100dvh-10rem))]"
+            ? "h-auto max-h-[var(--companion-panel-max-height)]"
             : "h-auto",
         className,
       )}
