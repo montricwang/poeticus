@@ -6,6 +6,7 @@ import type { ChatTurn, ChatViewport } from "@/components/chat-types";
 import type { SelectedText } from "@/components/poem-reader";
 import type { InitialChatState } from "@/lib/chat-initial-state";
 import { buildHistory } from "@/lib/chat-history";
+import { loadServiceCapabilities } from "@/lib/service-capabilities";
 import { createConversationId, loadPoemConversation } from "@/lib/chat-storage";
 import { readChatStream, UsageLimitNotice } from "@/lib/chat-stream";
 import { selectionForPython, validSelectionForPoem } from "@/lib/selection-offset";
@@ -68,8 +69,6 @@ export function useChatSession({
   async function requestReply(turn: ChatTurn, regenerate = false) {
     if (inFlightRef.current || switchControllerRef.current || !activePoem || activePoem.id !== poemId) return;
 
-    const history = buildHistory(turns, turn.id);
-
     inFlightRef.current = true;
     setChatLoading(true);
     let received = "";
@@ -103,6 +102,13 @@ export function useChatSession({
     );
 
     try {
+      const capabilities = await loadServiceCapabilities();
+      const history = buildHistory(
+        turns,
+        turn.id,
+        capabilities.chat.maxHistoryTurns,
+      );
+
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

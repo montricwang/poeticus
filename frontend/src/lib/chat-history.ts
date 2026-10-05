@@ -1,7 +1,5 @@
 import type { ChatTurn, HistoryMessage } from "@/components/chat-types";
 
-const MAX_HISTORY_TURNS = 6;
-
 function historyUserContent(turn: ChatTurn) {
   if (!turn.selection) {
     return turn.question;
@@ -13,7 +11,12 @@ function historyUserContent(turn: ChatTurn) {
 export function buildHistory(
   turns: ChatTurn[],
   currentTurnId: number,
+  maxHistoryTurns: number,
 ): HistoryMessage[] {
+  if (maxHistoryTurns <= 0) {
+    return [];
+  }
+
   const currentIndex = turns.findIndex((turn) => turn.id === currentTurnId);
 
   // 新发送的 Turn 还没进入当前 render 的 turns，因此找不到时，
@@ -28,7 +31,7 @@ export function buildHistory(
         turn.answer !== null &&
         turn.answer.trim() !== "",
     )
-    .slice(-MAX_HISTORY_TURNS);
+    .slice(-maxHistoryTurns);
 
   return completedTurns.flatMap((turn) => [
     {

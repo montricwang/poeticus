@@ -2,7 +2,6 @@ import os
 import json
 import logging
 from collections.abc import Iterator
-from dotenv import load_dotenv
 from openai import OpenAI, APIError
 from pydantic import BaseModel
 from langsmith.wrappers import wrap_openai
@@ -16,6 +15,13 @@ logger = logging.getLogger(__name__)
 
 from backend.ai.prompt_loader import compose_prompt
 from backend.ai.context import PoemContext, format_poem_context
+from backend.config import (
+    LLM_BASE_URL,
+    LLM_MAX_OUTPUT_TOKENS,
+    LLM_MAX_RETRIES,
+    LLM_MODEL,
+    LLM_TIMEOUT_SECONDS,
+)
 
 
 class Gloss(BaseModel):
@@ -29,14 +35,15 @@ class PoemAnalysis(BaseModel):
     commentary: str
 
 
-load_dotenv()
-
 api_key = os.environ["LLM_API_KEY"]
-base_url = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
-# Upper bound on output per completion; one user request may have up to
-# three Agent completions (initial, after each of at most two tool rounds).
-MAX_LLM_OUTPUT_TOKENS = min(max(int(os.getenv("POETICUS_LLM_MAX_OUTPUT_TOKENS", "1200")), 128), 2048)
-client = wrap_openai(OpenAI(api_key=api_key, base_url=base_url, timeout=30.0, max_retries=0))
+client = wrap_openai(
+    OpenAI(
+        api_key=api_key,
+        base_url=LLM_BASE_URL,
+        timeout=LLM_TIMEOUT_SECONDS,
+        max_retries=LLM_MAX_RETRIES,
+    )
+)
 
 
 def answer_with_evidence(
@@ -63,8 +70,8 @@ def answer_with_evidence(
         )
 
     response = client.chat.completions.create(
-        model="deepseek-flash",
-        max_tokens=MAX_LLM_OUTPUT_TOKENS,
+        model=LLM_MODEL,
+        max_tokens=LLM_MAX_OUTPUT_TOKENS,
         messages=[
             {
                 "role": "system",
@@ -103,8 +110,8 @@ def analyze_poem(poem: str, context: PoemContext | None = None) -> PoemAnalysis:
 
     try:
         response = client.chat.completions.create(
-            model="deepseek-flash",
-        max_tokens=MAX_LLM_OUTPUT_TOKENS,
+            model=LLM_MODEL,
+            max_tokens=LLM_MAX_OUTPUT_TOKENS,
             messages=[
                 {
                     "role": "system",
@@ -192,8 +199,8 @@ def chat_about_poem(
     """原有非流式接口继续使用，不影响 /chat 和现有 Graph 测试。"""
     try:
         response = client.chat.completions.create(
-            model="deepseek-flash",
-        max_tokens=MAX_LLM_OUTPUT_TOKENS,
+            model=LLM_MODEL,
+            max_tokens=LLM_MAX_OUTPUT_TOKENS,
             messages=_chat_messages(poem, question, selection, context),
         )
     except APIError as exc:
@@ -223,8 +230,8 @@ def stream_chat_about_poem(
     parts: list[str] = []
     try:
         stream = client.chat.completions.create(
-            model="deepseek-flash",
-        max_tokens=MAX_LLM_OUTPUT_TOKENS,
+            model=LLM_MODEL,
+            max_tokens=LLM_MAX_OUTPUT_TOKENS,
             messages=_chat_messages(poem, question, selection, context),
             stream=True,
         )

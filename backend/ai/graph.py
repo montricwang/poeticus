@@ -10,7 +10,8 @@ from openai.types.chat import (
     ChatCompletionMessageParam,
 )
 
-from backend.ai.model import client, MAX_LLM_OUTPUT_TOKENS
+from backend.ai.model import client
+from backend.config import AGENT_MAX_TOOL_CALLS, LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
 from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
 from backend.ai.context import PoemContext, format_poem_context
@@ -98,8 +99,8 @@ def _stream_agent_decision(
 
     try:
         stream = client.chat.completions.create(
-            model="deepseek-flash",
-            max_tokens=MAX_LLM_OUTPUT_TOKENS,
+            model=LLM_MODEL,
+            max_tokens=LLM_MAX_OUTPUT_TOKENS,
             messages=messages,
             tools=TOOLS,
             tool_choice=tool_choice,
@@ -226,7 +227,7 @@ def agent_decide(state: RouterState) -> dict:
     )
 
     tool_choice: Literal["auto", "none"] = (
-        "none" if state.get("tool_count", 0) >= 2 else "auto"
+        "none" if state.get("tool_count", 0) >= AGENT_MAX_TOOL_CALLS else "auto"
     )
 
     stream_reply = state.get("stream_reply", False)
@@ -236,8 +237,8 @@ def agent_decide(state: RouterState) -> dict:
     else:
         try:
             response = client.chat.completions.create(
-                model="deepseek-flash",
-            max_tokens=MAX_LLM_OUTPUT_TOKENS,
+                model=LLM_MODEL,
+                max_tokens=LLM_MAX_OUTPUT_TOKENS,
                 messages=messages,
                 tools=TOOLS,
                 tool_choice=tool_choice,
@@ -323,8 +324,8 @@ def execute_tools(state: RouterState) -> dict:
     messages = list(state.get("messages") or [])
     tool_count = state.get("tool_count", 0)
 
-    # 一次用户请求最多执行 8 次实际工具调用。
-    max_tool_calls = 2
+    # 单次请求的工具预算由后端配置统一定义。
+    max_tool_calls = AGENT_MAX_TOOL_CALLS
 
     # 防止重复 ID 使工具结果无法正确对应。
     ids = [call["id"] for call in calls]
