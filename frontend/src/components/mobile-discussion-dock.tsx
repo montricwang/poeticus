@@ -25,8 +25,9 @@ export function MobileDiscussionDock({
       <Button
           type="button"
           size="lg"
+          variant="outline"
           className={
-            "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 rounded-full px-4 shadow-lg " +
+            "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm " +
             "transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
             (open ? "pointer-events-none scale-95 opacity-0" : "scale-100 opacity-100")
           }
@@ -78,7 +79,7 @@ export function MobileDiscussionDock({
             type="button"
             variant="ghost"
             size="icon"
-            className="rounded-full"
+            className="rounded-md"
             aria-label="收起阅读讨论"
             onClick={() => onOpenChange(false)}
           >
