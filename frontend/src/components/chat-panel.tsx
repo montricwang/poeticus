@@ -246,6 +246,11 @@ export function ChatPanel({
             ))}
           </div>
 
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_72%,transparent)_62%,var(--background)_100%)] dark:h-6 dark:bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_48%,transparent)_68%,var(--background)_100%)]"
+            aria-hidden="true"
+          />
+
           {!isAtBottom && (
             <Button
               type="button"
