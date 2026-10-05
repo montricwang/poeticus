@@ -250,7 +250,7 @@ function App() {
         <div
           className={
             "grid min-w-0 grid-cols-1 items-start gap-0 " +
-            "2xl:transition-[grid-template-columns] 2xl:duration-[360ms] 2xl:ease-[cubic-bezier(0.4,0,0.2,1)] motion-reduce:transition-none " +
+            "2xl:transition-[grid-template-columns] 2xl:duration-[520ms] 2xl:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
             (catalogOpen
               ? "2xl:grid-cols-[320px_minmax(0,1fr)]"
               : "2xl:grid-cols-[0px_minmax(0,1fr)]")
@@ -272,7 +272,7 @@ function App() {
               tabIndex={-1}
               aria-label="关闭作品目录遮罩"
               className={
-                "absolute inset-0 bg-black/55 transition-opacity duration-[360ms] ease-[cubic-bezier(0.4,0,0.2,1)] " +
+                "absolute inset-0 bg-black/55 transition-opacity duration-[520ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
                 "motion-reduce:transition-none 2xl:hidden " +
                 (catalogOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
               }
@@ -280,8 +280,8 @@ function App() {
             />
             <div
               className={
-                "relative h-full w-[min(88vw,360px)] " +
-                "transform transition-transform duration-[360ms] ease-[cubic-bezier(0.4,0,0.2,1)] " +
+                "relative h-full w-screen sm:w-[min(88vw,420px)] " +
+                "transform transition-transform duration-[520ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
                 "motion-reduce:transition-none 2xl:w-80 2xl:translate-x-0 2xl:pr-5 " +
                 (catalogOpen
                   ? "pointer-events-auto translate-x-0"
