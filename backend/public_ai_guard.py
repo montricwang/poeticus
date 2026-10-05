@@ -22,8 +22,9 @@ from starlette.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 AI_PATHS = frozenset({
-    "/chat", "/api/chat", "/chat/stream", "/api/chat/stream",
-    "/analyze", "/api/analyze",
+    "/api/chat",
+    "/api/chat/stream",
+    "/api/analyze",
 })
 MAX_REQUEST_BYTES = 48 * 1024
 
@@ -78,6 +79,7 @@ def _reserve_daily_slot(
             return "ip"
     return "ok"
 
+
 class PublicAIGuard:
     """限制会产生模型费用的 POST 请求，不影响公开作品读取与 /health。"""
 
@@ -99,11 +101,25 @@ class PublicAIGuard:
         self.active = 0
         self.windows: dict[str, deque[float]] = defaultdict(deque)
 
-    async def _reject(self, scope, receive, send, status: int, detail: str, retry: int | None = None):
+    async def _reject(
+        self,
+        scope,
+        receive,
+        send,
+        status: int,
+        detail: str,
+        retry: int | None = None,
+    ) -> None:
         headers = {"Cache-Control": "no-store"}
         if retry is not None:
             headers["Retry-After"] = str(retry)
-        await JSONResponse({"detail": detail}, status_code=status, headers=headers)(scope, receive, send)
+
+        response = JSONResponse(
+            {"detail": detail},
+            status_code=status,
+            headers=headers,
+        )
+        await response(scope, receive, send)
 
     def _acquire(self, client: str) -> tuple[bool, int]:
         """在一次短锁内同时占用进程并发位与客户端分钟窗口。"""
@@ -141,7 +157,12 @@ class PublicAIGuard:
             return peer
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or scope.get("method") != "POST" or scope.get("path") not in AI_PATHS:
+        is_guarded_request = (
+            scope["type"] == "http"
+            and scope.get("method") == "POST"
+            and scope.get("path") in AI_PATHS
+        )
+        if not is_guarded_request:
             await self.app(scope, receive, send)
             return
 
