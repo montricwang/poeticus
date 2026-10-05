@@ -3,9 +3,9 @@ import os
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from backend.api.analysis import router as analysis_router, AnalyzeRequest
-from backend.api.chat import router as chat_router
-from backend.api.service import router as service_router
+from backend.api.analysis import router as analysis_router, AnalyzeRequest, analyze
+from backend.api.chat import router as chat_router, chat, chat_stream
+from backend.api.service import router as service_router, health, public_info
 from backend.corpus.router import router as corpus_router
 
 # Export legacy names for callers still importing api.py.
@@ -14,6 +14,8 @@ from backend.ai.graph import RouterState, graph
 from backend.api.chat import (
     ChatRequest, ChatResponse, HistoryMessage, QuoteSelection,
     graph_input, sse, stream_graph_reply, validate_chat_request,
+    MAX_HISTORY_TURNS, MAX_HISTORY_MESSAGES,
+    MAX_HISTORY_MESSAGE_CHARS, MAX_HISTORY_TOTAL_CHARS,
 )
 
 app = FastAPI(
