@@ -1,13 +1,17 @@
 """整首赏析 HTTP 接口。"""
+
 import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from backend.ai.model import PoemAnalysis, analyze_poem
+
 from backend.ai.context import PoemContext
+from backend.ai.model import PoemAnalysis, analyze_poem
 from backend.config import AI_MAX_POEM_CHARS
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 class AnalyzeRequest(BaseModel):
     poem: str = Field(max_length=AI_MAX_POEM_CHARS)
@@ -15,7 +19,6 @@ class AnalyzeRequest(BaseModel):
 
 
 @router.post("/api/analyze", response_model=PoemAnalysis)
-@router.post("/analyze", response_model=PoemAnalysis)
 def analyze(request: AnalyzeRequest):
     if not request.poem.strip():
         raise HTTPException(status_code=422, detail="诗歌原文不能为空")
