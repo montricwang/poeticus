@@ -1,4 +1,4 @@
-"""Batch preflight and private, lossless intermediate EPUB JSON export.
+"""批量预检并导出私人、尽量无损的 EPUB 中间 JSON。
 
 All 15 collections are checked before writing any source-bearing outputs.
 No interactive glyph prompt during a batch run; missing glyphs are reported
@@ -37,7 +37,7 @@ def _write_json_atomic(path, data):
 
 
 def prepare_batch(book, toc, *, specs=COLLECTIONS, map_dir=DEFAULT_MAP_DIR):
-    """Extract in memory once per volume, retaining all independent blockers.
+    """每册只在内存中抽取一次，并保留所有独立阻塞项。
 
     The public-shareable report is free of original verses, prefaces and notes.
     The private in-memory 'records' field must never be serialized into it.
@@ -75,7 +75,7 @@ def prepare_batch(book, toc, *, specs=COLLECTIONS, map_dir=DEFAULT_MAP_DIR):
 
 
 def preflight_report(plan):
-    """Only source coordinates/counts, never user-licensed text content."""
+    """只输出来源坐标与计数，不输出用户授权文本。"""
     collections = []
     for item in plan:
         glyph_sites = [
@@ -116,7 +116,7 @@ def preflight_report(plan):
 
 
 def normalize_batch(plan):
-    """Normalize the entire batch in memory before committing private files."""
+    """整批数据先在内存中完成 normalize，再提交私人输出文件。"""
     combined = []
     result = []
     ids = set()
@@ -143,7 +143,7 @@ def normalize_batch(plan):
 def run_batch(book, toc, *, specs=COLLECTIONS,
               map_dir=DEFAULT_MAP_DIR, output_dir=DEFAULT_OUTPUT_DIR,
               report_path=DEFAULT_REPORT, check_only=False):
-    """Return (shareable summary, outputs) or raise on blocked actual export.
+    """返回可分享摘要与输出；若真实导出被阻塞则直接报错。
 
     --check always writes the *metadata-only* report but never corpus text.
     A blocked --all export also writes only the metadata-only report.
