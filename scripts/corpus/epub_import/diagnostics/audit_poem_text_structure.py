@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read-only audit of Poeticus intermediate JSON content.text across collections.
+"""只读审计各分册 Poeticus 中间 JSON 的 content.text 结构。
 
 Default input: data/output/all_normalized.json (private, not present in GitHub).
 Produces a metadata-only report and a SEPARATE, private literary-text review file
@@ -17,7 +17,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from statistics import median
 
-# Only candidate signs for manual review, not asserted textual defects.
+# 这些只是供人工复核的候选信号，不代表已经确认文本有误。
 MARKERS = {
     "explicit_gap": re.compile(r"以下缺|以下闕|以下阙|下[片闋阕]缺|上[片闋阕]缺|原缺|缺[一二三四五六七八九十\d]+字"),
     "missing_character_box": re.compile(r"[□◻◯]{1,}|\uFFFD"),
@@ -82,7 +82,7 @@ def examine(record: dict) -> dict:
     edge_blank = bool(blanks) and (blanks[0] == 0 or blanks[-1] == len(parts)-1)
     adjacent_blank = any(b == a+1 for a, b in zip(blanks, blanks[1:]))
     trailing_ratio = (punctuation_ended / len(nonempty)) if nonempty else 0
-    # A diagnostic heuristic, never a semantic sentence/stanza classifier.
+    # 这里只是诊断启发式，不把它当作语义句法或分片分类器。
     short_units = len(nonempty) >= 5 and median(lengths) <= 20 and trailing_ratio >= 0.7
     return {
         "parts": parts,
@@ -122,7 +122,7 @@ def label(info: dict) -> str:
 
 
 def pick_samples(entries: list[tuple[dict, dict]], limit: int) -> list[tuple[dict, dict, str]]:
-    """Prioritize contrasts rather than dumping consecutive poems."""
+    """优先展示有对比价值的样本，而不是连续倾倒作品。"""
     if not limit:
         return []
     selected = []
@@ -137,7 +137,7 @@ def pick_samples(entries: list[tuple[dict, dict]], limit: int) -> list[tuple[dic
             if len(selected) >= limit or count == 1:
                 return
             count -= 1
-    # The user's three explicit hypotheses get preference.
+    # 优先覆盖用户明确提出的三个假设。
     for reason, test in [
         ("李清照：空元素", lambda p, i: "李清照" in str(p.get("collection")) and bool(i["blank_positions"])),
         ("李清照：无空元素", lambda p, i: "李清照" in str(p.get("collection")) and not i["blank_positions"]),
@@ -152,7 +152,7 @@ def pick_samples(entries: list[tuple[dict, dict]], limit: int) -> list[tuple[dic
         if len(selected) >= limit:
             break
         select(test, reason)
-    # Make sure all 15 source collections can be represented if room allows.
+    # 条件允许时尽量让 15 个来源分册都能进入样本。
     coll = list(dict.fromkeys(str(p.get("collection", "（未知）")) for p, _ in entries))
     for name in coll:
         if len(selected) >= limit:
@@ -261,7 +261,7 @@ def make_private_samples(sample: list[tuple[dict, dict, str]]) -> str:
         for j, part in enumerate(info["parts"]):
             lines.extend([f"**元素 {j}**（长度 {len(part)}）", "", "```text", part if part else "〔空字符串〕", "```", ""])
         if info["inline_note_count"]:
-            # For privacy and efficient debugging, include positions, not duplicated note text.
+            # 为保护隐私并提高调试效率，只记录位置，不重复注释正文。
             for note in work.get("content", {}).get("inline_notes", []):
                 if isinstance(note, dict):
                     lines.append(f"- 自注位置：元素 {note.get('paragraph_index')}，字符区间 [{note.get('start')}, {note.get('end')})")
