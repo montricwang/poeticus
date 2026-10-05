@@ -1,5 +1,7 @@
+import { useLayoutEffect, type RefObject } from "react";
 import { LoaderCircle } from "lucide-react";
 
+import { AnalysisTextEntrance } from "@/components/analysis-text-entrance";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +21,8 @@ type AnalysisPanelProps = {
   limitNotice: boolean;
   onAnalyze: () => void;
   switching: boolean;
+  animationId: string;
+  seenAnimationsRef: RefObject<Set<string>>;
   fillAvailableHeight?: boolean;
   className?: string;
 };
@@ -30,9 +34,19 @@ export function AnalysisPanel({
   limitNotice,
   onAnalyze,
   switching,
+  animationId,
+  seenAnimationsRef,
   fillAvailableHeight = false,
   className,
 }: AnalysisPanelProps) {
+  const animateResult =
+    analysis !== null && !seenAnimationsRef.current.has(animationId);
+
+  useLayoutEffect(() => {
+    if (!analysis || !animateResult) return;
+    seenAnimationsRef.current.add(animationId);
+  }, [analysis, animateResult, animationId, seenAnimationsRef]);
+
   return (
     <section
       aria-label="整首赏析"
@@ -40,7 +54,9 @@ export function AnalysisPanel({
         "flex min-h-0 min-w-0 flex-col bg-transparent",
         fillAvailableHeight
           ? "flex-1"
-          : "max-h-[min(42rem,calc(100dvh-10rem))]",
+          : analysis
+            ? "h-auto max-h-[min(42rem,calc(100dvh-10rem))]"
+            : "h-auto",
         className,
       )}
     >
@@ -49,13 +65,18 @@ export function AnalysisPanel({
           "min-h-0",
           fillAvailableHeight
             ? "flex-1 overflow-y-auto py-4 pr-2"
-            : "overflow-y-auto py-4 pr-2",
+            : analysis
+              ? "overflow-y-auto py-4 pr-2"
+              : "py-2 pr-2",
         )}
       >
         {analyzing ? (
           <div
             role="status"
-            className="flex min-h-72 flex-col items-center justify-center gap-4 text-center"
+            className={cn(
+              "flex flex-col items-center justify-center gap-4 text-center",
+              fillAvailableHeight ? "h-full" : "py-8",
+            )}
           >
             <LoaderCircle className="size-6 animate-spin text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
@@ -90,12 +111,20 @@ export function AnalysisPanel({
             )}
           </div>
         ) : analysis ? (
-          <div className="space-y-10">
+          <div
+            className={cn(
+              "space-y-10",
+              animateResult && "poeticus-analysis-result-enter",
+            )}
+          >
             <section>
               <h3 className="mb-4 text-base font-semibold">现代汉语译文</h3>
-              <p className="whitespace-pre-wrap text-sm leading-8 text-foreground/85">
-                {analysis.translation}
-              </p>
+              <AnalysisTextEntrance
+                as="p"
+                text={analysis.translation}
+                animate={animateResult}
+                className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
+              />
             </section>
 
             <div className="h-px w-12 bg-border/80" aria-hidden="true" />
@@ -110,12 +139,18 @@ export function AnalysisPanel({
                 <div className="space-y-4">
                   {analysis.glosses.map((gloss, index) => (
                     <div key={index}>
-                      <h4 className="mb-1 font-serif text-sm font-semibold">
-                        {gloss.term}
-                      </h4>
-                      <p className="text-sm leading-7 text-muted-foreground">
-                        {gloss.explanation}
-                      </p>
+                      <AnalysisTextEntrance
+                        as="h4"
+                        text={gloss.term}
+                        animate={animateResult}
+                        className="mb-1 font-serif text-sm font-semibold"
+                      />
+                      <AnalysisTextEntrance
+                        as="p"
+                        text={gloss.explanation}
+                        animate={animateResult}
+                        className="text-sm leading-7 text-muted-foreground"
+                      />
                     </div>
                   ))}
                 </div>
@@ -126,13 +161,21 @@ export function AnalysisPanel({
 
             <section>
               <h3 className="mb-4 text-base font-semibold">文学赏析</h3>
-              <p className="whitespace-pre-wrap text-sm leading-8 text-foreground/85">
-                {analysis.commentary}
-              </p>
+              <AnalysisTextEntrance
+                as="p"
+                text={analysis.commentary}
+                animate={animateResult}
+                className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
+              />
             </section>
           </div>
         ) : (
-          <div className="flex min-h-72 items-center justify-center text-center">
+          <div
+            className={cn(
+              "flex items-center justify-center text-center",
+              fillAvailableHeight ? "h-full" : "py-8",
+            )}
+          >
             <div className="space-y-4">
               <p className="text-sm leading-7 text-muted-foreground">
                 生成译文、词语注释与文学赏析。
