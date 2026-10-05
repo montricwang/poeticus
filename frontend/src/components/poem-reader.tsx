@@ -141,11 +141,11 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
           <header className="mb-9 text-center">
             {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
             <div className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
-              <h1 className="font-serif text-4xl font-medium tracking-widest">
+              <h1 className="font-serif text-3xl font-medium tracking-widest sm:text-4xl">
                 {work.yusheng_title ?? work.cipai ?? "词牌未核实"}
               </h1>
               {work.yusheng_title && work.cipai && (
-                <span className="font-serif text-4xl font-normal tracking-normal text-muted-foreground">
+                <span className="font-serif text-3xl font-normal tracking-normal text-muted-foreground sm:text-4xl">
                   {work.cipai}
                 </span>
               )}
@@ -166,14 +166,14 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
           </header>
 
           {work.prefaces.map((preface, index) => (
-            <p key={index} className="mb-8 whitespace-pre-line font-serif text-sm leading-8 text-muted-foreground">
+            <p key={index} className="mb-8 whitespace-pre-line font-serif text-[15px] leading-[1.95] text-muted-foreground">
               {preface}
             </p>
           ))}
 
           <p
             ref={poemRef}
-            className="mx-auto w-fit max-w-full cursor-text select-text whitespace-pre-line font-serif text-lg leading-[3] tracking-wide text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white sm:text-xl"
+            className="mx-auto w-fit max-w-full cursor-text select-text whitespace-pre-line font-serif text-lg leading-[2.15] tracking-wide text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white sm:text-xl"
           >
             {poem}
           </p>
