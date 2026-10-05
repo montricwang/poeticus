@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 def client(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
-    import api
+    import backend.app as api
 
     return TestClient(api.app)
 
@@ -59,7 +59,7 @@ def test_capabilities_exposes_browser_contract_without_secrets(client):
 
 
 def test_canonical_public_chat_path_and_legacy_path_both_work(monkeypatch, client):
-    import api
+    import backend.app as api
 
     calls = []
 
@@ -77,7 +77,7 @@ def test_canonical_public_chat_path_and_legacy_path_both_work(monkeypatch, clien
 
 
 def test_canonical_public_analyze_path(monkeypatch, client):
-    import api
+    import backend.app as api
 
     monkeypatch.setattr("backend.api.analysis.analyze_poem",
         lambda poem, context: api.PoemAnalysis(
@@ -90,7 +90,7 @@ def test_canonical_public_analyze_path(monkeypatch, client):
 
 
 def test_canonical_public_sse_path(monkeypatch, client):
-    import api
+    import backend.app as api
 
     def fake_stream(state, stream_mode):
         yield "custom", {"type": "token", "text": "合成"}
