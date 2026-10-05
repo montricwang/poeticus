@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from poem_context import PoemContext, format_poem_context
+from backend.ai.context import PoemContext, format_poem_context
 
 SAMPLE_CONTEXT = PoemContext(
     id="su-shi-huan-xi-sha-feng-juan-zhu-lian",
@@ -20,7 +20,7 @@ def router(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
 
-    import intent_router
+    import backend.ai.graph as intent_router
 
     return intent_router
 

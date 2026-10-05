@@ -1,102 +1,83 @@
-
 # Poeticus：LangGraph Agent 架构
 
-## 1. 目标与边界
+## 1. 当前模型
 
-根据当前诗歌、作品信息、用户选区及问题，由 Agent 决定直接回答，还是调用外部工具获取资料。
+Poeticus 的聊天工作流定义在 `backend/ai/graph.py`，`langgraph.json` 直接指向 `backend/ai/graph.py:graph`。
 
-当前使用 ReAct 式循环，不再采用固定意图分类工作流。用户选区为理解问题提供线索，不强制作为工具查询对象。
-
-首版仅提供 CNKGraph 典故检索工具。跨用户轮次的短期上下文采用 client-carried bounded history：前端携带近期有效的 user / assistant 历史，后端校验后在 Agent 首次执行时插入当前问题之前。
-
-## 2. 执行流程
+当前使用 ReAct 式循环：模型根据当前作品、作品元数据、用户选区、近期对话和问题，决定直接回答或调用外部工具。系统不再使用固定 Intent Router。
 
 ```mermaid
 flowchart TD
-    A["START：诗歌、选区、问题"] --> B["agent"]
-    B --> C{"是否产生 tool_calls"}
-    C -->|否| D["返回最终 reply"]
+    A["START：作品 + 历史 + 当前问题"] --> B["agent"]
+    B --> C{"tool_calls?"}
+    C -->|否| D["reply → END"]
     C -->|是| E["tools"]
-    E --> F["执行工具并追加 tool 消息"]
+    E --> F["追加 tool 结果"]
     F --> B
-    D --> G["END"]
 ```
 
-入口配置在 `langgraph.json`，现在指向 `backend/ai/graph.py:graph`。根目录 `intent_router.py` 仅保留旧导入路径的兼容；工作流已不再进行意图分类。
+## 2. Agent
 
-### agent
+首次进入 `agent` 时，系统组合：
 
-首次执行时，使用 `agent_decide` 和 `output_style` Prompt 构造消息。模型结合诗歌内容、作品信息、选区及问题，决定直接回答或调用工具。
+1. system prompt；
+2. 前端携带、后端已经校验的 bounded history；
+3. 当前作品上下文、选区和问题。
 
-再次执行时，沿用消息历史，包括先前的工具调用及其返回结果。
+之后的 Agent 轮次沿用本次请求的 `messages`，其中包含工具调用与工具返回。
 
-没有工具调用时，节点返回最终 `reply`；存在工具调用时，将其交给 `tools` 节点。
+模型、输出 Token 预算和工具调用预算都来自后端统一配置。当前单次用户请求最多执行 **2 次实际工具调用**；达到预算后不再允许新的真实工具执行。
 
-### tools
+## 3. 工具与 Evidence
 
-当前支持 `lookup_allusion`，通过 EvidenceService 查询 CNKGraph 的典故资料。
+当前注册工具为 `lookup_allusion`，通过 `EvidenceService` 查询 CNKGraph 典故候选资料。
 
-工具返回结果后，Graph 不会直接结束，而是把结果作为 `tool` 消息追加到消息历史，再交还给 Agent。
+工具返回可以是：
 
-工具结果可能为成功、未命中、执行错误或超出预算。检索得到的候选资料不等于已经核实的文献出处。
+- `ok`
+- `no_hit`
+- `error`
+- `budget_exceeded`
 
-每次用户请求最多实际执行 8 次工具调用。达到预算后，后续工具请求返回预算不足结果，由 Agent 根据已有信息继续处理。
+候选资料只是回答材料，不自动等于已经完成文献校勘。外部文本进入后续模型调用前会做长度限制。
 
-## 3. Graph State
+## 4. Graph State
 
-`RouterState` 定义于 `backend/ai/graph.py`。
+`RouterState` 的主要字段：
 
 | 字段 | 用途 |
-|---|---|
-| `poem`、`question` | 必需输入：诗歌原文和用户问题 |
-| `selection`、`context` | 可选的选区及作品信息 |
-| `history` | 当前用户轮次之前、已经完成并通过校验的短期对话历史 |
-| `messages` | 当前请求中的 Agent 执行消息历史 |
-| `tool_calls` | 当前待执行的工具调用 |
-| `tool_results` | 最近一轮工具执行结果 |
-| `tool_count` | 已执行的工具次数 |
-| `evidences` | 累计获得的候选资料 |
+| --- | --- |
+| `poem` / `question` | 当前原文和问题 |
+| `selection` / `context` | 可选选区与作品元数据 |
+| `history` | 此轮之前的短期 user / assistant 历史 |
+| `messages` | 当前一次 Agent 执行内部消息 |
+| `tool_calls` / `tool_results` | 当前工具请求与最近结果 |
+| `tool_count` | 已执行工具数量 |
+| `evidences` | 累计候选证据 |
 | `reply` | 最终回答 |
-| `stream_reply` | 是否采用流式模型调用 |
+| `stream_reply` | 是否使用流式模型调用 |
 
-`history` 与 `messages` 分工不同：`history` 是跨用户轮次传入的短期会话背景；`messages` 是当前一次 Agent 执行中逐步增长的消息记录，包括工具调用和工具结果。服务端 Thread 持久化与长期记忆仍未实现。
+`history` 与 `messages` 不是同一层：前者跨用户轮次，由客户端携带；后者只服务当前这一次 Graph 执行。
 
-## 4. 普通与流式接口
+## 5. HTTP 与流式输出
 
-普通聊天和流式聊天共用同一个 Graph：
+公开聊天入口：
 
-- `POST /chat` 使用 `graph.invoke()`，完成后返回回答。
-- `POST /chat/stream` 使用 `graph.stream()`，同时接收 `custom` 和 `updates` 两类事件。
+- `POST /api/chat` → `graph.invoke()`
+- `POST /api/chat/stream` → `graph.stream()`
 
-流式模式下，模型生成的正文片段通过 `custom` token 事件传给 FastAPI；Graph 的 `updates` 事件用于获取节点结果，包括最终 `reply`。
+开发代理兼容的无 `/api` 路径仍由 FastAPI 路由支持，但项目内部 Python 模块不再保留根目录兼容入口。
 
-FastAPI 将正文片段包装为 SSE `token` 事件。正常结束时发送 `done`，执行失败时发送 `error`。
+流式模式使用 LangGraph `custom` 事件传正文 token，用 `updates` 获取节点结果。FastAPI 转为 SSE：
 
-对于没有增量 token 的回答，API 会根据最终 `reply` 补发正文；已有完整增量正文时，不应再次发送全文。API 同时检查增量正文与 Graph 最终结果是否一致。
+- `token`
+- `done`
+- `error`
 
-### 已知流式问题
+如果模型在工具调用前先输出说明文字，这部分可能先显示；工具完成后的正式回答以新的 token 段继续输出。API 会校验最终正式回答与 Graph 的 `reply` 一致。
 
-目前模型可能在一次工具调用消息中，同时生成普通文字和 `tool_calls`。这些工具调用前的说明文字可能提前作为 token 发送，并显示在正式回答前。
+## 6. 会话边界
 
-这是已记录的 Issue #6，尚未完成中间消息与最终回答的彻底分离。不要将当前行为描述为已经解决。
+浏览器可以保存比模型实际看到的更多历史。发送请求时，前端从 `/api/capabilities` 获取后端声明的最大历史轮数，再只发送最近已完成 Turn；后端仍做最终校验。
 
-## 5. 失败处理
-
-Graph 和 API 分别处理不同层面的错误：
-
-- 模型 API 请求失败或返回异常结束状态时，中止相应执行。
-- 工具参数非法、检索失败等情况，由工具层尽可能转换为结构化工具结果，供 Agent 后续处理。
-- 工具调用信息不完整或调用 ID 重复等无法安全继续的情况，作为执行错误处理。
-- SSE 已经开始发送后发生异常时，通过 `error` 事件通知前端，而不是尝试改写 HTTP 状态码。
-
-LangSmith 用于追踪 Graph 节点及模型执行过程；Python Logging 记录本地异常。FastAPI 的 SSE 处理错误不一定会直接出现在 LangSmith 的 Graph Trace 中。
-
-## 6. 当前限制和后续工作
-
-- **Conversation 持久化**：模型已经支持 bounded multi-turn history，但刷新 / 切诗恢复当前会话由 Issue #8 负责；未来服务端持久化见 #40。
-- **Agent 质量评测**：需要建立针对工具选择、资料利用、多轮指代和回答质量的新评测基线，见 Issue #42。
-- **工具与证据能力**：目前仅支持 CNKGraph 典故检索；更完整的工具路由和证据聚合仍待完善，见 Issue #32。
-- **流式中间消息**：工具调用前的文字可能被展示，见 Issue #6。
-- **重新生成界面**：当前临时草稿框的展示方式待调整，见 Issue #39。
-
-不应把旧版 `classify_intent`、`direct_answer`、`source_lookup` 或 `clarify_user` 描述为当前 Graph 节点。
+服务端目前没有长期 Conversation persistence、跨设备同步或可恢复 Run。详情见 [conversation-state.md](conversation-state.md)。

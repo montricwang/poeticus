@@ -38,7 +38,7 @@ Poeticus 尝试让**作品成为阅读中心，AI 成为可以随时交谈的伴
 
 了解技术细节，可阅读 [LangGraph 架构](docs/architecture/langgraph.md)、[作品数据库架构](docs/architecture/corpus-database.md) 和 [开发日志](docs/devlog/)。
 
-后端采用 `backend/` 包：`app.py` 组装 FastAPI，`api/` 负责 HTTP 接口，`ai/` 放模型与 LangGraph，`corpus/` 管作品数据，`evidence/` 管典故查证。根目录保留旧 Python 导入的兼容入口，因此 Railway 既有启动命令暂时无需更改。
+后端实现统一位于 `backend/` 包：`app.py` 组装 FastAPI，`api/` 负责 HTTP 接口，`ai/` 放模型与 LangGraph，`corpus/` 管作品数据，`evidence/` 管典故查证。生产环境直接以 `backend.app:app` 启动，不再保留根目录兼容模块。
 
 ## 当前阶段与边界
 

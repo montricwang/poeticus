@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from poem_context import PoemContext
+from backend.ai.context import PoemContext
 
 SAMPLE_CONTEXT = {
     "id": "su-shi-huan-xi-sha-feng-juan-zhu-lian",
@@ -21,7 +21,7 @@ SAMPLE_CONTEXT = {
 def api_module(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
-    import api
+    import backend.app as api
 
     return api
 

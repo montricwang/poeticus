@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from poem_context import PoemContext
+from backend.ai.context import PoemContext
 
 SAMPLE_CONTEXT = PoemContext(
     id="su-shi-huan-xi-sha-feng-juan-zhu-lian",
@@ -20,7 +20,7 @@ SAMPLE_CONTEXT = PoemContext(
 def agent(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
-    import intent_router
+    import backend.ai.graph as intent_router
 
     return intent_router
 
@@ -239,7 +239,7 @@ def test_sse_no_duplicate_full_reply_when_tokens_sent(monkeypatch, agent):
 
     calls = _fake_streaming_client(agent, chunks, monkeypatch)
 
-    # 直接模拟 api.py 的 stream_graph_reply 逻辑
+    # 直接模拟 backend.api.chat 的 stream_graph_reply 逻辑
     received_tokens = []
     final_reply = None
     for mode, payload in agent.graph.stream(
@@ -265,7 +265,7 @@ def test_sse_no_duplicate_full_reply_when_tokens_sent(monkeypatch, agent):
 
 def test_streaming_preamble_then_tool_call(monkeypatch, agent):
     """真实 Graph → API：工具前先说话，也能完成 SSE，且不重复正文。"""
-    import api as api_module
+    import backend.app as api_module
     from backend.evidence.schema import EvidenceItem
 
     search_calls = []

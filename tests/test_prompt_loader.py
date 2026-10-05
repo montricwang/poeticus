@@ -2,7 +2,7 @@
 
 import pytest
 
-from prompt_loader import load_prompt, compose_prompt
+from backend.ai.prompt_loader import load_prompt, compose_prompt
 
 
 @pytest.mark.parametrize(

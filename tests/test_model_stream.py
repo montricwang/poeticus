@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from poem_context import PoemContext
+from backend.ai.context import PoemContext
 
 SAMPLE_CONTEXT = PoemContext(
     id="test-poem",
@@ -19,7 +19,7 @@ SAMPLE_CONTEXT = PoemContext(
 def model(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
-    import main
+    import backend.ai.model as main
 
     return main
 
