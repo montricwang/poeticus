@@ -63,7 +63,7 @@ def answer_with_evidence(
         )
 
     response = client.chat.completions.create(
-        model="deepseek-flash",
+        model=LLM_MODEL,
         max_tokens=MAX_LLM_OUTPUT_TOKENS,
         messages=[
             {
@@ -103,7 +103,7 @@ def analyze_poem(poem: str, context: PoemContext | None = None) -> PoemAnalysis:
 
     try:
         response = client.chat.completions.create(
-            model="deepseek-flash",
+            model=LLM_MODEL,
         max_tokens=MAX_LLM_OUTPUT_TOKENS,
             messages=[
                 {
@@ -192,7 +192,7 @@ def chat_about_poem(
     """原有非流式接口继续使用，不影响 /chat 和现有 Graph 测试。"""
     try:
         response = client.chat.completions.create(
-            model="deepseek-flash",
+            model=LLM_MODEL,
         max_tokens=MAX_LLM_OUTPUT_TOKENS,
             messages=_chat_messages(poem, question, selection, context),
         )
@@ -223,7 +223,7 @@ def stream_chat_about_poem(
     parts: list[str] = []
     try:
         stream = client.chat.completions.create(
-            model="deepseek-flash",
+            model=LLM_MODEL,
         max_tokens=MAX_LLM_OUTPUT_TOKENS,
             messages=_chat_messages(poem, question, selection, context),
             stream=True,
