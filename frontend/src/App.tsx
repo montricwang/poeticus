@@ -204,9 +204,6 @@ function App() {
         <ViewToolbar
           activeView={activeView}
           onViewChange={setActiveView}
-          onAnalyze={handleAnalyze}
-          analyzing={analyzing}
-          switching={!!switchTarget}
         />
 
         {activeView === "chat" ? (
@@ -235,6 +232,8 @@ function App() {
             analyzing={analyzing}
             error={analysisError}
             limitNotice={analysisLimitNotice}
+            onAnalyze={handleAnalyze}
+            switching={!!switchTarget}
           />
         )}
       </>
@@ -412,8 +411,10 @@ function App() {
             aria-hidden={!catalogOpen}
             inert={!catalogOpen}
             className={
-              "absolute inset-0 z-40 transition-[visibility] " +
-              (catalogOpen ? "visible" : "invisible")
+              "absolute inset-0 z-40 transition-[visibility] duration-0 " +
+              (catalogOpen
+                ? "visible delay-0"
+                : "invisible delay-[760ms]")
             }
           >
             <button
@@ -421,7 +422,7 @@ function App() {
               tabIndex={-1}
               aria-label="关闭作品目录遮罩"
               className={
-                "absolute inset-0 bg-black/55 transition-opacity duration-[620ms] " +
+                "absolute inset-0 bg-black/55 transition-opacity duration-[560ms] " +
                 "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
                 (catalogOpen
                   ? "pointer-events-auto opacity-100"
@@ -433,11 +434,11 @@ function App() {
             <div
               className={
                 "relative h-full w-screen sm:w-[min(88vw,420px)] " +
-                "transform transition-transform duration-[620ms] " +
+                "transform transition-[transform,opacity] duration-[760ms] " +
                 "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
                 (catalogOpen
-                  ? "pointer-events-auto translate-x-0"
-                  : "pointer-events-none -translate-x-full")
+                  ? "pointer-events-auto translate-x-0 opacity-100"
+                  : "pointer-events-none -translate-x-full opacity-0")
               }
             >
               {renderCatalog(catalogOpen)}
@@ -463,10 +464,10 @@ function App() {
               aria-hidden={!catalogOpen}
               className={
                 "pointer-events-none fixed inset-0 z-50 2xl:sticky 2xl:top-5 2xl:z-auto " +
-                "2xl:min-w-0 2xl:overflow-hidden " +
+                "2xl:min-w-0 2xl:overflow-hidden 2xl:transition-opacity 2xl:duration-[420ms] " +
                 (catalogOpen
-                  ? "2xl:border-r 2xl:border-border/60"
-                  : "2xl:border-r-0")
+                  ? "2xl:border-r 2xl:border-border/60 2xl:opacity-100"
+                  : "2xl:border-r-0 2xl:opacity-0")
               }
             >
               <button
@@ -474,7 +475,7 @@ function App() {
                 tabIndex={-1}
                 aria-label="关闭作品目录遮罩"
                 className={
-                  "absolute inset-0 bg-black/55 transition-opacity duration-[620ms] " +
+                  "absolute inset-0 bg-black/55 transition-opacity duration-[520ms] " +
                   "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none 2xl:hidden " +
                   (catalogOpen
                     ? "pointer-events-auto opacity-100"
@@ -486,12 +487,12 @@ function App() {
               <div
                 className={
                   "relative h-full w-screen sm:w-[min(88vw,420px)] " +
-                  "transform transition-transform duration-[620ms] " +
+                  "transform transition-[transform,opacity] duration-[620ms] " +
                   "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
                   "2xl:w-80 2xl:translate-x-0 2xl:pr-5 " +
                   (catalogOpen
-                    ? "pointer-events-auto translate-x-0"
-                    : "pointer-events-none -translate-x-full")
+                    ? "pointer-events-auto translate-x-0 opacity-100 2xl:opacity-100"
+                    : "pointer-events-none -translate-x-full opacity-0 2xl:opacity-100")
                 }
               >
                 {renderCatalog(catalogOpen)}
