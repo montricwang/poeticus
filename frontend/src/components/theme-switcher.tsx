@@ -27,6 +27,17 @@ export function ThemeSwitcher() {
       const isDark = theme === "dark" || (theme === "system" && media.matches);
 
       document.documentElement.classList.toggle("dark", isDark);
+
+      // Safari / iPadOS 会用 theme-color 绘制浏览器边缘与弹性回弹区域。
+      // 同步实际页面背景，避免深色模式回弹时露出浅色条带。
+      const themeColor = document.querySelector<HTMLMetaElement>(
+        'meta[name="theme-color"]',
+      );
+      if (themeColor) {
+        themeColor.content = getComputedStyle(
+          document.documentElement,
+        ).backgroundColor;
+      }
     }
 
     applyTheme();
