@@ -9,7 +9,7 @@
 - 本地 PostgreSQL。作品目录与正文不再从前端静态 JSON 加载。
 - 开发者自己的模型 API Key，以及有权使用的作品数据。
 
-项目根目录包含 FastAPI 后端，`frontend/` 为 Vite/React 项目。开发时分别运行前端和后端；**不要将 `vite dev` 或 `uvicorn --reload` 直接暴露为公网生产服务**。
+FastAPI 的实现集中在 `backend/`，`frontend/` 为 Vite/React 项目。根目录的 `api.py` 等文件仅为旧导入路径提供兼容。开发时分别运行前端和后端；**不要将 `vite dev` 或 `uvicorn --reload` 直接暴露为公网生产服务**。
 
 ## 1. 安装依赖
 
@@ -54,7 +54,7 @@ python -m scripts.corpus.db_import --import
 在根目录运行 FastAPI：
 
 ```powershell
-uvicorn api:app --reload
+uvicorn backend.app:app --reload
 ```
 
 在另一个终端启动 Vite：

@@ -1,3 +1,5 @@
+from backend.api import analysis as analysis_routes
+from backend.api import chat as chat_routes
 """/chat 与 /analyze 回归测试：在 API 边界替换 Graph，不调用真实模型。"""
 
 from types import SimpleNamespace
@@ -56,7 +58,7 @@ def test_chat_returns_graph_reply_without_changing_frontend_contract(
         received.append(state)
         return {"intent": intent, "reply": reply}
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=fake_invoke))
+    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(invoke=fake_invoke))
     response = client.post(
         "/chat",
         json={
@@ -81,7 +83,7 @@ def test_chat_graph_failure_returns_502(monkeypatch, api_module, client):
     def fake_failure(state):
         raise RuntimeError("意图识别 API 调用失败")
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=fake_failure))
+    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(invoke=fake_failure))
     response = client.post(
         "/chat",
         json={
@@ -123,7 +125,7 @@ def test_chat_rejects_invalid_requests_before_running_graph(
     def unexpected_invoke(state):
         pytest.fail("无效请求不应该调用 Graph")
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=unexpected_invoke))
+    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(invoke=unexpected_invoke))
     response = client.post("/chat", json=payload)
 
     assert response.status_code == 422
@@ -138,7 +140,7 @@ def test_chat_accepts_request_without_context(monkeypatch, api_module, client):
         received.append(state)
         return {"reply": "旧请求仍可用。"}
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=fake_invoke))
+    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(invoke=fake_invoke))
     response = client.post(
         "/chat",
         json={"poem": "萧萧乱叶报新秋。", "question": "解释报字"},
@@ -157,7 +159,7 @@ def test_chat_accepts_null_author_context(monkeypatch, api_module, client):
         received.append(state)
         return {"reply": "作者尚未核实。"}
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(invoke=fake_invoke))
+    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(invoke=fake_invoke))
     response = client.post(
         "/chat",
         json={
@@ -183,7 +185,7 @@ def test_analyze_receives_context(monkeypatch, api_module, client):
             commentary="赏析",
         )
 
-    monkeypatch.setattr(api_module, "analyze_poem", fake_analyze)
+    monkeypatch.setattr(analysis_routes, "analyze_poem", fake_analyze)
     response = client.post(
         "/analyze",
         json={"poem": "萧萧乱叶报新秋。", "context": SAMPLE_CONTEXT},
@@ -213,7 +215,7 @@ def test_analyze_accepts_request_without_context(monkeypatch, api_module, client
             commentary="赏析",
         )
 
-    monkeypatch.setattr(api_module, "analyze_poem", fake_analyze)
+    monkeypatch.setattr(analysis_routes, "analyze_poem", fake_analyze)
     response = client.post("/analyze", json={"poem": "萧萧乱叶报新秋。"})
 
     assert response.status_code == 200
@@ -233,7 +235,7 @@ def test_analyze_accepts_null_author_context(monkeypatch, api_module, client):
             commentary="赏析",
         )
 
-    monkeypatch.setattr(api_module, "analyze_poem", fake_analyze)
+    monkeypatch.setattr(analysis_routes, "analyze_poem", fake_analyze)
     response = client.post(
         "/analyze",
         json={"poem": "萧萧乱叶报新秋。", "context": NULL_AUTHOR_CONTEXT},
@@ -255,7 +257,7 @@ def test_chat_passes_valid_history_to_graph(
         return {"reply": "结合上一轮继续回答。"}
 
     monkeypatch.setattr(
-        api_module,
+        chat_routes,
         "graph",
         SimpleNamespace(invoke=fake_invoke),
     )
@@ -300,7 +302,7 @@ def test_chat_rejects_invalid_history_order(
         pytest.fail("非法历史不应该进入 Graph")
 
     monkeypatch.setattr(
-        api_module,
+        chat_routes,
         "graph",
         SimpleNamespace(invoke=unexpected_invoke),
     )
@@ -331,7 +333,7 @@ def test_chat_rejects_more_than_six_history_turns(
         pytest.fail("超出历史预算的请求不应该进入 Graph")
 
     monkeypatch.setattr(
-        api_module,
+        chat_routes,
         "graph",
         SimpleNamespace(invoke=unexpected_invoke),
     )

@@ -1,3 +1,4 @@
+from backend.api import chat as chat_routes
 """Agent 流式输出回归测试，使用 Mock 模型验证 LangGraph custom 事件。"""
 
 import json
@@ -283,7 +284,7 @@ def test_streaming_preamble_then_tool_call(monkeypatch, agent):
         ]
 
     monkeypatch.setattr(agent.evidence_service, "search", fake_search)
-    monkeypatch.setattr(api_module, "graph", agent.graph)
+    monkeypatch.setattr(chat_routes, "graph", agent.graph)
 
     preamble = "I'll look up the allusion for 「三星当户」."
     answer_parts = ["「三星当户」化用《诗经·绸缪》。", "它借星象写相聚。"]

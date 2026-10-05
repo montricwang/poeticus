@@ -1,3 +1,4 @@
+from backend.api import chat as chat_routes
 """流式接口回归测试：替换 Graph，不调用真实模型。"""
 
 import json
@@ -55,7 +56,7 @@ def test_stream_sends_incremental_tokens_and_done(monkeypatch, api_module):
             },
         )
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=fake_stream))
+    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
         "/chat/stream",
         json={
@@ -99,7 +100,7 @@ def test_stream_accepts_request_without_context(monkeypatch, api_module):
             },
         )
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=fake_stream))
+    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
         "/chat/stream",
         json={"poem": "三星当户。", "question": "解释"},
@@ -160,7 +161,7 @@ def test_tool_round_emits_final_answer_once(monkeypatch, api_module):
         )
 
     monkeypatch.setattr(
-        api_module,
+        chat_routes,
         "graph",
         SimpleNamespace(stream=fake_stream),
     )
@@ -186,7 +187,7 @@ def test_failure_after_partial_keeps_tokens_and_sends_error(monkeypatch, api_mod
         yield "custom", {"type": "token", "text": "前半句"}
         raise RuntimeError("生成中途断开")
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=fake_stream))
+    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(stream=fake_stream))
     response = TestClient(api_module.app).post(
         "/chat/stream",
         json={
@@ -218,7 +219,7 @@ def test_stream_validation_matches_chat(monkeypatch, api_module, payload):
     def unexpected_stream(*args, **kwargs):
         pytest.fail("无效请求不应该进入 Graph")
 
-    monkeypatch.setattr(api_module, "graph", SimpleNamespace(stream=unexpected_stream))
+    monkeypatch.setattr(chat_routes, "graph", SimpleNamespace(stream=unexpected_stream))
     response = TestClient(api_module.app).post("/chat/stream", json=payload)
     assert response.status_code == 422
     assert response.headers["content-type"].startswith("application/json")
@@ -240,7 +241,7 @@ def test_stream_passes_history_to_graph(monkeypatch, api_module):
         )
 
     monkeypatch.setattr(
-        api_module,
+        chat_routes,
         "graph",
         SimpleNamespace(stream=fake_stream),
     )

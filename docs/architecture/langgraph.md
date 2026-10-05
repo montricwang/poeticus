@@ -22,7 +22,7 @@ flowchart TD
     D --> G["END"]
 ```
 
-入口配置在 `langgraph.json`，当前仍指向 `intent_router.py:graph`。文件名保留历史名称，但内部已不再执行意图分类。
+入口配置在 `langgraph.json`，现在指向 `backend/ai/graph.py:graph`。根目录 `intent_router.py` 仅保留旧导入路径的兼容；工作流已不再进行意图分类。
 
 ### agent
 
@@ -44,7 +44,7 @@ flowchart TD
 
 ## 3. Graph State
 
-`RouterState` 定义于 `intent_router.py`。
+`RouterState` 定义于 `backend/ai/graph.py`。
 
 | 字段 | 用途 |
 |---|---|
