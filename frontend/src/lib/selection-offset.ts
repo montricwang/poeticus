@@ -20,3 +20,21 @@ export function selectionForPython(
     end: Array.from(poem.slice(0, selection.end)).length,
   };
 }
+
+export function validSelectionForPoem(
+  selection: SelectedText | null,
+  poem: string,
+): SelectedText | null {
+  if (!selection) return null;
+
+  if (
+    selection.start < 0 ||
+    selection.end > poem.length ||
+    selection.start >= selection.end ||
+    poem.slice(selection.start, selection.end) !== selection.text
+  ) {
+    return null;
+  }
+
+  return selection;
+}
