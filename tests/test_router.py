@@ -1,4 +1,4 @@
-"""测试 Agent 路由的上下文与工具守卫回归，不调用真实 API。"""
+"""测试 Agent 图的上下文与工具守卫回归，不调用真实 API。"""
 
 from types import SimpleNamespace
 
@@ -16,13 +16,13 @@ SAMPLE_CONTEXT = PoemContext(
 
 
 @pytest.fixture
-def router(monkeypatch):
+def graph_module(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
 
-    import backend.ai.graph as intent_router
+    import backend.ai.graph as graph_module
 
-    return intent_router
+    return graph_module
 
 
 def _fake_client(fake_create):
@@ -65,7 +65,7 @@ def _user_message(model_calls):
     return model_calls[0]["messages"][1]["content"]
 
 
-def test_graph_sends_poem_context_to_model(monkeypatch, router):
+def test_graph_sends_poem_context_to_model(monkeypatch, graph_module):
     """有作品元数据时，模型收到对应上下文。"""
 
     model_calls = []
@@ -76,7 +76,7 @@ def test_graph_sends_poem_context_to_model(monkeypatch, router):
 
     monkeypatch.setattr(router, "client", _fake_client(fake_create))
 
-    result = router.graph.invoke(
+    result = graph_module.graph.invoke(
         {
             "poem": "萧萧乱叶报新秋。",
             "question": "解释报字",
@@ -94,8 +94,8 @@ def test_graph_sends_poem_context_to_model(monkeypatch, router):
     assert "imported_unreviewed" not in user_content
 
 
-def test_graph_answers_legacy_request_without_context(monkeypatch, router):
-    """没有作品元数据时，旧请求仍可正常回答。"""
+def test_graph_answers_request_without_context(monkeypatch, graph_module):
+    """作品元数据是可选字段；缺省时仍可正常回答。"""
 
     model_calls = []
 
@@ -105,7 +105,7 @@ def test_graph_answers_legacy_request_without_context(monkeypatch, router):
 
     monkeypatch.setattr(router, "client", _fake_client(fake_create))
 
-    result = router.graph.invoke(
+    result = graph_module.graph.invoke(
         {
             "poem": "萧萧乱叶报新秋。",
             "question": "解释报字",
@@ -117,7 +117,7 @@ def test_graph_answers_legacy_request_without_context(monkeypatch, router):
     assert "作品上下文" not in _user_message(model_calls)
 
 
-def test_unknown_tool_is_not_executed(monkeypatch, router):
+def test_unknown_tool_is_not_executed(monkeypatch, graph_module):
     """模型伪造未注册工具时，只返回错误结果，不触发检索。"""
 
     model_calls = []
@@ -145,9 +145,9 @@ def test_unknown_tool_is_not_executed(monkeypatch, router):
         )
 
     monkeypatch.setattr(router, "client", _fake_client(fake_create))
-    monkeypatch.setattr(router.evidence_service, "search", fake_search)
+    monkeypatch.setattr(graph_module.evidence_service, "search", fake_search)
 
-    result = router.graph.invoke(
+    result = graph_module.graph.invoke(
         {
             "poem": "萧萧乱叶报新秋。",
             "question": "刘郎有什么典故？",
