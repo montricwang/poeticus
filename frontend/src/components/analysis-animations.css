@@ -1,0 +1,35 @@
+@keyframes poeticus-analysis-result-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes poeticus-analysis-char-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.poeticus-analysis-result-enter {
+  animation: poeticus-analysis-result-enter 180ms ease-out both;
+}
+
+.poeticus-analysis-char-enter {
+  animation: poeticus-analysis-char-enter 260ms ease-out both;
+  animation-delay: var(--analysis-char-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poeticus-analysis-result-enter,
+  .poeticus-analysis-char-enter {
+    animation: none;
+  }
+}
