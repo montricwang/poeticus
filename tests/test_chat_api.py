@@ -8,6 +8,8 @@ from fastapi.testclient import TestClient
 from backend.ai.context import PoemContext
 from backend.ai.model import PoemAnalysis
 from backend.config import CHAT_MAX_HISTORY_TURNS
+from backend.ai.model import PoemAnalysis
+from backend.config import CHAT_MAX_HISTORY_TURNS
 
 SAMPLE_CONTEXT = {
     "id": "su-shi-huan-xi-sha-feng-juan-zhu-lian",
