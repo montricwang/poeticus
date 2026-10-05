@@ -12,6 +12,7 @@ import { MessageEntrance } from "@/components/message-entrance";
 import { UserMessage } from "@/components/user-message";
 import { AssistantMessage } from "@/components/assistant-message";
 import { ChatComposer } from "@/components/chat-composer";
+import { cn } from "@/lib/utils";
 import type { SelectedText } from "@/components/poem-reader";
 import type { ChatTurn, ChatViewport } from "@/components/chat-types";
 
@@ -30,6 +31,8 @@ type ChatPanelProps = {
   onRetry: (id: number) => void;
   onRegenerate: (id: number) => void;
   onEdit: (id: number, nextQuestion: string) => void;
+  fillAvailableHeight?: boolean;
+  className?: string;
 };
 
 export function ChatPanel({
@@ -47,6 +50,8 @@ export function ChatPanel({
   onRetry,
   onRegenerate,
   onEdit,
+  fillAvailableHeight = false,
+  className,
 }: ChatPanelProps) {
   const chatListRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
@@ -147,24 +152,33 @@ export function ChatPanel({
   }
 
   return (
-    <section aria-label="阅读讨论" className="flex h-165 min-h-0 min-w-0 flex-col bg-transparent">
+    <section
+      aria-label="阅读讨论"
+      className={cn(
+        "flex min-h-0 min-w-0 flex-col bg-transparent",
+        fillAvailableHeight
+          ? "flex-1"
+          : turns.length > 0
+            ? "h-auto max-h-[min(42rem,calc(100dvh-10rem))]"
+            : "h-auto",
+        className,
+      )}
+    >
 
-      {/* 相对定位容器负责固定悬浮按钮，内部列表才允许滚动。 */}
-      <div className="relative flex min-h-0 flex-1">
-        <div
-          ref={chatListRef}
-          onScroll={(event) => handleScroll(event.currentTarget)}
-          className="flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto pr-2 py-5"
-        >
-          {turns.length === 0 && (
-            <div className="flex flex-1 items-center justify-center text-center">
-              <p className="max-w-xs text-sm leading-7 text-muted-foreground">
-                选中左侧诗句，或直接输入你想问的问题。
-              </p>
-            </div>
-          )}
+      {/* 全屏移动工作区没有消息时，用弹性空白把输入区压到底部；
+          第一轮消息出现后，这一块自然替换成唯一的聊天滚动区。 */}
+      {fillAvailableHeight && turns.length === 0 && (
+        <div className="min-h-0 flex-1" aria-hidden="true" />
+      )}
 
-          {turns.map((turn, index) => (
+      {turns.length > 0 && (
+        <div className="relative flex min-h-0 flex-1">
+          <div
+            ref={chatListRef}
+            onScroll={(event) => handleScroll(event.currentTarget)}
+            className="flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto py-4 pr-2"
+          >
+            {turns.map((turn, index) => (
             <div key={turn.id} className="space-y-4">
               {index > 0 && (
                 <div className="mb-6 h-px w-12 bg-border/80" aria-hidden="true" />
@@ -229,28 +243,34 @@ export function ChatPanel({
                 />
               </MessageEntrance>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {!isAtBottom && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background/95 shadow-md backdrop-blur-sm"
-            aria-label={hasUnreadReply ? "新回复已生成，滚动到底部" : "滚动到底部"}
-            onClick={scrollToBottom}
-          >
-            <ArrowDown className="size-4" />
-            {hasUnreadReply && (
-              <>
-                <span className="size-1.5 rounded-full bg-violet-500" />
-                <span>新回复</span>
-              </>
-            )}
-          </Button>
-        )}
-      </div>
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_72%,transparent)_62%,var(--background)_100%)] dark:h-6 dark:bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_48%,transparent)_68%,var(--background)_100%)]"
+            aria-hidden="true"
+          />
+
+          {!isAtBottom && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background/95 shadow-md backdrop-blur-sm"
+              aria-label={hasUnreadReply ? "新回复已生成，滚动到底部" : "滚动到底部"}
+              onClick={scrollToBottom}
+            >
+              <ArrowDown className="size-4" />
+              {hasUnreadReply && (
+                <>
+                  <span className="size-1.5 rounded-full bg-violet-500" />
+                  <span>新回复</span>
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
 
       <ChatComposer
         selected={selected}
@@ -259,6 +279,7 @@ export function ChatPanel({
         onQuestionChange={onQuestionChange}
         onClearQuote={onClearQuote}
         onSend={handleSendFromComposer}
+        showDivider={turns.length > 0}
       />
     </section>
   );

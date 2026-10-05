@@ -35,21 +35,15 @@ export function PoemCatalog({
   open,
 }: PoemCatalogProps) {
   const panelRef = useRef<HTMLElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
-
-    // 侧栏始终保持挂载；只有真正打开移动抽屉时才需要主动聚焦。
-    if (window.matchMedia("(max-width: 1023px)").matches) {
-      inputRef.current?.focus();
-    }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
       }
-      if (event.key !== "Tab" || !window.matchMedia("(max-width: 1023px)").matches) {
+      if (event.key !== "Tab" || !window.matchMedia("(max-width: 1535px)").matches) {
         return;
       }
       const elements = panelRef.current?.querySelectorAll<HTMLElement>(
@@ -79,7 +73,7 @@ export function PoemCatalog({
       id="poem-catalog"
       ref={panelRef}
       aria-label="作品目录"
-      className="flex h-full min-h-0 w-[min(88vw,360px)] flex-col border-r border-border bg-background lg:sticky lg:top-5 lg:h-[calc(100vh-7rem)] lg:max-h-[900px] lg:w-full lg:border-0 lg:bg-transparent"
+      className="flex h-full min-h-0 w-screen flex-col sm:w-[min(88vw,420px)] border-r border-border bg-background 2xl:sticky 2xl:top-5 2xl:h-[calc(100vh-7rem)] 2xl:max-h-[900px] 2xl:w-full 2xl:border-0 2xl:bg-transparent"
     >
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
         <div className="flex min-w-0 items-baseline gap-2">
@@ -95,8 +89,8 @@ export function PoemCatalog({
           aria-label="收起作品目录"
           onClick={onClose}
         >
-          <X className="size-4 lg:hidden" aria-hidden="true" />
-          <ChevronLeft className="hidden size-4 lg:block" aria-hidden="true" />
+          <X className="size-4 2xl:hidden" aria-hidden="true" />
+          <ChevronLeft className="hidden size-4 2xl:block" aria-hidden="true" />
         </Button>
       </div>
 
@@ -111,9 +105,8 @@ export function PoemCatalog({
         <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 focus-within:ring-2 focus-within:ring-ring/30">
           <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
-            ref={inputRef}
             aria-label="搜索作者、词牌、词题、正文"
-            className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="h-10 w-full min-w-0 bg-transparent text-base outline-none placeholder:text-muted-foreground"
             placeholder="作者、词牌、词题或诗句"
             maxLength={100}
             value={query}
