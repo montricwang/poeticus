@@ -32,7 +32,7 @@ export function AnalysisPanel({
     <Card
       className={cn(
         "flex min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm",
-        fillAvailableHeight ? "h-full flex-1" : "h-165",
+        fillAvailableHeight ? "flex-1" : "h-165",
         className,
       )}
     >
