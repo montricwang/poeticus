@@ -130,9 +130,9 @@ def test_ip_daily_quota_exhaustion_shows_distinct_message(monkeypatch):
 def test_ip_daily_hash_differs_between_clients_and_days(monkeypatch):
     cli, spent = make_app(monkeypatch, minute=100)
     monkeypatch.setenv("POETICUS_TRUST_RAILWAY_REAL_IP", "true")
-    # A fresh middleware instance reads the real-IP trust flag.
+    # 新建中间件实例时会读取真实 IP 信任开关。
     cli, spent = make_app(monkeypatch, minute=100)
-    # make_app constructs its middleware before the request is handled.
+    # make_app 会在请求处理前完成中间件构造。
     assert cli.post("/api/analyze", json={"poem": "test"},
                     headers={"x-real-ip": "203.0.113.11"}).status_code == 200
     assert cli.post("/api/analyze", json={"poem": "test"},
