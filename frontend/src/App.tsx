@@ -300,7 +300,7 @@ function App() {
         <div
           className={
             "grid min-w-0 grid-cols-1 items-start gap-0 " +
-            "2xl:transition-[grid-template-columns] 2xl:duration-[520ms] 2xl:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+            "2xl:transition-[grid-template-columns] 2xl:duration-[600ms] 2xl:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
             (catalogOpen
               ? "2xl:grid-cols-[320px_minmax(0,1fr)]"
               : "2xl:grid-cols-[0px_minmax(0,1fr)]")
@@ -322,7 +322,7 @@ function App() {
               tabIndex={-1}
               aria-label="关闭作品目录遮罩"
               className={
-                "absolute inset-0 bg-black/55 transition-opacity duration-[520ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+                "absolute inset-0 bg-black/55 transition-opacity duration-[620ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
                 "motion-reduce:transition-none 2xl:hidden " +
                 (catalogOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
               }
@@ -331,7 +331,7 @@ function App() {
             <div
               className={
                 "relative h-full w-screen sm:w-[min(88vw,420px)] " +
-                "transform transition-transform duration-[520ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
+                "transform transition-transform duration-[620ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
                 "motion-reduce:transition-none 2xl:w-80 2xl:translate-x-0 2xl:pr-5 " +
                 (catalogOpen
                   ? "pointer-events-auto translate-x-0"
@@ -438,10 +438,10 @@ function App() {
         <div
           className={
             turns.length > 0
-              ? "h-[clamp(18rem,44dvh,30rem)]"
+              ? "h-[clamp(18rem,44svh,30rem)]"
               : selected
-                ? "h-[clamp(16rem,36dvh,22rem)]"
-                : "h-[clamp(12rem,26dvh,15rem)]"
+                ? "h-[clamp(16rem,36svh,22rem)]"
+                : "h-[clamp(12rem,26svh,15rem)]"
           }
           aria-hidden="true"
         />
