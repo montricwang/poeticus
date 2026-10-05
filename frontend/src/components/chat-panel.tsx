@@ -12,6 +12,7 @@ import { MessageEntrance } from "@/components/message-entrance";
 import { UserMessage } from "@/components/user-message";
 import { AssistantMessage } from "@/components/assistant-message";
 import { ChatComposer } from "@/components/chat-composer";
+import { cn } from "@/lib/utils";
 import type { SelectedText } from "@/components/poem-reader";
 import type { ChatTurn, ChatViewport } from "@/components/chat-types";
 
@@ -30,6 +31,7 @@ type ChatPanelProps = {
   onRetry: (id: number) => void;
   onRegenerate: (id: number) => void;
   onEdit: (id: number, nextQuestion: string) => void;
+  className?: string;
 };
 
 export function ChatPanel({
@@ -47,6 +49,7 @@ export function ChatPanel({
   onRetry,
   onRegenerate,
   onEdit,
+  className,
 }: ChatPanelProps) {
   const chatListRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
@@ -147,7 +150,10 @@ export function ChatPanel({
   }
 
   return (
-    <section aria-label="阅读讨论" className="flex h-165 min-h-0 min-w-0 flex-col bg-transparent">
+    <section
+      aria-label="阅读讨论"
+      className={cn("flex h-165 min-h-0 min-w-0 flex-col bg-transparent", className)}
+    >
 
       {/* 相对定位容器负责固定悬浮按钮，内部列表才允许滚动。 */}
       <div className="relative flex min-h-0 flex-1">
