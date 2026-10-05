@@ -219,6 +219,12 @@ function App() {
   }, [poemId, wideDiscussionLayout]);
 
   const poemReady = !!activePoem && activePoem.id === poemId;
+  const mobileDiscussionHeight =
+    turns.length > 0
+      ? "clamp(18rem, 44dvh, 30rem)"
+      : selected
+        ? "clamp(16rem, 36dvh, 22rem)"
+        : "clamp(12rem, 26dvh, 15rem)";
 
   function renderDiscussionContent(fillAvailableHeight: boolean) {
     if (!activePoem || activePoem.id !== poemId) {
@@ -228,8 +234,6 @@ function App() {
         </div>
       );
     }
-
-    const fillClassName = fillAvailableHeight ? "h-auto flex-1" : undefined;
 
     return (
       <>
@@ -244,7 +248,7 @@ function App() {
         {activeView === "chat" ? (
           <ChatPanel
             key={activePoem.id}
-            className={fillClassName}
+            fillAvailableHeight={fillAvailableHeight}
             selected={selected}
             question={question}
             turns={turns}
@@ -274,7 +278,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="bg-background text-foreground">
       <header className="border-b border-border/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <div className="flex items-center gap-2">
@@ -436,13 +440,7 @@ function App() {
 
       {poemReady && !wideDiscussionLayout && mobileDiscussionOpen && (
         <div
-          className={
-            turns.length > 0
-              ? "h-[clamp(18rem,44svh,30rem)]"
-              : selected
-                ? "h-[clamp(16rem,36svh,22rem)]"
-                : "h-[clamp(12rem,26svh,15rem)]"
-          }
+          style={{ height: mobileDiscussionHeight }}
           aria-hidden="true"
         />
       )}
@@ -454,6 +452,7 @@ function App() {
           hasUnreadReply={hasUnreadReply}
           hasSelection={!!selected}
           hasConversation={turns.length > 0}
+          height={mobileDiscussionHeight}
         >
           {renderDiscussionContent(true)}
         </MobileDiscussionDock>
