@@ -1,4 +1,4 @@
-"""Synthetic checks for reversible font1 inline notes; no licensed excerpts."""
+"""可逆 font1 行内注记测试只使用合成文本，不包含授权来源摘录。"""
 from dataclasses import asdict
 
 import pytest
@@ -111,8 +111,8 @@ def test_normalization_rebases_offsets_after_glyph_replacement():
     assert normalized["content"]["text"] == ["开头辞正文合成说明结尾"]
     assert normalized["content"]["text"][0][after["start"]:after["end"]] == after["text"]
 
-    # A recorded span that no longer matches its raw paragraph must never
-    # silently become a wrong note attached to another word.
+    # 已记录的 span 如果已不再匹配原始段落，绝不能静默变成
+    # 挂到其他文字上的错误注记。
     after["start"] = 0
     with pytest.raises(ValueError, match="位置与原文不一致"):
         normalize_poem(normalized, mapping)
