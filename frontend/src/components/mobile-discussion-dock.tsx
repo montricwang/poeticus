@@ -54,7 +54,7 @@ export function MobileDiscussionDock({
         aria-hidden={!open}
         inert={!open}
         className={
-          "fixed inset-x-0 bottom-0 z-40 flex min-h-0 flex-col bg-background " +
+          "fixed inset-x-0 bottom-0 z-40 flex min-h-0 flex-col overflow-hidden bg-background " +
           "will-change-transform transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
           (hasConversation
             ? "h-[clamp(18rem,44dvh,30rem)] "
@@ -83,7 +83,7 @@ export function MobileDiscussionDock({
           </Button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {children}
         </div>
       </section>
