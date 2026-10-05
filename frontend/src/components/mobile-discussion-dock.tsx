@@ -45,9 +45,10 @@ export function MobileDiscussionDock({
         id="mobile-discussion-dock"
         aria-label="阅读讨论"
         aria-hidden={!open}
+        inert={!open}
         className={
           "fixed inset-x-0 bottom-0 z-40 flex h-[clamp(16rem,42dvh,28rem)] min-h-0 flex-col " +
-          "border-t border-border/70 bg-background shadow-[0_-10px_30px_rgba(0,0,0,0.05)] " +
+          "border-t border-border/70 bg-background " +
           "transition-transform duration-300 ease-out motion-reduce:transition-none " +
           (open
             ? "translate-y-0"
