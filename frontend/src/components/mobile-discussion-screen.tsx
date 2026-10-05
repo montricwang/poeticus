@@ -9,6 +9,7 @@ export function MobileDiscussionScreen({
   open,
   children,
 }: MobileDiscussionScreenProps) {
+  // Phone uses a fade; md–lg keeps the tablet slide. Their durations are intentionally independent.
   return (
     <section
       id="mobile-discussion-screen"
@@ -17,8 +18,8 @@ export function MobileDiscussionScreen({
       inert={!open}
       className={
         "absolute inset-0 z-20 flex min-h-0 flex-col bg-background " +
-        "transition-opacity duration-[520ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
-        "md:transition-transform md:duration-400 md:ease-[cubic-bezier(0.22,1,0.36,1)] " +
+        "transition-opacity duration-[520ms] ease-[var(--motion-ease-settle)] " +
+        "md:transition-transform md:duration-400 md:ease-[var(--motion-ease-settle)] " +
         "motion-reduce:transition-none " +
         (open
           ? "pointer-events-auto opacity-100 md:translate-x-0 md:opacity-100"
