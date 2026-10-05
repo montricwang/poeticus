@@ -40,12 +40,20 @@
   --radius: 0.625rem;
 
   /*
-   * Shared UI contracts:
-   * - settle easing is reused by page, drawer and message transitions;
-   * - desktop chat and analysis deliberately share the same height cap.
-   * Mobile full-screen discussion ignores the height cap.
+   * Shared UI contracts. These values describe product behavior, not incidental spacing:
+   * - 1024px+ reader/companion columns share a 60dvh visual stage;
+   * - desktop chat and analysis deliberately share the same height cap;
+   * - catalog/discussion durations are named by interaction so later tuning has one owner.
    */
   --motion-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-catalog-phone-fade: 720ms;
+  --motion-catalog-backdrop-fade: 520ms;
+  --motion-catalog-drawer-slide: 620ms;
+  --motion-catalog-grid-resize: 600ms;
+  --motion-discussion-phone-fade: 520ms;
+  --motion-discussion-tablet-slide: 400ms;
+
+  --desktop-reading-stage-min-height: 60dvh;
   --companion-panel-max-height: min(42rem, calc(100dvh - 10rem));
 
   --sidebar: oklch(0.985 0 0);
