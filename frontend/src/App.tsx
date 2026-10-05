@@ -371,7 +371,13 @@ function App() {
 
       {poemReady && !wideDiscussionLayout && mobileDiscussionOpen && (
         <div
-          className="h-[clamp(16rem,42dvh,28rem)]"
+          className={
+            turns.length > 0
+              ? "h-[clamp(18rem,44dvh,30rem)]"
+              : selected
+                ? "h-[clamp(16rem,36dvh,22rem)]"
+                : "h-[clamp(12rem,26dvh,15rem)]"
+          }
           aria-hidden="true"
         />
       )}
@@ -382,6 +388,7 @@ function App() {
           onOpenChange={handleMobileDiscussionOpenChange}
           hasUnreadReply={hasUnreadReply}
           hasSelection={!!selected}
+          hasConversation={turns.length > 0}
         >
           {renderDiscussionContent(true)}
         </MobileDiscussionDock>
