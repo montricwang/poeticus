@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { MessageCircle, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,8 @@ type MobileDiscussionDockProps = {
   onOpenChange: (open: boolean) => void;
   hasUnreadReply: boolean;
   hasSelection: boolean;
-  height: string;
+  height?: string;
+  onHeightChange?: (height: number) => void;
   children: ReactNode;
 };
 
@@ -18,8 +19,26 @@ export function MobileDiscussionDock({
   hasUnreadReply,
   hasSelection,
   height,
+  onHeightChange,
   children,
 }: MobileDiscussionDockProps) {
+  const dockRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    const dock = dockRef.current;
+    if (!dock || !onHeightChange) return;
+
+    function reportHeight() {
+      onHeightChange(Math.ceil(dock.getBoundingClientRect().height));
+    }
+
+    reportHeight();
+    const observer = new ResizeObserver(reportHeight);
+    observer.observe(dock);
+
+    return () => observer.disconnect();
+  }, [height, onHeightChange]);
+
   return (
     <>
       <Button
@@ -49,11 +68,12 @@ export function MobileDiscussionDock({
       </Button>
 
       <section
+        ref={dockRef}
         id="mobile-discussion-dock"
         aria-label="阅读讨论"
         aria-hidden={!open}
         inert={!open}
-        style={{ height }}
+        style={height ? { height } : undefined}
         className={
           "fixed inset-x-0 bottom-0 z-40 flex min-h-0 flex-col overflow-hidden bg-background " +
           "will-change-transform transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
