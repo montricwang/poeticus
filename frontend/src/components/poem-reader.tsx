@@ -136,7 +136,7 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
 
   return (
     <div className="poem-reader min-w-0">
-      <div ref={readerRef} className="min-h-155 bg-transparent">
+      <div ref={readerRef} className="bg-transparent">
         <article className="poem-reader-page mx-auto w-full min-w-0 px-4 sm:px-8">
           <header className="poem-reader-header text-center">
             {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
