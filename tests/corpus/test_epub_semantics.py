@@ -1,4 +1,4 @@
-"""Only synthetic content: do not commit text from the commercial anthology."""
+"""只使用合成内容；不得提交商业选本正文。"""
 
 import sys
 from pathlib import Path
@@ -210,5 +210,5 @@ def test_he_zhu_small_print_alternate_name_is_not_entire_tune():
     assert sections[0]["tune"] == "旧调"
     assert sections[0]["yusheng"] == "新调名"
     assert sections[0]["title"] is None
-    # This importer deliberately does not introduce a tune_alias field.
+    # 当前导入器有意不引入 tune_alias 字段。
     assert "tune_alias" not in sections[0]
