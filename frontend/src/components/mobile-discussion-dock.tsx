@@ -26,15 +26,18 @@ export function MobileDiscussionDock({
 
   useLayoutEffect(() => {
     const dock = dockRef.current;
-    if (!dock || !onHeightChange) return;
+    const report = onHeightChange;
+    if (!dock || !report) return;
+
+    const measuredDock = dock;
 
     function reportHeight() {
-      onHeightChange(Math.ceil(dock.getBoundingClientRect().height));
+      report(Math.ceil(measuredDock.getBoundingClientRect().height));
     }
 
     reportHeight();
     const observer = new ResizeObserver(reportHeight);
-    observer.observe(dock);
+    observer.observe(measuredDock);
 
     return () => observer.disconnect();
   }, [height, onHeightChange]);
