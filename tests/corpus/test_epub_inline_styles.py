@@ -1,4 +1,4 @@
-"""Synthetic coverage for inline marker evidence; no published poetry in git."""
+"""行内标记证据覆盖测试只使用合成数据，Git 中不包含已出版诗词。"""
 from scripts.corpus.epub_import.diagnostics.audit_inline_styles import (
     collect_inline_evidence,
     render_md,
