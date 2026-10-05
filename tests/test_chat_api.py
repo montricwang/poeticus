@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from poem_context import PoemContext
+from backend.ai.context import PoemContext
 
 SAMPLE_CONTEXT = {
     "id": "su-shi-huan-xi-sha-feng-juan-zhu-lian",
@@ -26,10 +26,10 @@ NULL_AUTHOR_CONTEXT = {
 
 @pytest.fixture
 def api_module(monkeypatch):
-    # 在导入 main.py 之前提供无效但格式合法的测试密钥。
+    # 在导入后端模型模块之前提供无效但格式合法的测试密钥。
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
-    import api
+    import backend.app as api
 
     return api
 
