@@ -23,6 +23,7 @@ from backend.config import (
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
 class QuoteSelection(BaseModel):
     text: str = Field(max_length=CHAT_MAX_SELECTION_CHARS)
     start: int
