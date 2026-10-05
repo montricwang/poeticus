@@ -8,6 +8,7 @@ type MobileDiscussionDockProps = {
   onOpenChange: (open: boolean) => void;
   hasUnreadReply: boolean;
   hasSelection: boolean;
+  hasConversation: boolean;
   children: ReactNode;
 };
 
@@ -16,17 +17,23 @@ export function MobileDiscussionDock({
   onOpenChange,
   hasUnreadReply,
   hasSelection,
+  hasConversation,
   children,
 }: MobileDiscussionDockProps) {
   return (
     <>
-      {!open && (
-        <Button
+      <Button
           type="button"
           size="lg"
-          className="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 rounded-full px-4 shadow-lg"
+          className={
+            "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 rounded-full px-4 shadow-lg " +
+            "transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+            (open ? "pointer-events-none scale-95 opacity-0" : "scale-100 opacity-100")
+          }
           aria-controls="mobile-discussion-dock"
-          aria-expanded={false}
+          aria-expanded={open}
+          aria-hidden={open}
+          tabIndex={open ? -1 : undefined}
           aria-label={hasSelection ? "打开讨论并使用已选诗句提问" : "打开阅读讨论"}
           onClick={() => onOpenChange(true)}
         >
@@ -39,7 +46,6 @@ export function MobileDiscussionDock({
             />
           )}
         </Button>
-      )}
 
       <section
         id="mobile-discussion-dock"
@@ -47,14 +53,24 @@ export function MobileDiscussionDock({
         aria-hidden={!open}
         inert={!open}
         className={
-          "fixed inset-x-0 bottom-0 z-40 flex h-[clamp(16rem,42dvh,28rem)] min-h-0 flex-col " +
-          "border-t border-border/70 bg-background " +
-          "transition-transform duration-300 ease-out motion-reduce:transition-none " +
+          "fixed inset-x-0 bottom-0 z-40 flex min-h-0 flex-col bg-background " +
+          "transition-[height,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+          (hasConversation
+            ? "h-[clamp(18rem,44dvh,30rem)] "
+            : hasSelection
+              ? "h-[clamp(16rem,36dvh,22rem)] "
+              : "h-[clamp(12rem,26dvh,15rem)] ") +
           (open
             ? "translate-y-0"
             : "pointer-events-none translate-y-full")
         }
       >
+        <div
+          className="pointer-events-none absolute inset-x-0 -top-10 h-10 bg-[linear-gradient(to_bottom,transparent,var(--background))]"
+          aria-hidden="true"
+        />
+        <div className="mx-4 h-px shrink-0 bg-border/70" aria-hidden="true" />
+
         <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
           <h2 className="text-sm font-medium">阅读讨论</h2>
 
