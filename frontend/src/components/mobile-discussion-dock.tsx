@@ -23,30 +23,30 @@ export function MobileDiscussionDock({
   return (
     <>
       <Button
-          type="button"
-          size="lg"
-          variant="outline"
-          className={
-            "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[60] rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm " +
-            "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none " +
-            (open ? "pointer-events-none scale-100 opacity-0" : "scale-100 opacity-100")
-          }
-          aria-controls="mobile-discussion-dock"
-          aria-expanded={open}
-          aria-hidden={open}
-          tabIndex={open ? -1 : undefined}
-          aria-label={hasSelection ? "打开讨论并使用已选诗句提问" : "打开阅读讨论"}
-          onClick={() => onOpenChange(true)}
-        >
-          <MessageCircle className="size-4" aria-hidden="true" />
-          <span>{hasSelection ? "提问" : "对话"}</span>
-          {hasUnreadReply && (
-            <span
-              className="size-2 rounded-full bg-violet-300"
-              aria-label="有新回复"
-            />
-          )}
-        </Button>
+        type="button"
+        size="lg"
+        variant="outline"
+        className={
+          "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[60] rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm " +
+          "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none " +
+          (open ? "pointer-events-none scale-100 opacity-0" : "scale-100 opacity-100")
+        }
+        aria-controls="mobile-discussion-dock"
+        aria-expanded={open}
+        aria-hidden={open}
+        tabIndex={open ? -1 : undefined}
+        aria-label={hasSelection ? "打开讨论并使用已选诗句提问" : "打开阅读讨论"}
+        onClick={() => onOpenChange(true)}
+      >
+        <MessageCircle className="size-4" aria-hidden="true" />
+        <span>{hasSelection ? "提问" : "对话"}</span>
+        {hasUnreadReply && (
+          <span
+            className="size-2 rounded-full bg-violet-300"
+            aria-label="有新回复"
+          />
+        )}
+      </Button>
 
       <section
         id="mobile-discussion-dock"
@@ -66,12 +66,6 @@ export function MobileDiscussionDock({
             : "pointer-events-none translate-y-full")
         }
       >
-        {open && (
-          <div
-            className="pointer-events-none absolute inset-x-0 -top-8 h-8 bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_72%,transparent)_62%,var(--background)_100%)] dark:-top-6 dark:h-6 dark:bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_48%,transparent)_68%,var(--background)_100%)]"
-            aria-hidden="true"
-          />
-        )}
         <div className="mx-4 h-px shrink-0 bg-border/70" aria-hidden="true" />
 
         <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
