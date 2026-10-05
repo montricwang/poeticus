@@ -1,4 +1,4 @@
-"""Synthetic human-review sampling tests, no commercial text in git."""
+"""人工复核抽样只使用合成数据，Git 中不包含商业文本。"""
 import pytest
 
 from scripts.corpus.epub_import.diagnostics.sample_classification import (
@@ -93,8 +93,8 @@ def test_public_plan_only_includes_locations_not_private_paragraphs():
     assert "合成注释续段" in local
     assert "合成行内文字" in local
     assert "原始段落快速查询" in local
-    # A clean complex sample shows the commentary even when it lies
-    # far from its work heading; notes aren't restricted to after=4.
+    # 即使评论离作品题头很远，干净复杂样本也应把它展示出来；
+    # 注评不能被 after=4 这类固定窗口截掉。
     full_cases, full_counts = choose_batch(
         build_candidates(BOOK, TOC, SPECS), limit=5
     )
