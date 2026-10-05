@@ -262,7 +262,7 @@ function App() {
           />
         ) : (
           <AnalysisPanel
-            className={fillClassName}
+            fillAvailableHeight={fillAvailableHeight}
             analysis={analysis}
             analyzing={analyzing}
             error={analysisError}
