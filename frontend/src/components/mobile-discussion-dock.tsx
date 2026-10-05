@@ -27,9 +27,9 @@ export function MobileDiscussionDock({
           size="lg"
           variant="outline"
           className={
-            "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-50 rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm " +
-            "transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
-            (open ? "pointer-events-none scale-95 opacity-0" : "scale-100 opacity-100")
+            "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[60] rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm " +
+            "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none " +
+            (open ? "pointer-events-none scale-100 opacity-0" : "scale-100 opacity-100")
           }
           aria-controls="mobile-discussion-dock"
           aria-expanded={open}
@@ -55,7 +55,7 @@ export function MobileDiscussionDock({
         inert={!open}
         className={
           "fixed inset-x-0 bottom-0 z-40 flex min-h-0 flex-col bg-background " +
-          "transition-[height,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+          "will-change-transform transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
           (hasConversation
             ? "h-[clamp(18rem,44dvh,30rem)] "
             : hasSelection
