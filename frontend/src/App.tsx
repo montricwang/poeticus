@@ -302,7 +302,7 @@ function App() {
   const showReaderHeader = wideDiscussionLayout || !mobileDiscussionOpen;
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground lg:block lg:h-auto lg:min-h-dvh lg:overflow-visible">
+    <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground lg:block lg:h-auto lg:min-h-dvh lg:overflow-visible">
       <header className="shrink-0 border-b border-border/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           {showReaderHeader ? (
