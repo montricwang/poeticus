@@ -135,45 +135,45 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
   }, [onSelect, poem]);
 
   return (
-    <div className="min-w-0">
+    <div className="poem-reader min-w-0">
       <div ref={readerRef} className="min-h-155 bg-transparent">
-        <article className="mx-auto w-full min-w-0 px-4 py-12 sm:px-8 sm:py-14">
-          <header className="mb-9 text-center">
+        <article className="poem-reader-page mx-auto w-full min-w-0 px-4 sm:px-8">
+          <header className="poem-reader-header text-center">
             {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
-            <div className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
-              <h1 className="font-serif text-4xl font-medium tracking-widest">
+            <div className="poem-reader-heading-row flex flex-wrap items-baseline justify-center">
+              <h1 className="poem-reader-heading font-serif">
                 {work.yusheng_title ?? work.cipai ?? "词牌未核实"}
               </h1>
               {work.yusheng_title && work.cipai && (
-                <span className="font-serif text-4xl font-normal tracking-normal text-muted-foreground">
+                <span className="poem-reader-secondary-heading font-serif text-muted-foreground">
                   {work.cipai}
                 </span>
               )}
             </div>
             {work.title && (
-              <p className="mt-3 whitespace-pre-line font-serif text-lg leading-8 text-foreground/85">
+              <p className="poem-reader-title whitespace-pre-line font-serif text-foreground/85">
                 {work.title}
               </p>
             )}
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="poem-reader-author text-muted-foreground">
               {work.author ?? "作者未核实"}
             </p>
             {work.review_status !== "reviewed" && (
-              <p className="mt-2 text-xs text-muted-foreground/75">
+              <p className="poem-reader-status text-muted-foreground/75">
                 正文待校勘
               </p>
             )}
           </header>
 
           {work.prefaces.map((preface, index) => (
-            <p key={index} className="mb-8 whitespace-pre-line font-serif text-sm leading-8 text-muted-foreground">
+            <p key={index} className="poem-reader-preface whitespace-pre-line font-serif text-muted-foreground">
               {preface}
             </p>
           ))}
 
           <p
             ref={poemRef}
-            className="mx-auto w-fit max-w-full cursor-text select-text whitespace-pre-line font-serif text-lg leading-[3] tracking-wide text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white sm:text-xl"
+            className="poem-reader-body mx-auto w-fit max-w-full cursor-text select-text whitespace-pre-line font-serif text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white"
           >
             {poem}
           </p>
