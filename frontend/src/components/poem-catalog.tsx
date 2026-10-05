@@ -35,15 +35,9 @@ export function PoemCatalog({
   open,
 }: PoemCatalogProps) {
   const panelRef = useRef<HTMLElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
-
-    // 侧栏始终保持挂载；只有真正打开移动抽屉时才需要主动聚焦。
-    if (window.matchMedia("(max-width: 1535px)").matches) {
-      inputRef.current?.focus();
-    }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -111,7 +105,6 @@ export function PoemCatalog({
         <div className="flex items-center gap-2 rounded-md border border-border bg-background px-2.5 focus-within:ring-2 focus-within:ring-ring/30">
           <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
-            ref={inputRef}
             aria-label="搜索作者、词牌、词题、正文"
             className="h-10 w-full min-w-0 bg-transparent text-base outline-none placeholder:text-muted-foreground"
             placeholder="作者、词牌、词题或诗句"
