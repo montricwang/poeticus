@@ -1,4 +1,4 @@
-"""Inspect EPUB typography without treating CSS as literary semantics.
+"""检查 EPUB 排版信息，但不把 CSS 直接当作文学语义。
 
 This is a *static* cascade approximation, not browser getComputedStyle().
 Unsupported at-rules/selectors and unavailable stylesheets are reported.
@@ -31,7 +31,7 @@ def declarations(source):
 
 
 def local_href(parent_name, href):
-    """Resolve a relative EPUB resource path, rejecting external/parent escapes."""
+    """解析 EPUB 内相对资源路径，拒绝外部地址和越级路径。"""
     split = urlsplit(href or "")
     if split.scheme or split.netloc or not split.path:
         return None
@@ -50,7 +50,7 @@ def local_href(parent_name, href):
 
 
 class StyleResolver:
-    """Evaluate linked/embedded CSS declarations using selector specificity."""
+    """按选择器优先级计算外链与内嵌 CSS 声明。"""
 
     def __init__(self, book):
         self.book = book
@@ -61,7 +61,7 @@ class StyleResolver:
         rules = []
         for node in tinycss2.parse_stylesheet(text, skip_comments=True, skip_whitespace=True):
             if node.type == "at-rule":
-                # Media, @import, @supports and font-face are not evaluated.
+                # 不处理 media、@import、@supports 与 font-face。
                 self.problems.add(f"{origin}: 未解释 @{node.lower_at_keyword}")
                 continue
             if node.type != "qualified-rule":
@@ -72,8 +72,8 @@ class StyleResolver:
                 continue
             try:
                 selectors = cssselect2.compile_selector_list(css)
-                # Keep the selector as one string only if not comma-separated.
-                # Split via tinycss2 tokens to avoid splitting inside :not(...).
+                # 只有不存在逗号分隔时才把选择器当作一个整体。
+                # 通过 tinycss2 token 拆分，避免误切 :not(...) 内部。
                 groups = []
                 current = []
                 for token in node.prelude:
@@ -95,7 +95,7 @@ class StyleResolver:
         return rules
 
     def for_document(self, soup, html_name):
-        """Return stylesheet rules in document order and paths used."""
+        """按文档顺序返回样式规则与使用到的路径。"""
         ordered = []
         paths = []
         for element in soup.find_all(["link", "style"]):
@@ -133,7 +133,7 @@ class DocumentStyles:
         self.sources = {}
 
     def style(self, tag):
-        """Selected CSS declarations with inheritance; values are not converted to px."""
+        """返回包含继承结果的 CSS 声明；不强行把值换算为 px。"""
         key = id(tag)
         if key in self.cache:
             return self.cache[key]
