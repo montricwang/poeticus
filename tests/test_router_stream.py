@@ -265,7 +265,7 @@ def test_sse_no_duplicate_full_reply_when_tokens_sent(monkeypatch, agent):
 
 def test_streaming_preamble_then_tool_call(monkeypatch, agent):
     """真实 Graph → API：工具前先说话，也能完成 SSE，且不重复正文。"""
-    import backend.app as api_module
+    from backend.api.chat import ChatRequest, QuoteSelection, stream_graph_reply
     from backend.evidence.schema import EvidenceItem
 
     search_calls = []
@@ -314,12 +314,12 @@ def test_streaming_preamble_then_tool_call(monkeypatch, agent):
         monkeypatch,
     )
 
-    request = api_module.ChatRequest(
+    request = ChatRequest(
         poem="三星当户照绸缪。",
         question="请先查询「三星当户」的典故，再根据检索结果解释这句词",
-        selection=api_module.QuoteSelection(text="三星当户", start=0, end=4),
+        selection=QuoteSelection(text="三星当户", start=0, end=4),
     )
-    raw = "".join(api_module.stream_graph_reply(request))
+    raw = "".join(stream_graph_reply(request))
     events = []
     for block in raw.split("\n\n"):
         if not block or block.startswith(":"):
