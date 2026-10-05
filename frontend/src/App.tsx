@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PanelLeft } from "lucide-react";
+import { ArrowLeft, MessageCircle, PanelLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
@@ -7,7 +7,7 @@ import { PoemReader } from "@/components/poem-reader";
 import { PoemCatalog } from "@/components/poem-catalog";
 import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
-import { MobileDiscussionDock } from "@/components/mobile-discussion-dock";
+import { MobileDiscussionScreen } from "@/components/mobile-discussion-screen";
 import { ViewToolbar } from "@/components/view-toolbar";
 import type { ActiveView } from "@/components/view-toolbar";
 
@@ -34,6 +34,7 @@ function App() {
     catalogError,
     updateCatalogFilters,
   } = usePoemCatalog(setPoemId);
+
   const [catalogOpen, setCatalogOpen] = useState(
     () => window.matchMedia("(min-width: 1536px)").matches,
   );
@@ -41,11 +42,8 @@ function App() {
     () => window.matchMedia("(min-width: 1024px)").matches,
   );
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false);
-  const [mobileDiscussionMeasuredHeight, setMobileDiscussionMeasuredHeight] =
-    useState(0);
+
   const catalogToggleRef = useRef<HTMLButtonElement>(null);
-  const readerPaneRef = useRef<HTMLDivElement>(null);
-  const mobileDiscussionTouchedRef = useRef(false);
   const switchControllerRef = useRef<AbortController | null>(null);
   const [switchTarget, setSwitchTarget] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState("");
@@ -59,6 +57,7 @@ function App() {
     detailLoading,
     retryDetail,
   } = usePoemDetail(poemId, setSelected);
+
   const {
     conversationId,
     question,
@@ -84,6 +83,7 @@ function App() {
     setSelected,
     switchControllerRef,
   });
+
   const [activeView, setActiveView] = useState<ActiveView>("chat");
   const {
     analysis,
@@ -112,7 +112,9 @@ function App() {
 
     function handleLayoutChange(event: MediaQueryListEvent) {
       setWideDiscussionLayout(event.matches);
-      if (event.matches) setMobileDiscussionOpen(false);
+      if (event.matches) {
+        setMobileDiscussionOpen(false);
+      }
     }
 
     query.addEventListener("change", handleLayoutChange);
@@ -121,14 +123,12 @@ function App() {
 
   const closeCatalog = useCallback(() => {
     setCatalogOpen(false);
-    catalogToggleRef.current?.focus();
+    window.requestAnimationFrame(() => catalogToggleRef.current?.focus());
   }, []);
 
   function handlePoemChange(nextId: string) {
     if (inFlightRef.current || analyzing || !nextId || nextId === poemId) return;
 
-    // 先读取新作品；在请求完成前仍显示当前作品，不卸载正文／聊天面板。
-    // 最新请求替代旧请求，只有成功的请求才能提交 UUID 与会话状态。
     switchControllerRef.current?.abort();
     const controller = new AbortController();
     switchControllerRef.current = controller;
@@ -138,6 +138,7 @@ function App() {
     void fetchPoem(nextId, controller.signal)
       .then((work) => {
         if (controller.signal.aborted) return;
+
         persistCurrentConversation();
         window.getSelection()?.removeAllRanges();
         setActivePoem(work);
@@ -146,7 +147,11 @@ function App() {
         restoreForPoem(work);
         resetAnalysis();
         setActiveView("chat");
-        if (window.innerWidth < 1536) closeCatalog();
+        setMobileDiscussionOpen(false);
+
+        if (window.innerWidth < 1536) {
+          closeCatalog();
+        }
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
@@ -162,75 +167,31 @@ function App() {
   }
 
   function handleAnalyze() {
-    if (!activePoem || activePoem.id !== poemId || switchControllerRef.current) return;
+    if (!activePoem || activePoem.id !== poemId || switchControllerRef.current) {
+      return;
+    }
+
     setActiveView("analysis");
     void analyzePoem();
   }
 
-  function handleMobileDiscussionOpenChange(open: boolean) {
-    mobileDiscussionTouchedRef.current = true;
-    if (open) setActiveView("chat");
-    setMobileDiscussionOpen(open);
+  function openMobileDiscussion() {
+    setCatalogOpen(false);
+    setActiveView("chat");
+    setMobileDiscussionOpen(true);
   }
 
-  useEffect(() => {
-    mobileDiscussionTouchedRef.current = false;
-  }, [poemId]);
-
-  useEffect(() => {
-    if (wideDiscussionLayout || !poemId) return;
-
-    const tabletQuery = window.matchMedia(
-      "(min-width: 768px) and (max-width: 1023px)",
-    );
-    if (!tabletQuery.matches) return;
-
-    function maybeOpenDiscussion() {
-      if (mobileDiscussionTouchedRef.current) return;
-
-      const pane = readerPaneRef.current;
-      if (!pane) return;
-
-      const viewportHeight =
-        window.visualViewport?.height ?? window.innerHeight;
-      const top = Math.max(0, pane.getBoundingClientRect().top);
-      const availableHeight = Math.max(0, viewportHeight - top);
-      const remainingHeight = availableHeight - pane.scrollHeight;
-
-      // 平板竖屏若正文结束后仍空出至少约三分之一屏幕，
-      // 默认展开讨论区；用户手动收起后，本首词不再自动弹回。
-      if (remainingHeight >= viewportHeight / 3) {
-        setActiveView("chat");
-        setMobileDiscussionOpen(true);
-      }
+  function closeMobileDiscussion() {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
     }
-
-    const pane = readerPaneRef.current;
-    if (!pane) return;
-
-    const frame = window.requestAnimationFrame(maybeOpenDiscussion);
-    const observer = new ResizeObserver(maybeOpenDiscussion);
-    observer.observe(pane);
-    window.visualViewport?.addEventListener("resize", maybeOpenDiscussion);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      observer.disconnect();
-      window.visualViewport?.removeEventListener("resize", maybeOpenDiscussion);
-    };
-  }, [poemId, wideDiscussionLayout]);
+    setMobileDiscussionOpen(false);
+  }
 
   const poemReady = !!activePoem && activePoem.id === poemId;
-  // 空对话 / 划词提问态由内容自身决定高度，避免为输入区预留过多空白。
-  // 只有已有聊天或赏析这种需要内部滚动的状态，才给 dock 一个稳定高度。
-  // svh 不随软件键盘的动态视口伸缩，减少键盘开合时的布局重算。
-  const mobileDiscussionHeight =
-    turns.length > 0 || activeView === "analysis"
-      ? "clamp(18rem, 44svh, 30rem)"
-      : undefined;
 
   function renderDiscussionContent(fillAvailableHeight: boolean) {
-    if (!activePoem || activePoem.id !== poemId) {
+    if (!poemReady) {
       return (
         <div className="flex h-165 items-center justify-center rounded-md border border-border/60 bg-card text-sm text-muted-foreground">
           加载作品后，即可开始阅读与 AI 讨论。
@@ -280,48 +241,179 @@ function App() {
     );
   }
 
+  function renderReaderContent() {
+    if (poemReady) {
+      return (
+        <div className="w-full lg:my-auto lg:pt-2 lg:pb-10">
+          <PoemReader
+            key={activePoem.id}
+            work={activePoem}
+            onSelect={handleReaderSelect}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div
+        role={detailError ? "alert" : "status"}
+        className="min-h-155 rounded-md border border-border/60 bg-card px-8 py-12 text-sm text-muted-foreground"
+      >
+        {detailLoading
+          ? "正在加载作品正文……"
+          : detailError
+            ? `作品加载失败：${detailError}`
+            : "请从目录中选择作品"}
+
+        {detailError && (
+          <Button
+            className="ml-3"
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={retryDetail}
+          >
+            重试
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  function renderCatalog(open: boolean) {
+    return (
+      <PoemCatalog
+        catalog={catalog}
+        filters={filters}
+        query={searchInput}
+        loading={catalogLoading}
+        error={catalogError}
+        activePoemId={poemId}
+        selectionBlocked={chatLoading || analyzing || !!switchTarget}
+        onQueryChange={setSearchInput}
+        onFiltersChange={updateCatalogFilters}
+        onSelect={handlePoemChange}
+        onClose={closeCatalog}
+        open={open}
+      />
+    );
+  }
+
+  const showReaderHeader = wideDiscussionLayout || !mobileDiscussionOpen;
+
   return (
-    <div className="bg-background text-foreground">
-      <header className="border-b border-border/50">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground lg:block lg:h-auto lg:min-h-dvh lg:overflow-visible">
+      <header className="shrink-0 border-b border-border/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
-          <div className="flex items-center gap-2">
-            <Button
-              ref={catalogToggleRef}
-              type="button"
-              size="icon"
-              variant="ghost"
-              aria-label={catalogOpen ? "收起作品目录" : "展开作品目录"}
-              aria-controls="poem-catalog"
-              aria-expanded={catalogOpen}
-              onClick={() => setCatalogOpen((current) => !current)}
-            >
-              <PanelLeft className="size-5" aria-hidden="true" />
-            </Button>
-            <span className="text-lg font-semibold tracking-tight">Poeticus</span>
-          </div>
-          <ThemeSwitcher />
+          {showReaderHeader ? (
+            <>
+              <div className="flex items-center gap-2">
+                <Button
+                  ref={catalogToggleRef}
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label={catalogOpen ? "收起作品目录" : "展开作品目录"}
+                  aria-controls="poem-catalog"
+                  aria-expanded={catalogOpen}
+                  onClick={() => setCatalogOpen((current) => !current)}
+                >
+                  <PanelLeft className="size-5" aria-hidden="true" />
+                </Button>
+                <span className="text-lg font-semibold tracking-tight">
+                  Poeticus
+                </span>
+              </div>
+              <ThemeSwitcher />
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label="返回阅读"
+                  onClick={closeMobileDiscussion}
+                >
+                  <ArrowLeft className="size-5" aria-hidden="true" />
+                </Button>
+                <span className="text-base font-semibold tracking-tight">
+                  阅读讨论
+                </span>
+              </div>
+              <div className="size-9" aria-hidden="true" />
+            </>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1600px] px-5 pb-24 pt-7 md:px-8 lg:pb-10">
-        <div
-          className={
-            "grid min-w-0 grid-cols-1 items-start gap-0 " +
-            "2xl:transition-[grid-template-columns] 2xl:duration-[600ms] 2xl:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
-            (catalogOpen
-              ? "2xl:grid-cols-[320px_minmax(0,1fr)]"
-              : "2xl:grid-cols-[0px_minmax(0,1fr)]")
-          }
-        >
-          {/* 侧栏保持挂载；只改变 grid 宽度，避免每次开关都重建搜索状态。 */}
-          <div
-            inert={!catalogOpen}
-            aria-hidden={!catalogOpen}
+      {!wideDiscussionLayout && (
+        <main className="relative min-h-0 flex-1 overflow-hidden">
+          <section
+            aria-label="诗词阅读"
+            aria-hidden={mobileDiscussionOpen}
+            inert={mobileDiscussionOpen || catalogOpen}
             className={
-              "pointer-events-none fixed inset-0 z-50 2xl:sticky 2xl:top-5 2xl:z-auto " +
-              // 桌面只用 Grid 列宽控制侧栏可见区域，避免 opacity 先于宽度把目录隐去。
-              "2xl:min-w-0 2xl:overflow-hidden " +
-              (catalogOpen ? "2xl:border-r 2xl:border-border/60" : "2xl:border-r-0")
+              "absolute inset-0 z-10 bg-background transition-transform duration-400 " +
+              "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+              (mobileDiscussionOpen ? "-translate-x-full" : "translate-x-0")
+            }
+          >
+            <div className="h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8">
+              {switchError && (
+                <div role="alert" className="mb-3 text-sm text-destructive">
+                  作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
+                </div>
+              )}
+
+              <div className="relative min-w-0" aria-busy={!!switchTarget}>
+                <div inert={!!switchTarget}>{renderReaderContent()}</div>
+
+                {switchTarget && (
+                  <div
+                    role="status"
+                    className="pointer-events-none absolute right-3 top-12 z-10 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
+                  >
+                    正在载入下一首……
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {poemReady && (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                className="absolute right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-20 rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm"
+                aria-controls="mobile-discussion-screen"
+                aria-expanded={mobileDiscussionOpen}
+                aria-label={selected ? "打开讨论并使用已选诗句提问" : "打开阅读讨论"}
+                onClick={openMobileDiscussion}
+              >
+                <MessageCircle className="size-4" aria-hidden="true" />
+                <span>{selected ? "提问" : "对话"}</span>
+                {hasUnreadReply && (
+                  <span
+                    className="size-2 rounded-full bg-violet-300"
+                    aria-label="有新回复"
+                  />
+                )}
+              </Button>
+            )}
+          </section>
+
+          <MobileDiscussionScreen open={mobileDiscussionOpen}>
+            {renderDiscussionContent(true)}
+          </MobileDiscussionScreen>
+
+          <div
+            aria-hidden={!catalogOpen}
+            inert={!catalogOpen}
+            className={
+              "absolute inset-0 z-40 transition-[visibility] " +
+              (catalogOpen ? "visible" : "invisible")
             }
           >
             <button
@@ -329,136 +421,118 @@ function App() {
               tabIndex={-1}
               aria-label="关闭作品目录遮罩"
               className={
-                "absolute inset-0 bg-black/55 transition-opacity duration-[620ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
-                "motion-reduce:transition-none 2xl:hidden " +
-                (catalogOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0")
+                "absolute inset-0 bg-black/55 transition-opacity duration-[620ms] " +
+                "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+                (catalogOpen
+                  ? "pointer-events-auto opacity-100"
+                  : "pointer-events-none opacity-0")
               }
               onClick={closeCatalog}
             />
+
             <div
               className={
                 "relative h-full w-screen sm:w-[min(88vw,420px)] " +
-                "transform transition-transform duration-[620ms] ease-[cubic-bezier(0.22,1,0.36,1)] " +
-                "motion-reduce:transition-none 2xl:w-80 2xl:translate-x-0 2xl:pr-5 " +
+                "transform transition-transform duration-[620ms] " +
+                "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
                 (catalogOpen
                   ? "pointer-events-auto translate-x-0"
                   : "pointer-events-none -translate-x-full")
               }
             >
-              <PoemCatalog
-                catalog={catalog}
-                filters={filters}
-                query={searchInput}
-                loading={catalogLoading}
-                error={catalogError}
-                activePoemId={poemId}
-                selectionBlocked={chatLoading || analyzing || !!switchTarget}
-                onQueryChange={setSearchInput}
-                onFiltersChange={updateCatalogFilters}
-                onSelect={handlePoemChange}
-                onClose={closeCatalog}
-                open={catalogOpen}
-              />
+              {renderCatalog(catalogOpen)}
             </div>
           </div>
+        </main>
+      )}
 
-          <div className="min-w-0 2xl:pl-6">
-            <div className="relative min-w-0" aria-busy={!!switchTarget}>
-              {switchError && (
-                <div role="alert" className="mb-3 text-sm text-destructive">
-                  作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
-                </div>
-              )}
+      {wideDiscussionLayout && (
+        <main className="mx-auto w-full max-w-[1600px] px-5 pb-10 pt-7 md:px-8">
+          <div
+            className={
+              "grid min-w-0 grid-cols-1 items-start gap-0 " +
+              "2xl:transition-[grid-template-columns] 2xl:duration-[600ms] " +
+              "2xl:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+              (catalogOpen
+                ? "2xl:grid-cols-[320px_minmax(0,1fr)]"
+                : "2xl:grid-cols-[0px_minmax(0,1fr)]")
+            }
+          >
+            <div
+              inert={!catalogOpen}
+              aria-hidden={!catalogOpen}
+              className={
+                "pointer-events-none fixed inset-0 z-50 2xl:sticky 2xl:top-5 2xl:z-auto " +
+                "2xl:min-w-0 2xl:overflow-hidden " +
+                (catalogOpen
+                  ? "2xl:border-r 2xl:border-border/60"
+                  : "2xl:border-r-0")
+              }
+            >
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label="关闭作品目录遮罩"
+                className={
+                  "absolute inset-0 bg-black/55 transition-opacity duration-[620ms] " +
+                  "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none 2xl:hidden " +
+                  (catalogOpen
+                    ? "pointer-events-auto opacity-100"
+                    : "pointer-events-none opacity-0")
+                }
+                onClick={closeCatalog}
+              />
+
               <div
-                inert={!!switchTarget}
-                className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]"
+                className={
+                  "relative h-full w-screen sm:w-[min(88vw,420px)] " +
+                  "transform transition-transform duration-[620ms] " +
+                  "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+                  "2xl:w-80 2xl:translate-x-0 2xl:pr-5 " +
+                  (catalogOpen
+                    ? "pointer-events-auto translate-x-0"
+                    : "pointer-events-none -translate-x-full")
+                }
               >
-                <div
-                  ref={readerPaneRef}
-                  className="min-w-0 lg:flex lg:min-h-[60dvh] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
-                  onPointerDown={() => {
-                    if (
-                      !wideDiscussionLayout &&
-                      document.activeElement instanceof HTMLTextAreaElement
-                    ) {
-                      document.activeElement.blur();
-                    }
-                  }}
-                >
-                  {activePoem && activePoem.id === poemId ? (
-                    <div className="w-full lg:my-auto lg:pt-2 lg:pb-10">
-                      <PoemReader
-                        key={activePoem.id}
-                        work={activePoem}
-                        onSelect={handleReaderSelect}
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      role={detailError ? "alert" : "status"}
-                      className="min-h-155 rounded-md border border-border/60 bg-card px-8 py-12 text-sm text-muted-foreground"
-                    >
-                      {detailLoading
-                        ? "正在加载作品正文……"
-                        : detailError
-                          ? `作品加载失败：${detailError}`
-                          : "请从目录中选择作品"}
-                      {detailError && (
-                        <Button
-                          className="ml-3"
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={retryDetail}
-                        >
-                          重试
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                {renderCatalog(catalogOpen)}
+              </div>
+            </div>
 
-                {wideDiscussionLayout && (
+            <div className="min-w-0 2xl:pl-6">
+              <div className="relative min-w-0" aria-busy={!!switchTarget}>
+                {switchError && (
+                  <div role="alert" className="mb-3 text-sm text-destructive">
+                    作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
+                  </div>
+                )}
+
+                <div
+                  inert={!!switchTarget}
+                  className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]"
+                >
+                  <div className="min-w-0 lg:flex lg:min-h-[60dvh] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2">
+                    {renderReaderContent()}
+                  </div>
+
                   <div className="flex min-h-[60dvh] min-w-0 items-center">
                     <div className="w-full border-l border-border/60 pl-7">
                       {renderDiscussionContent(false)}
                     </div>
                   </div>
+                </div>
+
+                {switchTarget && (
+                  <div
+                    role="status"
+                    className="pointer-events-none absolute right-3 top-12 z-10 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
+                  >
+                    正在载入下一首……
+                  </div>
                 )}
               </div>
-
-              {/* 轻量状态标识，不遮盖／闪白旧页面；原内容暂不允许交互。 */}
-              {switchTarget && (
-                <div
-                  role="status"
-                  className="pointer-events-none absolute right-3 top-12 z-10 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
-                >
-                  正在载入下一首……
-                </div>
-              )}
             </div>
           </div>
-        </div>
-      </main>
-
-      {poemReady && !wideDiscussionLayout && mobileDiscussionOpen && (
-        <div
-          style={{ height: mobileDiscussionMeasuredHeight }}
-          aria-hidden="true"
-        />
-      )}
-
-      {poemReady && !wideDiscussionLayout && (
-        <MobileDiscussionDock
-          open={mobileDiscussionOpen}
-          onOpenChange={handleMobileDiscussionOpenChange}
-          hasUnreadReply={hasUnreadReply}
-          hasSelection={!!selected}
-          height={mobileDiscussionHeight}
-          onHeightChange={setMobileDiscussionMeasuredHeight}
-        >
-          {renderDiscussionContent(!!mobileDiscussionHeight)}
-        </MobileDiscussionDock>
+        </main>
       )}
     </div>
   );
