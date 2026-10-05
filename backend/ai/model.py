@@ -71,7 +71,7 @@ def answer_with_evidence(
 
     response = client.chat.completions.create(
         model=LLM_MODEL,
-        max_tokens=MAX_LLM_OUTPUT_TOKENS,
+        max_tokens=LLM_MAX_OUTPUT_TOKENS,
         messages=[
             {
                 "role": "system",
@@ -111,7 +111,7 @@ def analyze_poem(poem: str, context: PoemContext | None = None) -> PoemAnalysis:
     try:
         response = client.chat.completions.create(
             model=LLM_MODEL,
-            max_tokens=MAX_LLM_OUTPUT_TOKENS,
+            max_tokens=LLM_MAX_OUTPUT_TOKENS,
             messages=[
                 {
                     "role": "system",
@@ -200,7 +200,7 @@ def chat_about_poem(
     try:
         response = client.chat.completions.create(
             model=LLM_MODEL,
-            max_tokens=MAX_LLM_OUTPUT_TOKENS,
+            max_tokens=LLM_MAX_OUTPUT_TOKENS,
             messages=_chat_messages(poem, question, selection, context),
         )
     except APIError as exc:
@@ -231,7 +231,7 @@ def stream_chat_about_poem(
     try:
         stream = client.chat.completions.create(
             model=LLM_MODEL,
-            max_tokens=MAX_LLM_OUTPUT_TOKENS,
+            max_tokens=LLM_MAX_OUTPUT_TOKENS,
             messages=_chat_messages(poem, question, selection, context),
             stream=True,
         )
