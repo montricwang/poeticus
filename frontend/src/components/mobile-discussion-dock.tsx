@@ -27,7 +27,7 @@ export function MobileDiscussionDock({
           size="lg"
           variant="outline"
           className={
-            "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm " +
+            "fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-50 rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm " +
             "transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
             (open ? "pointer-events-none scale-95 opacity-0" : "scale-100 opacity-100")
           }
@@ -66,10 +66,12 @@ export function MobileDiscussionDock({
             : "pointer-events-none translate-y-full")
         }
       >
-        <div
-          className="pointer-events-none absolute inset-x-0 -top-10 h-10 bg-[linear-gradient(to_bottom,transparent,var(--background))]"
-          aria-hidden="true"
-        />
+        {open && (
+          <div
+            className="pointer-events-none absolute inset-x-0 -top-10 h-10 bg-[linear-gradient(to_bottom,transparent,var(--background))]"
+            aria-hidden="true"
+          />
+        )}
         <div className="mx-4 h-px shrink-0 bg-border/70" aria-hidden="true" />
 
         <div className="flex shrink-0 items-center justify-between px-4 py-2.5">
