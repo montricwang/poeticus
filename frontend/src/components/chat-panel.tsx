@@ -31,6 +31,7 @@ type ChatPanelProps = {
   onRetry: (id: number) => void;
   onRegenerate: (id: number) => void;
   onEdit: (id: number, nextQuestion: string) => void;
+  fillAvailableHeight?: boolean;
   className?: string;
 };
 
@@ -49,6 +50,7 @@ export function ChatPanel({
   onRetry,
   onRegenerate,
   onEdit,
+  fillAvailableHeight = false,
   className,
 }: ChatPanelProps) {
   const chatListRef = useRef<HTMLDivElement>(null);
@@ -154,9 +156,11 @@ export function ChatPanel({
       aria-label="阅读讨论"
       className={cn(
         "flex min-h-0 min-w-0 flex-col bg-transparent",
-        turns.length > 0
-          ? "h-auto max-h-[min(42rem,calc(100dvh-10rem))]"
-          : "h-auto",
+        fillAvailableHeight
+          ? "h-full flex-1"
+          : turns.length > 0
+            ? "h-auto max-h-[min(42rem,calc(100dvh-10rem))]"
+            : "h-auto",
         className,
       )}
     >
