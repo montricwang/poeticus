@@ -10,49 +10,15 @@ import { AnalysisPanel } from "@/components/analysis-panel";
 import { ViewToolbar } from "@/components/view-toolbar";
 import type { ActiveView } from "@/components/view-toolbar";
 
-import {
-  fetchPoem,
-  poemText,
-} from "@/data/poem-library";
+import { fetchPoem } from "@/data/poem-library";
 import { usePoemCatalog } from "@/hooks/use-poem-catalog";
 import { usePoemDetail } from "@/hooks/use-poem-detail";
 import { useConversationPersistence } from "@/hooks/use-conversation-persistence";
 import { usePoemAnalysis } from "@/hooks/use-poem-analysis";
-import { selectionForPython, validSelectionForPoem } from "@/lib/selection-offset";
-import { readChatStream, UsageLimitNotice } from "@/lib/chat-stream";
-import { buildHistory } from "@/lib/chat-history";
-import {
-  createConversationId,
-  loadLastActivePoemId,
-  loadPoemConversation,
-} from "@/lib/chat-storage";
+import { loadInitialChatState } from "@/lib/chat-initial-state";
+import { useChatSession } from "@/hooks/use-chat-session";
 
 import type { SelectedText } from "@/components/poem-reader";
-import type {
-  ChatTurn,
-  ChatViewport,
-} from "@/components/chat-types";
-
-const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
-
-function maxTurnId(turns: ChatTurn[]): number {
-  return turns.reduce((max, turn) => Math.max(max, turn.id), 0);
-}
-
-function loadInitialChatState() {
-  const lastId = loadLastActivePoemId();
-  // 旧 demo 作品使用短字符串 ID；保留旧会话，不将其自动映射到 UUID。
-  const poemId = lastId && UUID_PATTERN.test(lastId) ? lastId : null;
-  const storedConversation = poemId ? loadPoemConversation(poemId) : null;
-  const turns = storedConversation?.turns ?? [];
-
-  return {
-    poemId,
-    conversationId: storedConversation?.conversationId ?? createConversationId(),
-    turns,
-    question: storedConversation?.draft.question ?? "",
-  };
-}
 
 function App() {
   const [initialChatState] = useState(loadInitialChatState);
@@ -75,9 +41,6 @@ function App() {
   const [switchTarget, setSwitchTarget] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState("");
 
-  const [conversationId, setConversationId] = useState(
-    initialChatState.conversationId,
-  );
   const [selected, setSelected] = useState<SelectedText | null>(null);
   const {
     activePoem,
@@ -87,18 +50,31 @@ function App() {
     detailLoading,
     retryDetail,
   } = usePoemDetail(poemId, setSelected);
-  const poem = activePoem ? poemText(activePoem) : "";
-  const [question, setQuestion] = useState(initialChatState.question);
-  const [turns, setTurns] = useState<ChatTurn[]>(initialChatState.turns);
-  const [chatLoading, setChatLoading] = useState(false);
-  const inFlightRef = useRef(false);
-  const nextTurnId = useRef(maxTurnId(initialChatState.turns));
-  const seenAnimationsRef = useRef(new Set<string>());
-  const chatViewportRef = useRef<ChatViewport>({
-    scrollTop: 0,
-    atBottom: true,
+  const {
+    conversationId,
+    question,
+    setQuestion,
+    turns,
+    chatLoading,
+    inFlightRef,
+    seenAnimationsRef,
+    chatViewportRef,
+    hasUnreadReply,
+    setHasUnreadReply,
+    handleReaderSelect,
+    restoreForPoem,
+    handleSend,
+    handleRetry,
+    handleRegenerate,
+    handleEdit,
+  } = useChatSession({
+    initialChatState,
+    poemId,
+    activePoem,
+    selected,
+    setSelected,
+    switchControllerRef,
   });
-  const [hasUnreadReply, setHasUnreadReply] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>("chat");
   const {
     analysis,
@@ -127,13 +103,6 @@ function App() {
     catalogToggleRef.current?.focus();
   }, []);
 
-  // 搜索/翻页也会触发 App 重新渲染；稳定此回调，避免阅读器重复订阅选区事件。
-  const handleReaderSelect = useCallback((value: SelectedText) => {
-    if (!inFlightRef.current && !switchControllerRef.current) {
-      setSelected(value);
-    }
-  }, []);
-
   function handlePoemChange(nextId: string) {
     if (inFlightRef.current || analyzing || !nextId || nextId === poemId) return;
 
@@ -149,31 +118,13 @@ function App() {
       .then((work) => {
         if (controller.signal.aborted) return;
         persistCurrentConversation();
-        const storedConversation = loadPoemConversation(work.id);
-        const nextTurns = storedConversation?.turns ?? [];
-
         window.getSelection()?.removeAllRanges();
         setActivePoem(work);
         setPoemId(work.id);
         setDetailError("");
-        setConversationId(
-          storedConversation?.conversationId ?? createConversationId(),
-        );
-        setSelected(
-          validSelectionForPoem(
-            storedConversation?.draft.selection ?? null,
-            poemText(work),
-          ),
-        );
-        setQuestion(storedConversation?.draft.question ?? "");
-        setTurns(nextTurns);
-        nextTurnId.current = maxTurnId(nextTurns);
-
+        restoreForPoem(work);
         resetAnalysis();
-        setHasUnreadReply(false);
         setActiveView("chat");
-        seenAnimationsRef.current.clear();
-        chatViewportRef.current = { scrollTop: 0, atBottom: true };
         if (window.innerWidth < 1024) closeCatalog();
       })
       .catch((error: unknown) => {
@@ -187,203 +138,6 @@ function App() {
         switchControllerRef.current = null;
         setSwitchTarget(null);
       });
-  }
-
-  async function requestReply(turn: ChatTurn, regenerate = false) {
-    if (inFlightRef.current || switchControllerRef.current || !activePoem || activePoem.id !== poemId) return;
-
-    const history = buildHistory(turns, turn.id);
-
-    inFlightRef.current = true;
-    setChatLoading(true);
-    let received = "";
-
-    setTurns((previous) =>
-      previous.map((item) => {
-        if (item.id !== turn.id) return item;
-        if (regenerate) {
-          // 原回答继续留在 answer，增量的新回答单独保存在 streamDraft。
-          return {
-            ...item,
-            regenerating: true,
-            regenerateError: null,
-            regenerateLimitNotice: false,
-            streamDraft: "",
-          };
-        }
-        // 普通发送 / 失败重试开始的是一次新的完整生成。
-        return {
-          ...item,
-          answer: null,
-          status: "pending",
-          error: null,
-          usageLimitNotice: false,
-          regenerating: false,
-          regenerateError: null,
-          regenerateLimitNotice: false,
-          streamDraft: null,
-        };
-      }),
-    );
-
-    try {
-      const response = await fetch("/api/chat/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          poem,
-          question: turn.question,
-          selection: selectionForPython(turn.selection, poem),
-          context: poemContext(activePoem),
-          history,
-        }),
-      });
-
-      await readChatStream(response, (token) => {
-        received += token;
-        setTurns((previous) =>
-          previous.map((item) => {
-            if (item.id !== turn.id) return item;
-            return regenerate
-              ? { ...item, streamDraft: received }
-              : { ...item, answer: received, status: "streaming" };
-          }),
-        );
-      });
-
-      if (!received.trim()) {
-        throw new Error("AI 返回了空回答");
-      }
-
-      // 用户阅读旧消息期间不强制跳底部；仅在完成时标记新回复。
-      if (!chatViewportRef.current.atBottom) {
-        setHasUnreadReply(true);
-      }
-      setTurns((previous) =>
-        previous.map((item) =>
-          item.id === turn.id
-            ? {
-                ...item,
-                answer: received,
-                streamDraft: null,
-                status: "done",
-                error: null,
-                usageLimitNotice: false,
-                regenerating: false,
-                regenerateError: null,
-                regenerateLimitNotice: false,
-              }
-            : item,
-        ),
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "消息发送失败";
-      setTurns((previous) =>
-        previous.map((item) => {
-          if (item.id !== turn.id) return item;
-          if (regenerate) {
-            // 保留原回答，也保留已经收到的新版本片段。
-            return {
-              ...item,
-              regenerating: false,
-              regenerateError: message,
-              regenerateLimitNotice: error instanceof UsageLimitNotice,
-              streamDraft: received || null,
-            };
-          }
-          return {
-            ...item,
-            answer: received || null,
-            status: "failed",
-            error: message,
-            usageLimitNotice: error instanceof UsageLimitNotice,
-            streamDraft: null,
-            regenerating: false,
-          };
-        }),
-      );
-    } finally {
-      inFlightRef.current = false;
-      setChatLoading(false);
-    }
-  }
-
-  function handleSend() {
-    if (!question.trim() || inFlightRef.current || switchControllerRef.current || !activePoem) return;
-
-    const turn: ChatTurn = {
-      id: ++nextTurnId.current,
-      question: question.trim(),
-      selection: selected,
-      answer: null,
-      status: "pending",
-      error: null,
-      usageLimitNotice: false,
-      regenerating: false,
-      regenerateError: null,
-      regenerateLimitNotice: false,
-      streamDraft: null,
-    };
-
-    setTurns((previous) => [...previous, turn]);
-    setQuestion("");
-    setSelected(null);
-
-    void requestReply(turn);
-  }
-
-  function handleRetry(id: number) {
-    if (inFlightRef.current) return;
-
-    const index = turns.findIndex((item) => item.id === id);
-    if (index === -1) return;
-
-    const turn = turns[index];
-    if (turn.status !== "failed") return;
-
-    // 重试旧轮次会改变过去，因此丢弃它之后的对话。
-    setTurns(turns.slice(0, index + 1));
-    void requestReply(turn);
-  }
-
-  function handleRegenerate(id: number) {
-    if (inFlightRef.current) return;
-
-    const index = turns.findIndex((item) => item.id === id);
-    if (index === -1) return;
-
-    const turn = turns[index];
-    if (turn.status !== "done" || !turn.answer || turn.regenerating) {
-      return;
-    }
-
-    // 重新生成旧轮次会改变过去，因此丢弃它之后的对话。
-    setTurns(turns.slice(0, index + 1));
-    void requestReply(turn, true);
-  }
-
-  function handleEdit(id: number, nextQuestion: string) {
-    if (inFlightRef.current || !nextQuestion.trim()) return;
-    const index = turns.findIndex((item) => item.id === id);
-    if (index === -1) return;
-    const turn = turns[index];
-
-    seenAnimationsRef.current.delete(`assistant:${id}:answer`);
-    const editedTurn: ChatTurn = {
-      ...turn,
-      question: nextQuestion.trim(),
-      answer: null,
-      status: "pending",
-      error: null,
-      usageLimitNotice: false,
-      regenerating: false,
-      regenerateError: null,
-      regenerateLimitNotice: false,
-      streamDraft: null,
-    };
-
-    setTurns([...turns.slice(0, index), editedTurn]);
-    void requestReply(editedTurn);
   }
 
   function handleAnalyze() {
