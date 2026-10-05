@@ -1,5 +1,6 @@
 import { LoaderCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 export type PoemAnalysis = {
   translation: string;
@@ -15,6 +16,7 @@ type AnalysisPanelProps = {
   analyzing: boolean;
   error: string;
   limitNotice: boolean;
+  className?: string;
 };
 
 export function AnalysisPanel({
@@ -22,9 +24,10 @@ export function AnalysisPanel({
   analyzing,
   error,
   limitNotice,
+  className,
 }: AnalysisPanelProps) {
   return (
-    <Card className="flex h-165 min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm">
+    <Card className={cn("flex h-165 min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm", className)}>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-7">
         {analyzing ? (
           <div
