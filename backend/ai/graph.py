@@ -324,9 +324,6 @@ def execute_tools(state: RouterState) -> dict:
     messages = list(state.get("messages") or [])
     tool_count = state.get("tool_count", 0)
 
-    # 单次请求的工具预算由后端配置统一定义。
-    max_tool_calls = AGENT_MAX_TOOL_CALLS
-
     # 防止重复 ID 使工具结果无法正确对应。
     ids = [call["id"] for call in calls]
     if len(ids) != len(set(ids)):
@@ -338,7 +335,7 @@ def execute_tools(state: RouterState) -> dict:
         count = tool_count
 
         for call in calls:
-            if count >= max_tool_calls:
+            if count >= AGENT_MAX_TOOL_CALLS:
                 result = {
                     "status": "budget_exceeded",
                     "message": "本次请求的工具调用预算已用完",
