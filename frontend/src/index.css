@@ -3,7 +3,8 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/noto-serif-sc";
-@import "@vp-tw/cjk-web-fonts-hanamin";
+@import "@vp-tw/cjk-web-fonts-hanamin/dist/HanaMinA/HanaMin.css";
+@import "@vp-tw/cjk-web-fonts-hanamin/dist/HanaMinB/HanaMin.css";
 
 @custom-variant dark (&:is(.dark *));
 
