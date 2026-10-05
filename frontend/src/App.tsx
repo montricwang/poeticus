@@ -41,6 +41,8 @@ function App() {
     () => window.matchMedia("(min-width: 1024px)").matches,
   );
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false);
+  const [mobileDiscussionMeasuredHeight, setMobileDiscussionMeasuredHeight] =
+    useState(0);
   const catalogToggleRef = useRef<HTMLButtonElement>(null);
   const readerPaneRef = useRef<HTMLDivElement>(null);
   const mobileDiscussionTouchedRef = useRef(false);
@@ -219,15 +221,13 @@ function App() {
   }, [poemId, wideDiscussionLayout]);
 
   const poemReady = !!activePoem && activePoem.id === poemId;
-  // 空对话态也必须完整容纳标题栏、视图工具栏、输入框和发送按钮；
-  // 有划词时再为引用区预留空间。高度仍只在这里计算一次，
-  // fixed dock 与正文占位共同使用同一个值。
+  // 空对话 / 划词提问态由内容自身决定高度，避免为输入区预留过多空白。
+  // 只有已有聊天或赏析这种需要内部滚动的状态，才给 dock 一个稳定高度。
+  // svh 不随软件键盘的动态视口伸缩，减少键盘开合时的布局重算。
   const mobileDiscussionHeight =
-    turns.length > 0
-      ? "clamp(18rem, 44dvh, 30rem)"
-      : selected
-        ? "clamp(20rem, 40dvh, 22rem)"
-        : "clamp(17rem, 30dvh, 19rem)";
+    turns.length > 0 || activeView === "analysis"
+      ? "clamp(18rem, 44svh, 30rem)"
+      : undefined;
 
   function renderDiscussionContent(fillAvailableHeight: boolean) {
     if (!activePoem || activePoem.id !== poemId) {
@@ -443,7 +443,7 @@ function App() {
 
       {poemReady && !wideDiscussionLayout && mobileDiscussionOpen && (
         <div
-          style={{ height: mobileDiscussionHeight }}
+          style={{ height: mobileDiscussionMeasuredHeight }}
           aria-hidden="true"
         />
       )}
@@ -455,8 +455,9 @@ function App() {
           hasUnreadReply={hasUnreadReply}
           hasSelection={!!selected}
           height={mobileDiscussionHeight}
+          onHeightChange={setMobileDiscussionMeasuredHeight}
         >
-          {renderDiscussionContent(true)}
+          {renderDiscussionContent(!!mobileDiscussionHeight)}
         </MobileDiscussionDock>
       )}
     </div>
