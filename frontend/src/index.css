@@ -142,14 +142,26 @@
     @apply border-border outline-ring/50;
   }
 
-  body {
-    @apply bg-background text-foreground;
-    min-width: 320px;
-    margin: 0;
+  html,
+  body,
+  #root {
+    background-color: var(--background);
   }
 
   html {
     @apply font-sans;
+    min-height: 100%;
+  }
+
+  body {
+    @apply text-foreground;
+    min-width: 320px;
+    min-height: 100%;
+    margin: 0;
+  }
+
+  #root {
+    min-height: 100vh;
   }
 }
 
