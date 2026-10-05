@@ -1,29 +1,22 @@
-import type { CSSProperties, ElementType } from "react";
+import type { CSSProperties } from "react";
 
 import "./analysis-animations.css";
 
-type AnalysisTextEntranceProps<T extends ElementType> = {
-  as: T;
+type AnalysisTextEntranceProps = {
+  as: "p" | "h4";
   text: string;
   animate: boolean;
   className?: string;
 };
 
-export function AnalysisTextEntrance<T extends ElementType>({
+export function AnalysisTextEntrance({
   as,
   text,
   animate,
   className,
-}: AnalysisTextEntranceProps<T>) {
-  const Component = as;
-
-  if (!animate) {
-    return <Component className={className}>{text}</Component>;
-  }
-
-  return (
-    <Component className={className} aria-label={text}>
-      {Array.from(text).map((character, index) => (
+}: AnalysisTextEntranceProps) {
+  const content = animate
+    ? Array.from(text).map((character, index) => (
         <span
           key={index}
           aria-hidden="true"
@@ -36,7 +29,20 @@ export function AnalysisTextEntrance<T extends ElementType>({
         >
           {character}
         </span>
-      ))}
-    </Component>
+      ))
+    : text;
+
+  if (as === "h4") {
+    return (
+      <h4 className={className} aria-label={animate ? text : undefined}>
+        {content}
+      </h4>
+    );
+  }
+
+  return (
+    <p className={className} aria-label={animate ? text : undefined}>
+      {content}
+    </p>
   );
 }
