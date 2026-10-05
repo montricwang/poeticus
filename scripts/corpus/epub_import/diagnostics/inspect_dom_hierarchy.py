@@ -1,4 +1,4 @@
-"""Inspect raw XHTML containment without publishing copyrighted content.
+"""检查原始 XHTML 的包含关系，不发布受版权保护的正文。
 
 Unlike the Poem extractor, this diagnostic reports only tag names, class/id
 attributes and source-block ordinals. It does NOT infer literary semantics.
@@ -14,7 +14,7 @@ from ..extractor.extractor import raw_xhtml
 
 
 def _signature(tag):
-    """Compact, text-free node descriptor and sibling index."""
+    """紧凑、无正文的节点描述与兄弟索引。"""
     if not isinstance(tag, Tag) or tag.name == "[document]":
         return None
     index = 1 + sum(
@@ -27,7 +27,7 @@ def _signature(tag):
 
 
 def _path(tag):
-    """Root-to-node DOM path; does not include any inner text."""
+    """从根到节点的 DOM 路径，不包含内部正文。"""
     nodes = []
     while isinstance(tag, Tag) and tag.name != "[document]":
         nodes.append(_signature(tag))
@@ -36,7 +36,7 @@ def _path(tag):
 
 
 def _nearest_common_ancestor(elements):
-    """Identity-based LCA: HTML Tags can compare equal by their *contents*."""
+    """按对象身份计算最近公共祖先；HTML Tag 可能因内容相同而比较为相等。"""
     if not elements:
         return None
     first_ancestors = []
@@ -60,7 +60,7 @@ def _nearest_common_ancestor(elements):
 
 
 def _parse_group(value):
-    """Accept a single block number or a closed 1-based ordinal range."""
+    """接受单个块编号，或从 1 开始的闭区间编号范围。"""
     parts = value.split("-", 1)
     if len(parts) == 1:
         start = end = int(parts[0])
@@ -72,7 +72,7 @@ def _parse_group(value):
 
 
 def inspect_hierarchy(book, html_name, groups):
-    """Return a text-free structural Markdown report of selected block groups.
+    """返回所选块组的无正文 Markdown 结构报告。
 
     Ordinals follow iter_source_blocks(): h1, h2, h4 and p in document order.
     DOM ancestors are taken from the SAME BeautifulSoup tree as these blocks.
