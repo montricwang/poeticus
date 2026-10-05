@@ -317,7 +317,7 @@ function App() {
                 className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]"
               >
                 <div
-                  className="min-w-0"
+                  className="min-w-0 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
                   onPointerDown={() => {
                     if (
                       !wideDiscussionLayout &&
@@ -359,8 +359,8 @@ function App() {
                 </div>
 
                 {wideDiscussionLayout && (
-                  <div className="min-w-0 self-center">
-                    <div className="border-l border-border/60 pl-7">
+                  <div className="flex min-h-[60dvh] min-w-0 items-center">
+                    <div className="w-full border-l border-border/60 pl-7">
                       {renderDiscussionContent(false)}
                     </div>
                   </div>
