@@ -451,7 +451,6 @@ function App() {
           onOpenChange={handleMobileDiscussionOpenChange}
           hasUnreadReply={hasUnreadReply}
           hasSelection={!!selected}
-          hasConversation={turns.length > 0}
           height={mobileDiscussionHeight}
         >
           {renderDiscussionContent(true)}
