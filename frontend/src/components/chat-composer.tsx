@@ -51,7 +51,7 @@ export function ChatComposer({
         </div>
       )}
 
-      <div className="rounded-2xl border border-input bg-background/70 p-2 transition-colors focus-within:border-violet-400/60 focus-within:ring-2 focus-within:ring-violet-400/10">
+      <div className="bg-transparent py-1">
         <Textarea
           placeholder="针对诗句提出你的问题……"
           aria-label="输入问题"
@@ -71,7 +71,7 @@ export function ChatComposer({
           // readOnly 而非 disabled：生成中仍可滚动、选中文字，
           // 不再显示全局 Textarea 的禁止操作光标。
           readOnly={loading}
-          className="min-h-24 max-h-40 overflow-y-auto overscroll-contain resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 dark:bg-transparent"
+          className="min-h-24 max-h-40 overflow-y-auto overscroll-contain resize-none border-0 bg-transparent px-2 shadow-none focus-visible:ring-0 dark:bg-transparent"
         />
 
         <div className="flex items-center justify-between px-2 pb-1">
