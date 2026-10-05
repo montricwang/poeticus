@@ -1,4 +1,4 @@
-"""Stable source-volume configuration for the supported EPUB edition."""
+"""当前支持 EPUB 版本的稳定分册配置。"""
 
 COLLECTIONS = (
     ("温庭筠词集·韦庄词集", "温庭筠", "wen-wei"),
