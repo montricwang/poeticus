@@ -17,7 +17,7 @@ TWO = UUID("22222222-2222-4222-8222-222222222222")
 def client(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
-    import api
+    import backend.app as api
     with TestClient(api.app) as test_client:
         yield test_client
     api.app.dependency_overrides.clear()
@@ -60,7 +60,7 @@ class FakeConnection:
 
 
 def override_connection(client, fake):
-    import api
+    import backend.app as api
     api.app.dependency_overrides[get_connection] = lambda: fake
 
 
