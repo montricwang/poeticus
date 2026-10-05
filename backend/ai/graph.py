@@ -227,7 +227,7 @@ def agent_decide(state: RouterState) -> dict:
     )
 
     tool_choice: Literal["auto", "none"] = (
-        "none" if state.get("tool_count", 0) >= 2 else "auto"
+        "none" if state.get("tool_count", 0) >= AGENT_MAX_TOOL_CALLS else "auto"
     )
 
     stream_reply = state.get("stream_reply", False)
@@ -238,7 +238,7 @@ def agent_decide(state: RouterState) -> dict:
         try:
             response = client.chat.completions.create(
                 model=LLM_MODEL,
-            max_tokens=MAX_LLM_OUTPUT_TOKENS,
+                max_tokens=LLM_MAX_OUTPUT_TOKENS,
                 messages=messages,
                 tools=TOOLS,
                 tool_choice=tool_choice,
