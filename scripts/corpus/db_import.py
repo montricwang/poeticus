@@ -1,4 +1,4 @@
-"""Local-only PostgreSQL migration and corpus import.
+"""仅用于本地的 PostgreSQL 迁移与作品导入。
 
 python -m scripts.corpus.db_import --check     # no database needed
 python -m scripts.corpus.db_import --migrate   # PostgreSQL required
@@ -26,7 +26,7 @@ def read_corpus(path: Path) -> list[ConvertedPoem]:
 
 
 def migrate(conn) -> None:
-    """Apply pending numbered SQL migrations; keep prior versions immutable."""
+    """按编号执行尚未应用的 SQL migration；已执行版本保持不可变。"""
     migration_files = sorted(MIGRATIONS_DIR.glob("[0-9][0-9][0-9][0-9]_*.sql"))
     if not migration_files or migration_files[-1].stem != LATEST_VERSION:
         raise RuntimeError("数据库迁移脚本不完整")
@@ -51,7 +51,7 @@ def migrate(conn) -> None:
 
 
 def import_records(conn, entries: list[ConvertedPoem]) -> tuple[int, int]:
-    """Idempotent append only; fail on source ID/order/content drift, rollback."""
+    """只做幂等追加；来源 ID、顺序或内容漂移时失败并回滚。"""
     from psycopg.types.json import Jsonb
 
     inserted = 0
