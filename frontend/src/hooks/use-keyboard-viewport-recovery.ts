@@ -68,9 +68,10 @@ export function useKeyboardViewportRecovery() {
 
     const viewport = window.visualViewport;
     if (!viewport) return;
+    const visualViewport = viewport;
 
     function handleViewportChange() {
-      const currentHeight = viewport.height;
+      const currentHeight = visualViewport.height;
       const baselineHeight = baselineHeightRef.current;
 
       if (baselineHeight === null) {
@@ -100,12 +101,12 @@ export function useKeyboardViewportRecovery() {
       }
     }
 
-    viewport.addEventListener("resize", handleViewportChange);
-    viewport.addEventListener("scroll", handleViewportChange);
+    visualViewport.addEventListener("resize", handleViewportChange);
+    visualViewport.addEventListener("scroll", handleViewportChange);
 
     return () => {
-      viewport.removeEventListener("resize", handleViewportChange);
-      viewport.removeEventListener("scroll", handleViewportChange);
+      visualViewport.removeEventListener("resize", handleViewportChange);
+      visualViewport.removeEventListener("scroll", handleViewportChange);
       for (const timerId of timerIdsRef.current) {
         window.clearTimeout(timerId);
       }
