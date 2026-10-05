@@ -411,10 +411,12 @@ function App() {
             aria-hidden={!catalogOpen}
             inert={!catalogOpen}
             className={
-              "absolute inset-0 z-40 transition-[visibility] duration-0 " +
+              "absolute inset-0 z-40 transition-opacity duration-[1050ms] " +
+              "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+              "md:transition-none md:opacity-100 " +
               (catalogOpen
-                ? "visible delay-0"
-                : "invisible delay-[1050ms] sm:delay-[820ms]")
+                ? "pointer-events-auto opacity-100"
+                : "pointer-events-none opacity-0")
             }
           >
             <button
@@ -422,23 +424,23 @@ function App() {
               tabIndex={-1}
               aria-label="关闭作品目录遮罩"
               className={
-                "absolute inset-0 bg-black/55 transition-opacity duration-[900ms] sm:duration-[680ms] " +
-                "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+                "absolute inset-0 bg-black/55 md:transition-opacity md:duration-[520ms] " +
+                "md:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
                 (catalogOpen
-                  ? "pointer-events-auto opacity-100"
-                  : "pointer-events-none opacity-0")
+                  ? "pointer-events-auto md:opacity-100"
+                  : "pointer-events-none md:opacity-0")
               }
               onClick={closeCatalog}
             />
 
             <div
               className={
-                "relative h-full w-screen sm:w-[min(88vw,420px)] " +
-                "transition-opacity duration-[1050ms] sm:duration-[820ms] " +
-                "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+                "relative h-full w-screen md:w-[min(88vw,420px)] " +
+                "md:transform md:transition-transform md:duration-[620ms] " +
+                "md:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
                 (catalogOpen
-                  ? "pointer-events-auto opacity-100"
-                  : "pointer-events-none opacity-0")
+                  ? "pointer-events-auto md:translate-x-0"
+                  : "pointer-events-none md:-translate-x-full")
               }
             >
               {renderCatalog(catalogOpen)}
@@ -464,10 +466,10 @@ function App() {
               aria-hidden={!catalogOpen}
               className={
                 "pointer-events-none fixed inset-0 z-50 2xl:sticky 2xl:top-5 2xl:z-auto " +
-                "2xl:min-w-0 2xl:overflow-hidden 2xl:transition-opacity 2xl:duration-[420ms] " +
+                "2xl:min-w-0 2xl:overflow-hidden " +
                 (catalogOpen
-                  ? "2xl:border-r 2xl:border-border/60 2xl:opacity-100"
-                  : "2xl:border-r-0 2xl:opacity-0")
+                  ? "2xl:border-r 2xl:border-border/60"
+                  : "2xl:border-r-0")
               }
             >
               <button
@@ -486,13 +488,13 @@ function App() {
 
               <div
                 className={
-                  "relative h-full w-screen sm:w-[min(88vw,420px)] " +
-                  "transition-opacity duration-[720ms] " +
+                  "relative h-full w-screen md:w-[min(88vw,420px)] " +
+                  "transform transition-transform duration-[620ms] " +
                   "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
-                  "2xl:w-80 2xl:pr-5 " +
+                  "2xl:w-80 2xl:translate-x-0 2xl:pr-5 " +
                   (catalogOpen
-                    ? "pointer-events-auto opacity-100 2xl:opacity-100"
-                    : "pointer-events-none opacity-0 2xl:opacity-100")
+                    ? "pointer-events-auto translate-x-0"
+                    : "pointer-events-none -translate-x-full")
                 }
               >
                 {renderCatalog(catalogOpen)}
