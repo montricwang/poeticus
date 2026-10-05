@@ -40,7 +40,7 @@ LANGSMITH_TRACING=false
 python -m scripts.corpus.db_import --migrate
 ```
 
-**数据边界**：默认私有导入流程使用本地 `data/output/all_normalized.json`；这个文件及源 EPUB 都不在公开仓库中。只有在你自行准备、核对且有权使用的作品数据存在时，才执行：
+**数据边界**：默认私有导入流程使用本地 `data/output/all_normalized.json`；这个文件及源 EPUB 都不在公开仓库中。`all_normalized.json` 是可重建的数据库导入检查点，不是唯一源数据；完整数据生命周期与备份边界见 [`data/README.md`](../data/README.md)。只有在你自行准备、核对且有权使用的作品数据存在时，才执行：
 
 ```powershell
 python -m scripts.corpus.db_import --check

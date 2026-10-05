@@ -18,13 +18,13 @@
 在仓库根目录安装依赖并保留本地 EPUB 后：
 
 ```bash
-python -m scripts.corpus.epub_import.analyze.audit_extraction
+python -m scripts.corpus.epub_import.diagnostics.audit_extraction
 ```
 
 只检查一册：
 
 ```bash
-python -m scripts.corpus.epub_import.analyze.audit_extraction --book "纳兰词集"
+python -m scripts.corpus.epub_import.diagnostics.audit_extraction --book "纳兰词集"
 ```
 
 默认输出位于 git 忽略的本地文件：
@@ -62,8 +62,8 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction --book "纳兰词�
 审计 JSON 只含单个段落的 `tag/classes/block`，不能据此宣称原 XHTML 没有评论容器。现在可以在**本地原 EPUB** 执行只读的父节点诊断，它直接沿 BeautifulSoup 节点的 `.parent` 查找完整祖先链与最近共同祖先，不读取内容判断语义，也不会导出商业文本：
 
 ```bash
-python -m scripts.corpus.epub_import.analyze.inspect_dom_hierarchy --html text00241.html --group 19-22 --group 36-38 --group 510-512 --output data/reports/zhou_dom_hierarchy.md
-python -m scripts.corpus.epub_import.analyze.inspect_dom_hierarchy --html text00307.html --group 211-214 --group 224-227 --group 229-232 --output data/reports/nalan_dom_hierarchy.md
+python -m scripts.corpus.epub_import.diagnostics.inspect_dom_hierarchy --html text00241.html --group 19-22 --group 36-38 --group 510-512 --output data/reports/zhou_dom_hierarchy.md
+python -m scripts.corpus.epub_import.diagnostics.inspect_dom_hierarchy --html text00307.html --group 211-214 --group 224-227 --group 229-232 --output data/reports/nalan_dom_hierarchy.md
 ```
 
 该工具的块号与语义抽取器一致，扫描 `h1/h2/h4/p`。输出仅包含标签、class、id、兄弟元素次序、直接父节点、最近共同祖先，允许分享结构摘要；**它只能证明 DOM 结构，不能自行证明哪一层代表词题、小序、注释或评论**。即使全部 `p` 共享 `div`，该 `div` 也可能只是整页排版容器；只有定位到专用容器、结合上下文才能升级语义规则。

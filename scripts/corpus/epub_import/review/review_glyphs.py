@@ -13,8 +13,8 @@ from urllib.parse import quote
 
 from ebooklib import epub
 
-from .pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
-from .pipeline.normalize import is_ids_form
+from ..pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
+from ..pipeline.normalize import is_ids_form
 
 
 FIELDS = ("index", "slug", "collection", "src", "source_form",

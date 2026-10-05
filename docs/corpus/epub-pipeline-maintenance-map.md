@@ -9,18 +9,17 @@
 ```text
 本地 EPUB（原始证据；不修改）
   → epub/reader.py：解析目录和 XHTML 来源
-  → extractor/blocks.py：按 h1/h2/h4/p 枚举源段落、行内结构和位置
-  → extractor/rules.py：小范围来源特定的分类规则
-  → extractor/extractor.py：按作品分组；正文、题序、注释、评论、告警
-    └ extractor/inline_notes.py：标注 font1 附注候选和来源位置
-  → extractor/schema.py：中间 Poem 数据契约
+  → extractor/：按来源结构识别作品、正文、题序、注评与告警
   → pipeline/normalize.py：按 glyph map 替换图片字占位符并重算附注偏移
   → batch_import.py / import_poems.py：15 册预检、阻断、输出私有 JSON
-  → data/output/all_normalized.json：合并**中间作品数据**
-  → [未来：独立的 curated/export 层 → 阅读器 Schema / 数据库]
+  → data/output/all_normalized.json：合并的私人中间作品数据
+  → scripts/corpus/adapter.py：拆成阅读字段与私人来源证据
+  → scripts/corpus/db_import.py：写入私人 PostgreSQL（poems + poem_source_texts）
+  → scripts/corpus/public_corpus_transfer.py：只复制白名单阅读字段到 Railway PostgreSQL
+  → backend/corpus/：公网只读作品 API
 ```
 
-旁路诊断：`analyze/audit_extraction.py`、`analyze/coverage.py` 与 `analyze/inspect_*.py` 用于扫描结构覆盖、定位分类反例、复核原 XHTML。人工辨字工具是 `review_glyphs.py` / `import_glyph_backup.py` / `glyph_contexts.py` / `pipeline/glyph_mapping.py`；这些**不是每次运行的主导入逻辑**。
+旁路诊断集中在 `diagnostics/`，用于扫描结构覆盖、定位分类反例、复核原 XHTML；人工辨字工具集中在 `review/`。两者都不是每次运行的主导入逻辑。正式批量导入只依赖 `config.py`、`epub/`、`extractor/`、`pipeline/`、`batch_import.py` 与 `import_poems.py`。
 
 ## 2. 当前中间数据实际包含什么
 
@@ -70,28 +69,28 @@
 | 题序、注评分类 | `extractor/rules.py::is_preface` + `extractor/extractor.py::extract_sections` | 周邦彦的确认评论段落、纳兰题序 |
 | 纯净阅读词文与自注拆分 | `extractor/inline_notes.py` + **新增独立 curated 转换层** | 引文跨 span、残留句号、原文可逆、字符区间 |
 | glyph 异体/IDS 的显示 | `pipeline/normalize.py`、`pipeline/glyph_mapping.py` | 原字/显示字独立、IDS 字符序列、inline note offset |
-| 新增数据库表或前端 JSON | **新增下游 adapter/exporter，不要直接改 DOM 解析规则** | 不丢源位置/编年/文献类别；避免二次复制受版权保护的注评 |
+| 阅读/来源字段进入数据库 | `scripts/corpus/adapter.py`、`scripts/corpus/db_import.py` | 阅读字段与私人来源证据分层；不把现代注评误送公网 |
 | 分册预检、全书校验、输出目录 | `batch_import.py`、`import_poems.py` | 15 册计数、ID 唯一、0 空正文、阻断策略 |
 | 新异常的定位 | `analyze/audit_extraction.py`、`analyze/inspect_source.py` | 只在本地生成含原文报告；测试使用合成文字 |
 
 ## 6. 简并原则与下一阶段建议
 
 - **不做为了减少文件数的大重构。** 当前 `reader → extractor → normalize → batch` 分层有意义，外围调查脚本不是生产依赖，不必合并成巨型文件。
-- 需要简化的是**操作入口和文档索引**：业务以 `import_poems --all --check` / `--all` 为主；`review_glyphs` 只在有待识别图片字时用；其他 `analyze/inspect_*` 归为按需诊断。新增复杂规则前先扩展回归测试，而不是不断追加个人记忆里的例外。
+- 操作入口已经收敛：业务以 `import_poems --all --check` / `--all` 为主；`review/` 只在需要人工辨字时使用；`diagnostics/` 只按需排障。新增复杂规则前先扩展回归测试，不再把一次性探针堆进正式包。
 - 下一个导出结构改动之前，优先补齐 **作品 source XHTML + anchor/block、编年原文（及证据/不确定性）**；这两个在临时结构里已经有迹象，越晚补，越容易失去精确关联。
-- 进入数据库前，**单独定义真正的阅读作品 Schema**，再决定是否包含现代注评、行内作者自注如何独立呈现、版权材料能否公开；当前 `all_normalized.json` 不要直接当成线上可发布的作品库。
+- 数据库下游已经存在：`adapter.py` 将 `all_normalized.json` 拆成阅读记录与私人来源记录，`public_corpus_transfer.py` 再对白名单字段做公网发布。`all_normalized.json` 仍然只是私人中间数据，不能直接作为线上公开 Schema。
 - 这次抽取器针对的是一个**确定版本**的特定 EPUB；如果原书版本或 XHTML 结构改变，应先重新跑源块审计，不要假定硬编码的块位置仍适用。
 
-**停止线**：如 15 册导出已有稳定数量、来源可追溯的主要结构和已知异常记录，当前 PR 可以验收合并。编年持久化、来源坐标、行内自注阅读拆分、数据库适配属于下一阶段独立 Issue；除非发现当前 JSON 丢失了必须立刻修复的正文，否则不为了“完美”阻塞本轮。
+**停止线**：15 册导出、数据库适配和公网白名单发布链路已经建立。编年持久化、稳定来源坐标、行内自注的阅读层拆分仍属于后续独立 Issue；除非发现当前 JSON 丢失了必须立刻修复的正文，否则不为了“完美”重开整个抽取工程。
 
 ## 7. 真实可复现所需的私有输入
 
 **GitHub 只有代码和合成测试，不保存商业原书或用户手工辨字结果。** 要在换电脑、迁移数据库或修订分类后完整重跑，需要用户私下备份：
 
 - 所使用的**准确版本 EPUB**（可记录 SHA-256 文件指纹）；
-- `glyph_review_backup.json`、`data/raw/glyph_maps/` 人工映射及必要的校勘判断；
+- `data/raw/glyph_maps/`：当前完整重跑真正需要的人工辨字结果；`glyph_review_backup.json` 只是第二份人工备份，glyph maps 完整时不是运行必需输入；
 - 生成时的 Git commit / PR 修订版本、15 册预检摘要与导出 manifest；
-- 如需保留历次输出，可以单独备份 `data/output/`，但这份输出可以在上述输入齐备时重建。
+- `data/output/all_normalized.json` 可作为“跳过重新抽 EPUB、直接重建私人数据库”的便利检查点；其余分册输出和报告均可由源 EPUB、glyph maps 与对应 Git commit 重建。详见 [`data/README.md`](../../data/README.md)。
 
 上述资料包含私人来源或者来源文字，不得提交公开仓库。特别注意：当前每首 ID 是“分册 slug + 提取顺序号”，**在同一版本同一规则下稳定，但当原书顺序/作品切分规则改变时可能整体后移**。未来数据库需要自己的稳定身份策略，至少存作品源锚点、版本来源以及可能的跨版本映射，不要只按旧 ID 把两次导出盲目覆盖。
 

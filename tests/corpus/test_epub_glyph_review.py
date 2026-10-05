@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from scripts.corpus.epub_import.review_glyphs import (
+from scripts.corpus.epub_import.review.review_glyphs import (
     apply_review,
     glyph_sites,
     prepare_review,

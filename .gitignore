@@ -19,7 +19,6 @@ Thumbs.db
 
 # 原始数据
 data/raw/*
-data/raw/
 data/output/
 data/debug/
 

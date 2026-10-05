@@ -1,6 +1,6 @@
 """Synthetic source-block coverage tests: no copyrighted EPUB passages."""
-from scripts.corpus.epub_import.analyze.coverage import source_block_coverage
-from scripts.corpus.epub_import.analyze.audit_extraction import audit_collection, render_md
+from scripts.corpus.epub_import.diagnostics.coverage import source_block_coverage
+from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection, render_md
 from scripts.corpus.epub_import.extractor.extractor import extract_sections
 
 

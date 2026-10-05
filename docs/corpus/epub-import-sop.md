@@ -172,7 +172,7 @@ python -m scripts.corpus.epub_import.import_poems --all
 不建议直接用 `import_poems.py --all`：只会因为未解决图片字而停止。为避免旧版单册命令一张张询问，在代码根目录运行：
 
 ```powershell
-python -m scripts.corpus.epub_import.review_glyphs --prepare
+python -m scripts.corpus.epub_import.review.review_glyphs --prepare
 ```
 
 它读取已存在的 `data/reports/epub_import_preflight.json` 和本地 EPUB，把去重后的图片字提取到 `data/reports/glyph_review_images/`，生成可在浏览器打开的**本地字形画廊** `data/reports/glyph_review.html`，及可直接在 VS Code/Excel 编辑的 `data/reports/glyph_review.tsv`；两者都在 gitignore 下。TSV 按编号对应图片，每行保留 `slug`、`src`、引用页面；只填写 `source_form`（原字），需要替代显示时才填 `display_form`（仅一字）。原字可填正常汉字、`U+XXXX` 或 IDS 组合字形；**IDS 若没有可信的 Unicode 单字替代，`display_form` 可以留空**，中间 JSON 会保留 IDS 字符序列及 `ids_transcription` 标记，不将其伪装为一个标准汉字。
@@ -180,7 +180,7 @@ python -m scripts.corpus.epub_import.review_glyphs --prepare
 填写后运行：
 
 ```powershell
-python -m scripts.corpus.epub_import.review_glyphs --apply
+python -m scripts.corpus.epub_import.review.review_glyphs --apply
 python -m scripts.corpus.epub_import.import_poems --all --check
 ```
 
@@ -193,7 +193,7 @@ python -m scripts.corpus.epub_import.import_poems --all --check
 对古籍的异体、俗字和同形字，不应该仅凭 80px 的孤立截图猜测 Unicode。为了避免错误填字（尤其是多张看起来相同的图片），增加仅输出每张待辨认图片字周围小片段的**私有定位报告**：
 
 ```powershell
-python -m scripts.corpus.epub_import.review_glyph_contexts
+python -m scripts.corpus.epub_import.review.review_glyph_contexts
 ```
 
 脚本利用同一份 `epub_import_preflight.json` 依照字形画廊的原顺序（001—049 等），在原 EPUB 的 h1/h2/h4/p 块里寻找图片，最多展示每个目标两处引用的前后各 16 字，以 `⟦目标字⟧` 占位；其他图片字也用标记表示，不会凭空替字。默认保存 `data/reports/glyph_contexts_private.md`，**包含局部版权文字，仅供私人核字，不提交仓库**。不覆盖已填写的 `glyph_review.tsv`，不需要重新生成画廊。用户与 AI 先确认字形再 `review_glyphs --apply`。
@@ -203,7 +203,7 @@ python -m scripts.corpus.epub_import.review_glyph_contexts
 字形画廊只展示图片和 XHTML 文件名。每个文件内的完整词句/注释其实仍然在原始本地 EPUB 中；不需要上网搜索，也不需要重新抽取整书。新增可单独运行的上下文导出命令：
 
 ```powershell
-python -m scripts.corpus.epub_import.review_glyphs --contexts
+python -m scripts.corpus.epub_import.review.review_glyphs --contexts
 ```
 
 输出 `data/reports/glyph_contexts.html`：**49 张图片继续沿用原 `glyph_review.html`、`glyph_review.tsv` 的 001–049 编号，绝不根据字形相似程度合并**。自带离线图片预览、分册、XHTML 文件名、与 `inspect_source` 一致的源块号、最近章节标题及目标图片在整个原书段落中的真实位置；黄色标记为本卡图片，蓝色标记为同段其他图片。如果同一图片在多个文件、多个段落或者同段出现多次，会保留所有原始位置，不只展示一个例子。除 `h1/h2/h4/p` 外的来源不做无依据的猜测：预检记录对应图片但找不到源块时明确抛错。
@@ -217,7 +217,7 @@ python -m scripts.corpus.epub_import.review_glyphs --contexts
 将备份文件放到 `data/reports/glyph_review_backup.json`（或使用 `--backup` 指定本地路径）。执行：
 
 ```powershell
-python -m scripts.corpus.epub_import.review_glyphs --import-backup
+python -m scripts.corpus.epub_import.review.review_glyphs --import-backup
 python -m scripts.corpus.epub_import.import_poems --all --check
 ```
 
@@ -234,8 +234,38 @@ python -m scripts.corpus.epub_import.import_poems --all
 这一步生成十五册原始/规范化 Poem 中间 JSON，以及 `data/output/all_normalized.json`。此处完成的是**导出管线与人工确认字形的录入**，不是宣布古籍语义分类准确率达到 95%，也不是前端清商所需的纯净诗词结构；行内作者自注仍保留在原句，最终阅读层的拆分仍需后续实现。
 
 
-### 11.5 备份与复现：代码入库，不代表本地私有输入已有备份
+### 11.5 备份与复现：区分“不可替代输入”和“可重建产物”
 
-实际重建需保留：原始 `data/raw/历代名家词集精华录.epub`、整个 `data/raw/glyph_maps/` 及 `data/reports/glyph_review_backup.json`，并记录 Git commit（本轮完成版本：`4cae604`）。`data/output/`（包括 `all_normalized.json`、`all_manifest.json` 和分册结果）及 `data/reports/` 可整体另存私人目录供校验和排障，**不要推送公共仓库**。删除本地 `all_normalized.json` 后仍可利用上述输入重建，但删除映射或原书将无法仅凭 GitHub 代码恢复相同输出；运行 `git clean -fdx` 前务必确认不会误删被 Git 忽略的资料。
+这里最容易混淆的是：**数据库导入会读取 `all_normalized.json`，但它并不是从头重跑 EPUB 所不可替代的源输入。**
 
-自动数量验收仅说明本地报告中的 `3491` 条唯一 ID、`0` 空正文等约束成立，不能代替入库前的语义质量检查；继续参照 [Issue #57](https://github.com/montricwang/poeticus/issues/57) 和 [维护地图](epub-pipeline-maintenance-map.md)。
+完整从原书重建时，真正必须私下备份的只有：
+
+- 准确版本的 `data/raw/历代名家词集精华录.epub`；
+- 整个 `data/raw/glyph_maps/`，其中包含已经人工确认的图片字映射；
+- 能确定当时规则版本的 Git commit / tag。
+
+`data/reports/glyph_review_backup.json` 建议另存一份，因为它记录了人工辨字过程；但只要 `glyph_maps/` 已完整写入，它不是重跑导出所必需的运行输入。
+
+如果只是**重建私人 PostgreSQL，而不想重新解析 EPUB**，保留一份已经验收的 `data/output/all_normalized.json` 就可以直接作为 `scripts.corpus.db_import` 的输入：
+
+```powershell
+python -m scripts.corpus.db_import --check
+python -m scripts.corpus.db_import --migrate
+python -m scripts.corpus.db_import --import
+```
+
+`all_manifest.json`、十五册的 `<slug>.json` / `<slug>_normalized.json`、预检报告、DOM 审计、字形 HTML/图片/TSV 都是**可重建产物**；人工结论已经写入 `glyph_maps/` 后，可以删除日常工作目录中的这些文件。
+
+如果连 `all_normalized.json` 也删除了，则从 EPUB 和 glyph maps 重新执行：
+
+```powershell
+python -m scripts.corpus.epub_import.import_poems --all --check
+python -m scripts.corpus.epub_import.import_poems --all
+python -m scripts.corpus.db_import --check
+python -m scripts.corpus.db_import --migrate
+python -m scripts.corpus.db_import --import
+```
+
+公网 Railway 作品库不是直接从 EPUB 或 JSON 灌入：先得到私人 PostgreSQL，再运行 `scripts.corpus.public_corpus_transfer`，只复制允许公开的阅读字段。
+
+完整的“哪些要备份、哪些可以删”清单见 [`data/README.md`](../../data/README.md)。所有这些私人文件仍受 `.gitignore` 保护；运行 `git clean -fdx` 前必须先确认原 EPUB 与 glyph maps 已在项目目录之外备份。

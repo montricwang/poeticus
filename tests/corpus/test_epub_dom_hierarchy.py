@@ -2,7 +2,7 @@
 
 import pytest
 
-from scripts.corpus.epub_import.analyze.inspect_dom_hierarchy import (
+from scripts.corpus.epub_import.diagnostics.inspect_dom_hierarchy import (
     inspect_hierarchy,
 )
 

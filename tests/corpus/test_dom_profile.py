@@ -18,7 +18,7 @@ sys.path.insert(0, str(MODULES))
 
 from bs4 import BeautifulSoup  # noqa: E402
 from epub.css import StyleResolver, local_href  # noqa: E402
-from scripts.corpus.epub_import.analyze.profile_dom import run  # noqa: E402
+from scripts.corpus.epub_import.diagnostics.profile_dom import run  # noqa: E402
 
 
 class Item:

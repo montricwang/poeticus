@@ -1,5 +1,5 @@
 """Only invented text in tests for local glyph context lookup."""
-from scripts.corpus.epub_import.review_glyph_contexts import (
+from scripts.corpus.epub_import.review.review_glyph_contexts import (
     find_contexts,
     render_contexts,
 )

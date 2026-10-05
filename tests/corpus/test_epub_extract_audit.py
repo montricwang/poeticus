@@ -1,5 +1,5 @@
 """Audit reporting uses only small synthetic sources."""
-from scripts.corpus.epub_import.analyze.audit_extraction import (
+from scripts.corpus.epub_import.diagnostics.audit_extraction import (
     audit_book, render_md, COLLECTIONS,
 )
 
@@ -42,7 +42,7 @@ def test_only_15_scoped_author_volumes_are_selected():
 
 
 def test_audit_reports_authorless_inserted_work():
-    from scripts.corpus.epub_import.analyze.audit_extraction import audit_collection
+    from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection
 
     class InsertedBook:
         def get_item_with_href(self, href):
@@ -61,7 +61,7 @@ def test_audit_reports_authorless_inserted_work():
 
 
 def test_audit_prioritizes_unknown_author_and_reports_markup_not_text():
-    from scripts.corpus.epub_import.analyze.audit_extraction import audit_collection
+    from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection
 
     class Volume:
         def get_item_with_href(self, href):
@@ -94,7 +94,7 @@ def test_ambiguous_note_report_exposes_adjacent_markup_without_its_text():
             return None
     toc = [{"title": "周邦彦词集", "children": [
         {"title": "少年游", "href": "x.html"}]}]
-    from scripts.corpus.epub_import.analyze.audit_extraction import audit_collection
+    from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection
     one = audit_collection(Volume(), toc, "周邦彦词集", "周邦彦", "zhou")
     md = render_md({"results": [one]})
     assert "待分类块相邻结构" in md
@@ -158,7 +158,7 @@ def test_export_guard_blocks_pre_author_and_post_verse_unknown():
 
 
 def test_nalan_preface_is_visible_as_lengths_without_leaking_original_words():
-    from scripts.corpus.epub_import.analyze.audit_extraction import audit_collection
+    from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection
 
     class NalanBook:
         def get_item_with_href(self, href):

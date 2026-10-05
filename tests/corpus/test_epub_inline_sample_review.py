@@ -1,7 +1,7 @@
 """Synthetic sample selection: only locations escape private source output."""
 import pytest
 
-from scripts.corpus.epub_import.analyze.inspect_inline_samples import (
+from scripts.corpus.epub_import.diagnostics.inspect_inline_samples import (
     render_plan,
     render_private_packet,
     select_inline_samples,

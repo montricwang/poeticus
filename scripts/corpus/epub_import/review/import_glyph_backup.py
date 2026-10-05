@@ -7,8 +7,8 @@ so that even identical-looking glyphs cannot accidentally be misassigned.
 import json
 from pathlib import Path
 
-from .pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
-from .pipeline.normalize import is_ids_form
+from ..pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
+from ..pipeline.normalize import is_ids_form
 from .review_glyphs import glyph_sites
 
 

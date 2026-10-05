@@ -15,7 +15,7 @@ from ..epub.reader import parse_toc
 from ..extractor.blocks import iter_source_blocks
 from ..extractor.extractor import extract_collection, extract_sections, raw_xhtml
 from ..extractor.rules import INLINE_EDITORIAL_GAP, is_inline_styled_span
-from .audit_extraction import COLLECTIONS
+from ..config import COLLECTIONS
 
 
 def _style_signature(span):
