@@ -67,7 +67,7 @@ export function AnalysisReveal({
 }
 
 type AnalysisTextEntranceProps = {
-  as: "p" | "h4";
+  as: "p" | "h3" | "h4";
   text: string;
   animate: boolean;
   className?: string;
@@ -95,6 +95,14 @@ export function AnalysisTextEntrance({
         </span>
       ))
     : text;
+
+  if (as === "h3") {
+    return (
+      <h3 className={className} aria-label={animate ? text : undefined}>
+        {content}
+      </h3>
+    );
+  }
 
   if (as === "h4") {
     return (
