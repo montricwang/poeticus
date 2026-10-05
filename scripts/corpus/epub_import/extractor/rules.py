@@ -1,4 +1,4 @@
-"""Scoped semantic rules for the *poetry anthologies* in this EPUB.
+"""仅适用于这套 EPUB 诗词选本的语义规则。
 
 This module intentionally does not encode suite relationships, tune history or
 textual scholarship. Source markup remains available in the private EPUB.
@@ -7,19 +7,17 @@ import re
 from bs4 import NavigableString, Tag
 
 CHRONOLOGY = re.compile(r"[（(]\d{4}[）)]$")
-# The anthology's explicit editorial omission marker, not authored verse.
-# Keep original text; downstream schema policy is a separate decision.
+# 这是选本明确使用的编校缺文标记，不属于作者正文。
+# 当前保留原文字样，后续 schema 如何表达是另一层决策。
 INLINE_EDITORIAL_GAP = re.compile(r"[（(]\s*以下缺\s*[）)]")
 HE_ZHU_ALIAS_NOTE = re.compile(r"^(?P<tune>[^，,]+)[，,]\s*亦名\s*(?P<alias>.+)$")
-# Only explicit document labels confirmed by the 15-volume audit.
+# 只接受 15 册审计中已经确认的明确文档标签。
 EDITORIAL_HEADINGS = {"总评"}
 NON_POEMS = {"欧阳修词集": {"西湖念语"}}
 
-# A manual check of the *private* source on 2026-10-02 established that
-# these two runs are extended scholarly commentary after a ◆ paragraph.
-# Match original XHTML + work-start block + paragraph block range so no other
-# work in this volume (or even the same file) acquires inferred commentary.
-# If the source layout changes, fail closed instead of inventing attribution.
+# 2026-10-02 人工核对私人来源后确认：下面两段是 ◆ 评论之后延续的学术评论。
+# 规则同时匹配原始 XHTML、作品起始块和段落范围，避免同册甚至同文件中的
+# 其他作品被错误套用评论续接。来源版式一旦变化就直接失败，不臆造归属。
 VERIFIED_ZHOU_COMMENTARY_RUNS = {
     ("text00241.html", 2): range(20, 39),     # 少年游, 19 paragraphs
     ("text00241.html", 504): range(511, 513),  # 红林檎近, 2 paragraphs
@@ -38,7 +36,7 @@ def is_verified_zhou_commentary(collection, html_name, work_block, block, classe
 
 
 def is_inline_styled_span(span):
-    """Whether the EPUB markup marks a span as distinct from normal type."""
+    """判断 EPUB 标记是否把某个 span 排成与普通正文不同的样式。"""
     return bool(
         span.get("style")
         or any(cls in {"kindle-cn-kai", "kaiti", "small"}
@@ -46,10 +44,9 @@ def is_inline_styled_span(span):
     )
 
 
-# Scoped human-review evidence for the particular commercial EPUB layout.
-# Do not infer 'author's note' from font1 globally: other font1 spans can
-# represent editorial glosses or simply typesetting.
-# The second case is only a candidate; authorship has not been established.
+# 下面是针对这套商业 EPUB 版式的人工复核证据。
+# 不能把所有 font1 都推断成作者自注：它也可能表示编校注释或普通排版。
+# 第二个案例目前只是候选，尚未确认作者归属。
 INLINE_AUTHOR_NOTE_REVIEWS = {
     ("辛弃疾词集", "text00278.html", 135): "user_identified_author_note",
     ("黄庭坚词集", "text00214.html", 679): "possible_author_note",
@@ -57,7 +54,7 @@ INLINE_AUTHOR_NOTE_REVIEWS = {
 
 
 def is_pagination_kaiti_continuation(span):
-    """A kaiti span used for verse split by an EPUB page marker.
+    """识别因 EPUB 分页标记而拆开的正文楷体 span。
 
     Requires an immediately preceding empty page anchor and no meaningful
     content after the span apart from layout <br> nodes. This does not classify
@@ -88,13 +85,13 @@ def is_non_poem(collection, heading):
 
 
 def is_chronology(tag, text):
-    """Chronological labels precede the next work, not the previous poem."""
+    """年代标签属于后续作品，不属于上一首。"""
     return ("kindle-cn-para-no-indent1" in tag.get("class", [])
             and bool(CHRONOLOGY.search(text)) and len(text) < 55)
 
 
 def is_separate_title(tag, collection):
-    """In Liu Yong, some titles use a centered Kai paragraph after the h2."""
+    """柳永分册中有些作品题目位于 h2 后的居中楷体段落。"""
     css = set(tag.get("class", []))
     return ("柳永" in collection and
             {"kindle-cn-para-center", "kindle-cn-kai"}.issubset(css))
@@ -105,8 +102,8 @@ def is_preface(tag, collection):
     if "kindle-cn-ref2" in css:
         return True
     if "kindle-cn-ref" in css:
-        # In some volumes these same classes occur in introductions. This
-        # predicate is only applied *within* a work, before its first verse.
+        # 某些分册的导读也会使用相同 class，因此这个判断只在作品内部、
+        # 第一段正文出现之前应用。
         return True
     if {"kindle-cn-para-2em-indent", "kindle-cn-kai"}.issubset(css):
         return any(x in collection for x in ("苏轼", "辛弃疾", "黄庭坚"))
@@ -114,7 +111,7 @@ def is_preface(tag, collection):
 
 
 def _heading_inline_text(node):
-    """Retain glyph positions even when images are nested inside a subtitle."""
+    """即使图片字嵌在副标题内部，也保留它在题头中的位置。"""
     pieces = []
     for child in node.descendants:
         if isinstance(child, NavigableString):
@@ -127,7 +124,7 @@ def _heading_inline_text(node):
 
 
 def heading_components(tag):
-    """Read heading runs in source order, keeping inline glyphs in place."""
+    """按来源顺序读取题头片段，并保留行内图片字位置。"""
     pieces = []
     pending = ""
 
@@ -143,7 +140,7 @@ def heading_components(tag):
             if pending.strip() or not pieces:
                 pending += glyph
             else:
-                # A direct glyph after a subtitle belongs to that subtitle.
+                # 紧跟副标题的直接图片字属于该副标题。
                 pieces[-1] += glyph
         elif isinstance(child, Tag):
             if pending.strip():
@@ -151,9 +148,9 @@ def heading_components(tag):
                 pending = ""
             value = _heading_inline_text(child)
             if value:
-                # A line break can occur *inside* a single wrapping span.
-                # Keep the original run order instead of turning tune + title
-                # into one multiline tune (observed in Na Lan's appended ci).
+                # 换行可能发生在同一个外层 span 内。
+                # 保留原始片段顺序，不能把“词牌 + 题目”误并成多行词牌；
+                # 纳兰附录词中已经观察到这种版式。
                 pieces.extend(part.strip() for part in value.split("\n") if part.strip())
     if pending.strip():
         pieces.append(pending.strip())
@@ -173,11 +170,11 @@ def interpret_heading(tag, collection):
         return None, None, None, [{"type": "empty_heading"}]
     first = parts[0]
     if "贺铸" in collection and len(parts) >= 2:
-        # Two layouts are supported:
+        # 支持下面两种版式：
         #   <h2>寓声<span>原调</span><span>作品题目</span></h2>
         #   <h2>寓声<span>原调　作品题目</span></h2>
-        # Only split explicit ideographic (fullwidth) whitespace within one
-        # run; never split a tune on its ordinary single ASCII spaces.
+        # 只按同一片段中明确的全角空格拆分；普通 ASCII 单空格
+        # 不能作为拆分词牌的依据。
         detail = parts[1].strip()
         if "　" in detail:
             split = [segment.strip() for segment in re.split(r"　+", detail)
@@ -190,12 +187,12 @@ def interpret_heading(tag, collection):
         if len(titles) > 1:
             issues.append({"type": "ambiguous_heading_parts", "parts": parts})
         # Treat '亦名' as a note about the old tune, not a work title.
-        # No universal cipai_alias field is introduced by this importer.
+        # 当前导入器不因此引入通用 cipai_alias 字段。
         alias_note = HE_ZHU_ALIAS_NOTE.fullmatch(tune_text)
         tune = alias_note.group("tune").strip() if alias_note else tune_text
         return tune, title, first, issues
     if len(parts) > 2:
         issues.append({"type": "ambiguous_heading_parts", "parts": parts})
-    # Do not discard a third or later heading fragment silently.
+    # 第三个及之后的题头片段不能静默丢弃。
     second = "\n".join(parts[1:]) if len(parts) > 1 else None
     return first, second, None, issues
