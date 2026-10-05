@@ -246,7 +246,7 @@ function App() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1600px] px-5 pb-24 pt-7 md:px-8 xl:pb-10">
+      <main className="mx-auto w-full max-w-[1600px] px-5 pb-24 pt-7 md:px-8 lg:pb-10">
         <div
           className={
             "grid min-w-0 grid-cols-1 items-start gap-0 " +
