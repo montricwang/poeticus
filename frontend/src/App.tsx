@@ -15,9 +15,9 @@ import {
   poemContext,
   poemText,
 } from "@/data/poem-library";
-import type { Poem } from "@/data/poem-library";
 import { usePoemCatalog } from "@/hooks/use-poem-catalog";
-import { selectionForPython } from "@/lib/selection-offset";
+import { usePoemDetail } from "@/hooks/use-poem-detail";
+import { selectionForPython, validSelectionForPoem } from "@/lib/selection-offset";
 import { readChatStream, UsageLimitNotice } from "@/lib/chat-stream";
 import { buildHistory } from "@/lib/chat-history";
 import {
@@ -36,24 +36,6 @@ import type {
 import type { PoemAnalysis } from "@/components/analysis-panel";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
-
-function validSelectionForPoem(
-  selection: SelectedText | null,
-  poem: string,
-): SelectedText | null {
-  if (!selection) return null;
-
-  if (
-    selection.start < 0 ||
-    selection.end > poem.length ||
-    selection.start >= selection.end ||
-    poem.slice(selection.start, selection.end) !== selection.text
-  ) {
-    return null;
-  }
-
-  return selection;
-}
 
 function maxTurnId(turns: ChatTurn[]): number {
   return turns.reduce((max, turn) => Math.max(max, turn.id), 0);
@@ -77,8 +59,6 @@ function loadInitialChatState() {
 function App() {
   const [initialChatState] = useState(loadInitialChatState);
   const [poemId, setPoemId] = useState<string | null>(initialChatState.poemId);
-  const [activePoem, setActivePoem] = useState<Poem | null>(null);
-  const poem = activePoem ? poemText(activePoem) : "";
 
   const {
     catalog,
@@ -96,14 +76,20 @@ function App() {
   const switchControllerRef = useRef<AbortController | null>(null);
   const [switchTarget, setSwitchTarget] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState("");
-  const [detailError, setDetailError] = useState("");
-  const detailLoading = !!poemId && !activePoem && !detailError;
-  const [detailAttempt, setDetailAttempt] = useState(0);
 
   const [conversationId, setConversationId] = useState(
     initialChatState.conversationId,
   );
   const [selected, setSelected] = useState<SelectedText | null>(null);
+  const {
+    activePoem,
+    setActivePoem,
+    detailError,
+    setDetailError,
+    detailLoading,
+    retryDetail,
+  } = usePoemDetail(poemId, setSelected);
+  const poem = activePoem ? poemText(activePoem) : "";
   const [question, setQuestion] = useState(initialChatState.question);
   const [turns, setTurns] = useState<ChatTurn[]>(initialChatState.turns);
   const [chatLoading, setChatLoading] = useState(false);
@@ -128,29 +114,6 @@ function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
   const [analysisLimitNotice, setAnalysisLimitNotice] = useState(false);
-
-  // 首屏／刷新时恢复 UUID；点击切诗由 handlePoemChange 先预取再提交。
-  useEffect(() => {
-    if (!poemId || activePoem?.id === poemId) return;
-    const controller = new AbortController();
-
-    void fetchPoem(poemId, controller.signal)
-      .then((work) => {
-        if (controller.signal.aborted) return;
-        setActivePoem(work);
-        setSelected(
-          validSelectionForPoem(
-            loadPoemConversation(work.id)?.draft.selection ?? null,
-            poemText(work),
-          ),
-        );
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        setDetailError(error instanceof Error ? error.message : "无法加载作品");
-      })
-    return () => controller.abort();
-  }, [poemId, activePoem?.id, detailAttempt]);
 
   useEffect(() => {
     return () => switchControllerRef.current?.abort();
@@ -642,12 +605,7 @@ function App() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setDetailError("");
-                            setActivePoem(null);
-                            setSelected(null);
-                            setDetailAttempt((count) => count + 1);
-                          }}
+                          onClick={retryDetail}
                         >
                           重试
                         </Button>
