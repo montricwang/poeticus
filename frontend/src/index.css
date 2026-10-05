@@ -161,7 +161,27 @@
   }
 
   #root {
-    min-height: 100dvh;
+    min-height: 100%;
+  }
+
+  @media (max-width: 63.999rem) {
+    html,
+    body,
+    #root {
+      height: 100%;
+      overflow: hidden;
+    }
+  }
+
+  .mobile-app-shell {
+    height: var(--mobile-workspace-height, 100svh);
+  }
+
+  @media (min-width: 64rem) {
+    .mobile-app-shell {
+      height: auto;
+      min-height: 100dvh;
+    }
   }
 }
 
