@@ -1,4 +1,4 @@
-"""API and SQL contract tests with synthetic records; no local database needed."""
+"""使用合成记录测试 API 与 SQL 契约，不需要本地数据库。"""
 from types import SimpleNamespace
 from uuid import UUID
 
@@ -41,7 +41,7 @@ def full_record():
 
 
 class FakeConnection:
-    """Minimal cursor stand-in for verifying SQL and bound params."""
+    """最小游标替身，只用于核对 SQL 与绑定参数。"""
     def __init__(self, *, pages=None, details=None, count=2):
         self.pages = pages if pages is not None else [summary(), summary(TWO, 2)]
         self.details = details or {}
@@ -114,8 +114,8 @@ def test_catalog_defaults_and_empty_result(client):
     "q=" + "a" * 101,
 ])
 def test_invalid_pagination_and_query_returns_422(client, query):
-    # Isolate HTTP validation from the database dependency: FastAPI may
-    # resolve Depends() before reporting invalid query parameters.
+    # 把 HTTP 参数校验与数据库依赖隔离；FastAPI 可能在报告非法查询参数前
+    # 先解析 Depends()。
     override_connection(client, FakeConnection())
     assert client.get("/api/poems?" + query).status_code == 422
 
