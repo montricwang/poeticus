@@ -39,6 +39,23 @@
 
   --radius: 0.625rem;
 
+  /*
+   * Shared UI contracts. These values describe product behavior, not incidental spacing:
+   * - 1024px+ reader/companion columns share a 60dvh visual stage;
+   * - desktop chat and analysis deliberately share the same height cap;
+   * - catalog/discussion durations are named by interaction so later tuning has one owner.
+   */
+  --motion-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-catalog-phone-fade: 720ms;
+  --motion-catalog-backdrop-fade: 520ms;
+  --motion-catalog-drawer-slide: 620ms;
+  --motion-catalog-grid-resize: 600ms;
+  --motion-discussion-phone-fade: 520ms;
+  --motion-discussion-tablet-slide: 400ms;
+
+  --desktop-reading-stage-min-height: 60dvh;
+  --companion-panel-max-height: min(42rem, calc(100dvh - 10rem));
+
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -263,29 +280,5 @@
       --reader-heading-size: 2.25rem;
       --reader-poem-size: 1.25rem;
     }
-  }
-}
-
-@keyframes chat-message-enter {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.chat-message-enter {
-  animation: chat-message-enter 320ms
-    cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* 尊重用户的系统减少动画设置 */
-@media (prefers-reduced-motion: reduce) {
-  .chat-message-enter {
-    animation: none;
   }
 }

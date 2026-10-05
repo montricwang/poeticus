@@ -17,6 +17,11 @@ import { usePoemDetail } from "@/hooks/use-poem-detail";
 import { useConversationPersistence } from "@/hooks/use-conversation-persistence";
 import { usePoemAnalysis } from "@/hooks/use-poem-analysis";
 import { loadInitialChatState } from "@/lib/chat-initial-state";
+import {
+  PERSISTENT_CATALOG_MEDIA,
+  PERSISTENT_CATALOG_MIN_WIDTH,
+  WIDE_DISCUSSION_MEDIA,
+} from "@/lib/responsive-layout";
 import { useChatSession } from "@/hooks/use-chat-session";
 
 import type { SelectedText } from "@/components/poem-reader";
@@ -35,11 +40,13 @@ function App() {
     updateCatalogFilters,
   } = usePoemCatalog(setPoemId);
 
+  // These are interaction-mode boundaries, not merely cosmetic breakpoints:
+  // 1024px+ keeps reader and companion side by side; 1536px+ keeps the catalog persistent.
   const [catalogOpen, setCatalogOpen] = useState(
-    () => window.matchMedia("(min-width: 1536px)").matches,
+    () => window.matchMedia(PERSISTENT_CATALOG_MEDIA).matches,
   );
   const [wideDiscussionLayout, setWideDiscussionLayout] = useState(
-    () => window.matchMedia("(min-width: 1024px)").matches,
+    () => window.matchMedia(WIDE_DISCUSSION_MEDIA).matches,
   );
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false);
 
@@ -109,7 +116,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 1024px)");
+    const query = window.matchMedia(WIDE_DISCUSSION_MEDIA);
 
     function handleLayoutChange(event: MediaQueryListEvent) {
       setWideDiscussionLayout(event.matches);
@@ -151,7 +158,7 @@ function App() {
         setActiveView("chat");
         setMobileDiscussionOpen(false);
 
-        if (window.innerWidth < 1536) {
+        if (window.innerWidth < PERSISTENT_CATALOG_MIN_WIDTH) {
           closeCatalog();
         }
       })
@@ -359,11 +366,12 @@ function App() {
             inert={mobileDiscussionOpen || catalogOpen}
             className={
               "absolute inset-0 z-10 bg-background " +
-              "md:transition-transform md:duration-400 md:ease-[cubic-bezier(0.22,1,0.36,1)] " +
+              "md:transition-transform md:duration-[var(--motion-discussion-tablet-slide)] md:ease-[var(--motion-ease-settle)] " +
               "motion-reduce:transition-none " +
               (mobileDiscussionOpen ? "md:-translate-x-full" : "md:translate-x-0")
             }
           >
+            {/* Keep the last lines clear of the floating discussion button. */}
             <div className="h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8">
               {switchError && (
                 <div role="alert" className="mb-3 text-sm text-destructive">
@@ -416,8 +424,8 @@ function App() {
             aria-hidden={!catalogOpen}
             inert={!catalogOpen}
             className={
-              "absolute inset-0 z-40 transition-opacity duration-[720ms] " +
-              "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+              "absolute inset-0 z-40 transition-opacity duration-[var(--motion-catalog-phone-fade)] " +
+              "ease-[var(--motion-ease-settle)] motion-reduce:transition-none " +
               "md:transition-none md:opacity-100 " +
               (catalogOpen
                 ? "pointer-events-auto opacity-100"
@@ -429,8 +437,8 @@ function App() {
               tabIndex={-1}
               aria-label="关闭作品目录遮罩"
               className={
-                "absolute inset-0 bg-black/55 md:transition-opacity md:duration-[520ms] " +
-                "md:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+                "absolute inset-0 bg-black/55 md:transition-opacity md:duration-[var(--motion-catalog-backdrop-fade)] " +
+                "md:ease-[var(--motion-ease-settle)] motion-reduce:transition-none " +
                 (catalogOpen
                   ? "pointer-events-auto md:opacity-100"
                   : "pointer-events-none md:opacity-0")
@@ -441,8 +449,8 @@ function App() {
             <div
               className={
                 "relative h-full w-screen md:w-[min(88vw,420px)] " +
-                "md:transform md:transition-transform md:duration-[620ms] " +
-                "md:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+                "md:transform md:transition-transform md:duration-[var(--motion-catalog-drawer-slide)] " +
+                "md:ease-[var(--motion-ease-settle)] motion-reduce:transition-none " +
                 (catalogOpen
                   ? "pointer-events-auto md:translate-x-0"
                   : "pointer-events-none md:-translate-x-full")
@@ -459,8 +467,8 @@ function App() {
           <div
             className={
               "grid min-w-0 grid-cols-1 items-start gap-0 " +
-              "2xl:transition-[grid-template-columns] 2xl:duration-[600ms] " +
-              "2xl:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+              "2xl:transition-[grid-template-columns] 2xl:duration-[var(--motion-catalog-grid-resize)] " +
+              "2xl:ease-[var(--motion-ease-settle)] motion-reduce:transition-none " +
               (catalogOpen
                 ? "2xl:grid-cols-[320px_minmax(0,1fr)]"
                 : "2xl:grid-cols-[0px_minmax(0,1fr)]")
@@ -482,8 +490,8 @@ function App() {
                 tabIndex={-1}
                 aria-label="关闭作品目录遮罩"
                 className={
-                  "absolute inset-0 bg-black/55 transition-opacity duration-[520ms] " +
-                  "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none 2xl:hidden " +
+                  "absolute inset-0 bg-black/55 transition-opacity duration-[var(--motion-catalog-backdrop-fade)] " +
+                  "ease-[var(--motion-ease-settle)] motion-reduce:transition-none 2xl:hidden " +
                   (catalogOpen
                     ? "pointer-events-auto opacity-100"
                     : "pointer-events-none opacity-0")
@@ -494,8 +502,8 @@ function App() {
               <div
                 className={
                   "relative h-full w-screen md:w-[min(88vw,420px)] " +
-                  "transform transition-transform duration-[620ms] " +
-                  "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
+                  "transform transition-transform duration-[var(--motion-catalog-drawer-slide)] " +
+                  "ease-[var(--motion-ease-settle)] motion-reduce:transition-none " +
                   "2xl:w-80 2xl:translate-x-0 2xl:pr-5 " +
                   (catalogOpen
                     ? "pointer-events-auto translate-x-0"
@@ -518,11 +526,11 @@ function App() {
                   inert={!!switchTarget}
                   className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]"
                 >
-                  <div className="min-w-0 lg:flex lg:min-h-[60dvh] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2">
+                  <div className="min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2">
                     {renderReaderContent()}
                   </div>
 
-                  <div className="flex min-h-[60dvh] min-w-0 items-center">
+                  <div className="flex min-h-[var(--desktop-reading-stage-min-height)] min-w-0 items-center">
                     <div className="w-full border-l border-border/60 pl-7">
                       {renderDiscussionContent(false)}
                     </div>

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { poemIncipit, poemLabel } from "@/data/poem-library";
 import type { PoemFilters, PoemPage } from "@/data/poem-library";
+import { OVERLAY_CATALOG_MEDIA } from "@/lib/responsive-layout";
 
 type PoemCatalogProps = {
   catalog: PoemPage | null;
@@ -43,7 +44,7 @@ export function PoemCatalog({
       if (event.key === "Escape") {
         onClose();
       }
-      if (event.key !== "Tab" || !window.matchMedia("(max-width: 1535px)").matches) {
+      if (event.key !== "Tab" || !window.matchMedia(OVERLAY_CATALOG_MEDIA).matches) {
         return;
       }
       const elements = panelRef.current?.querySelectorAll<HTMLElement>(
