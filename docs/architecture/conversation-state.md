@@ -23,7 +23,7 @@ flowchart LR
     F --> G["PostgreSQL"]
 ```
 
-v0.1 暂不引入数据库、账号或服务端 Thread。浏览器 localStorage 只是当前 persistence adapter，不应反过来决定长期领域模型。
+v0.1 的**会话层**暂不引入服务端数据库、账号或 Thread persistence；作品库本身已经使用 PostgreSQL。浏览器 localStorage 只是当前 Conversation persistence adapter，不应反过来决定长期领域模型。
 
 ## 3. v0.1：每首诗恢复当前 Conversation
 
