@@ -1,4 +1,4 @@
-"""Plain read-only SQL for the reader corpus, independent of FastAPI.
+"""阅读作品库的只读 SQL，与 FastAPI 解耦。
 
 Only query poems. Do NOT expose poem_source_texts, source offsets, private
 annotations/commentaries or source-only material to an HTTP response.
@@ -15,8 +15,8 @@ def _filters(author: str | None, cipai: str | None, q: str | None):
         terms.append("author = %s")
         values.append(author)
     if cipai:
-        # One visible '词牌' field accepts either the original tune or an
-        # author-coined yusheng title, without conflating the stored columns.
+        # 前端只有一个可见“词牌”筛选框，因此查询时同时匹配原词牌与寓声名；
+        # 数据库存储仍保持两列独立。
         terms.append("(cipai = %s OR yusheng_title = %s)")
         values.extend([cipai, cipai])
     if q:
@@ -45,7 +45,7 @@ def list_poems(
     limit: int,
     offset: int,
 ) -> tuple[list[dict], int]:
-    """Input: optional filters and page; output: (metadata-only rows, total)."""
+    """输入可选筛选和分页参数，返回题录行与总数。"""
     where_sql, params = _filters(author, cipai, q)
     total = conn.execute(
         "SELECT COUNT(*) AS total FROM poems" + where_sql, tuple(params)
@@ -63,7 +63,7 @@ def list_poems(
 
 
 def get_poem(conn: Connection, poem_id: UUID) -> dict | None:
-    """Input: permanent UUID; output: one reader record or None."""
+    """输入作品永久 UUID，返回一条阅读记录；不存在时返回 None。"""
     return conn.execute(
         """SELECT id, source_order, collection, author, cipai, title, yusheng_title,
                   body_segments, prefaces, review_status, text_version

@@ -1,4 +1,4 @@
-"""Public service endpoints must remain cheap and disclose no runtime secrets."""
+"""公开服务接口必须保持轻量，并且不能泄露运行时秘密。"""
 
 from types import SimpleNamespace
 
@@ -58,7 +58,7 @@ def test_capabilities_exposes_browser_contract_without_secrets(client):
     assert "test-only-placeholder" not in response.text
 
 
-def test_canonical_public_chat_path_and_legacy_path_both_work(monkeypatch, client):
+def test_public_chat_path_works(monkeypatch, client):
     import backend.app as api
 
     calls = []
@@ -69,18 +69,17 @@ def test_canonical_public_chat_path_and_legacy_path_both_work(monkeypatch, clien
 
     monkeypatch.setattr("backend.api.chat.graph", SimpleNamespace(invoke=fake_invoke))
     payload = {"poem": "春风吹。", "question": "解释春风"}
-    for path in ("/chat", "/api/chat"):
-        response = client.post(path, json=payload)
-        assert response.status_code == 200
-        assert response.json() == {"answer": "合成回答"}
-    assert calls == ["解释春风", "解释春风"]
+    response = client.post("/api/chat", json=payload)
+    assert response.status_code == 200
+    assert response.json() == {"answer": "合成回答"}
+    assert calls == ["解释春风"]
 
 
 def test_canonical_public_analyze_path(monkeypatch, client):
-    import backend.app as api
+    from backend.ai.model import PoemAnalysis
 
     monkeypatch.setattr("backend.api.analysis.analyze_poem",
-        lambda poem, context: api.PoemAnalysis(
+        lambda poem, context: PoemAnalysis(
             translation="合成译文", glosses=[], commentary="合成赏析"
         ),
     )

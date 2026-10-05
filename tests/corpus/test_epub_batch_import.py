@@ -1,4 +1,4 @@
-"""Batch EPUB import guards using synthetic XHTML (no published poetry)."""
+"""用合成 XHTML 测试批量 EPUB 导入保护，不包含已出版诗词。"""
 import json
 
 import pytest

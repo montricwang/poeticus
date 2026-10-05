@@ -1,8 +1,7 @@
-"""Small, fail-closed anonymous-AI guard for one Railway Web instance.
+"""Railway 单实例的匿名 AI 保护中间件。
 
-The durable daily allotment lives in PostgreSQL; a process-local sliding window
-and active-request cap suppress bursts. No client-supplied X-Forwarded-For
-header is trusted. The ASGI wrapper owns the whole SSE response lifetime.
+每日额度持久化在 PostgreSQL；进程内滑动窗口与并发计数抑制突发请求。
+默认不信任客户端提供的 X-Forwarded-For；ASGI 中间件覆盖整个 SSE 生命周期。
 """
 from __future__ import annotations
 
@@ -23,8 +22,9 @@ from starlette.responses import JSONResponse
 logger = logging.getLogger(__name__)
 
 AI_PATHS = frozenset({
-    "/chat", "/api/chat", "/chat/stream", "/api/chat/stream",
-    "/analyze", "/api/analyze",
+    "/api/chat",
+    "/api/chat/stream",
+    "/api/analyze",
 })
 MAX_REQUEST_BYTES = 48 * 1024
 
@@ -38,16 +38,16 @@ def _positive_env(name: str, default: int, maximum: int) -> int:
 
 
 class _PerIpDailyLimit(Exception):
-    """Roll back global reservation if the caller's daily quota is exhausted."""
+    """调用方日额度耗尽时，用异常触发全站额度事务回滚。"""
 
 
 def _reserve_daily_slot(
     dsn: str, total_limit: int, per_ip_limit: int, day, client_hash: str
 ) -> str:
-    """Reserve global and per-IP UTC-day quotas in one PostgreSQL transaction.
+    """在一个 PostgreSQL 事务里同时占用全站和单 IP 的 UTC 日额度。
 
-    Return "ok", "global" or "ip". Rejected per-IP requests must NOT spend
-    the global allotment. Failed/aborted model calls still spend both slots.
+    返回 "ok"、"global" 或 "ip"。单 IP 超限时不能消耗全站额度；
+    已经进入模型调用后，即使失败或中断，也视为消耗本次额度。
     """
     with psycopg.connect(dsn, connect_timeout=5, autocommit=True) as conn:
         try:
@@ -79,16 +79,16 @@ def _reserve_daily_slot(
             return "ip"
     return "ok"
 
+
 class PublicAIGuard:
-    """Limit POST paid actions; public GET poems and /health stay unaffected."""
+    """限制会产生模型费用的 POST 请求，不影响公开作品读取与 /health。"""
 
     def __init__(self, app) -> None:
         self.app = app
-        # Explicitly opt into spending. Unset means read-only; PreviewGuard
-        # remains an independent earlier deployment gate.
+        # 只有显式开启才允许产生模型费用；未开启时保持只读。
         self.enabled = os.getenv("POETICUS_AI_ENABLED", "").lower() == "true"
-        # The Railway HTTPS edge documents X-Real-IP as its client IP
-        # header. Only trust it in an explicitly Railway-only deployment.
+        # Railway HTTPS 边缘会提供 X-Real-IP；只有明确处于 Railway
+        # 信任边界内时才读取这个头。
         self.trust_railway_real_ip = (
             os.getenv("POETICUS_TRUST_RAILWAY_REAL_IP", "").lower() == "true"
         )
@@ -101,14 +101,28 @@ class PublicAIGuard:
         self.active = 0
         self.windows: dict[str, deque[float]] = defaultdict(deque)
 
-    async def _reject(self, scope, receive, send, status: int, detail: str, retry: int | None = None):
+    async def _reject(
+        self,
+        scope,
+        receive,
+        send,
+        status: int,
+        detail: str,
+        retry: int | None = None,
+    ) -> None:
         headers = {"Cache-Control": "no-store"}
         if retry is not None:
             headers["Retry-After"] = str(retry)
-        await JSONResponse({"detail": detail}, status_code=status, headers=headers)(scope, receive, send)
+
+        response = JSONResponse(
+            {"detail": detail},
+            status_code=status,
+            headers=headers,
+        )
+        await response(scope, receive, send)
 
     def _acquire(self, client: str) -> tuple[bool, int]:
-        """Reserve process concurrency and per-peer window in one short lock."""
+        """在一次短锁内同时占用进程并发位与客户端分钟窗口。"""
         now = time.monotonic()
         with self.lock:
             times = self.windows[client]
@@ -143,7 +157,12 @@ class PublicAIGuard:
             return peer
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or scope.get("method") != "POST" or scope.get("path") not in AI_PATHS:
+        is_guarded_request = (
+            scope["type"] == "http"
+            and scope.get("method") == "POST"
+            and scope.get("path") in AI_PATHS
+        )
+        if not is_guarded_request:
             await self.app(scope, receive, send)
             return
 
@@ -151,8 +170,8 @@ class PublicAIGuard:
             await self._reject(scope, receive, send, 503, "AI 生成尚未开放")
             return
 
-        # Limit the entire incoming body, including chunked requests without
-        # Content-Length, before paying for a model call or parsing Pydantic.
+        # 在解析 Pydantic 或产生模型费用前限制完整请求体；
+        # 即使请求没有 Content-Length、采用分块传输，也必须累计检查。
         buffered = []
         size = 0
         while True:
@@ -172,8 +191,8 @@ class PublicAIGuard:
                 return buffered.pop(0)
             return await receive()
 
-        # Never use anonymous, potentially spoofed X-Forwarded-For values.
-        # Railway X-Real-IP is only used when the operator opts in.
+        # 不使用匿名客户端可伪造的 X-Forwarded-For。
+        # 只有部署者显式开启信任时才使用 Railway 的 X-Real-IP。
         client = self._client_identity(scope)
         ok, retry = self._acquire(client)
         if not ok:
@@ -224,7 +243,7 @@ class PublicAIGuard:
                     3600,
                 )
                 return
-            # Holds concurrency until StreamingResponse is done/disconnected.
+            # 并发位一直占用到 StreamingResponse 完成或连接断开。
             await self.app(scope, replay_receive, send)
         finally:
             self._release()

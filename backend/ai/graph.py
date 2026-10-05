@@ -116,7 +116,7 @@ def _stream_agent_decision(
             choice = chunk.choices[0]
             delta = choice.delta
 
-            # 工具调用可能分散在多个 chunk 中。
+            # 工具调用可能分散在多个流式分片中。
             for call in delta.tool_calls or []:
                 if not tool_calls_started:
                     tool_calls_started = True
@@ -140,7 +140,7 @@ def _stream_agent_decision(
                     if call.function.arguments:
                         item["arguments"] += call.function.arguments
 
-            # 只有纯文字回答才向前端发送 token。
+            # 只有纯文字回答才向前端发送正文片段。
             if delta.content:
                 if not tool_calls_started:
                     parts.append(delta.content)
@@ -324,9 +324,6 @@ def execute_tools(state: RouterState) -> dict:
     messages = list(state.get("messages") or [])
     tool_count = state.get("tool_count", 0)
 
-    # 单次请求的工具预算由后端配置统一定义。
-    max_tool_calls = AGENT_MAX_TOOL_CALLS
-
     # 防止重复 ID 使工具结果无法正确对应。
     ids = [call["id"] for call in calls]
     if len(ids) != len(set(ids)):
@@ -338,7 +335,7 @@ def execute_tools(state: RouterState) -> dict:
         count = tool_count
 
         for call in calls:
-            if count >= max_tool_calls:
+            if count >= AGENT_MAX_TOOL_CALLS:
                 result = {
                     "status": "budget_exceeded",
                     "message": "本次请求的工具调用预算已用完",
@@ -369,8 +366,8 @@ def execute_tools(state: RouterState) -> dict:
                         evidence_type="allusion",
                     )
 
-                    # Upper-bound tool material fed back into subsequent LLM
-                    # turns; external evidence might contain huge passages.
+                    # 限制回传给后续 LLM 轮次的工具材料长度，避免外部证据
+                    # 带入过长文本。
                     items = []
                     for item in evidences[:3]:
                         data = item.model_dump()
@@ -422,8 +419,8 @@ def execute_tools(state: RouterState) -> dict:
 
     results, evidences, new_count = asyncio.run(run_tools())
 
-    # agent_decide 已经将 assistant 的工具调用
-    # 加入 messages，这里只追加对应的工具回复。
+    # agent_decide 已经把 assistant 的工具调用加入 messages，
+    # 这里仅追加对应的工具回复。
     for result in results:
         messages.append(
             {
@@ -460,7 +457,7 @@ builder.add_conditional_edges(
     },
 )
 
-# 工具执行后，不再直接进入最终回答节点。将工具结果交还给 Agent，由它重新决定下一步。
+# 工具执行后不直接结束，把结果交还 Agent，由它决定下一步。
 builder.add_edge("tools", "agent")
 
 graph = builder.compile()

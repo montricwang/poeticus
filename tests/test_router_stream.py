@@ -1,4 +1,4 @@
-"""Agent 流式输出回归测试，使用 Mock 模型验证 LangGraph custom 事件。"""
+"""Agent 流式输出回归测试，使用模拟模型验证 LangGraph custom 事件。"""
 
 import json
 from types import SimpleNamespace
@@ -20,9 +20,9 @@ SAMPLE_CONTEXT = PoemContext(
 def agent(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
-    import backend.ai.graph as intent_router
+    import backend.ai.graph as graph_module
 
-    return intent_router
+    return graph_module
 
 
 def make_delta(content=None, tool_calls=None, finish_reason=None):
@@ -44,7 +44,7 @@ def make_tool_call_chunk(index, id_, name, args, finish_reason=None):
 
 
 class MockStream:
-    """可重复迭代的流式响应 Mock。"""
+    """可重复迭代的流式响应替身。"""
 
     def __init__(self, chunks):
         self._chunks = chunks
@@ -75,7 +75,7 @@ def _fake_streaming_client(agent, chunk_sequences, monkeypatch):
                 return MockStream(chunk_sequences[call_idx])
             # 超出预期调用次数，返回空流
             return MockStream([])
-        # 非流式：返回最后一项转为 message 格式
+        # 非流式路径：把最后一项转换为 message 格式
         if call_idx < len(chunk_sequences):
             last = chunk_sequences[call_idx][-1]
             return SimpleNamespace(
@@ -107,7 +107,7 @@ def _fake_streaming_client(agent, chunk_sequences, monkeypatch):
 
 
 def test_streaming_direct_answer_emits_token_events(monkeypatch, agent):
-    """直接回答：两个文本片段产生两个 custom token 事件，最终 reply 为拼接。"""
+    """直接回答：两个文本片段产生两个 custom 事件，最终 reply 为拼接结果。"""
 
     chunks = [
         # 第 1 次调用（唯一调用）
@@ -228,7 +228,7 @@ def test_non_streaming_invoke_still_works(monkeypatch, agent):
 
 
 def test_sse_no_duplicate_full_reply_when_tokens_sent(monkeypatch, agent):
-    """SSE 回归：已有增量 token 时，/chat/stream 不再重复发送完整回答。"""
+    """SSE 回归：已有增量正文时，/api/chat/stream 不再重复发送完整回答。"""
 
     chunks = [
         [
@@ -265,7 +265,7 @@ def test_sse_no_duplicate_full_reply_when_tokens_sent(monkeypatch, agent):
 
 def test_streaming_preamble_then_tool_call(monkeypatch, agent):
     """真实 Graph → API：工具前先说话，也能完成 SSE，且不重复正文。"""
-    import backend.app as api_module
+    from backend.api.chat import ChatRequest, QuoteSelection, stream_graph_reply
     from backend.evidence.schema import EvidenceItem
 
     search_calls = []
@@ -314,12 +314,12 @@ def test_streaming_preamble_then_tool_call(monkeypatch, agent):
         monkeypatch,
     )
 
-    request = api_module.ChatRequest(
+    request = ChatRequest(
         poem="三星当户照绸缪。",
         question="请先查询「三星当户」的典故，再根据检索结果解释这句词",
-        selection=api_module.QuoteSelection(text="三星当户", start=0, end=4),
+        selection=QuoteSelection(text="三星当户", start=0, end=4),
     )
-    raw = "".join(api_module.stream_graph_reply(request))
+    raw = "".join(stream_graph_reply(request))
     events = []
     for block in raw.split("\n\n"):
         if not block or block.startswith(":"):

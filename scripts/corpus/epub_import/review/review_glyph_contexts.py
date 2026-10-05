@@ -1,8 +1,7 @@
-"""Local short-context lookup for not-yet-identified EPUB image glyphs.
+"""为尚未识别的 EPUB 图片字生成本地短上下文。
 
-The images alone may be insufficient to distinguish near-identical historic
-Han forms. Emit only tiny excerpts surrounding each placeholder. This is
-a PRIVATE report, not to be committed to an open-source repository.
+单看图片可能无法区分近似的历史汉字字形，因此只导出占位符附近的极短片段。
+这是私人报告，不得提交到公开仓库。
 """
 import argparse
 import json
@@ -18,7 +17,7 @@ from .review_glyphs import glyph_sites
 
 def find_contexts(book, sites, *, window=16, max_examples=2):
     if not 1 <= window <= 60 or not 1 <= max_examples <= 10:
-        raise ValueError("window must be 1..60; max_examples must be 1..10")
+        raise ValueError("window 必须在 1..60；max_examples 必须在 1..10")
     results = []
     for index, site in enumerate(sites, 1):
         examples = []
@@ -33,7 +32,7 @@ def find_contexts(book, sites, *, window=16, max_examples=2):
                     for img in block.find_all("img")
                 ):
                     continue
-                # Work on a detached tree. Do not alter the live EPUB object.
+                # 在复制出来的 DOM 上处理，不修改内存中的 EPUB 原对象。
                 fragment = BeautifulSoup(str(block), "lxml")
                 element = fragment.find(block.name)
                 if element is None:

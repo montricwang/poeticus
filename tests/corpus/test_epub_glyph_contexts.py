@@ -1,4 +1,4 @@
-"""Only invented text in tests for local glyph context lookup."""
+"""本地图片字上下文查询测试只使用虚构文本。"""
 from scripts.corpus.epub_import.review.review_glyph_contexts import (
     find_contexts,
     render_contexts,

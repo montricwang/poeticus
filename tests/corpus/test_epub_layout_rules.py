@@ -1,4 +1,4 @@
-"""Synthetic EPUB fixtures only; no commercial source text in Git history."""
+"""只使用合成 EPUB fixture，Git 历史中不包含商业来源正文。"""
 import sys
 from pathlib import Path
 
@@ -313,7 +313,7 @@ def test_chronology_breaks_note_continuation_even_with_same_class():
 
 
 def test_literal_summary_h2_is_not_an_additional_poem():
-    """The audit found summaries counted as works in both Yan volumes."""
+    """审计发现晏氏两个分册都曾把总评误计为作品。"""
     group = "晏殊词集·晏幾道词集"
     book = Book({"yan.html": (
         "<h2>采桑子</h2><p>词句甲</p>"
@@ -328,7 +328,7 @@ def test_literal_summary_h2_is_not_an_additional_poem():
 
 
 def test_nalan_nested_linebreak_inside_heading_wrapper():
-    """An inserted h4 can contain tune and title inside one wrapping span."""
+    """插入作品的 h4 可能把词牌和题目放在同一个外层 span 中。"""
     book = Book({"x.html": (
         '<h4 class="kindle-cn-heading4"><span class="font1">'
         "点绛唇<br/>和某人韵</span></h4>"
@@ -386,7 +386,7 @@ def test_repeat_tune_does_not_cross_inline_doubtful_section():
 
 
 def test_nalan_byline_after_unstyled_front_matter_is_not_missed():
-    """Real audit shape: h4, short plain p, right-aligned byline, two verse p."""
+    """真实审计版式：h4、短普通 p、右对齐署名、两段正文 p。"""
     group = "纳兰词集"
     book = Book({"x.html": (
         '<h2>浣溪沙</h2><p>纳兰作品</p>'
@@ -444,7 +444,7 @@ def test_nalan_long_right_aligned_sentence_is_not_preclassified_as_an_author():
 
 
 def test_nalan_confirmed_preface_between_h4_and_three_character_author():
-    """A separate p below h4 is a prefatory note, not an inline title."""
+    """h4 下方独立的 p 是题序，不是行内标题。"""
     group = "纳兰词集"
     book = Book({"x.html": (
         '<h4 class="kindle-cn-heading4">金缕曲</h4>'
@@ -465,7 +465,7 @@ def test_nalan_confirmed_preface_between_h4_and_three_character_author():
 
 
 def test_nalan_inline_h4_title_and_separate_preface_remain_distinct():
-    """A subtitle in h4 stays a title; the following p becomes preface."""
+    """h4 内副标题继续作为题目，后续 p 识别为小序。"""
     group = "纳兰词集"
     book = Book({"x.html": (
         '<h4 class="kindle-cn-heading4">金缕曲'
@@ -484,9 +484,9 @@ def test_nalan_inline_h4_title_and_separate_preface_remain_distinct():
 
 
 def test_zhou_verified_extended_commentary_is_scoped_to_work_and_blocks():
-    """Both quoted sources and scholarly prose stay in commentary for one run."""
-    # h1 block 1, h2 block 2, verse blocks 3..18, ◆ block 19,
-    # checked continuation blocks 20..38, second work begins at 39.
+    """同一评论段中的引文与学术说明都应继续留在 commentary。"""
+    # h1 为块 1，h2 为块 2，正文为 3..18，◆ 为 19；
+    # 已确认的评论续段为 20..38，第二首从 39 开始。
     paragraphs = "".join("<p>合成正文</p>" for _ in range(16))
     continuation = "".join(
         ('<p class="kindle-cn-ref">合成古籍引文</p>' if i % 2 == 0
@@ -511,8 +511,8 @@ def test_zhou_verified_extended_commentary_is_scoped_to_work_and_blocks():
 
 
 def test_zhou_second_verified_run_preserves_no_indent_ending():
-    # 503 synthetic paragraphs before the second target h2, so its source
-    # ordinal is 504; verse 505..509, comment 510, two more notes 511..512.
+    # 第二个目标 h2 前有 503 个合成段落，因此来源序号是 504；
+    # 正文为 505..509，评论为 510，后续两条注释为 511..512。
     html = (
         "<p>前置非作品材料</p>" * 503
         + "<h2>红林檎近</h2>"
@@ -623,8 +623,8 @@ def test_multiple_gap_markers_do_not_fabricate_individual_span_attribution():
 
 
 def test_author_self_note_preserved_with_source_offsets_not_flattened_away():
-    # Synthetic same XHTML filename/block as a human-reviewed Xin source
-    # location; NEVER commit excerpts of the real commercial anthology.
+    # 这里故意使用与辛弃疾人工复核来源相同的 XHTML 文件名/块号，但正文完全合成；
+    # 绝不能提交真实商业选本摘录。
     html = (
         "<p>前置栏目</p>" * 133
         + "<h2>西江月<span>贺友人</span></h2>"

@@ -55,7 +55,7 @@ class CNKGraphProvider:
         except ValueError as exc:
             raise CNKGraphError("CNKGraph 返回无效 JSON") from exc
 
-        # 将第三方响应转换为 Poeticus 的 EvidenceItem。
+        # 把第三方响应转换为 Poeticus 内部统一的 EvidenceItem。
         if isinstance(raw, dict):
             raw = [raw] if raw else []
         if not isinstance(raw, list):

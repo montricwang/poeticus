@@ -1,8 +1,8 @@
-"""Private glyph-source paragraph export by glyph-review number (001, 002...).
+"""按图片字核对编号（001、002……）导出私人来源段落。
 
-The same source ordering as review_glyphs.glyph_sites() is required so every
-paragraph is attached to the exact image already displayed in the gallery.
-This writes copyrighted text locally only; never commit the resulting HTML.
+必须与 review_glyphs.glyph_sites() 使用完全相同的来源顺序，确保每个段落
+对应到图版里已经展示的同一张图片。输出含受版权保护正文，只能留在本地，
+生成的 HTML 绝不能提交。
 """
 import base64
 import html
@@ -21,7 +21,7 @@ GLYPH_TOKEN = re.compile(r"\[\[GLYPH_(\d{3})\]\]")
 
 
 def _marked_paragraph(block, source_indexes, target):
-    """Flatten source similarly to paragraph_text(), preserving image sites."""
+    """按与 paragraph_text() 相近的方式扁平化来源，同时保留图片位置。"""
     root = BeautifulSoup(str(block.element), "lxml").find(block.tag)
     for image in root.find_all("img"):
         src = image.get("src", "")
@@ -45,11 +45,10 @@ def _marked_paragraph(block, source_indexes, target):
 
 
 def collect_glyph_paragraphs(report, book):
-    """All block occurrences of all outstanding glyphs, retaining duplicates.
+    """收集所有未解决图片字的块级出现位置，并保留重复出现。
 
-    A single image can appear in multiple XHTMLs or several times in the same
-    paragraph. Each target source block is rendered once per glyph number,
-    while every inline image placement remains visible inside that block.
+    同一图片可能出现在多个 XHTML，也可能在一个段落里重复出现。
+    每个目标来源块按图片字编号渲染一次，同时保留块内所有图片位置。
     """
     cases = glyph_sites(report)
     pages = defaultdict(list)
@@ -111,7 +110,7 @@ def _image_data_uri(book, case):
 
 
 def render_contexts_html(report, book):
-    """Self-contained offline HTML with full paragraphs and highlighted glyphs."""
+    """生成包含完整段落并高亮图片字的自包含离线 HTML。"""
     cases, sites = collect_glyph_paragraphs(report, book)
     cards = []
     for i, case in enumerate(cases, 1):

@@ -1,4 +1,4 @@
-"""HTTP contract for the PostgreSQL poem catalog; no AI or frontend logic."""
+"""PostgreSQL 作品目录的 HTTP 契约，不包含 AI 或前端逻辑。"""
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -9,6 +9,13 @@ from .connection import get_connection
 from .repository import get_poem, list_poems
 
 router = APIRouter(prefix="/api/poems", tags=["poems"])
+
+
+def _clean_filter(value: str | None) -> str | None:
+    """去掉筛选值首尾空白；纯空白与未提供都视为无筛选。"""
+    if value is None:
+        return None
+    return value.strip() or None
 
 
 class PoemSummary(BaseModel):
@@ -53,12 +60,12 @@ def catalog(
     offset: int = Query(default=0, ge=0),
     conn: Connection = Depends(get_connection),
 ):
-    """Query params -> filtered page ordered by the original book sequence."""
+    """按查询参数筛选，并按原书顺序返回分页结果。"""
     records, total = list_poems(
         conn,
-        author=author.strip() or None if author is not None else None,
-        cipai=cipai.strip() or None if cipai is not None else None,
-        q=q.strip() or None if q is not None else None,
+        author=_clean_filter(author),
+        cipai=_clean_filter(cipai),
+        q=_clean_filter(q),
         limit=limit, offset=offset,
     )
     return PoemPage(items=records, total=total, limit=limit, offset=offset)
@@ -66,7 +73,7 @@ def catalog(
 
 @router.get("/{poem_id}", response_model=PoemDetail)
 def detail(poem_id: UUID, conn: Connection = Depends(get_connection)):
-    """UUID -> reader-facing text; never return source evidence."""
+    """按 UUID 返回阅读端正文，绝不返回私人来源证据。"""
     record = get_poem(conn, poem_id)
     if record is None:
         raise HTTPException(status_code=404, detail="未找到该作品")

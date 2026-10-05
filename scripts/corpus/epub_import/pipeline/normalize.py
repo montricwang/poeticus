@@ -1,4 +1,4 @@
-"""Resolve manually reviewed image glyphs in extracted poetry records."""
+"""把人工核对过的图片字映射应用到抽取记录。"""
 
 import argparse
 import json
@@ -34,7 +34,7 @@ def resolve_mapping(src, glyph_map, seen=None):
 
 
 def is_ids_form(value):
-    """A Unicode Ideographic Description Sequence, not a unified character."""
+    """Unicode 表意文字描述序列（IDS），不是统一编码的单个字符。"""
     return bool(
         isinstance(value, str)
         and len(value) >= 3
@@ -49,8 +49,8 @@ def get_output_form(mapping):
     if display:
         return display
     source = mapping.get("source_form") or ""
-    # An IDS with no attested modern character must remain visibly marked
-    # as an IDS. Never invent a Unicode equivalence just to export the corpus.
+    # 找不到可靠现代对应字的 IDS 必须继续明确标记为 IDS。
+    # 不能为了顺利导出语料而臆造 Unicode 等价字。
     return source if len(source) == 1 or is_ids_form(source) else None
 
 
@@ -63,7 +63,7 @@ def normalize_text(text, glyph_map):
 
 
 def canonicalize_heading_fields(poem):
-    """Old private exports remain readable; new JSON uses canonical names."""
+    """旧版私人导出仍可读取；新 JSON 统一使用正式字段名。"""
     for canonical, legacy in (("cipai", "tune"), ("yusheng_title", "yusheng")):
         if legacy in poem:
             if canonical in poem and poem[canonical] != poem[legacy]:
@@ -85,9 +85,8 @@ def normalize_poem(poem, glyph_map):
             )
 
     raw_paragraphs = poem["content"].get("text", [])
-    # Normalization can replace a long glyph token with one character.
-    # Rebase inline-note offsets *before* changing the body text so the
-    # recorded intervals always refer to the normalized paragraph.
+    # normalize 可能把较长图片字占位符替换成单个字符。
+    # 修改正文前必须先重算行内注记 offset，确保区间始终指向 normalize 后的段落。
     for note in poem["content"].get("inline_notes", []):
         index = note["paragraph_index"]
         if not (0 <= index < len(raw_paragraphs)):

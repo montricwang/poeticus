@@ -1,7 +1,7 @@
-"""Select *actual* styled inline verse spans for local visual/semantic review.
+"""挑选真实带样式的行内词句 span，供本地视觉与语义复核。
 
-The plan is structure-only. The optional private packet contains published
-text/XHTML; keep it in gitignored data/reports/ and never commit it.
+公开计划只包含结构信息。可选的私人材料包含已出版正文与 XHTML，
+只能保存在被 Git 忽略的 data/reports/ 中，绝不能提交。
 """
 import argparse
 from collections import defaultdict
@@ -14,8 +14,8 @@ from .audit_inline_styles import collect_inline_evidence
 from .inspect_source import inspect_source
 
 
-# Human-reviewed source coordinates, no copyrighted text.
-# Two original cases plus ten further user-provided examples.
+# 这里只保存人工核对过的来源坐标，不保存受版权保护的正文。
+# 包含最初两个案例和用户后来补充的十个案例。
 REVIEWED_FONT1_SITES = frozenset({
     ("text00214.html", 679), ("text00278.html", 135),
     ("text00214.html", 696), ("text00278.html", 519),
@@ -27,7 +27,7 @@ REVIEWED_FONT1_SITES = frozenset({
 
 
 def _group_key(signature):
-    """The style class family, not the surrounding p's class."""
+    """返回样式类族，而不是外层 p 的 class。"""
     if signature.startswith("span class="):
         return signature.split(" style=", 1)[0].removeprefix("span class=")
     return signature
@@ -35,9 +35,9 @@ def _group_key(signature):
 
 def select_inline_samples(audit, *, families=("kaiti", "font1"),
                           per_style=3, remaining=False):
-    """One sample per collection first, then spread within remaining sites."""
+    """先保证每个分册一个样本，再在剩余位置中分散抽样。"""
     if per_style < 1 or per_style > 15:
-        raise ValueError("per_style must be between 1 and 15")
+        raise ValueError("per_style 必须在 1 到 15 之间")
     groups = defaultdict(list)
     for site in audit["sites"]:
         if not site["warned"]:
@@ -67,12 +67,12 @@ def select_inline_samples(audit, *, families=("kaiti", "font1"),
             selected.append(site)
             seen.add(key)
 
-        # Include a sample from each collection represented by this style.
+        # 这个样式涉及的每个分册都至少保留一个样本。
         for subset in collections.values():
             if len(selected) >= per_style:
                 break
             include(subset[0])
-        # Spread remaining samples over source order to avoid clustered cases.
+        # 剩余样本沿来源顺序分散，避免集中在相邻位置。
         if len(selected) < per_style and pool:
             for site in (pool[len(pool) // 2], pool[-1], *pool):
                 if len(selected) >= per_style:

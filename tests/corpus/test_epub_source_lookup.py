@@ -1,4 +1,4 @@
-"""Synthetic-only tests for the local diagnostic; never store licensed excerpts."""
+"""本地诊断测试只使用合成数据，绝不保存授权来源摘录。"""
 import pytest
 
 from scripts.corpus.epub_import.diagnostics.inspect_source import inspect_source

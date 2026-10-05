@@ -1,4 +1,4 @@
-"""Chat validation, ordinary reply and SSE streaming endpoints."""
+"""聊天请求校验、普通响应与 SSE 流式接口。"""
 import json
 import logging
 from collections.abc import Iterator
@@ -15,19 +15,13 @@ from backend.config import (
     CHAT_MAX_HISTORY_MESSAGES,
     CHAT_MAX_HISTORY_TOTAL_CHARS,
     CHAT_MAX_HISTORY_TURNS,
-    CHAT_MAX_POEM_CHARS,
+    AI_MAX_POEM_CHARS,
     CHAT_MAX_QUESTION_CHARS,
     CHAT_MAX_SELECTION_CHARS,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-# Compatibility exports for callers that still import these names from chat.py.
-MAX_HISTORY_TURNS = CHAT_MAX_HISTORY_TURNS
-MAX_HISTORY_MESSAGES = CHAT_MAX_HISTORY_MESSAGES
-MAX_HISTORY_MESSAGE_CHARS = CHAT_MAX_HISTORY_MESSAGE_CHARS
-MAX_HISTORY_TOTAL_CHARS = CHAT_MAX_HISTORY_TOTAL_CHARS
 
 
 class QuoteSelection(BaseModel):
@@ -42,7 +36,7 @@ class HistoryMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    poem: str = Field(max_length=CHAT_MAX_POEM_CHARS)
+    poem: str = Field(max_length=AI_MAX_POEM_CHARS)
     question: str = Field(max_length=CHAT_MAX_QUESTION_CHARS)
     selection: QuoteSelection | None = None
     context: PoemContext | None = None
@@ -79,10 +73,10 @@ def validate_chat_request(request: ChatRequest) -> None:
             detail="历史消息必须由完整的 user / assistant 轮次组成",
         )
 
-    if len(history) > MAX_HISTORY_MESSAGES:
+    if len(history) > CHAT_MAX_HISTORY_MESSAGES:
         raise HTTPException(
             status_code=422,
-            detail=f"历史消息最多保留 {MAX_HISTORY_TURNS} 轮",
+            detail=f"历史消息最多保留 {CHAT_MAX_HISTORY_TURNS} 轮",
         )
 
     total_chars = 0
@@ -102,7 +96,7 @@ def validate_chat_request(request: ChatRequest) -> None:
                 detail="历史消息内容不能为空",
             )
 
-        if len(message.content) > MAX_HISTORY_MESSAGE_CHARS:
+        if len(message.content) > CHAT_MAX_HISTORY_MESSAGE_CHARS:
             raise HTTPException(
                 status_code=422,
                 detail="单条历史消息过长",
@@ -110,7 +104,7 @@ def validate_chat_request(request: ChatRequest) -> None:
 
         total_chars += len(message.content)
 
-    if total_chars > MAX_HISTORY_TOTAL_CHARS:
+    if total_chars > CHAT_MAX_HISTORY_TOTAL_CHARS:
         raise HTTPException(
             status_code=422,
             detail="历史消息总长度过长",
@@ -134,9 +128,8 @@ def graph_input(request: ChatRequest) -> RouterState:
 
 
 @router.post("/api/chat", response_model=ChatResponse)
-@router.post("/chat", response_model=ChatResponse)
 def chat(request: ChatRequest):
-    """原有非流式接口不变，供旧客户端与回归测试使用。"""
+    """非流式聊天接口。"""
     validate_chat_request(request)
     try:
         result = graph.invoke(graph_input(request))
@@ -153,7 +146,7 @@ def sse(event: str, data: dict) -> str:
 
 
 def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
-    """Graph custom 事件承载 token，updates 事件承载节点结果。"""
+    """Graph 的 custom 事件承载正文 token，updates 事件承载节点结果。"""
     yield ": connected\n\n"
 
     received: list[str] = []
@@ -218,7 +211,6 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
 
 
 @router.post("/api/chat/stream")
-@router.post("/chat/stream")
 def chat_stream(request: ChatRequest):
     validate_chat_request(request)
     return StreamingResponse(

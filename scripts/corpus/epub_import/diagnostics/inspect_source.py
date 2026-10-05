@@ -1,7 +1,7 @@
-"""Inspect local EPUB source blocks quickly, with contextual markup and roles.
+"""快速检查本地 EPUB 来源块，同时显示上下文标记与分类角色。
 
-This is a PRIVATE read-only diagnostic. It can display commercially published
-text and should never be committed as a fixture or an automated CI artifact.
+这是仅限本地使用的私人只读诊断工具。它可能显示商业出版正文，
+不得作为测试 fixture 或 CI 产物提交。
 """
 import argparse
 from pathlib import Path
@@ -17,13 +17,13 @@ from .inspect_dom_hierarchy import _path
 
 def inspect_source(book, html_name, targets=(), *, find=(), collection="",
                    before=2, after=4, max_chars=300, show_html=False):
-    """Return a human-readable Markdown view of source and classification.
+    """返回便于人工阅读的 Markdown 来源与分类视图。
 
-    Block ordinals are identical to the 15-volume audit's h1/h2/h4/p numbers.
-    No file is written here: the caller decides whether to save the report.
+    块序号与 15 册审计中的 h1/h2/h4/p 编号一致。
+    本函数不主动写文件，由调用方决定是否保存报告。
     """
     if min(before, after, max_chars) < 0:
-        raise ValueError("before/after/max_chars must be non-negative")
+        raise ValueError("before/after/max_chars 必须是非负数")
     item = book.get_item_with_href(html_name)
     if item is None:
         raise ValueError(f"XHTML 不存在：{html_name}")
@@ -31,7 +31,7 @@ def inspect_source(book, html_name, targets=(), *, find=(), collection="",
     blocks = list(iter_source_blocks(soup, html_name))
     indexed = {b.ordinal: b for b in blocks}
 
-    # Multiple --block and --find arguments can be mixed and deduplicated.
+    # 可以混用多个 --block 与 --find，并对结果去重。
     found = [
         b.ordinal for b in blocks
         if any(phrase in b.text for phrase in find)
@@ -102,8 +102,7 @@ def inspect_source(book, html_name, targets=(), *, find=(), collection="",
                 excerpt = text[:max_chars] + f"……（全文 {len(text)} 字；用 --full 查看）"
             else:
                 excerpt = text or "（空）"
-            # Use indentation rather than Markdown blockquotes so punctuation
-            # and the literal source remain easy to copy and compare.
+            # 使用缩进而不是 Markdown 引用块，便于复制和比较标点与原始来源。
             lines.append("")
             for part in excerpt.splitlines() or [""]:
                 lines.append("    " + part)

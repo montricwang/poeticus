@@ -1,4 +1,4 @@
-"""Synthetic contact-sheet / TSV glyph review tests, no commercial glyphs."""
+"""图片字图版与 TSV 核对测试只使用合成字形，不包含商业来源字形。"""
 import csv
 import json
 
@@ -96,7 +96,7 @@ def test_apply_review_requires_complete_mappings_and_supports_partial(tmp_path):
     assert a["Image2.jpg"]["source_form"] == "龥"
     assert b["Image3.jpg"]["display_form"] == "椅"
 
-    # Existing data is protected against silent remapping.
+    # 既有人工结果不能被静默重新映射。
     rows[0]["source_form"] = "和"
     with tsv.open("w", encoding="utf-8-sig", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=rows[0].keys(), delimiter="\t")

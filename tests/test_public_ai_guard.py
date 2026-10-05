@@ -1,4 +1,4 @@
-"""Public Web AI admission tests; never connect to DeepSeek or real Postgres."""
+"""公网 AI 准入保护测试；不会连接真实 DeepSeek 或 PostgreSQL。"""
 from __future__ import annotations
 
 from collections import defaultdict
@@ -32,7 +32,7 @@ def make_app(monkeypatch, *, enabled=True, minute=5, daily=3, daily_result="ok")
     def paid():
         return {"text": "synthetic, no model"}
 
-    @app.post("/analyze")
+    @app.post("/api/analyze")
     def analyze():
         return {"translation": "synthetic"}
 
@@ -55,7 +55,7 @@ def test_default_disabled_blocks_models_but_not_poems(monkeypatch):
 def test_valid_requests_reserve_budget_on_all_paid_routes(monkeypatch):
     cli, spent = make_app(monkeypatch)
     assert cli.post("/api/chat/stream", json={"question": "test"}).status_code == 200
-    assert cli.post("/analyze", json={"poem": "test"}).status_code == 200
+    assert cli.post("/api/analyze", json={"poem": "test"}).status_code == 200
     assert len(spent) == 2
     assert all(x[1] == 3 for x in spent)
 
@@ -119,7 +119,7 @@ def test_railway_real_ip_only_when_explicitly_trusted(monkeypatch):
 
 def test_ip_daily_quota_exhaustion_shows_distinct_message(monkeypatch):
     cli, spent = make_app(monkeypatch, daily_result="ip")
-    response = cli.post("/analyze", json={"poem": "test"})
+    response = cli.post("/api/analyze", json={"poem": "test"})
     assert response.status_code == 429
     assert "今天从这个网络发起的" in response.json()["detail"]
     assert "北京时间早上 8 点" in response.json()["detail"]
@@ -130,12 +130,12 @@ def test_ip_daily_quota_exhaustion_shows_distinct_message(monkeypatch):
 def test_ip_daily_hash_differs_between_clients_and_days(monkeypatch):
     cli, spent = make_app(monkeypatch, minute=100)
     monkeypatch.setenv("POETICUS_TRUST_RAILWAY_REAL_IP", "true")
-    # A fresh middleware instance reads the real-IP trust flag.
+    # 新建中间件实例时会读取真实 IP 信任开关。
     cli, spent = make_app(monkeypatch, minute=100)
-    # make_app constructs its middleware before the request is handled.
-    assert cli.post("/analyze", json={"poem": "test"},
+    # make_app 会在请求处理前完成中间件构造。
+    assert cli.post("/api/analyze", json={"poem": "test"},
                     headers={"x-real-ip": "203.0.113.11"}).status_code == 200
-    assert cli.post("/analyze", json={"poem": "test"},
+    assert cli.post("/api/analyze", json={"poem": "test"},
                     headers={"x-real-ip": "203.0.113.12"}).status_code == 200
     assert spent[0][4] != spent[1][4]
     assert len(spent[0][4]) == 64
@@ -145,19 +145,19 @@ def test_ip_daily_hash_differs_between_clients_and_days(monkeypatch):
 def test_missing_ip_hash_secret_fails_closed(monkeypatch):
     cli, spent = make_app(monkeypatch)
     monkeypatch.delenv("POETICUS_AI_IP_HASH_SECRET")
-    # middleware already initialized; use a fresh app to re-read settings.
+    # 原中间件已经初始化；新建应用才能重新读取环境变量。
     inner = FastAPI()
-    @inner.post("/analyze")
+    @inner.post("/api/analyze")
     def paid():
         return {"ok": True}
     inner.add_middleware(public_ai_guard.PublicAIGuard)
-    response = TestClient(inner).post("/analyze", json={"poem": "text"})
+    response = TestClient(inner).post("/api/analyze", json={"poem": "text"})
     assert response.status_code == 503
     assert spent == []
 
 
 def test_atomic_quota_transaction_rolls_back_global_on_ip_limit(monkeypatch):
-    """Synthetic Postgres transaction verifies no lost global slots."""
+    """用合成 PostgreSQL 事务验证单 IP 超限不会误耗全站额度。"""
     class FakeDb:
         def __init__(self):
             self.global_used = 0
@@ -231,14 +231,14 @@ def test_two_clients_share_total_but_have_separate_daily_quotas(monkeypatch):
 
     monkeypatch.setattr(public_ai_guard, "_reserve_daily_slot", fake_reserve)
     for _ in range(20):
-        response = cli.post("/analyze", json={"poem": "text"},
+        response = cli.post("/api/analyze", json={"poem": "text"},
                             headers={"x-real-ip": "203.0.113.11"})
         assert response.status_code == 200
-    denied = cli.post("/analyze", json={"poem": "text"},
+    denied = cli.post("/api/analyze", json={"poem": "text"},
                       headers={"x-real-ip": "203.0.113.11"})
     assert denied.status_code == 429
     assert "今天从这个网络发起的" in denied.json()["detail"]
-    other = cli.post("/analyze", json={"poem": "text"},
+    other = cli.post("/api/analyze", json={"poem": "text"},
                      headers={"x-real-ip": "203.0.113.12"})
     assert other.status_code == 200
     assert counters["total"] == 21

@@ -1,4 +1,4 @@
-"""Audit reporting uses only small synthetic sources."""
+"""审计报告测试只使用少量合成来源。"""
 from scripts.corpus.epub_import.diagnostics.audit_extraction import (
     audit_book, render_md, COLLECTIONS,
 )

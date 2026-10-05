@@ -1,4 +1,4 @@
-"""Versioned migration runner uses existing versions and never reapplies DDL."""
+"""版本化 migration runner 只执行未应用版本，绝不重复执行既有 DDL。"""
 from contextlib import nullcontext
 from types import SimpleNamespace
 

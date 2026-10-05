@@ -1,4 +1,4 @@
-"""Synthetic tests of the local-only public corpus transfer; no actual DB."""
+"""使用合成数据测试本地公网作品迁移，不连接真实数据库。"""
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -8,7 +8,7 @@ from uuid import UUID
 import pytest
 
 from scripts.corpus.public_corpus_transfer import (
-    DEMO_IDS, PUBLIC_COLUMNS, validate_public_rows, public_fingerprint, transfer,
+    PUBLIC_COLUMNS, validate_public_rows, public_fingerprint, transfer,
 )
 
 
@@ -27,17 +27,6 @@ def example(order: int) -> dict:
         "review_status": "imported_unreviewed",
         "text_version": 1,
     }
-
-
-def demo(order: int) -> dict:
-    row = example(order)
-    row.update({
-        "id": next(k for k, v in DEMO_IDS.items() if v == f"demo-synthetic-{order}"),
-        "source_record_id": f"demo-synthetic-{order}",
-        "collection": "Poeticus 合成测试作品",
-        "review_status": "demo_synthetic",
-    })
-    return row
 
 
 class Result:
@@ -106,11 +95,6 @@ class FakeConn:
             return Result()
         if sql.startswith("SELECT"):
             return Result(sorted(self.rows, key=lambda r: r["source_order"]))
-        if sql.startswith("DELETE"):
-            deleted = set(params[0])
-            self.rows = [r for r in self.rows if r["id"] not in deleted]
-            self.writes += 1
-            return Result()
         raise AssertionError(f"Unexpected SQL: {sql}")
 
 
@@ -153,13 +137,12 @@ def test_check_rejects_duplicate_or_empty_poem():
         validate_public_rows(rows, 1)
 
 
-def test_replace_only_matching_demo_data_atomically():
+def test_insert_into_empty_database():
     source = [example(1), example(2)]
-    dest = FakeConn([demo(1), demo(2), demo(3)])
-    assert transfer(source, dest) == "replaced_known_demo"
+    dest = FakeConn([])
+    assert transfer(source, dest) == "inserted_into_empty"
     assert public_fingerprint(dest.rows) == public_fingerprint(source)
     assert len(dest.rows) == 2
-    assert dest.writes == 3
 
 
 def test_idempotent_repeat_does_not_write():
@@ -169,9 +152,9 @@ def test_idempotent_repeat_does_not_write():
     assert dest.writes == 0
 
 
-def test_refuse_non_demo_records_without_mutating_them():
+def test_refuse_unknown_existing_records_without_mutating_them():
     source = [example(1)]
-    cloud_rows = [demo(1), example(2)]
+    cloud_rows = [example(2)]
     dest = FakeConn(cloud_rows)
     with pytest.raises(ValueError, match="非预期数据"):
         transfer(source, dest)
@@ -179,9 +162,8 @@ def test_refuse_non_demo_records_without_mutating_them():
     assert dest.writes == 0
 
 
-def test_copy_interrupt_rolls_back_deleted_demo_and_partial_records():
-    original = [demo(1), demo(2), demo(3)]
-    dest = FakeConn(original, fail_after=2)
+def test_copy_interrupt_rolls_back_partial_records():
+    dest = FakeConn([], fail_after=1)
     with pytest.raises(RuntimeError, match="COPY interruption"):
         transfer([example(1), example(2)], dest)
-    assert dest.rows == original
+    assert dest.rows == []

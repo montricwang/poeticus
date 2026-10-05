@@ -1,1 +1,1 @@
-"""Poeticus backend package."""
+"""Poeticus 后端包。"""

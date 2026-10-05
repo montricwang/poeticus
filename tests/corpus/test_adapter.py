@@ -1,4 +1,4 @@
-"""Synthetic (copyright-free) tests for the intermediate-to-reader adapter."""
+"""使用无版权风险的合成数据测试中间记录到阅读记录的 adapter。"""
 from copy import deepcopy
 import pytest
 from scripts.corpus.adapter import convert_record, convert_corpus

@@ -1,8 +1,8 @@
-"""Create small, repeatable human-review batches for EPUB field classification.
+"""为 EPUB 字段分类生成小规模、可重复的人工复核批次。
 
-The shareable PLAN contains source positions, predicted roles and questions;
-the separate PRIVATE packet contains licensed book excerpts for local review.
-Neither is a precision estimate or a substitute for a labelled evaluation set.
+可分享的 PLAN 只包含来源位置、预测角色与复核问题；
+单独的 PRIVATE 材料包含授权书籍摘录，仅供本地人工检查。
+两者都不是精度评估，也不能替代有标注的评测集。
 """
 import argparse
 from pathlib import Path
@@ -44,10 +44,10 @@ def _make_candidate(kind, collection, poem, section, ordinal, role):
 
 
 def build_candidates(book, toc, collection_specs=COLLECTIONS):
-    """Collect candidate *locations* without retaining source paragraphs.
+    """只收集候选位置，不保留来源段落正文。
 
-    This includes both uncertain and apparently successful classifications,
-    because success-only warnings cannot measure false positives.
+    同时收集不确定样本与表面成功样本，因为只看 warning
+    无法发现误判为“成功”的情况。
     """
     result = {kind: [] for kind, _, _ in KINDS}
     for collection, author, slug in collection_specs:
@@ -82,8 +82,7 @@ def build_candidates(book, toc, collection_specs=COLLECTIONS):
                     "inline_note_offset_review",
                 ):
                     kind = "inline_style"
-                # One sample per warning family per work. Avoid thousands
-                # of adjacent continuations in the same scholarly review.
+                # 每首作品每类 warning 只取一个样本，避免同一长篇学术评论产生大量相邻续段。
                 if kind and kind not in inferred:
                     inferred.add(kind)
                     result[kind].append(_make_candidate(
@@ -100,9 +99,7 @@ def build_candidates(book, toc, collection_specs=COLLECTIONS):
                     by_number.get(section["ordinal"], "work_start"),
                 )
                 if complex_material:
-                    # A note near the end of a long poem may be many blocks
-                    # away from h2. Show at least one example per category
-                    # rather than asking the reviewer to locate it manually.
+                    # 长词末尾的注释可能离 h2 很远；每类至少直接展示一个样本，\n                    # 不让复核者再手工寻找。
                     anchors = [section["ordinal"]]
                     for category in (
                         "separate_title", "inserted_preface", "prefaces",
@@ -119,7 +116,7 @@ def build_candidates(book, toc, collection_specs=COLLECTIONS):
 
 
 def choose_batch(candidates, *, round_number=1, limit=5):
-    """Pick an explainable mix of warning patterns and clean controls.
+    """挑选可解释的 warning 模式与干净对照样本组合。
 
     Selection uses deterministic cycling through available candidates,
     favoring different collections within one batch. It is NOT random
@@ -138,7 +135,7 @@ def choose_batch(candidates, *, round_number=1, limit=5):
         pool = candidates.get(kind, [])
         if not pool:
             continue
-        # Round 1 starts at the first source occurrence, later rounds cycle.
+        # 第一轮从最早来源位置开始，后续轮次循环取样。
         start = ((round_number - 1) * 7) % len(pool)
         rotated = pool[start:] + pool[:start]
         available = [

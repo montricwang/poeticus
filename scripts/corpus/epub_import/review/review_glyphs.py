@@ -1,6 +1,6 @@
-"""Prepare a local glyph gallery and safely apply user-reviewed TSV mappings.
+"""生成本地图片字核对页，并安全应用人工填写的 TSV 映射。
 
-The gallery includes copyrighted image glyphs. Never publish these outputs.
+核对页包含受版权保护的图片字，输出绝不能公开。
 """
 import argparse
 import csv
@@ -22,7 +22,7 @@ FIELDS = ("index", "slug", "collection", "src", "source_form",
 
 
 def glyph_sites(report):
-    """One review row for each (volume, source image), not each XHTML usage."""
+    """每个（分册，来源图片）只生成一条核对记录，不按 XHTML 引用次数重复。"""
     cases = {}
     for collection in report["collections"]:
         for site in collection["missing_glyphs"]:
@@ -49,7 +49,7 @@ def _epub_image(book, page, src):
 
 
 def prepare_review(report, book, *, sheet_path, tsv_path):
-    """Generate a private gallery and editable TSV, no user input required."""
+    """生成私人图片字图版与可编辑 TSV，不在过程中要求交互输入。"""
     sheet_path, tsv_path = Path(sheet_path), Path(tsv_path)
     if sheet_path.resolve() == tsv_path.resolve():
         raise ValueError("HTML 与 TSV 路径不能相同")
@@ -102,7 +102,7 @@ def prepare_review(report, book, *, sheet_path, tsv_path):
             '</small></div></article>'
         )
 
-    # Do not discard manually reviewed values on accidental rerun.
+    # 意外重复执行时，不能覆盖已经人工填写的结果。
     if tsv_path.exists():
         with tsv_path.open(encoding="utf-8-sig", newline="") as stream:
             old = list(csv.DictReader(stream, delimiter="\t"))
@@ -148,7 +148,7 @@ def prepare_review(report, book, *, sheet_path, tsv_path):
 
 
 def apply_review(tsv_path, *, map_dir, partial=False):
-    """Validate all rows before touching any per-collection mapping file."""
+    """修改任何分册映射文件前，先完整校验所有 TSV 行。"""
     with Path(tsv_path).open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream, delimiter="\t")
         if not set(FIELDS).issubset(reader.fieldnames or []):

@@ -1,4 +1,4 @@
-"""Single source of truth for cross-module runtime and API limits."""
+"""跨模块运行参数与 API 限制的唯一配置来源。"""
 
 import os
 
@@ -15,9 +15,9 @@ def _bounded_int(name: str, default: int, minimum: int, maximum: int) -> int:
     return min(max(value, minimum), maximum)
 
 
-# Public chat contract. Backend validation is authoritative; the frontend reads
-# the browser-relevant subset from /api/capabilities instead of duplicating it.
-CHAT_MAX_POEM_CHARS = 12000
+# 公开聊天契约：后端校验是最终权威；前端只通过 /api/capabilities
+# 读取浏览器真正需要知道的那一小部分，不再保存重复常量。
+AI_MAX_POEM_CHARS = 12000
 CHAT_MAX_QUESTION_CHARS = 1200
 CHAT_MAX_SELECTION_CHARS = 3000
 CHAT_MAX_HISTORY_TURNS = 6
@@ -25,8 +25,8 @@ CHAT_MAX_HISTORY_MESSAGES = CHAT_MAX_HISTORY_TURNS * 2
 CHAT_MAX_HISTORY_MESSAGE_CHARS = 4000
 CHAT_MAX_HISTORY_TOTAL_CHARS = 12000
 
-# LLM runtime configuration. Railway may override operational values without
-# requiring a code change; all model call sites import these resolved values.
+# LLM 运行参数：Railway 可以覆盖部署期参数而无需改代码；
+# 所有模型调用都只引用这里解析后的值。
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.deepseek.com")
 LLM_MODEL = os.getenv("POETICUS_LLM_MODEL", "deepseek-flash")
 LLM_MAX_OUTPUT_TOKENS = _bounded_int(
@@ -38,5 +38,5 @@ LLM_MAX_OUTPUT_TOKENS = _bounded_int(
 LLM_TIMEOUT_SECONDS = 30.0
 LLM_MAX_RETRIES = 0
 
-# One user request may perform at most this many actual tool calls.
+# 单次用户请求最多执行这么多次真实工具调用。
 AGENT_MAX_TOOL_CALLS = 2

@@ -1,4 +1,4 @@
-"""Structural-only EPUB diagnostics use synthetic XHTML, never book excerpts."""
+"""EPUB 结构诊断测试只使用合成 XHTML，不使用原书摘录。"""
 
 import pytest
 

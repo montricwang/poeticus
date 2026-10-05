@@ -1,10 +1,10 @@
-"""Synthetic fixtures only: no copyrighted EPUB content in the test suite."""
+"""测试只使用合成 fixture，不包含受版权保护的 EPUB 正文。"""
 
 import sys
 from pathlib import Path
 from types import ModuleType
 
-# profile_dom imports ebooklib for the CLI
+# profile_dom 的 CLI 会导入 ebooklib。
 try:
     import ebooklib  # noqa: F401
 except ImportError:
@@ -125,7 +125,7 @@ def test_relative_css_paths():
 
 
 def test_original_xhtml_head_is_kept_when_ebooklib_regenerates_content():
-    """EpubHtml.get_content() can erase original <head> links; use .content."""
+    """EpubHtml.get_content() 可能丢失原始 <head> 链接，因此这里使用 .content。"""
 
     class EpubHtmlLike(Item):
         def __init__(self, text):

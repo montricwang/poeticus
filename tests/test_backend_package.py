@@ -1,4 +1,4 @@
-"""Canonical backend modules import directly from the backend package."""
+"""确认后端正式模块可以直接导入，应用入口只负责组装 FastAPI。"""
 
 import importlib
 
@@ -13,10 +13,7 @@ def test_backend_modules_are_importable(monkeypatch):
     context_module = importlib.import_module("backend.ai.context")
     prompt_module = importlib.import_module("backend.ai.prompt_loader")
 
-    assert app_module.chat is importlib.import_module("backend.api.chat").chat
-    assert app_module.chat_stream is importlib.import_module("backend.api.chat").chat_stream
-    assert app_module.analyze is importlib.import_module("backend.api.analysis").analyze
-    assert app_module.health is importlib.import_module("backend.api.service").health
+    assert app_module.app is not None
     assert graph_module.graph is not None
     assert model_module.client is not None
     assert context_module.PoemContext is not None

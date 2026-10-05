@@ -1,4 +1,4 @@
-"""Tests use invented glyphs and backup metadata, never commercial text."""
+"""测试只使用虚构字形与备份元数据，不使用商业文本。"""
 import json
 from copy import deepcopy
 

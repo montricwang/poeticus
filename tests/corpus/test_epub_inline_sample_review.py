@@ -1,4 +1,4 @@
-"""Synthetic sample selection: only locations escape private source output."""
+"""样本选择只使用合成数据；可分享输出只包含位置，不泄露私人来源正文。"""
 import pytest
 
 from scripts.corpus.epub_import.diagnostics.inspect_inline_samples import (

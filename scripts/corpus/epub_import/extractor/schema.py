@@ -1,4 +1,4 @@
-"""Intermediate EPUB import schema, distinct from the frontend Poem JSON."""
+"""EPUB 导入中间结构，与前端 Poem JSON 明确分离。"""
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -9,7 +9,7 @@ class PoemContent:
     prefaces: List[str] = field(default_factory=list)
     annotations: List[str] = field(default_factory=list)
     commentaries: List[str] = field(default_factory=list)
-    # Extractor-only: source-positioned inline notes; verse retains raw text.
+    # 仅抽取层使用：记录带来源位置的行内注记；正文仍保留原始文本。
     inline_notes: List[Dict[str, Any]] = field(default_factory=list)
 
 
@@ -22,6 +22,6 @@ class Poem:
     content: PoemContent
     collection: str
     source: str = ""
-    # He Zhu's author-coined heading is not the source cipai or the poem title.
+    # 贺铸自拟的寓声题头既不是原词牌，也不是作品词题。
     yusheng_title: Optional[str] = None
     warnings: List[Dict[str, Any]] = field(default_factory=list)

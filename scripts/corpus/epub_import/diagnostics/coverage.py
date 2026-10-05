@@ -1,4 +1,4 @@
-"""Account for source blocks and otherwise unrecognized text in parsed XHTML.
+"""核对已解析 XHTML 中的来源块与其他未识别文本。
 
 This report answers a structural question: where did a source block go?
 It does not assert that a field assignment is semantically correct.
@@ -17,7 +17,7 @@ EDITORIAL_REGION_PREFIXES = ("导读", "导　读", "总评", "词论")
 
 
 def source_block_coverage(book, files, sections, collection):
-    """Audit processed XHTML only; do not silently claim EPUB-wide coverage.
+    """只审计实际处理过的 XHTML，不把它冒充为整本 EPUB 的完整覆盖。
 
     handled: source block appears in the extractor's intermediate evidence.
     excluded: a structural h1 or known editorial region/non-poem heading.
@@ -55,10 +55,9 @@ def source_block_coverage(book, files, sections, collection):
             )
             if block.tag == "h2":
                 editorial_section = is_editorial_heading
-            # Chronology is recognized as context for following works, but
-            # convert_to_poem deliberately does not publish section.chronology.
-            # Even if an adjacent poem has a block-evidence entry, keep this
-            # loss-of-metadata visible; do NOT mistake it for fully exported.
+            # 年代标签会被识别为后续作品的上下文，但 convert_to_poem
+            # 有意不发布 section.chronology。即便相邻作品已有 block evidence，
+            # 也要把这类元数据缺失明确暴露出来，不能误判为已经完整导出。
             if block.tag == "p" and is_chronology(block.element, block.text):
                 status = "internal_chronology_not_exported"
             elif key in evidence:
@@ -84,9 +83,8 @@ def source_block_coverage(book, files, sections, collection):
                     "tag": block.tag, "classes": list(block.classes),
                     "anchor": block.anchor, "text_length": len(block.text),
                 })
-        # iter_source_blocks intentionally scans h1/h2/h4/p. Inventory text
-        # outside *all* those tags as a separate signal; otherwise a div, li
-        # or direct body text could disappear without any coverage warning.
+        # iter_source_blocks 有意只扫描 h1/h2/h4/p。所有这些标签之外的文本
+        # 要单独盘点，否则 div、li 或 body 直接文本可能悄悄消失而没有 coverage warning。
         body = soup.body or soup
         for text_node in body.descendants:
             if (not isinstance(text_node, NavigableString)

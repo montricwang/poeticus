@@ -1,16 +1,15 @@
-"""Transfer the *reader table only* from private local PG to Railway PG.
+"""只把私人 PostgreSQL 的阅读表公开字段传到 Railway PostgreSQL。
 
-Data flows directly from one database connection to the other on the USER's
-machine. No source EPUB, JSON export, evidence table, notes, or credentials are
-written to files or GitHub. An explicit confirmation is required for writes.
+数据直接从本机一个数据库连接流向另一个连接，不生成 EPUB、JSON、证据表、
+注释或凭据文件。写入前必须显式确认。
 
-Git Bash:
-  # In another window, keep Railway's authenticated SSH tunnel running:
+Git Bash 用法：
+  # 另开终端保持 Railway 的认证 SSH 隧道运行：
   # railway connect Postgres --tunnel-only -P 55432
   python -m scripts.corpus.public_corpus_transfer --check
   python -m scripts.corpus.public_corpus_transfer --apply --confirm-publish
-  # --apply prompts for the SSH tunnel URL if the variable is not already set.
-  # The URL is echoed as requested by the operator: keep terminals/screenshots private.
+  # --apply 在未设置目标 URL 时会提示粘贴 SSH 隧道地址。
+  # 地址会显示在终端中，因此终端和截图都应保持私密。
 """
 from __future__ import annotations
 
@@ -28,9 +27,8 @@ from psycopg.conninfo import conninfo_to_dict
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-# Explicitly whitelisted, current HTTP reader fields + stable internal keys.
-# Excludes poem_source_texts, original_segments, original_inline_notes,
-# source_locator, inline_notes, lacunae, modern annotations and commentary.
+# 明确列出允许公开的阅读字段与稳定内部键。
+# 不包含 poem_source_texts、原始片段、行内注记、缺文、现代注评等私人字段。
 PUBLIC_COLUMNS = (
     "id", "source_record_id", "source_order", "collection", "author",
     "cipai", "title", "yusheng_title", "body_segments", "prefaces",
@@ -39,20 +37,14 @@ PUBLIC_COLUMNS = (
 SELECT_PUBLIC = "SELECT " + ", ".join(PUBLIC_COLUMNS) + " FROM poems ORDER BY source_order"
 COPY_PUBLIC = "COPY poems (" + ", ".join(PUBLIC_COLUMNS) + ") FROM STDIN"
 
-# Exact identifiers from our intentionally synthetic cloud seed.
-DEMO_IDS = {
-    UUID("00000000-0000-4000-8000-000000000101"): "demo-synthetic-1",
-    UUID("00000000-0000-4000-8000-000000000102"): "demo-synthetic-2",
-    UUID("00000000-0000-4000-8000-000000000103"): "demo-synthetic-3",
-}
-# Heuristic only, not a determination of literary copyright/attribution.
+# 这里只做启发式排查，不代表对文学版权或文本归属作出判断。
 SUSPECT_EDITORIAL = re.compile(
     r"编者按|出版社|本书编|责任编辑|现代汉语译|校注者|译文|赏析|鉴赏辞典"
 )
 
 
 def public_fingerprint(rows: list[dict]) -> str:
-    """A reproducible full-content checksum; print hashes, never actual texts."""
+    """计算可重复的全量内容摘要；只输出哈希，不输出实际正文。"""
     payload = [{key: row[key] for key in PUBLIC_COLUMNS} for row in rows]
     packed = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.sha256(packed.encode("utf-8")).hexdigest()
@@ -102,20 +94,11 @@ def validate_public_rows(rows: list[dict], expected: int) -> dict:
     }
 
 
-def _is_exact_demo(row: dict) -> bool:
-    return (
-        row["id"] in DEMO_IDS
-        and row["source_record_id"] == DEMO_IDS[row["id"]]
-        and row["collection"] == "Poeticus 合成测试作品"
-        and row["review_status"] == "demo_synthetic"
-    )
-
-
 def transfer(source: list[dict], dest_conn: psycopg.Connection) -> str:
-    """One transaction, one COPY stream, with exact-match source verification.
+    """单事务、单 COPY 流传输，并对源目标做全量一致性校验。
 
-    Reject any unknown target content; Ctrl+C before COMMIT rolls back.
-    Re-running after an uncertain COMMIT returns already_identical.
+    目标库存在未知内容时拒绝覆盖；提交前中断会回滚。
+    如果上一次提交结果不确定，重复执行会识别完全一致的数据。
     """
     expected_digest = public_fingerprint(source)
     print("检查云端现有作品……", flush=True)
@@ -123,14 +106,7 @@ def transfer(source: list[dict], dest_conn: psycopg.Connection) -> str:
         dest_conn.execute("SET LOCAL lock_timeout = '15s'")
         dest_conn.execute("SET LOCAL statement_timeout = '180s'")
         dest_rows = dest_conn.execute(SELECT_PUBLIC).fetchall()
-        if dest_rows and all(_is_exact_demo(r) for r in dest_rows):
-            if len(dest_rows) != len({r["id"] for r in dest_rows}):
-                raise ValueError("云端测试数据 UUID 重复")
-            dest_conn.execute(
-                "DELETE FROM poems WHERE id = ANY(%s)", (list(DEMO_IDS),)
-            )
-            result = "replaced_known_demo"
-        elif dest_rows and public_fingerprint(dest_rows) == expected_digest:
+        if dest_rows and public_fingerprint(dest_rows) == expected_digest:
             print("云端作品已经与本地完全一致，无需重复导入。", flush=True)
             return "already_identical"
         elif dest_rows:
@@ -184,7 +160,7 @@ def main() -> None:
     if target_dsn:
         if target_dsn == source_dsn:
             parser.error("源库与目标库连接字符串相同，拒绝操作")
-        # This deliberately only accepts the local CLI tunnel, never a public PG URL.
+        # 这里只接受 Railway CLI 建立的本地隧道，不接受公网 PostgreSQL 地址。
         try:
             info = conninfo_to_dict(target_dsn)
         except psycopg.Error:
@@ -214,7 +190,7 @@ if __name__ == "__main__":
     try:
         main()
     except psycopg.Error as exc:
-        # libpq error details may expose network/internal configuration.
+        # libpq 的原始错误详情可能暴露网络或内部配置，因此不直接回显。
         raise SystemExit(
             f"数据库操作失败（{type(exc).__name__}）；未提交的事务会回滚。"
             "请确认 Railway SSH 隧道仍在运行、端口正确。"
