@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 
-import { AnalysisTextEntrance } from "@/components/analysis-text-entrance";
+import {
+  AnalysisReveal,
+  AnalysisTextEntrance,
+} from "@/components/analysis-text-entrance";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -53,41 +56,60 @@ function AnalysisResult({
         animate && "poeticus-analysis-result-enter",
       )}
     >
-      <section>
-        <h3 className="mb-4 text-base font-semibold">现代汉语译文</h3>
-        <AnalysisTextEntrance
-          as="p"
-          text={analysis.translation}
-          animate={animate}
-          className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
-        />
-      </section>
+      <AnalysisReveal animate={animate}>
+        {(revealed) => (
+          <section>
+            <h3 className="mb-4 text-base font-semibold">现代汉语译文</h3>
+            <AnalysisTextEntrance
+              as="p"
+              text={analysis.translation}
+              animate={animate && revealed}
+              className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
+            />
+          </section>
+        )}
+      </AnalysisReveal>
 
       <div className="h-px w-12 bg-border/80" aria-hidden="true" />
 
       <section>
-        <h3 className="mb-5 text-base font-semibold">词语注释</h3>
+        <AnalysisReveal animate={animate}>
+          {(revealed) => (
+            <h3 className="mb-5 text-base font-semibold">
+              词语注释
+            </h3>
+          )}
+        </AnalysisReveal>
+
         {analysis.glosses.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            本次赏析没有需要单独解释的词语。
-          </p>
+          <AnalysisReveal animate={animate}>
+            {() => (
+              <p className="text-sm text-muted-foreground">
+                本次赏析没有需要单独解释的词语。
+              </p>
+            )}
+          </AnalysisReveal>
         ) : (
           <div className="space-y-4">
             {analysis.glosses.map((gloss, index) => (
-              <div key={index}>
-                <AnalysisTextEntrance
-                  as="h4"
-                  text={gloss.term}
-                  animate={animate}
-                  className="mb-1 font-serif text-sm font-semibold"
-                />
-                <AnalysisTextEntrance
-                  as="p"
-                  text={gloss.explanation}
-                  animate={animate}
-                  className="text-sm leading-7 text-muted-foreground"
-                />
-              </div>
+              <AnalysisReveal key={index} animate={animate}>
+                {(revealed) => (
+                  <div>
+                    <AnalysisTextEntrance
+                      as="h4"
+                      text={gloss.term}
+                      animate={animate && revealed}
+                      className="mb-1 font-serif text-sm font-semibold"
+                    />
+                    <AnalysisTextEntrance
+                      as="p"
+                      text={gloss.explanation}
+                      animate={animate && revealed}
+                      className="text-sm leading-7 text-muted-foreground"
+                    />
+                  </div>
+                )}
+              </AnalysisReveal>
             ))}
           </div>
         )}
@@ -95,15 +117,19 @@ function AnalysisResult({
 
       <div className="h-px w-12 bg-border/80" aria-hidden="true" />
 
-      <section>
-        <h3 className="mb-4 text-base font-semibold">文学赏析</h3>
-        <AnalysisTextEntrance
-          as="p"
-          text={analysis.commentary}
-          animate={animate}
-          className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
-        />
-      </section>
+      <AnalysisReveal animate={animate}>
+        {(revealed) => (
+          <section>
+            <h3 className="mb-4 text-base font-semibold">文学赏析</h3>
+            <AnalysisTextEntrance
+              as="p"
+              text={analysis.commentary}
+              animate={animate && revealed}
+              className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
+            />
+          </section>
+        )}
+      </AnalysisReveal>
     </div>
   );
 }
