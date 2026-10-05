@@ -8,7 +8,6 @@ type MobileDiscussionDockProps = {
   onOpenChange: (open: boolean) => void;
   hasUnreadReply: boolean;
   hasSelection: boolean;
-  hasConversation: boolean;
   height: string;
   children: ReactNode;
 };
@@ -18,7 +17,6 @@ export function MobileDiscussionDock({
   onOpenChange,
   hasUnreadReply,
   hasSelection,
-  hasConversation,
   height,
   children,
 }: MobileDiscussionDockProps) {
