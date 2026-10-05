@@ -43,7 +43,7 @@ def ensure_no_unclassified_content(poems):
     raise RuntimeError(
         f"{len(affected)} 首作品含未分类段落，禁止直接导出，以免丢失原文。"
         f"告警类别：{', '.join(kinds)}；样例：{examples}。"
-        "请先运行 scripts.corpus.epub_import.analyze.audit_extraction "
+        "请先运行 scripts.corpus.epub_import.diagnostics.audit_extraction "
         "检查原始 XHTML 并明确分类或排除规则。"
     )
 

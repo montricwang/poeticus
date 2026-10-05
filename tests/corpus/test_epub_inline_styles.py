@@ -1,5 +1,5 @@
 """Synthetic coverage for inline marker evidence; no published poetry in git."""
-from scripts.corpus.epub_import.analyze.audit_inline_styles import (
+from scripts.corpus.epub_import.diagnostics.audit_inline_styles import (
     collect_inline_evidence,
     render_md,
 )

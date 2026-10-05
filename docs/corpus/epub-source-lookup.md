@@ -7,7 +7,7 @@
 在仓库根目录执行（可从 GitHub 分支 `feat/epub-layout-rule-extractor` 拉取）：
 
 ```powershell
-python -m scripts.corpus.epub_import.analyze.inspect_source --html text00264.html --block 2 --block 25 --book "姜夔词集" --output data/reports/jiang_source_local.md
+python -m scripts.corpus.epub_import.diagnostics.inspect_source --html text00264.html --block 2 --block 25 --book "姜夔词集" --output data/reports/jiang_source_local.md
 ```
 
 然后在 VS Code 打开 `data/reports/jiang_source_local.md`：每个目标块前默认列出 2 块、后列出 4 块，附原文、块号、标签、class、DOM 完整路径，以及抽取器在对应分册中的角色。块号与 `audit_extraction` 完全一致（按 h1、h2、h4、p 在源文件中的顺序计数）。
@@ -18,13 +18,13 @@ python -m scripts.corpus.epub_import.analyze.inspect_source --html text00264.htm
 
 ```powershell
 # 根据原文片段在指定 XHTML 中找对应的块号；不需要先数段落
-python -m scripts.corpus.epub_import.analyze.inspect_source --html text00264.html --find "1191" --book "姜夔词集"
+python -m scripts.corpus.epub_import.diagnostics.inspect_source --html text00264.html --find "1191" --book "姜夔词集"
 
 # 需要辨别字体包装、图片字、换行时，显示原始 XHTML
-python -m scripts.corpus.epub_import.analyze.inspect_source --html text00241.html --block 20 --book "周邦彦词集" --show-html --output data/reports/zhou_markup_local.md
+python -m scripts.corpus.epub_import.diagnostics.inspect_source --html text00241.html --block 20 --book "周邦彦词集" --show-html --output data/reports/zhou_markup_local.md
 
 # 使用其他 EPUB 文件
-python -m scripts.corpus.epub_import.analyze.inspect_source --epub "D:/books/my.epub" --html text00264.html --block 2
+python -m scripts.corpus.epub_import.diagnostics.inspect_source --epub "D:/books/my.epub" --html text00264.html --block 2
 ```
 
 注意：`--find` 只检索指定 XHTML，并不检索整本 EPUB；`--book` 必须是完整分册名，否则不显示语义分类证据。`--show-html` 显示真实源标签和属性，但不是按 CSS 渲染的书页，仍需在阅读器里核对视觉布局。`--book` 显示的是 Parser 的**中间归类**，不是文学校勘的最终结论。

@@ -1,7 +1,7 @@
 """Synthetic human-review sampling tests, no commercial text in git."""
 import pytest
 
-from scripts.corpus.epub_import.analyze.sample_classification import (
+from scripts.corpus.epub_import.diagnostics.sample_classification import (
     build_candidates,
     choose_batch,
     plan_markdown,

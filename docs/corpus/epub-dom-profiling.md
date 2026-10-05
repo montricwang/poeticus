@@ -7,7 +7,7 @@
 在仓库根目录执行：
 
 ```bash
-python scripts/corpus/epub_import/analyze/profile_dom.py
+python scripts/corpus/epub_import/diagnostics/profile_dom.py
 ```
 
 默认读取私有 `data/raw/历代名家词集精华录.epub`，输出本地：
@@ -18,7 +18,7 @@ python scripts/corpus/epub_import/analyze/profile_dom.py
 限定单册：
 
 ```bash
-python scripts/corpus/epub_import/analyze/profile_dom.py --book "苏轼词集"
+python scripts/corpus/epub_import/diagnostics/profile_dom.py --book "苏轼词集"
 ```
 
 使用环境需要 `ebooklib`、`beautifulsoup4`、`lxml`、`tinycss2`、`cssselect2`（Beautiful Soup 自带的 soupsieve 用于选择器匹配）。

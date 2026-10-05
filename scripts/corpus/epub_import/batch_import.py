@@ -12,7 +12,7 @@ from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 
-from .analyze.audit_extraction import COLLECTIONS
+from .config import COLLECTIONS
 from .extractor.extractor import extract_collection
 from .pipeline.normalize import normalize_poem, unresolved_glyphs
 from .import_poems import (

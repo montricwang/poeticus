@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import pytest
 
-from scripts.corpus.epub_import.import_glyph_backup import import_review_backup
+from scripts.corpus.epub_import.review.import_glyph_backup import import_review_backup
 from scripts.corpus.epub_import.import_poems import collect_missing_glyphs
 from scripts.corpus.epub_import.pipeline.normalize import normalize_poem
 

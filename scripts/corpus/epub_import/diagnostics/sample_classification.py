@@ -11,7 +11,7 @@ from ebooklib import epub
 
 from ..epub.reader import parse_toc
 from ..extractor.extractor import extract_collection, extract_sections
-from .audit_extraction import COLLECTIONS
+from ..config import COLLECTIONS
 from .inspect_source import inspect_source
 
 

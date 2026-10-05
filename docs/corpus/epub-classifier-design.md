@@ -45,7 +45,7 @@
 在包含私有 EPUB 的用户本地仓库运行：
 
 ```bash
-python -m scripts.corpus.epub_import.analyze.audit_extraction
+python -m scripts.corpus.epub_import.diagnostics.audit_extraction
 ```
 
 分享报告的结构性摘要即可，尤其每册的 `未追踪源块`、`其他标签文字`、`待分类段落` 与实例结构；不提交 `data/reports/*.json` 或原书内容。先根据完整 15 册结果决定哪些是缺陷、哪些是有意排除，再继续拆分分册规则。
@@ -63,10 +63,10 @@ python -m scripts.corpus.epub_import.analyze.audit_extraction
 
 ## 分类准确性抽样第一轮（人工复核试运行）
 
-使用 `scripts.corpus.epub_import.analyze.sample_classification`，从真实 EPUB 提取后的证据中生成小批量分类复核任务。不修改抽取规则，也不向商业语料写回标注。
+使用 `scripts.corpus.epub_import.diagnostics.sample_classification`，从真实 EPUB 提取后的证据中生成小批量分类复核任务。不修改抽取规则，也不向商业语料写回标注。
 
 ```powershell
-python -m scripts.corpus.epub_import.analyze.sample_classification --round 1 --limit 5
+python -m scripts.corpus.epub_import.diagnostics.sample_classification --round 1 --limit 5
 ```
 
 生成两个报告，均默认位于 gitignore 保护的 `data/reports/`：
@@ -85,7 +85,7 @@ python -m scripts.corpus.epub_import.analyze.sample_classification --round 1 --l
 新增只读的全册结构诊断（不改正文归类）：
 
 ```powershell
-python -m scripts.corpus.epub_import.analyze.audit_inline_styles --output data/reports/epub_inline_style_audit.md
+python -m scripts.corpus.epub_import.diagnostics.audit_inline_styles --output data/reports/epub_inline_style_audit.md
 ```
 
 它对所有正文段落同时检测两件事：是否触发 `inline_body_style_review`，以及是否出现明确形态的 `（以下缺）` 残缺标记（兼容半角括号）。分别统计残缺标记是否处在带样式 span 内、是否出现在完全没有样式告警的段落，按分册聚合样式 class/style 和块号。报告**只含结构、计数与源位置，不含商业原文**。
@@ -93,7 +93,7 @@ python -m scripts.corpus.epub_import.analyze.audit_inline_styles --output data/r
 定位李煜原始标签可单独运行：
 
 ```powershell
-python -m scripts.corpus.epub_import.analyze.inspect_source --html text00045.html --block 2 --before 0 --after 0 --show-html --book "李煜词集（附：李璟词集 冯延巳词集）" --output data/reports/nantang_030_markup_private.md
+python -m scripts.corpus.epub_import.diagnostics.inspect_source --html text00045.html --block 2 --before 0 --after 0 --show-html --book "李煜词集（附：李璟词集 冯延巳词集）" --output data/reports/nantang_030_markup_private.md
 ```
 
 后者**包含原文，只能留在本地**；要交流时截取必要的最短 HTML 片段即可。先确认“（以下缺）”是否与 CSS span 对齐、其他 56 处样式是否同一类，再决定是否需要专门的行内校勘数据结构。无证据时不得直接删除正文中的残缺标记，也不得将所有样式 span 一律当注释。
@@ -118,7 +118,7 @@ python -m scripts.corpus.epub_import.analyze.inspect_source --html text00045.htm
 新增 `inspect_inline_samples`，按源 `span` 的真实 class 分组；每类优先取不同分册，再从其余位置分散选择；结构计划与包含源文字/HTML 的私有报告严格分开。下一轮只需：
 
 ```powershell
-python -m scripts.corpus.epub_import.analyze.inspect_inline_samples --style kaiti --per-style 3
+python -m scripts.corpus.epub_import.diagnostics.inspect_inline_samples --style kaiti --per-style 3
 ```
 
 生成 `data/reports/inline_style_review_plan.md`（可分享无原文）和 `data/reports/inline_style_review_private.md`（含版权正文及原始 span，只供本地人工复核）。待核实 `kaiti` 版式后，再设计明确区分**行内原文**与**行内附注/残缺标记**的结构；当前 `PoemContent.text` 一字不删，避免未经确认的规则扩大影响。
@@ -153,7 +153,7 @@ python -m scripts.corpus.epub_import.analyze.inspect_inline_samples --style kait
 已经核查的 `font1` 位置共 12 处。若要把尚未人工看到的源段落全部补齐，不需要重复查以前的样本：
 
 ```powershell
-python -m scripts.corpus.epub_import.analyze.inspect_inline_samples --style font1 --per-style 15 --remaining
+python -m scripts.corpus.epub_import.diagnostics.inspect_inline_samples --style font1 --per-style 15 --remaining
 ```
 
 `--remaining` 只按已复核源坐标跳过 12 处 `font1`，**不是宣称全部十二处的历史注释作者都已确认**。输出文件与之前同名（分别为无原文的 review plan、带原文的 private packet）；不公开上传商业语料。用户原始全量审计共 20 处 `font1`，所以在这套未变的 EPUB 版本中，预期还有约 8 处待看，实际以脚本报告为准。

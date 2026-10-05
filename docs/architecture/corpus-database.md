@@ -39,7 +39,7 @@ python -m scripts.corpus.db_import --migrate
 python -m scripts.corpus.db_import --import
 ~~~
 
---check 完全离线，不需要启动 PostgreSQL；默认输入是 data/output/all_normalized.json。--migrate 和 --import 使用本地 .env 数据库连接，不会自动创建数据库。迁移脚本按顺序位于 db/migrations/，0001 创建原有 Schema，0002_cipai 将既有 poems.tune 重命名为 cipai（并重命名索引），0003_yusheng_title 将 poems.yusheng 重命名为 yusheng_title。**已执行的迁移文件不能直接改写**。已经导入词库的用户只需再次运行 `python -m scripts.corpus.db_import --migrate`；无需重新导入，UUID/3491 行均保持不变。新部署的空库依次运行三个迁移。
+--check 完全离线，不需要启动 PostgreSQL；默认输入是 data/output/all_normalized.json。该文件可由私有 EPUB + glyph maps 重建；具体备份层级见 [data/README](../../data/README.md)。--migrate 和 --import 使用本地 .env 数据库连接，不会自动创建数据库。迁移脚本按顺序位于 db/migrations/，0001 创建原有 Schema，0002_cipai 将既有 poems.tune 重命名为 cipai（并重命名索引），0003_yusheng_title 将 poems.yusheng 重命名为 yusheng_title。**已执行的迁移文件不能直接改写**。已经导入词库的用户只需再次运行 `python -m scripts.corpus.db_import --migrate`；无需重新导入，UUID/3491 行均保持不变。新部署的空库依次运行三个迁移。
 
 执行迁移后可以在 pgAdmin 用 `SELECT cipai, yusheng_title, title FROM poems WHERE yusheng_title IS NOT NULL LIMIT 10;` 验证；旧的 `SELECT tune ...` 与 `SELECT yusheng ...` 将不再可用。
 

@@ -1,7 +1,7 @@
 """Synthetic-only tests for the local diagnostic; never store licensed excerpts."""
 import pytest
 
-from scripts.corpus.epub_import.analyze.inspect_source import inspect_source
+from scripts.corpus.epub_import.diagnostics.inspect_source import inspect_source
 
 
 class Item:

@@ -4,7 +4,7 @@ import re
 import pytest
 from bs4 import BeautifulSoup
 
-from scripts.corpus.epub_import.glyph_contexts import (
+from scripts.corpus.epub_import.review.glyph_contexts import (
     collect_glyph_paragraphs,
     render_contexts_html,
     write_contexts,

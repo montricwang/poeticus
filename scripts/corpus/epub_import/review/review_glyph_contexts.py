@@ -12,7 +12,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from ebooklib import epub
 
-from .extractor.extractor import raw_xhtml
+from ..extractor.extractor import raw_xhtml
 from .review_glyphs import glyph_sites
 
 
