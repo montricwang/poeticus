@@ -20,9 +20,9 @@ def agent(monkeypatch):
     monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
 
-    import backend.ai.graph as intent_router
+    import backend.ai.graph as graph_module
 
-    return intent_router
+    return graph_module
 
 
 def _fake_client(fake_create):
