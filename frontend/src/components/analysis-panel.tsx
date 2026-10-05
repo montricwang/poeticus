@@ -16,6 +16,7 @@ type AnalysisPanelProps = {
   analyzing: boolean;
   error: string;
   limitNotice: boolean;
+  fillAvailableHeight?: boolean;
   className?: string;
 };
 
@@ -24,10 +25,17 @@ export function AnalysisPanel({
   analyzing,
   error,
   limitNotice,
+  fillAvailableHeight = false,
   className,
 }: AnalysisPanelProps) {
   return (
-    <Card className={cn("flex h-165 min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm", className)}>
+    <Card
+      className={cn(
+        "flex min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm",
+        fillAvailableHeight ? "h-full flex-1" : "h-165",
+        className,
+      )}
+    >
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-7">
         {analyzing ? (
           <div
