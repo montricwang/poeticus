@@ -74,7 +74,7 @@ def test_graph_sends_poem_context_to_model(monkeypatch, graph_module):
         model_calls.append(kwargs)
         return _text_response("模拟细读回答")
 
-    monkeypatch.setattr(router, "client", _fake_client(fake_create))
+    monkeypatch.setattr(graph_module, "client", _fake_client(fake_create))
 
     result = graph_module.graph.invoke(
         {
@@ -103,7 +103,7 @@ def test_graph_answers_request_without_context(monkeypatch, graph_module):
         model_calls.append(kwargs)
         return _text_response("模拟细读回答")
 
-    monkeypatch.setattr(router, "client", _fake_client(fake_create))
+    monkeypatch.setattr(graph_module, "client", _fake_client(fake_create))
 
     result = graph_module.graph.invoke(
         {
@@ -144,7 +144,7 @@ def test_unknown_tool_is_not_executed(monkeypatch, graph_module):
             }
         )
 
-    monkeypatch.setattr(router, "client", _fake_client(fake_create))
+    monkeypatch.setattr(graph_module, "client", _fake_client(fake_create))
     monkeypatch.setattr(graph_module.evidence_service, "search", fake_search)
 
     result = graph_module.graph.invoke(
