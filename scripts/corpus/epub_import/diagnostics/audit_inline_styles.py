@@ -1,4 +1,4 @@
-"""Audit inline styling and editorial lacuna markers in local EPUB verses.
+"""审计本地 EPUB 词句中的行内样式与编校缺文标记。
 
 The generated report contains locations and style metadata ONLY, never any
 commercially published verse, note, or commentary text. This is a diagnostic,
@@ -19,14 +19,14 @@ from ..config import COLLECTIONS
 
 
 def _style_signature(span):
-    # CSS-only summary; never include the span's text.
+    # 摘要只记录 CSS，不包含 span 中的正文。
     classes = ",".join(span.get("class", [])) or "-"
     style = span.get("style", "").replace("\n", " ").strip() or "-"
     return f"span class={classes} style={style[:120]}"
 
 
 def collect_inline_evidence(book, toc, collection_specs=COLLECTIONS):
-    """Inspect warned verse spans AND parenthesized lacunae in unflagged verse.
+    """同时检查已 warning 的词句 span 与未标记词句中的括号缺文。
 
     Distinguishes:
     - a paragraph triggering inline_body_style_review;
@@ -105,7 +105,7 @@ def collect_inline_evidence(book, toc, collection_specs=COLLECTIONS):
 
 
 def render_md(report):
-    """Shareable positions-only summary, without literary source excerpts."""
+    """生成只含位置、可分享的摘要，不带文学来源摘录。"""
     sites = report["sites"]
     marker_sites = [site for site in sites if site["has_gap_marker"]]
     style_sites = [site for site in sites if site["warned"]]
