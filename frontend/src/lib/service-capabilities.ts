@@ -9,10 +9,10 @@ export type ServiceCapabilities = {
 let cached: Promise<ServiceCapabilities> | null = null;
 
 function positiveInteger(value: unknown, field: string): number {
-  if (!Number.isInteger(value) || (value as number) <= 0) {
+  if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) {
     throw new Error(`服务能力字段无效：${field}`);
   }
-  return value as number;
+  return value;
 }
 
 async function fetchCapabilities(): Promise<ServiceCapabilities> {
