@@ -1,4 +1,4 @@
-"""Import local glyph_review_backup.json directly into per-volume glyph maps.
+"""把本地 glyph_review_backup.json 直接导入各分册图片字映射。
 
 The backup is a private user's editorial work, never a repository fixture.
 Verify the filename/volume for every 001-049 ID against the preflight report
@@ -75,7 +75,7 @@ def import_review_backup(backup_path, report_path, map_dir, *, partial=False):
             "。可填完后重新运行，或用 --partial 分批导入"
         )
 
-    # Validate every map before touching any private file.
+    # 修改任何私人文件前，先把所有映射完整校验一遍。
     updates = {}
     for filename, entries in pending.items():
         current = load_map(filename)
