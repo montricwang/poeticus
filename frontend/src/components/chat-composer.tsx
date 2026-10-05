@@ -2,6 +2,7 @@ import { ArrowUp, LoaderCircle, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useKeyboardViewportRecovery } from "@/hooks/use-keyboard-viewport-recovery";
 
 import type { SelectedText } from "@/components/poem-reader";
 
@@ -24,6 +25,11 @@ export function ChatComposer({
   onSend,
   showDivider = true,
 }: ChatComposerProps) {
+  const {
+    handleFocus: handleViewportFocus,
+    handleBlur: handleViewportBlur,
+  } = useKeyboardViewportRecovery();
+
   return (
     <div className="shrink-0 bg-transparent px-0 py-3 md:py-4">
       {showDivider && (
@@ -59,6 +65,8 @@ export function ChatComposer({
           aria-label="输入问题"
           aria-busy={loading}
           value={question}
+          onFocus={handleViewportFocus}
+          onBlur={handleViewportBlur}
           onChange={(event) => onQuestionChange(event.target.value)}
           onKeyDown={(event) => {
             // Shift + Enter 换行；中文输入法选字时不误发送。
