@@ -152,7 +152,11 @@ export function ChatPanel({
   return (
     <section
       aria-label="阅读讨论"
-      className={cn("flex h-165 min-h-0 min-w-0 flex-col bg-transparent", className)}
+      className={cn(
+        "flex min-h-0 min-w-0 flex-col bg-transparent",
+        turns.length > 0 ? "h-165" : "h-auto",
+        className,
+      )}
     >
 
       {/* 没有真实对话时不预留展示区；第一轮消息出现后才建立滚动区。 */}
