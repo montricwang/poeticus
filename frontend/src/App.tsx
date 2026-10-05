@@ -219,12 +219,15 @@ function App() {
   }, [poemId, wideDiscussionLayout]);
 
   const poemReady = !!activePoem && activePoem.id === poemId;
+  // 空对话态也必须完整容纳标题栏、视图工具栏、输入框和发送按钮；
+  // 有划词时再为引用区预留空间。高度仍只在这里计算一次，
+  // fixed dock 与正文占位共同使用同一个值。
   const mobileDiscussionHeight =
     turns.length > 0
       ? "clamp(18rem, 44dvh, 30rem)"
       : selected
-        ? "clamp(16rem, 36dvh, 22rem)"
-        : "clamp(12rem, 26dvh, 15rem)";
+        ? "clamp(20rem, 40dvh, 22rem)"
+        : "clamp(17rem, 30dvh, 19rem)";
 
   function renderDiscussionContent(fillAvailableHeight: boolean) {
     if (!activePoem || activePoem.id !== poemId) {
