@@ -12,6 +12,10 @@ def test_legacy_imports_resolve_to_new_package(monkeypatch):
     import poem_context
     import prompt_loader
     assert api is importlib.import_module("backend.app")
+    assert api.chat is importlib.import_module("backend.api.chat").chat
+    assert api.chat_stream is importlib.import_module("backend.api.chat").chat_stream
+    assert api.analyze is importlib.import_module("backend.api.analysis").analyze
+    assert api.health is importlib.import_module("backend.api.service").health
     assert main is importlib.import_module("backend.ai.model")
     assert intent_router is importlib.import_module("backend.ai.graph")
     assert poem_context is importlib.import_module("backend.ai.context")
