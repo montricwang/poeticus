@@ -95,11 +95,6 @@ class FakeConn:
             return Result()
         if sql.startswith("SELECT"):
             return Result(sorted(self.rows, key=lambda r: r["source_order"]))
-        if sql.startswith("DELETE"):
-            deleted = set(params[0])
-            self.rows = [r for r in self.rows if r["id"] not in deleted]
-            self.writes += 1
-            return Result()
         raise AssertionError(f"Unexpected SQL: {sql}")
 
 
