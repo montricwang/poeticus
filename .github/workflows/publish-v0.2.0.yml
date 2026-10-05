@@ -1,0 +1,60 @@
+name: Publish Poeticus v0.2.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-v0.2.0.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v4
+      - name: Verify public production before publishing tag
+        shell: bash
+        env:
+          BASE: https://poeticus-web-production.up.railway.app
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ready=false
+          for attempt in $(seq 1 20); do
+            if curl --silent --show-error --fail --connect-timeout 10 --max-time 20 "$BASE/api/info" > /tmp/poeticus-info.json; then
+              if python3 -c 'import json; d=json.load(open("/tmp/poeticus-info.json")); assert d.get("name")=="Poeticus" and d.get("version")=="0.2.0"'; then
+                ready=true
+                break
+              fi
+            fi
+            echo "Waiting for public 0.2.0 deployment (attempt $attempt)"
+            sleep 10
+          done
+          test "$ready" = true || { echo "::error::Public /api/info is not v0.2.0"; exit 1; }
+          echo "PASS public /api/info reports v0.2.0"
+          curl --fail --silent --show-error --max-time 30 "$BASE/" > /tmp/poeticus-home.html
+          grep -qi '<html' /tmp/poeticus-home.html
+          curl --fail --silent --show-error --max-time 30 "$BASE/api/poems?limit=1" > /tmp/poeticus-page.json
+          python3 -c 'import json; d=json.load(open("/tmp/poeticus-page.json")); assert d.get("total")==3491 and len(d.get("items",[]))==1'
+          echo "PASS anonymous homepage and 3491-poem corpus"
+          test -s docs/releases/v0.2.0.md
+          if gh release view v0.2.0 > /dev/null 2>&1; then
+            echo "::error::Release v0.2.0 already exists; refusing to overwrite it"
+            exit 1
+          fi
+          if gh api repos/$GITHUB_REPOSITORY/git/ref/tags/v0.2.0 > /dev/null 2>&1; then
+            echo "::error::Tag v0.2.0 already exists; refusing to move it"
+            exit 1
+          fi
+      - name: Create GitHub tag and release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create v0.2.0 --target "$GITHUB_SHA" --title "Poeticus v0.2.0" --notes-file docs/releases/v0.2.0.md --latest
+          gh release view v0.2.0 --json tagName,url,targetCommitish --jq '{tag: .tagName, url: .url, target: .targetCommitish}'
