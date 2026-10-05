@@ -24,7 +24,7 @@ export function ChatComposer({
   showDivider = true,
 }: ChatComposerProps) {
   return (
-    <div className="shrink-0 bg-transparent px-0 py-3 md:py-4">
+    <div className="shrink-0 bg-transparent px-0 pt-3 pb-0 lg:py-4">
       {showDivider && (
         <div className="mx-2 mb-3 h-px bg-border/60" aria-hidden="true" />
       )}
@@ -75,7 +75,7 @@ export function ChatComposer({
           className="min-h-16 max-h-24 overflow-y-auto overscroll-contain resize-none border-0 bg-transparent px-2 leading-6 shadow-none focus-visible:ring-0 md:min-h-24 md:max-h-36 dark:bg-transparent"
         />
 
-        <div className="flex items-center justify-between px-2 pb-1">
+        <div className="flex items-center justify-between px-2">
           <span className="text-xs text-muted-foreground">
             {loading ? "AI 正在回复" : "Enter 发送 · Shift+Enter 换行"}
           </span>
