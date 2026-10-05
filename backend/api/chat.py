@@ -3,17 +3,35 @@ import json
 import logging
 from collections.abc import Iterator
 from typing import Literal
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+
 from backend.ai.context import PoemContext
 from backend.ai.graph import RouterState, graph
+from backend.config import (
+    CHAT_MAX_HISTORY_MESSAGE_CHARS,
+    CHAT_MAX_HISTORY_MESSAGES,
+    CHAT_MAX_HISTORY_TOTAL_CHARS,
+    CHAT_MAX_HISTORY_TURNS,
+    CHAT_MAX_POEM_CHARS,
+    CHAT_MAX_QUESTION_CHARS,
+    CHAT_MAX_SELECTION_CHARS,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Compatibility exports for callers that still import these names from chat.py.
+MAX_HISTORY_TURNS = CHAT_MAX_HISTORY_TURNS
+MAX_HISTORY_MESSAGES = CHAT_MAX_HISTORY_MESSAGES
+MAX_HISTORY_MESSAGE_CHARS = CHAT_MAX_HISTORY_MESSAGE_CHARS
+MAX_HISTORY_TOTAL_CHARS = CHAT_MAX_HISTORY_TOTAL_CHARS
+
+
 class QuoteSelection(BaseModel):
-    text: str = Field(max_length=3000)
+    text: str = Field(max_length=CHAT_MAX_SELECTION_CHARS)
     start: int
     end: int
 
@@ -24,8 +42,8 @@ class HistoryMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    poem: str = Field(max_length=12000)
-    question: str = Field(max_length=1200)
+    poem: str = Field(max_length=CHAT_MAX_POEM_CHARS)
+    question: str = Field(max_length=CHAT_MAX_QUESTION_CHARS)
     selection: QuoteSelection | None = None
     context: PoemContext | None = None
     history: list[HistoryMessage] = Field(default_factory=list)
@@ -33,17 +51,6 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
-
-
-# v0.1 初始历史预算。
-# 依据 2026-09-30 LangSmith 样本：
-# 当前正常 AI 回答约 300–600 output tokens，
-# 因此先保留最近 6 个完整 Turn。
-# 字符限制主要作为异常输入的保险丝，后续根据真实多轮 Trace / Eval 调整。
-MAX_HISTORY_TURNS = 6
-MAX_HISTORY_MESSAGES = MAX_HISTORY_TURNS * 2
-MAX_HISTORY_MESSAGE_CHARS = 4000
-MAX_HISTORY_TOTAL_CHARS = 12000
 
 
 def validate_chat_request(request: ChatRequest) -> None:
@@ -147,10 +154,8 @@ def sse(event: str, data: dict) -> str:
 
 def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
     """Graph custom 事件承载 token，updates 事件承载节点结果。"""
-    # 立即发送 SSE 注释，避免反向代理一直等待首个正文 Token。
     yield ": connected\n\n"
 
-    # 只校验最近一轮 Agent 的正文；此前的工具调用说明不属于最终回答。
     received: list[str] = []
     separate_next_reply = False
     final_reply: str | None = None
@@ -170,8 +175,6 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
                 token = payload.get("text")
                 if isinstance(token, str) and token:
                     if separate_next_reply:
-                        # 兼容现有前端：用空行分隔说明与正式回答。
-                        # 分隔符不参与最终回答的完整性校验。
                         yield sse("token", {"text": "\n\n"})
                         separate_next_reply = False
 
@@ -182,8 +185,6 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
                 agent_update = payload.get("agent")
 
                 if isinstance(agent_update, dict) and agent_update.get("tool_calls"):
-                    # 这一轮的文字是工具调用前的说明。
-                    # 下一轮重新记录正式回答。
                     separate_next_reply = separate_next_reply or bool(received)
                     received.clear()
 
@@ -196,7 +197,6 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
         if not final_reply or not final_reply.strip():
             raise RuntimeError("工作流没有返回答案")
 
-        # 已收到正式回答的增量 Token 时，不再重复发送全文。
         if received:
             if "".join(received) != final_reply:
                 raise RuntimeError("流式内容与工作流结果不一致")
