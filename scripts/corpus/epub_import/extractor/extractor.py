@@ -1,7 +1,6 @@
-"""Extract annotated ci poems from the scoped author volumes of an EPUB.
+"""从指定作者分册中抽取带结构标记的词作。
 
-The input DOM is interpreted using evidence from the all-volume layout profile;
-non-poem editorial material is intentionally excluded from output.
+DOM 解释规则来自全册版式审计；非作品性的编校材料有意不进入正式输出。
 """
 
 import warnings
@@ -28,7 +27,7 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
 def raw_xhtml(item):
-    """Preserve the original XHTML and decode Chinese without charset guessing."""
+    """保留原始 XHTML，并直接按 UTF-8 解码，不猜测字符集。"""
     raw = getattr(item, "content", None)
     if raw is None:
         raw = item.get_content()
@@ -36,7 +35,7 @@ def raw_xhtml(item):
 
 
 def paragraph_text(element, html_name, category):
-    """Keep <br> boundaries and image placeholders without mutating the DOM."""
+    """保留 <br> 边界与图片占位符，同时不修改原 DOM。"""
     node = BeautifulSoup(str(element), "lxml").find(element.name)
     image_warnings = []
     for img in list(node.find_all("img")):
@@ -58,10 +57,10 @@ def paragraph_text(element, html_name, category):
 
 
 def extract_sections(book, html_name, collection=""):
-    """Convert one XHTML into candidate works with traceable block evidence.
+    """把一个 XHTML 转换为带可追踪块证据的候选作品。
 
-    Unknown post-note paragraphs must not silently become verse. Evidence and
-    unresolved text remain in temporary sections and structured warnings.
+    注释之后的未知段落不能静默归入正文；证据与未解决文本继续保留在
+    临时 section 与结构化 warning 中。
     """
     item = book.get_item_with_href(html_name)
     if item is None:
@@ -88,8 +87,8 @@ def extract_sections(book, html_name, collection=""):
         element = block.element
         preview = block.text
         if block.tag == "h1":
-            # An h1 can switch authors within the same XHTML. Close the
-            # previous poem before reading prose or the next author's works.
+            # 同一个 XHTML 内的 h1 可能切换作者，因此读取散文或下一位作者作品前，
+            # 必须先结束上一首候选作品。
             if current is not None:
                 if current["inserted"] and not current["author_override"]:
                     current["warnings"].append({
@@ -191,7 +190,7 @@ def extract_sections(book, html_name, collection=""):
         if is_chronology(element, preview):
             note_classes = None  # A chronology breaks note adjacency.
             chronology = preview
-            # A dated heading belongs to subsequent works, not the previous poem.
+            # 年代标题属于后续作品，不属于上一首。
             if current is not None:
                 add_evidence(current, block, "chronology_for_next_work", preview)
             continue
@@ -224,25 +223,22 @@ def extract_sections(book, html_name, collection=""):
                 current["author_override"] = preview
                 add_evidence(current, block, "inserted_author", preview)
                 continue
-            # Real Na Lan appended works sometimes put an unstyled paragraph
-            # between the h4 and a right-aligned three-character byline.
-            # Classify that paragraph as a separate preface, not verse:
-            # otherwise has_verse prevents the byline from being recognized.
+            # 纳兰附录中的真实版式有时会在 h4 与右对齐三字署名之间
+            # 放一个无样式段落。这个段落应单独视为小序而不是正文，
+            # 否则 has_verse 会阻止后续署名识别。
             next_block = next((candidate for candidate in source_blocks[block_index + 1:]
                                if candidate.tag != "p" or candidate.text), None)
             if (next_block and next_block.tag == "p"
                     and "kindle-cn-para-right" in next_block.classes
-                    # A 2-6-character Chinese name is credible as a byline;
-                    # a long right-aligned verse paragraph is not.
+                    # 2–6 个汉字的人名可以合理视为署名；
+                    # 较长的右对齐词句不能据此当成署名。
                     and 2 <= len(next_block.text.strip()) <= 6
                     and all("\u3400" <= ch <= "\u9fff" or ch == "·"
                             for ch in next_block.text.strip())
                     and not preview.startswith(("◎", "◆"))):
-                # In the source volume the independent p lies *below* the
-                # centered h4 tune/heading, but above the author's signature.
-                # Editorial placement identifies it as a short prefatory
-                # note (题序), even if it describes whom the poem addresses.
-                # Do not split its sentences or overwrite a title in h4.
+                # 原书中这个独立 p 位于居中的 h4 词牌/题头之下、
+                # 作者署名之上。这个编排位置足以支持把它识别为短小题序，
+                # 即使内容是在说明赠答对象。不要拆分句子，也不要覆盖 h4 里的题目。
                 text, image_warnings = paragraph_text(element, html_name, "prefaces")
                 current["warnings"].extend(image_warnings)
                 if text:
@@ -266,9 +262,8 @@ def extract_sections(book, html_name, collection=""):
         elif not has_verse and is_preface(element, collection):
             category = "prefaces"
         elif note_category is not None:
-            # Continuation is credible only when the direct paragraph markup
-            # matches the immediately previous note. Do not infer across a
-            # different class/style, an illustration, or a document boundary.
+            # 只有当前段落的直接标记与紧邻上一条注评一致时，才可信地视为续段。
+            # 遇到不同 class/style、插图或文档边界时都不能跨过去推断。
             matching_markup = (
                 block.classes == note_classes
                 and element.get("style", "") == note_style
@@ -308,7 +303,7 @@ def extract_sections(book, html_name, collection=""):
         elif has_verse and classes.intersection({
             "kindle-cn-ref", "kindle-cn-ref1", "kindle-cn-ref2"
         }):
-            # Reference-styled material after verse is not automatically verse.
+            # 正文之后使用 reference 样式的材料不能自动归入正文。
             text, image_warnings = paragraph_text(element, html_name, "unknown")
             current["warnings"].extend(image_warnings)
             current["unknown"].append({**block.location(), "text": text})
@@ -341,14 +336,12 @@ def extract_sections(book, html_name, collection=""):
         elif category == "text":
             note_category = None
         if category == "text":
-            # Detect an explicit *editorial* lacuna marker even when its span
-            # looks identical in a reader. Keep the exact paragraph intact:
-            # a future edition-aware schema may render the missing segment.
-            # Offsets use the same flattened paragraph_text() that we export.
+            # 即使阅读器里看起来与普通文本一样，也要识别显式的编校缺文标记。
+            # 当前完整保留原段落；未来带版本意识的 schema 可能单独渲染缺文。
+            # offset 与导出时使用同一份 paragraph_text() 扁平文本。
             matches = list(INLINE_EDITORIAL_GAP.finditer(text))
-            # With multiple identical markers, source-to-flattened offsets
-            # cannot be assigned to individual spans reliably. Do not invent
-            # a containment judgment in that case.
+            # 同一段存在多个相同标记时，无法可靠把来源 span 对应到扁平文本 offset；
+            # 这种情况下不要臆造包含关系。
             styled_containment = (
                 any(
                     is_inline_styled_span(span)
@@ -366,11 +359,9 @@ def extract_sections(book, html_name, collection=""):
                     "inside_styled_span": styled_containment,
                     "status": "retained_in_body_pending_schema",
                 })
-            # Two source positions have been manually examined: an author
-            # self-note (Xin) and a possible author note (Huang). Both are
-            # separately tracked WITHOUT stripping text from poem paragraphs.
-            # A future structured inline-note schema must decide how the
-            # normalized reading text excludes such notes without loss.
+            # 两处来源位置已经人工检查：辛弃疾的一处作者自注，以及黄庭坚的一处候选自注。
+            # 两者目前都单独追踪，但绝不从正文段落里直接删除。
+            # 将来如果引入结构化行内注记 schema，再决定如何无损地从阅读正文中分离。
             note_review = INLINE_AUTHOR_NOTE_REVIEWS.get(
                 (collection, html_name, block.ordinal)
             )
@@ -398,9 +389,8 @@ def extract_sections(book, html_name, collection=""):
                             "status": "retained_in_body_pending_schema",
                         })
                         note_recognized = True
-            # A lone span wrapping the *entire* verse paragraph is a normal
-            # typography container in several volumes, not an inline gloss.
-            # Mixed plain/styled text and multiple styled runs remain reviewable.
+            # 某些分册会用单个 span 包住整段正文，这只是正常排版容器，不是行内注释。
+            # 只有普通文本与特殊样式混排，或存在多个样式 run 时，才继续进入复核。
             significant_children = [child for child in element.children
                                     if getattr(child, "name", None)
                                     or str(child).strip()]
@@ -410,9 +400,8 @@ def extract_sections(book, html_name, collection=""):
             )
             if not whole_paragraph_span:
                 for span in element.find_all("span"):
-                    # Do not flag text split by EPUB pagination as a possible
-                    # annotation. Nor duplicate a narrow, source-reviewed
-                    # font1 note with the generic style warning.
+                    # EPUB 分页造成的正文拆分不能误报为注释；
+                    # 已经按来源单独核过的 font1 注记也不要再生成通用样式 warning。
                     if is_pagination_kaiti_continuation(span):
                         continue
                     if note_recognized and "font1" in span.get("class", []):
@@ -457,7 +446,7 @@ def convert_to_poem(
             "type": "doubtful_attribution", "html": section["html"],
             "block": section.get("ordinal")
         })
-    # Never attribute an unsigned inserted work to the volume's main author.
+    # 没有署名的插入作品绝不能默认归给该分册主作者。
     safe_author = section.get("author_override") or author_name
     if section.get("inserted") and not section.get("author_override"):
         safe_author = ""
@@ -487,8 +476,8 @@ def find_toc_group(nodes, title):
     return None
 
 
-# The three multi-author volumes use child TOC sections for authorship.
-# Never infer the author from a verse, tune name, or a previous EPUB file.
+# 三个多作者分册使用 TOC 子节点确定作者。
+# 绝不能从正文、词牌或前一个 EPUB 文件推断作者。
 VOLUME_AUTHORS = {
     "温庭筠词集·韦庄词集": {
         "温庭筠词集": "温庭筠", "韦庄词集": "韦庄"
@@ -506,7 +495,7 @@ SKIP_TOC = {"书名页", "目录", "总评", "出版说明", "凡例", "附录"}
 
 
 def toc_file_contexts(nodes, group_name, default_author):
-    """Walk TOC branches, preserving author and bibliographical section."""
+    """遍历 TOC 分支，同时保留作者与书目分区信息。"""
     authors = VOLUME_AUTHORS.get(group_name, {})
 
     def visit(entries, author, zone):
@@ -531,7 +520,7 @@ def toc_file_contexts(nodes, group_name, default_author):
 
 
 def toc_documents(nodes):
-    """Compatibility: flatten a TOC and omit editorial branches."""
+    """兼容旧调用：拍平 TOC，并省略编校分支。"""
     for name, _, _ in toc_file_contexts(nodes, "", ""):
         yield name
 
@@ -552,8 +541,8 @@ def extract_collection(book, toc, group_name, author_slug, author_name):
             file_context.setdefault(file_name, (author, zone))
     files = list(file_context)
     poems = []
-    # The previous tune belongs to a specific author AND editorial area.
-    # This prevents an inserted author's tune leaking into the main works.
+    # 前一个词牌同时属于特定作者与特定编校区域，
+    # 这样可防止插入作者的词牌泄漏到主作者作品。
     previous_tunes = {}
     for html_name in files:
         author, zone = file_context[html_name]
