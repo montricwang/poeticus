@@ -100,7 +100,7 @@ def _stream_agent_decision(
     try:
         stream = client.chat.completions.create(
             model=LLM_MODEL,
-            max_tokens=MAX_LLM_OUTPUT_TOKENS,
+            max_tokens=LLM_MAX_OUTPUT_TOKENS,
             messages=messages,
             tools=TOOLS,
             tool_choice=tool_choice,
