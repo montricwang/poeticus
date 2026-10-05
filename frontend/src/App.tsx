@@ -44,6 +44,7 @@ function App() {
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false);
 
   const catalogToggleRef = useRef<HTMLButtonElement>(null);
+  const appShellRef = useRef<HTMLDivElement>(null);
   const switchControllerRef = useRef<AbortController | null>(null);
   const [switchTarget, setSwitchTarget] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState("");
@@ -105,6 +106,46 @@ function App() {
 
   useEffect(() => {
     return () => switchControllerRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    const shell = appShellRef.current;
+    if (!shell) return;
+
+    const viewport = window.visualViewport;
+    let frame = 0;
+    let lastHeight = 0;
+
+    function applyViewportHeight() {
+      frame = 0;
+
+      const height = Math.round(
+        window.visualViewport?.height ?? window.innerHeight,
+      );
+      if (height === lastHeight) return;
+
+      lastHeight = height;
+      shell.style.setProperty("--mobile-workspace-height", `${height}px`);
+    }
+
+    function scheduleViewportHeight() {
+      if (frame) return;
+      frame = window.requestAnimationFrame(applyViewportHeight);
+    }
+
+    applyViewportHeight();
+    viewport?.addEventListener("resize", scheduleViewportHeight);
+    viewport?.addEventListener("scroll", scheduleViewportHeight);
+    window.addEventListener("resize", scheduleViewportHeight);
+    window.addEventListener("orientationchange", scheduleViewportHeight);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      viewport?.removeEventListener("resize", scheduleViewportHeight);
+      viewport?.removeEventListener("scroll", scheduleViewportHeight);
+      window.removeEventListener("resize", scheduleViewportHeight);
+      window.removeEventListener("orientationchange", scheduleViewportHeight);
+    };
   }, []);
 
   useEffect(() => {
@@ -302,7 +343,10 @@ function App() {
   const showReaderHeader = wideDiscussionLayout || !mobileDiscussionOpen;
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground lg:block lg:h-auto lg:min-h-dvh lg:overflow-visible">
+    <div
+      ref={appShellRef}
+      className="mobile-app-shell flex flex-col overflow-hidden bg-background text-foreground lg:block lg:overflow-visible"
+    >
       <header className="shrink-0 border-b border-border/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           {showReaderHeader ? (
