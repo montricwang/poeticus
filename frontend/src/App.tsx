@@ -111,6 +111,7 @@ function App() {
   useEffect(() => {
     const shell = appShellRef.current;
     if (!shell) return;
+    const appShell = shell;
 
     const viewport = window.visualViewport;
     let frame = 0;
@@ -125,7 +126,7 @@ function App() {
       if (height === lastHeight) return;
 
       lastHeight = height;
-      shell.style.setProperty("--mobile-workspace-height", `${height}px`);
+      appShell.style.setProperty("--mobile-workspace-height", `${height}px`);
     }
 
     function scheduleViewportHeight() {
