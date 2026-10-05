@@ -157,7 +157,7 @@ export function ChatPanel({
       className={cn(
         "flex min-h-0 min-w-0 flex-col bg-transparent",
         fillAvailableHeight
-          ? "h-full flex-1"
+          ? "flex-1"
           : turns.length > 0
             ? "h-auto max-h-[min(42rem,calc(100dvh-10rem))]"
             : "h-auto",
@@ -165,7 +165,12 @@ export function ChatPanel({
       )}
     >
 
-      {/* 没有真实对话时不预留展示区；第一轮消息出现后才建立滚动区。 */}
+      {/* 全屏移动工作区没有消息时，用弹性空白把输入区压到底部；
+          第一轮消息出现后，这一块自然替换成唯一的聊天滚动区。 */}
+      {fillAvailableHeight && turns.length === 0 && (
+        <div className="min-h-0 flex-1" aria-hidden="true" />
+      )}
+
       {turns.length > 0 && (
         <div className="relative flex min-h-0 flex-1">
           <div
