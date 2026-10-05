@@ -1,4 +1,4 @@
-import { useLayoutEffect, type RefObject } from "react";
+import { useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 
 import { AnalysisTextEntrance } from "@/components/analysis-text-entrance";
@@ -21,11 +21,92 @@ type AnalysisPanelProps = {
   limitNotice: boolean;
   onAnalyze: () => void;
   switching: boolean;
-  animationId: string;
-  seenAnimationsRef: RefObject<Set<string>>;
+  animateResult: boolean;
+  onAnimationStarted: () => void;
   fillAvailableHeight?: boolean;
   className?: string;
 };
+
+type AnalysisResultProps = {
+  analysis: PoemAnalysis;
+  animateResult: boolean;
+  onAnimationStarted: () => void;
+};
+
+function AnalysisResult({
+  analysis,
+  animateResult,
+  onAnimationStarted,
+}: AnalysisResultProps) {
+  // 结果节点只在赏析真正返回后挂载；在这里把本次是否需要动画固定下来，
+  // 这样父层登记“已经播过”后，不会中途把正在播放的逐字动画取消。
+  const [animate] = useState(animateResult);
+
+  useEffect(() => {
+    if (animate) onAnimationStarted();
+  }, [animate, onAnimationStarted]);
+
+  return (
+    <div
+      className={cn(
+        "space-y-10",
+        animate && "poeticus-analysis-result-enter",
+      )}
+    >
+      <section>
+        <h3 className="mb-4 text-base font-semibold">现代汉语译文</h3>
+        <AnalysisTextEntrance
+          as="p"
+          text={analysis.translation}
+          animate={animate}
+          className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
+        />
+      </section>
+
+      <div className="h-px w-12 bg-border/80" aria-hidden="true" />
+
+      <section>
+        <h3 className="mb-5 text-base font-semibold">词语注释</h3>
+        {analysis.glosses.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            本次赏析没有需要单独解释的词语。
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {analysis.glosses.map((gloss, index) => (
+              <div key={index}>
+                <AnalysisTextEntrance
+                  as="h4"
+                  text={gloss.term}
+                  animate={animate}
+                  className="mb-1 font-serif text-sm font-semibold"
+                />
+                <AnalysisTextEntrance
+                  as="p"
+                  text={gloss.explanation}
+                  animate={animate}
+                  className="text-sm leading-7 text-muted-foreground"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <div className="h-px w-12 bg-border/80" aria-hidden="true" />
+
+      <section>
+        <h3 className="mb-4 text-base font-semibold">文学赏析</h3>
+        <AnalysisTextEntrance
+          as="p"
+          text={analysis.commentary}
+          animate={animate}
+          className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
+        />
+      </section>
+    </div>
+  );
+}
 
 export function AnalysisPanel({
   analysis,
@@ -34,19 +115,11 @@ export function AnalysisPanel({
   limitNotice,
   onAnalyze,
   switching,
-  animationId,
-  seenAnimationsRef,
+  animateResult,
+  onAnimationStarted,
   fillAvailableHeight = false,
   className,
 }: AnalysisPanelProps) {
-  const animateResult =
-    analysis !== null && !seenAnimationsRef.current.has(animationId);
-
-  useLayoutEffect(() => {
-    if (!analysis || !animateResult) return;
-    seenAnimationsRef.current.add(animationId);
-  }, [analysis, animateResult, animationId, seenAnimationsRef]);
-
   return (
     <section
       aria-label="整首赏析"
@@ -111,64 +184,11 @@ export function AnalysisPanel({
             )}
           </div>
         ) : analysis ? (
-          <div
-            className={cn(
-              "space-y-10",
-              animateResult && "poeticus-analysis-result-enter",
-            )}
-          >
-            <section>
-              <h3 className="mb-4 text-base font-semibold">现代汉语译文</h3>
-              <AnalysisTextEntrance
-                as="p"
-                text={analysis.translation}
-                animate={animateResult}
-                className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
-              />
-            </section>
-
-            <div className="h-px w-12 bg-border/80" aria-hidden="true" />
-
-            <section>
-              <h3 className="mb-5 text-base font-semibold">词语注释</h3>
-              {analysis.glosses.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  本次赏析没有需要单独解释的词语。
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {analysis.glosses.map((gloss, index) => (
-                    <div key={index}>
-                      <AnalysisTextEntrance
-                        as="h4"
-                        text={gloss.term}
-                        animate={animateResult}
-                        className="mb-1 font-serif text-sm font-semibold"
-                      />
-                      <AnalysisTextEntrance
-                        as="p"
-                        text={gloss.explanation}
-                        animate={animateResult}
-                        className="text-sm leading-7 text-muted-foreground"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <div className="h-px w-12 bg-border/80" aria-hidden="true" />
-
-            <section>
-              <h3 className="mb-4 text-base font-semibold">文学赏析</h3>
-              <AnalysisTextEntrance
-                as="p"
-                text={analysis.commentary}
-                animate={animateResult}
-                className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
-              />
-            </section>
-          </div>
+          <AnalysisResult
+            analysis={analysis}
+            animateResult={animateResult}
+            onAnimationStarted={onAnimationStarted}
+          />
         ) : (
           <div
             className={cn(
