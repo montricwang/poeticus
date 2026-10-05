@@ -7,7 +7,7 @@ import { PoemReader } from "@/components/poem-reader";
 import { PoemCatalog } from "@/components/poem-catalog";
 import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
-import { MobileDiscussionSheet } from "@/components/mobile-discussion-sheet";
+import { MobileDiscussionDock } from "@/components/mobile-discussion-dock";
 import { ViewToolbar } from "@/components/view-toolbar";
 import type { ActiveView } from "@/components/view-toolbar";
 
@@ -369,15 +369,22 @@ function App() {
         </div>
       </main>
 
+      {poemReady && !wideDiscussionLayout && mobileDiscussionOpen && (
+        <div
+          className="h-[clamp(16rem,42dvh,28rem)]"
+          aria-hidden="true"
+        />
+      )}
+
       {poemReady && !wideDiscussionLayout && (
-        <MobileDiscussionSheet
+        <MobileDiscussionDock
           open={mobileDiscussionOpen}
           onOpenChange={handleMobileDiscussionOpenChange}
           hasUnreadReply={hasUnreadReply}
           hasSelection={!!selected}
         >
           {renderDiscussionContent(true)}
-        </MobileDiscussionSheet>
+        </MobileDiscussionDock>
       )}
     </div>
   );
