@@ -1,5 +1,6 @@
 import { LoaderCircle } from "lucide-react";
-import { Card } from "@/components/ui/card";
+
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type PoemAnalysis = {
@@ -16,6 +17,8 @@ type AnalysisPanelProps = {
   analyzing: boolean;
   error: string;
   limitNotice: boolean;
+  onAnalyze: () => void;
+  switching: boolean;
   fillAvailableHeight?: boolean;
   className?: string;
 };
@@ -25,37 +28,66 @@ export function AnalysisPanel({
   analyzing,
   error,
   limitNotice,
+  onAnalyze,
+  switching,
   fillAvailableHeight = false,
   className,
 }: AnalysisPanelProps) {
   return (
-    <Card
+    <section
+      aria-label="整首赏析"
       className={cn(
-        "flex min-h-0 flex-col gap-0 overflow-hidden border-border/60 bg-card py-0 shadow-sm",
-        fillAvailableHeight ? "flex-1" : "h-165",
+        "flex min-h-0 min-w-0 flex-col bg-transparent",
+        fillAvailableHeight
+          ? "flex-1"
+          : "max-h-[min(42rem,calc(100dvh-10rem))]",
         className,
       )}
     >
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-7">
+      <div
+        className={cn(
+          "min-h-0",
+          fillAvailableHeight
+            ? "flex-1 overflow-y-auto py-4 pr-2"
+            : "overflow-y-auto py-4 pr-2",
+        )}
+      >
         {analyzing ? (
           <div
             role="status"
-            className="flex h-full flex-col items-center justify-center gap-4 text-center"
+            className="flex min-h-72 flex-col items-center justify-center gap-4 text-center"
           >
             <LoaderCircle className="size-6 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">正在生成译文、注释和文学赏析……</p>
+            <p className="text-sm text-muted-foreground">
+              正在生成译文、注释和文学赏析……
+            </p>
           </div>
         ) : error ? (
           <div
             role={limitNotice ? "status" : "alert"}
-            className={`rounded-xl p-4 ${limitNotice ? "border border-border/60 bg-muted/30" : "bg-destructive/10"}`}
+            className={cn(
+              "mx-auto max-w-md rounded-xl p-4",
+              limitNotice
+                ? "bg-muted/30 text-foreground"
+                : "bg-destructive/10 text-destructive",
+            )}
           >
-            <h3 className={`font-medium ${limitNotice ? "text-foreground" : "text-destructive"}`}>
+            <h3 className="font-medium">
               {limitNotice ? "稍等一会儿" : "赏析失败"}
             </h3>
-            <p className={`mt-2 text-sm leading-7 ${limitNotice ? "text-muted-foreground" : "text-destructive"}`}>
-              {error}
-            </p>
+            <p className="mt-2 text-sm leading-7">{error}</p>
+            {!limitNotice && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={onAnalyze}
+                disabled={switching}
+              >
+                重新生成
+              </Button>
+            )}
           </div>
         ) : analysis ? (
           <div className="space-y-10">
@@ -66,7 +98,7 @@ export function AnalysisPanel({
               </p>
             </section>
 
-            <div className="border-t border-border/60" />
+            <div className="h-px w-12 bg-border/80" aria-hidden="true" />
 
             <section>
               <h3 className="mb-5 text-base font-semibold">词语注释</h3>
@@ -77,10 +109,7 @@ export function AnalysisPanel({
               ) : (
                 <div className="space-y-4">
                   {analysis.glosses.map((gloss, index) => (
-                    <div
-                      key={index}
-                      className="border-b border-border/50 pb-4 last:border-0 last:pb-0"
-                    >
+                    <div key={index}>
                       <h4 className="mb-1 font-serif text-sm font-semibold">
                         {gloss.term}
                       </h4>
@@ -93,7 +122,7 @@ export function AnalysisPanel({
               )}
             </section>
 
-            <div className="border-t border-border/60" />
+            <div className="h-px w-12 bg-border/80" aria-hidden="true" />
 
             <section>
               <h3 className="mb-4 text-base font-semibold">文学赏析</h3>
@@ -103,13 +132,22 @@ export function AnalysisPanel({
             </section>
           </div>
         ) : (
-          <div className="flex h-full items-center justify-center text-center">
-            <p className="max-w-xs text-sm leading-7 text-muted-foreground">
-              点击右上方「生成整首赏析」，查看译文、词语注释与文学赏析。
-            </p>
+          <div className="flex min-h-72 items-center justify-center text-center">
+            <div className="space-y-4">
+              <p className="text-sm leading-7 text-muted-foreground">
+                生成译文、词语注释与文学赏析。
+              </p>
+              <Button
+                type="button"
+                onClick={onAnalyze}
+                disabled={switching}
+              >
+                生成整首赏析
+              </Button>
+            </div>
           </div>
         )}
       </div>
-    </Card>
+    </section>
   );
 }
