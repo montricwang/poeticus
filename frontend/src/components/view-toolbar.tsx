@@ -19,7 +19,7 @@ export function ViewToolbar({
 }: ViewToolbarProps) {
   return (
     <div
-      className="mb-3 flex items-center gap-2"
+      className="mb-3 flex shrink-0 items-center gap-2"
       role="group"
       aria-label="右侧视图"
     >
