@@ -30,30 +30,26 @@ export function ChatComposer({
         <div className="mx-2 mb-3 h-px bg-border/60" aria-hidden="true" />
       )}
 
-      {/* 引用很长时在卡片内部滚动，不挤占整个对话区域。 */}
+      {/* 划词引用只保留旁引竖线与关闭按钮，不再占一整行显示“引用原文”。 */}
       {selected && (
-        <div className="mb-3 rounded-xl border border-violet-400/20 bg-violet-500/5 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-medium text-violet-600 dark:text-violet-300">
-              引用原文
-            </span>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7 rounded-full"
-              onClick={onClearQuote}
-              disabled={loading}
-              aria-label="移除引用"
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-
-          <p className="max-h-28 overflow-y-auto whitespace-pre-wrap font-serif text-sm leading-7 text-foreground/85">
+        <div className="mb-2 flex min-w-0 items-start gap-2 border-l-2 border-violet-400/60 pl-3">
+          <p
+            className="max-h-20 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap font-serif text-sm leading-6 text-foreground/80"
+            aria-label="引用原文"
+          >
             {selected.text}
           </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="mt-0.5 shrink-0 rounded-sm text-muted-foreground"
+            onClick={onClearQuote}
+            disabled={loading}
+            aria-label="移除引用"
+          >
+            <X className="size-3.5" />
+          </Button>
         </div>
       )}
 
