@@ -183,11 +183,11 @@ function App() {
     );
     if (!tabletQuery.matches) return;
 
-    const pane = readerPaneRef.current;
-    if (!pane) return;
-
     function maybeOpenDiscussion() {
       if (mobileDiscussionTouchedRef.current) return;
+
+      const pane = readerPaneRef.current;
+      if (!pane) return;
 
       const viewportHeight =
         window.visualViewport?.height ?? window.innerHeight;
@@ -202,6 +202,9 @@ function App() {
         setMobileDiscussionOpen(true);
       }
     }
+
+    const pane = readerPaneRef.current;
+    if (!pane) return;
 
     const frame = window.requestAnimationFrame(maybeOpenDiscussion);
     const observer = new ResizeObserver(maybeOpenDiscussion);
