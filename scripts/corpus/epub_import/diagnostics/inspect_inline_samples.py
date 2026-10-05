@@ -1,7 +1,7 @@
 """挑选真实带样式的行内词句 span，供本地视觉与语义复核。
 
-The plan is structure-only. The optional private packet contains published
-text/XHTML; keep it in gitignored data/reports/ and never commit it.
+公开计划只包含结构信息。可选的私人材料包含已出版正文与 XHTML，
+只能保存在被 Git 忽略的 data/reports/ 中，绝不能提交。
 """
 import argparse
 from collections import defaultdict
@@ -37,7 +37,7 @@ def select_inline_samples(audit, *, families=("kaiti", "font1"),
                           per_style=3, remaining=False):
     """先保证每个分册一个样本，再在剩余位置中分散抽样。"""
     if per_style < 1 or per_style > 15:
-        raise ValueError("per_style must be between 1 and 15")
+        raise ValueError("per_style 必须在 1 到 15 之间")
     groups = defaultdict(list)
     for site in audit["sites"]:
         if not site["warned"]:
