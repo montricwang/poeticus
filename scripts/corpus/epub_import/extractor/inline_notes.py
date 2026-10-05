@@ -1,4 +1,4 @@
-"""Retain inline font1 spans as *candidate* notes, never discard verse.
+"""把 font1 行内 span 保留为候选注记，绝不直接丢弃词正文。
 
 A CSS class identifies a visual run, not its historical authorship. Store the
 exact source extent and attribution evidence separately from the original
@@ -11,7 +11,7 @@ _QUOTE_OPEN = ("“", "「", "『", "‘", '"')
 
 
 def inspect_inline_font1(element, text, block, collection, tune, paragraph_index):
-    """Return (records, warnings) for spans inside a classified verse block.
+    """返回已分类正文块内 span 的记录与 warning。
 
     A span may cover only the lead-in to a quotation or omit its punctuation.
     Offsets refer to paragraph_text's flattened output, never to DOM offsets.
@@ -47,7 +47,7 @@ def inspect_inline_font1(element, text, block, collection, tune, paragraph_index
         attribution = "unverified"
         if review == "user_identified_author_note" and tune == "西江月":
             attribution = "confirmed_author_in_reviewed_source"
-        # Huang's similar markup is intentionally NOT a claim of authorship.
+        # 黄庭坚分册中的相似标记只作为候选证据，不能据此声称是作者自注。
         record = {
             "kind": "inline_note_candidate",
             "origin": attribution,
