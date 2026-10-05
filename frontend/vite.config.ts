@@ -14,15 +14,10 @@ export default defineConfig({
 
   server: {
     proxy: {
-      // 新读取 API 已带 /api 前缀；旧聊天 / 赏析 API 仍需去掉它。
-      "/api/poems": {
-        target: "http://127.0.0.1:8000",
-        changeOrigin: true,
-      },
+      // 本地开发与生产环境统一使用 /api/*，不再维护旧的无前缀接口。
       "/api": {
         target: "http://127.0.0.1:8000",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   },
