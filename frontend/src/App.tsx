@@ -12,12 +12,12 @@ import type { ActiveView } from "@/components/view-toolbar";
 
 import {
   fetchPoem,
-  poemContext,
   poemText,
 } from "@/data/poem-library";
 import { usePoemCatalog } from "@/hooks/use-poem-catalog";
 import { usePoemDetail } from "@/hooks/use-poem-detail";
 import { useConversationPersistence } from "@/hooks/use-conversation-persistence";
+import { usePoemAnalysis } from "@/hooks/use-poem-analysis";
 import { selectionForPython, validSelectionForPoem } from "@/lib/selection-offset";
 import { readChatStream, UsageLimitNotice } from "@/lib/chat-stream";
 import { buildHistory } from "@/lib/chat-history";
@@ -32,7 +32,6 @@ import type {
   ChatTurn,
   ChatViewport,
 } from "@/components/chat-types";
-import type { PoemAnalysis } from "@/components/analysis-panel";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
@@ -101,10 +100,14 @@ function App() {
   });
   const [hasUnreadReply, setHasUnreadReply] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>("chat");
-  const [analysis, setAnalysis] = useState<PoemAnalysis | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analysisError, setAnalysisError] = useState("");
-  const [analysisLimitNotice, setAnalysisLimitNotice] = useState(false);
+  const {
+    analysis,
+    analyzing,
+    analysisError,
+    analysisLimitNotice,
+    analyzePoem,
+    resetAnalysis,
+  } = usePoemAnalysis({ poemId, activePoem, switchControllerRef });
 
   const { persistCurrentConversation } = useConversationPersistence({
     poemId,
@@ -166,9 +169,7 @@ function App() {
         setTurns(nextTurns);
         nextTurnId.current = maxTurnId(nextTurns);
 
-        setAnalysis(null);
-        setAnalysisError("");
-        setAnalysisLimitNotice(false);
+        resetAnalysis();
         setHasUnreadReply(false);
         setActiveView("chat");
         seenAnimationsRef.current.clear();
@@ -385,42 +386,10 @@ function App() {
     void requestReply(editedTurn);
   }
 
-  async function handleAnalyze() {
+  function handleAnalyze() {
     if (!activePoem || activePoem.id !== poemId || switchControllerRef.current) return;
     setActiveView("analysis");
-    setAnalyzing(true);
-    setAnalysisError("");
-    setAnalysisLimitNotice(false);
-
-    try {
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          poem,
-          context: poemContext(activePoem),
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => null);
-        const message =
-          typeof error?.detail === "string"
-            ? error.detail
-            : `请求失败：HTTP ${response.status}`;
-        throw response.status === 429
-          ? new UsageLimitNotice(message)
-          : new Error(message);
-      }
-
-      const result: PoemAnalysis = await response.json();
-      setAnalysis(result);
-    } catch (error) {
-      setAnalysisError(error instanceof Error ? error.message : "赏析请求失败");
-      setAnalysisLimitNotice(error instanceof UsageLimitNotice);
-    } finally {
-      setAnalyzing(false);
-    }
+    void analyzePoem();
   }
 
   return (
