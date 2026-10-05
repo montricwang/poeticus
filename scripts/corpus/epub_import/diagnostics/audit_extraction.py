@@ -1,4 +1,4 @@
-"""Audit all 15 author-collection layouts without normalizing/publishing texts.
+"""审计 15 个作者分册的版式，不执行 normalize，也不发布正文。
 
 This script writes *private local reports* in data/reports/. It does not
 resolve glyphs, write curated Poem data, or make quality-accuracy claims.
@@ -17,7 +17,7 @@ from ..extractor.extractor import (
 )
 
 
-# High-impact errors should not be hidden behind hundreds of typography warnings.
+# 高影响错误不能被大量普通排版 warning 淹没。
 PRIORITY_WARNINGS = {
     "missing_inserted_author", "ambiguous_toc_attribution", "empty_body",
     "unresolved_tune_repeat", "unclassified_after_notes",
@@ -30,7 +30,7 @@ from ..config import COLLECTIONS
 
 
 def audit_collection(book, toc, name, author, slug):
-    """Capture summary statistics and all warning sites in source order."""
+    """按来源顺序收集摘要统计与全部 warning 位置。"""
     poems, files = extract_collection(book, toc, name, slug, author)
     nodes = find_toc_group(toc, name)
     contexts = {}
@@ -75,7 +75,7 @@ def audit_collection(book, toc, name, author, slug):
             })
         for issue in poem.warnings:
             warnings[issue["type"]] += 1
-        # Preserve all warning types, without copying every poem's full text.
+        # 保留所有 warning 类型，但不复制每首词的完整正文。
         if poem.warnings:
             review.append({
                 "id": poem.id, "author": poem.author,
@@ -89,7 +89,7 @@ def audit_collection(book, toc, name, author, slug):
                 "unknown_blocks": section["unknown"],
                 "preface_lengths": [len(text) for text in poem.content.prefaces],
                 "unknown_shapes": unknown_shapes,
-                # Structure only; no text from commercially published notes.
+                # 这里只记录结构，不复制商业出版注释正文。
                 "unsigned_work_structure": [
                     {"role": b["role"], "tag": b["tag"],
                      "classes": b["classes"], "text_length": len(b["text"])}
@@ -196,8 +196,8 @@ def render_md(report):
             if len(dangling) > 10:
                 lines.append(f'- 其余 {len(dangling)-10} 处见本地 JSON')
             lines.append("")
-        # Put records likely to affect meaning or authorship first. Keep
-        # original source order among records of equal severity.
+        # 优先展示可能影响文义或作者归属的记录；同一严重程度内
+        # 继续保持原始来源顺序。
         ordered_reviews = sorted(
             item["review_items"],
             key=lambda entry: not bool(PRIORITY_WARNINGS & set(entry["warning_types"])),
