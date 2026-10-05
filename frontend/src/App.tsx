@@ -85,7 +85,7 @@ function App() {
   });
 
   const [activeView, setActiveView] = useState<ActiveView>("chat");
-  const analysisSeenAnimationsRef = useRef(new Set<string>());
+  const [animatedAnalysisId, setAnimatedAnalysisId] = useState<string | null>(null);
   const {
     analysis,
     analyzing,
@@ -146,7 +146,7 @@ function App() {
         setPoemId(work.id);
         setDetailError("");
         restoreForPoem(work);
-        analysisSeenAnimationsRef.current.delete(work.id);
+        setAnimatedAnalysisId(null);
         resetAnalysis();
         setActiveView("chat");
         setMobileDiscussionOpen(false);
@@ -236,8 +236,8 @@ function App() {
             limitNotice={analysisLimitNotice}
             onAnalyze={handleAnalyze}
             switching={!!switchTarget}
-            animationId={activePoem.id}
-            seenAnimationsRef={analysisSeenAnimationsRef}
+            animateResult={animatedAnalysisId !== activePoem.id}
+            onAnimationStarted={() => setAnimatedAnalysisId(activePoem.id)}
           />
         )}
       </>
