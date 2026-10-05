@@ -15,10 +15,9 @@ from .pipeline.normalize import normalize_poems, resolve_mapping, get_output_for
 
 EPUB_PATH = Path("data/raw/历代名家词集精华录.epub")
 
-# These warning kinds contain source paragraphs that are retained by the
-# extractor's private section/audit evidence, but deliberately have no slot in
-# the public-facing PoemContent schema. Writing normalized JSON would silently
-# omit them. Review and classify them before running the import command.
+# 这些 warning 类型对应的来源段落仍保存在抽取器的私人 section/审计证据中，
+# 但 PoemContent 正式结构没有承载位置。若直接写 normalized JSON 会静默丢失，
+# 因此必须先人工复核并完成分类。
 NON_EXPORTABLE_WARNING_TYPES = frozenset({
     "unclassified_after_notes",
     "unclassified_before_inserted_author",
@@ -27,7 +26,7 @@ NON_EXPORTABLE_WARNING_TYPES = frozenset({
 
 
 def ensure_no_unclassified_content(poems):
-    """Fail closed before writing a partial extracted/normalized dataset."""
+    """在写出不完整的抽取/normalize 数据前主动失败。"""
     affected = []
     for poem in poems:
         types = sorted({
@@ -236,7 +235,7 @@ def main():
 
     map_path = args.glyph_map or Path("data/raw/glyph_maps") / f"{stem}.json"
 
-    # 1. EPUB extraction
+    # 1. EPUB 抽取
     book = epub.read_epub(str(args.epub))
 
     poems, files = extract_collection(
@@ -250,7 +249,7 @@ def main():
     if not poems:
         raise RuntimeError("没有抽取到任何作品")
 
-    # Intermediate sections can retain text that PoemContent cannot export.
+    # 中间 section 可能保留 PoemContent 无法正式导出的文本。
     ensure_no_unclassified_content(poems)
 
     extracted.write_text(
@@ -284,7 +283,7 @@ def main():
             epub_path=args.epub,
         )
 
-    # 3. normalization
+    # 3. normalize
     glyph_map = load_map(map_path)
 
     normalize_poems(
@@ -293,7 +292,7 @@ def main():
         glyph_map=glyph_map if map_path.exists() else None,
     )
 
-    # 4. summary
+    # 4. 汇总
     print_glyph_summary(
         poems_data,
         glyph_map,
