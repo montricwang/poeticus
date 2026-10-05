@@ -12,11 +12,11 @@ import type { ActiveView } from "@/components/view-toolbar";
 
 import {
   fetchPoem,
-  fetchPoemPage,
   poemContext,
   poemText,
 } from "@/data/poem-library";
-import type { Poem, PoemFilters, PoemPage } from "@/data/poem-library";
+import type { Poem } from "@/data/poem-library";
+import { usePoemCatalog } from "@/hooks/use-poem-catalog";
 import { selectionForPython } from "@/lib/selection-offset";
 import { readChatStream, UsageLimitNotice } from "@/lib/chat-stream";
 import { buildHistory } from "@/lib/chat-history";
@@ -35,7 +35,6 @@ import type {
 } from "@/components/chat-types";
 import type { PoemAnalysis } from "@/components/analysis-panel";
 
-const PAGE_SIZE = 20;
 const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 function validSelectionForPoem(
@@ -81,12 +80,15 @@ function App() {
   const [activePoem, setActivePoem] = useState<Poem | null>(null);
   const poem = activePoem ? poemText(activePoem) : "";
 
-  const [catalog, setCatalog] = useState<PoemPage | null>(null);
-  const [filters, setFilters] = useState<PoemFilters>({
-    limit: PAGE_SIZE,
-    offset: 0,
-  });
-  const [searchInput, setSearchInput] = useState("");
+  const {
+    catalog,
+    filters,
+    searchInput,
+    setSearchInput,
+    catalogLoading,
+    catalogError,
+    updateCatalogFilters,
+  } = usePoemCatalog(setPoemId);
   const [catalogOpen, setCatalogOpen] = useState(
     () => window.matchMedia("(min-width: 1024px)").matches,
   );
@@ -94,8 +96,6 @@ function App() {
   const switchControllerRef = useRef<AbortController | null>(null);
   const [switchTarget, setSwitchTarget] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState("");
-  const [catalogLoading, setCatalogLoading] = useState(true);
-  const [catalogError, setCatalogError] = useState("");
   const [detailError, setDetailError] = useState("");
   const detailLoading = !!poemId && !activePoem && !detailError;
   const [detailAttempt, setDetailAttempt] = useState(0);
@@ -128,25 +128,6 @@ function App() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
   const [analysisLimitNotice, setAnalysisLimitNotice] = useState(false);
-
-  // 目录轻量分页，不携带完整正文。
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetchPoemPage(filters, controller.signal)
-      .then((page) => {
-        if (controller.signal.aborted) return;
-        setCatalog(page);
-        setPoemId((current) => current ?? page.items[0]?.id ?? null);
-      })
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        setCatalogError(error instanceof Error ? error.message : "无法获取目录");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setCatalogLoading(false);
-      });
-    return () => controller.abort();
-  }, [filters]);
 
   // 首屏／刷新时恢复 UUID；点击切诗由 handlePoemChange 先预取再提交。
   useEffect(() => {
@@ -239,13 +220,6 @@ function App() {
         selection: selected,
       },
     });
-  }
-
-  function updateCatalogFilters(next: PoemFilters) {
-    // 上一页目录在请求期间继续存在，避免空列表导致侧栏重排。
-    setCatalogLoading(true);
-    setCatalogError("");
-    setFilters(next);
   }
 
   const closeCatalog = useCallback(() => {
