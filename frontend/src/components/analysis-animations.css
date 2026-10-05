@@ -1,0 +1,58 @@
+@keyframes poeticus-analysis-result-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes poeticus-analysis-block-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes poeticus-analysis-char-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.poeticus-analysis-result-enter {
+  animation: poeticus-analysis-result-enter 180ms ease-out both;
+}
+
+.poeticus-analysis-block-pending {
+  opacity: 0;
+}
+
+.poeticus-analysis-block-enter {
+  animation: poeticus-analysis-block-enter 180ms ease-out both;
+}
+
+.poeticus-analysis-char-enter {
+  animation: poeticus-analysis-char-enter 260ms ease-out both;
+  animation-delay: var(--analysis-char-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poeticus-analysis-result-enter,
+  .poeticus-analysis-block-enter,
+  .poeticus-analysis-char-enter {
+    animation: none;
+  }
+
+  .poeticus-analysis-block-pending {
+    opacity: 1;
+  }
+}
