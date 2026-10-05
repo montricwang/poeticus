@@ -1,4 +1,4 @@
-"""Convert private EPUB intermediate records into reader and source records.
+"""把私人 EPUB 中间记录转换为阅读记录与来源记录。
 
 Original records are never mutated. Source positions are Unicode code-point
 offsets, NOT JavaScript UTF-16 offsets. Modern annotations/commentaries stay
@@ -25,7 +25,7 @@ class ConvertedPoem:
 
 
 def _arrange_segments(record, originals):
-    """Return reader segments, source index mapping and applied actions.
+    """返回阅读片段、来源索引映射与已执行处理。
 
     Mapping value: (reader index, prefix length in reader segment, removed_LF).
     """
@@ -80,7 +80,7 @@ def _map_range(originals, rendered, mapping, index, start, end):
 
 
 def _heading_value(record, canonical, legacy):
-    """Resolve both normalized JSON revisions without silently losing data."""
+    """兼容两版 normalized JSON；遇到冲突时不静默丢数据。"""
     if canonical in record and legacy in record and record[canonical] != record[legacy]:
         raise ValueError(
             f"{record.get('id', '?')}: {canonical} 与 {legacy} 的值冲突"
@@ -89,8 +89,8 @@ def _heading_value(record, canonical, legacy):
 
 
 def _source_digest(record):
-    # Keep 0001's digest field names so a header *key* rename does not make
-    # all existing PostgreSQL rows look like modified source text.
+    # 保留 0001 版本的摘要字段名，避免仅仅重命名表头键就让
+    # 既有 PostgreSQL 记录被误判为来源正文发生变化。
     fields = {
         key: record.get(key)
         for key in ("id", "author", "title", "collection", "source")
