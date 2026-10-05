@@ -1,4 +1,4 @@
-"""Full paragraph glyph-context export tested only with invented content."""
+"""图片字完整段落上下文导出只用虚构内容测试。"""
 import re
 
 import pytest
