@@ -1,1 +1,1 @@
-"""Read-only diagnostics for understanding and validating the private EPUB."""
+"""用于理解和校验私人 EPUB 的只读诊断工具。"""
