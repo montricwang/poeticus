@@ -59,7 +59,12 @@ function AnalysisResult({
       <AnalysisReveal animate={animate}>
         {(revealed) => (
           <section>
-            <h3 className="mb-4 text-base font-semibold">现代汉语译文</h3>
+            <AnalysisTextEntrance
+              as="h3"
+              text="现代汉语译文"
+              animate={animate && revealed}
+              className="mb-4 text-base font-semibold"
+            />
             <AnalysisTextEntrance
               as="p"
               text={analysis.translation}
@@ -75,9 +80,12 @@ function AnalysisResult({
       <section>
         <AnalysisReveal animate={animate}>
           {(revealed) => (
-            <h3 className="mb-5 text-base font-semibold">
-              词语注释
-            </h3>
+            <AnalysisTextEntrance
+              as="h3"
+              text="词语注释"
+              animate={animate && revealed}
+              className="mb-5 text-base font-semibold"
+            />
           )}
         </AnalysisReveal>
 
@@ -120,7 +128,12 @@ function AnalysisResult({
       <AnalysisReveal animate={animate}>
         {(revealed) => (
           <section>
-            <h3 className="mb-4 text-base font-semibold">文学赏析</h3>
+            <AnalysisTextEntrance
+              as="h3"
+              text="文学赏析"
+              animate={animate && revealed}
+              className="mb-4 text-base font-semibold"
+            />
             <AnalysisTextEntrance
               as="p"
               text={analysis.commentary}
