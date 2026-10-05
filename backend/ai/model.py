@@ -1,9 +1,9 @@
-import os
 import logging
-from openai import OpenAI, APIError
-from pydantic import BaseModel
+import os
+
 from langsmith.wrappers import wrap_openai
-logger = logging.getLogger(__name__)
+from openai import APIError, OpenAI
+from pydantic import BaseModel
 
 from backend.ai.prompt_loader import compose_prompt
 from backend.ai.context import PoemContext, format_poem_context
@@ -14,6 +14,8 @@ from backend.config import (
     LLM_MODEL,
     LLM_TIMEOUT_SECONDS,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Gloss(BaseModel):
@@ -78,7 +80,10 @@ def analyze_poem(poem: str, context: PoemContext | None = None) -> PoemAnalysis:
 
     if choice.finish_reason != "stop":
         # 日志只记录完成状态，不回显原文、用户输入或模型响应。
-        logger.warning("analysis_completion_incomplete finish_reason=%s", choice.finish_reason)
+        logger.warning(
+            "analysis_completion_incomplete finish_reason=%s",
+            choice.finish_reason,
+        )
         raise ValueError("模型未正常完成生成")
 
     if not choice.message.content:
