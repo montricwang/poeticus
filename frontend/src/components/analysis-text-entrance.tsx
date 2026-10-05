@@ -18,18 +18,15 @@ export function AnalysisReveal({
   children,
 }: AnalysisRevealProps) {
   const elementRef = useRef<HTMLDivElement>(null);
-  const [revealed, setRevealed] = useState(!animate);
+  const supportsObserver =
+    typeof window !== "undefined" && "IntersectionObserver" in window;
+  const [revealed, setRevealed] = useState(!animate || !supportsObserver);
 
   useEffect(() => {
-    if (!animate) return;
+    if (!animate || !supportsObserver) return;
 
     const element = elementRef.current;
     if (!element) return;
-
-    if (!("IntersectionObserver" in window)) {
-      setRevealed(true);
-      return;
-    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -45,7 +42,7 @@ export function AnalysisReveal({
 
     observer.observe(element);
     return () => observer.disconnect();
-  }, [animate]);
+  }, [animate, supportsObserver]);
 
   return (
     <div
