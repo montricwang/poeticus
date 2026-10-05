@@ -69,12 +69,13 @@ export function useKeyboardViewportRecovery() {
 
     const viewport = window.visualViewport;
     if (!viewport) return;
+    const visualViewport = viewport;
 
     function handleResize() {
       const baselineHeight = baselineHeightRef.current;
       if (
         baselineHeight !== null &&
-        viewport.height < baselineHeight - KEYBOARD_HEIGHT_DELTA
+        visualViewport.height < baselineHeight - KEYBOARD_HEIGHT_DELTA
       ) {
         keyboardSeenRef.current = true;
         pendingRestoreRef.current = true;
@@ -83,10 +84,10 @@ export function useKeyboardViewportRecovery() {
       tryRestoreViewport();
     }
 
-    viewport.addEventListener("resize", handleResize);
+    visualViewport.addEventListener("resize", handleResize);
 
     return () => {
-      viewport.removeEventListener("resize", handleResize);
+      visualViewport.removeEventListener("resize", handleResize);
       for (const timerId of timerIdsRef.current) {
         window.clearTimeout(timerId);
       }
