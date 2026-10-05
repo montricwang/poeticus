@@ -42,6 +42,8 @@ function App() {
   );
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false);
   const catalogToggleRef = useRef<HTMLButtonElement>(null);
+  const readerPaneRef = useRef<HTMLDivElement>(null);
+  const mobileDiscussionTouchedRef = useRef(false);
   const switchControllerRef = useRef<AbortController | null>(null);
   const [switchTarget, setSwitchTarget] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState("");
@@ -164,9 +166,54 @@ function App() {
   }
 
   function handleMobileDiscussionOpenChange(open: boolean) {
+    mobileDiscussionTouchedRef.current = true;
     if (open) setActiveView("chat");
     setMobileDiscussionOpen(open);
   }
+
+  useEffect(() => {
+    mobileDiscussionTouchedRef.current = false;
+  }, [poemId]);
+
+  useEffect(() => {
+    if (wideDiscussionLayout || !poemId) return;
+
+    const tabletQuery = window.matchMedia(
+      "(min-width: 768px) and (max-width: 1023px)",
+    );
+    if (!tabletQuery.matches) return;
+
+    const pane = readerPaneRef.current;
+    if (!pane) return;
+
+    function maybeOpenDiscussion() {
+      if (mobileDiscussionTouchedRef.current) return;
+
+      const viewportHeight =
+        window.visualViewport?.height ?? window.innerHeight;
+      const top = Math.max(0, pane.getBoundingClientRect().top);
+      const availableHeight = Math.max(0, viewportHeight - top);
+      const remainingHeight = availableHeight - pane.scrollHeight;
+
+      // 平板竖屏若正文结束后仍空出至少约三分之一屏幕，
+      // 默认展开讨论区；用户手动收起后，本首词不再自动弹回。
+      if (remainingHeight >= viewportHeight / 3) {
+        setActiveView("chat");
+        setMobileDiscussionOpen(true);
+      }
+    }
+
+    const frame = window.requestAnimationFrame(maybeOpenDiscussion);
+    const observer = new ResizeObserver(maybeOpenDiscussion);
+    observer.observe(pane);
+    window.visualViewport?.addEventListener("resize", maybeOpenDiscussion);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.visualViewport?.removeEventListener("resize", maybeOpenDiscussion);
+    };
+  }, [poemId, wideDiscussionLayout]);
 
   const poemReady = !!activePoem && activePoem.id === poemId;
 
@@ -317,7 +364,8 @@ function App() {
                 className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]"
               >
                 <div
-                  className="min-w-0 lg:max-h-[calc(100dvh-8rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
+                  ref={readerPaneRef}
+                  className="min-w-0 lg:flex lg:min-h-[60dvh] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2"
                   onPointerDown={() => {
                     if (
                       !wideDiscussionLayout &&
@@ -328,11 +376,13 @@ function App() {
                   }}
                 >
                   {activePoem && activePoem.id === poemId ? (
-                    <PoemReader
-                      key={activePoem.id}
-                      work={activePoem}
-                      onSelect={handleReaderSelect}
-                    />
+                    <div className="w-full lg:my-auto lg:pt-2 lg:pb-10">
+                      <PoemReader
+                        key={activePoem.id}
+                        work={activePoem}
+                        onSelect={handleReaderSelect}
+                      />
+                    </div>
                   ) : (
                     <div
                       role={detailError ? "alert" : "status"}
