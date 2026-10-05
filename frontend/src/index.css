@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/noto-sans-sc";
 @import "@fontsource-variable/noto-serif-sc";
 @import "@vp-tw/cjk-web-fonts-hanamin/dist/HanaMinA/HanaMin.css";
 @import "@vp-tw/cjk-web-fonts-hanamin/dist/HanaMinB/HanaMin.css";
@@ -50,7 +51,7 @@
 
 @theme inline {
   --font-heading: var(--font-sans);
-  --font-sans: "Inter Variable", "Noto Sans SC", system-ui, sans-serif;
+  --font-sans: "Inter Variable", "PingFang SC", "Noto Sans SC Variable", "Noto Sans SC", "Source Han Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-serif: var(--font-literary);
   --font-literary: "Noto Serif SC Variable", "HanaMin", "Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", "SimSun", "SimSun-ExtB", serif;
 
