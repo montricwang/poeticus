@@ -55,9 +55,9 @@ export function UserMessage({
       <div className="flex min-w-0 w-full flex-col items-start gap-2">
         {editing ? (
           /* 编辑模式 */
-          <div className="w-full min-w-64 space-y-3 rounded-2xl border border-violet-400/40 bg-secondary p-3">
+          <div className="w-full min-w-64 space-y-3 rounded-sm bg-muted/45 p-3 dark:bg-muted/25">
             {turn.selection && (
-              <div className="rounded-lg border-l-2 border-violet-400 bg-background/60 px-3 py-2 text-sm leading-6 text-muted-foreground">
+              <div className="border-l-2 border-violet-400/70 py-1 pl-3 pr-1 text-sm leading-6 text-muted-foreground">
                 {turn.selection.text}
               </div>
             )}
@@ -66,7 +66,7 @@ export function UserMessage({
               autoFocus
               value={draft}
               onChange={(event) => onDraftChange(event.target.value)}
-              className="min-h-24 resize-y bg-background"
+              className="min-h-24 resize-y rounded-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
               aria-label="修改用户问题"
             />
 
