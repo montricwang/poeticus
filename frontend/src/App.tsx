@@ -7,6 +7,8 @@ import { PoemReader } from "@/components/poem-reader";
 import { PoemCatalog } from "@/components/poem-catalog";
 import { ChatPanel } from "@/components/chat-panel";
 import { AnalysisPanel } from "@/components/analysis-panel";
+import { ViewToolbar } from "@/components/view-toolbar";
+import type { ActiveView } from "@/components/view-toolbar";
 
 import {
   fetchPoem,
@@ -32,8 +34,6 @@ import type {
   HistoryMessage,
 } from "@/components/chat-types";
 import type { PoemAnalysis } from "@/components/analysis-panel";
-
-type ActiveView = "chat" | "analysis";
 
 const PAGE_SIZE = 20;
 const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
@@ -727,40 +727,13 @@ function App() {
                 <div className="min-w-0 border-t border-border/60 pt-6 xl:border-l xl:border-t-0 xl:pl-7 xl:pt-0">
                   {activePoem && activePoem.id === poemId ? (
                     <>
-                      <div
-                        className="mb-3 flex items-center gap-2"
-                        role="group"
-                        aria-label="右侧视图"
-                      >
-                        <Button
-                          type="button"
-                          variant={activeView === "chat" ? "default" : "ghost"}
-                          size="sm"
-                          aria-pressed={activeView === "chat"}
-                          onClick={() => setActiveView("chat")}
-                        >
-                          对话
-                        </Button>
-                        <Button
-                          type="button"
-                          variant={activeView === "analysis" ? "default" : "ghost"}
-                          size="sm"
-                          aria-pressed={activeView === "analysis"}
-                          onClick={() => setActiveView("analysis")}
-                        >
-                          赏析
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="ml-auto"
-                          onClick={handleAnalyze}
-                          disabled={analyzing || !!switchTarget}
-                        >
-                          {analyzing ? "正在生成……" : "生成整首赏析"}
-                        </Button>
-                      </div>
+                      <ViewToolbar
+                        activeView={activeView}
+                        onViewChange={setActiveView}
+                        onAnalyze={handleAnalyze}
+                        analyzing={analyzing}
+                        switching={!!switchTarget}
+                      />
 
                       {activeView === "chat" ? (
                         <ChatPanel
