@@ -354,9 +354,10 @@ function App() {
             aria-hidden={mobileDiscussionOpen}
             inert={mobileDiscussionOpen || catalogOpen}
             className={
-              "absolute inset-0 z-10 bg-background transition-transform duration-400 " +
-              "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
-              (mobileDiscussionOpen ? "-translate-x-full" : "translate-x-0")
+              "absolute inset-0 z-10 bg-background " +
+              "md:transition-transform md:duration-400 md:ease-[cubic-bezier(0.22,1,0.36,1)] " +
+              "motion-reduce:transition-none " +
+              (mobileDiscussionOpen ? "md:-translate-x-full" : "md:translate-x-0")
             }
           >
             <div className="h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8">
@@ -411,7 +412,7 @@ function App() {
             aria-hidden={!catalogOpen}
             inert={!catalogOpen}
             className={
-              "absolute inset-0 z-40 transition-opacity duration-[1050ms] " +
+              "absolute inset-0 z-40 transition-opacity duration-[720ms] " +
               "ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none " +
               "md:transition-none md:opacity-100 " +
               (catalogOpen
