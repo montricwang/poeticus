@@ -39,6 +39,25 @@ def test_info_exposes_only_intended_public_metadata(client):
     assert client.get("/openapi.json").json()["info"]["version"] == client.app.version
 
 
+def test_capabilities_exposes_browser_contract_without_secrets(client):
+    from backend.config import (
+        CHAT_MAX_HISTORY_TURNS,
+        CHAT_MAX_QUESTION_CHARS,
+        CHAT_MAX_SELECTION_CHARS,
+    )
+
+    response = client.get("/api/capabilities")
+    assert response.status_code == 200
+    assert response.json() == {
+        "chat": {
+            "maxHistoryTurns": CHAT_MAX_HISTORY_TURNS,
+            "maxQuestionChars": CHAT_MAX_QUESTION_CHARS,
+            "maxSelectionChars": CHAT_MAX_SELECTION_CHARS,
+        }
+    }
+    assert "test-only-placeholder" not in response.text
+
+
 def test_canonical_public_chat_path_and_legacy_path_both_work(monkeypatch, client):
     import api
 
