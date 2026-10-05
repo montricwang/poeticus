@@ -98,7 +98,7 @@ def _stream_agent_decision(
 
     try:
         stream = client.chat.completions.create(
-            model="deepseek-flash",
+            model=LLM_MODEL,
             max_tokens=MAX_LLM_OUTPUT_TOKENS,
             messages=messages,
             tools=TOOLS,
@@ -236,7 +236,7 @@ def agent_decide(state: RouterState) -> dict:
     else:
         try:
             response = client.chat.completions.create(
-                model="deepseek-flash",
+                model=LLM_MODEL,
             max_tokens=MAX_LLM_OUTPUT_TOKENS,
                 messages=messages,
                 tools=TOOLS,
