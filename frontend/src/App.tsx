@@ -17,6 +17,7 @@ import {
 } from "@/data/poem-library";
 import { usePoemCatalog } from "@/hooks/use-poem-catalog";
 import { usePoemDetail } from "@/hooks/use-poem-detail";
+import { useConversationPersistence } from "@/hooks/use-conversation-persistence";
 import { selectionForPython, validSelectionForPoem } from "@/lib/selection-offset";
 import { readChatStream, UsageLimitNotice } from "@/lib/chat-stream";
 import { buildHistory } from "@/lib/chat-history";
@@ -24,8 +25,6 @@ import {
   createConversationId,
   loadLastActivePoemId,
   loadPoemConversation,
-  saveLastActivePoemId,
-  savePoemConversation,
 } from "@/lib/chat-storage";
 
 import type { SelectedText } from "@/components/poem-reader";
@@ -100,14 +99,6 @@ function App() {
     scrollTop: 0,
     atBottom: true,
   });
-  const persistenceRef = useRef({
-    conversationId,
-    poemId,
-    readyPoemId: activePoem?.id ?? null,
-    turns,
-    question,
-    selected,
-  });
   const [hasUnreadReply, setHasUnreadReply] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>("chat");
   const [analysis, setAnalysis] = useState<PoemAnalysis | null>(null);
@@ -115,75 +106,18 @@ function App() {
   const [analysisError, setAnalysisError] = useState("");
   const [analysisLimitNotice, setAnalysisLimitNotice] = useState(false);
 
+  const { persistCurrentConversation } = useConversationPersistence({
+    poemId,
+    readyPoemId: activePoem?.id ?? null,
+    conversationId,
+    turns,
+    question,
+    selected,
+  });
+
   useEffect(() => {
     return () => switchControllerRef.current?.abort();
   }, []);
-
-  useEffect(() => {
-    persistenceRef.current = {
-      conversationId,
-      poemId,
-      readyPoemId: activePoem?.id ?? null,
-      turns,
-      question,
-      selected,
-    };
-  }, [activePoem, conversationId, poemId, question, selected, turns]);
-
-  // 本地存储只是 v0.1 的 persistence adapter。
-  // 轻微延迟可避免流式 token 到达时同步写 localStorage 过于频繁。
-  useEffect(() => {
-    if (!poemId || activePoem?.id !== poemId) return;
-    const timer = window.setTimeout(() => {
-      saveLastActivePoemId(poemId);
-      savePoemConversation({
-        conversationId,
-        poemId,
-        turns,
-        draft: {
-          question,
-          selection: selected,
-        },
-      });
-    }, 200);
-
-    return () => window.clearTimeout(timer);
-  }, [activePoem, conversationId, poemId, question, selected, turns]);
-
-  // 刷新/关闭页面时，把尚未等到定时写入的最新状态再保存一次。
-  useEffect(() => {
-    function handlePageHide() {
-      const current = persistenceRef.current;
-      if (!current.poemId || current.readyPoemId !== current.poemId) return;
-      saveLastActivePoemId(current.poemId);
-      savePoemConversation({
-        conversationId: current.conversationId,
-        poemId: current.poemId,
-        turns: current.turns,
-        draft: {
-          question: current.question,
-          selection: current.selected,
-        },
-      });
-    }
-
-    window.addEventListener("pagehide", handlePageHide);
-    return () => window.removeEventListener("pagehide", handlePageHide);
-  }, []);
-
-  function persistCurrentConversation() {
-    if (!poemId || activePoem?.id !== poemId) return;
-    saveLastActivePoemId(poemId);
-    savePoemConversation({
-      conversationId,
-      poemId,
-      turns,
-      draft: {
-        question,
-        selection: selected,
-      },
-    });
-  }
 
   const closeCatalog = useCallback(() => {
     setCatalogOpen(false);
