@@ -1,6 +1,70 @@
-import type { CSSProperties } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 
 import "./analysis-animations.css";
+
+type AnalysisRevealProps = {
+  animate: boolean;
+  children: (revealed: boolean) => ReactNode;
+};
+
+export function AnalysisReveal({
+  animate,
+  children,
+}: AnalysisRevealProps) {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const [revealed, setRevealed] = useState(!animate);
+
+  useEffect(() => {
+    if (!animate) {
+      setRevealed(true);
+      return;
+    }
+
+    const element = elementRef.current;
+    if (!element) return;
+
+    if (!("IntersectionObserver" in window)) {
+      setRevealed(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setRevealed(true);
+        observer.disconnect();
+      },
+      {
+        threshold: 0.08,
+        rootMargin: "0px 0px -6% 0px",
+      },
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [animate]);
+
+  return (
+    <div
+      ref={elementRef}
+      className={
+        animate
+          ? revealed
+            ? "poeticus-analysis-block-enter"
+            : "poeticus-analysis-block-pending"
+          : undefined
+      }
+    >
+      {children(revealed)}
+    </div>
+  );
+}
 
 type AnalysisTextEntranceProps = {
   as: "p" | "h4";
