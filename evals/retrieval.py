@@ -72,11 +72,21 @@ class RetrievalCaseRun(BaseModel):
     case_id: str = Field(min_length=1)
     hits: list[RetrievalHit] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def ranks_must_be_contiguous_and_ordered(self):
+        ranks = [hit.rank for hit in self.hits]
+        expected = list(range(1, len(ranks) + 1))
+        if ranks != expected:
+            raise ValueError("Retrieval hit rank 必须按 1..N 连续且与列表顺序一致")
+        return self
+
 
 class RetrievalRun(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: Literal["1"]
+    dataset_id: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]+$")
+    dataset_version: int = Field(ge=1)
     retriever: str = Field(min_length=1)
     cases: list[RetrievalCaseRun]
 
@@ -120,7 +130,7 @@ def first_relevant_rank(
     case: RetrievalBenchmarkCase,
     hits: list[RetrievalHit],
 ) -> int | None:
-    for hit in sorted(hits, key=lambda item: item.rank):
+    for hit in hits:
         if any(
             _hit_matches_expected(hit, expected)
             for expected in case.expected
@@ -138,13 +148,33 @@ def evaluate_retrieval(
     if not ks or any(k < 1 for k in ks):
         raise ValueError("ks 必须全部是正整数")
 
+    if run.dataset_id != dataset.dataset_id:
+        raise ValueError(
+            f"Run dataset_id={run.dataset_id!r} 与 Dataset {dataset.dataset_id!r} 不一致"
+        )
+    if run.dataset_version != dataset.dataset_version:
+        raise ValueError(
+            "Run dataset_version="
+            f"{run.dataset_version!r} 与 Dataset {dataset.dataset_version!r} 不一致"
+        )
+
+    dataset_case_ids = {case.id for case in dataset.cases}
+    run_case_ids = {case.case_id for case in run.cases}
+
+    unknown_cases = sorted(run_case_ids - dataset_case_ids)
+    if unknown_cases:
+        raise ValueError("Run 包含未知 Case: " + ", ".join(unknown_cases))
+
+    missing_cases = sorted(dataset_case_ids - run_case_ids)
+    if missing_cases:
+        raise ValueError("Run 缺少 Case: " + ", ".join(missing_cases))
+
     run_by_case = {case.case_id: case for case in run.cases}
     case_ranks: dict[str, int | None] = {}
 
     for case in dataset.cases:
-        case_run = run_by_case.get(case.id)
-        hits = case_run.hits if case_run else []
-        case_ranks[case.id] = first_relevant_rank(case, hits)
+        case_run = run_by_case[case.id]
+        case_ranks[case.id] = first_relevant_rank(case, case_run.hits)
 
     case_count = len(dataset.cases)
     recall_at = {
