@@ -43,3 +43,28 @@ python -m scripts.evals.run_seed --output evals/results/seed_run.json
 - `current_agent`：走当前 LangGraph Agent，允许它按现有规则调用 Tool。
 
 这不是对所有改动做严格学术消融，只是当前阶段最便宜、最容易解释的一组对照。
+
+## 从私人编者注中挑选候选 Case
+
+当前私人 normalized JSON 仍保留 `content.annotations` 与 `content.commentaries`。先做整体画像，不把几千条文本直接塞进评测集：
+
+```powershell
+python -m scripts.evals.profile_editorial_notes
+```
+
+默认读取：
+
+```text
+data/output/all_normalized.json
+```
+
+并在本地生成：
+
+```text
+data/reports/eval_editorial_profile.json
+data/reports/eval_editorial_profile.md
+```
+
+报告分别统计 annotations / commentaries 的覆盖率、每首数量、长度分布、重复项、常见文本特征、词集分布，并给出固定随机种子的少量正常 / 最短 / 最长样本。
+
+这些报告包含商业出版物的少量截断派生文本，只用于本地分析，不能提交到公开仓库。
