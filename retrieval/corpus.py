@@ -182,16 +182,18 @@ def load_chinese_poetry(
     *,
     dynasty: str | None = None,
     genre: str | None = None,
+    file_pattern: str = "*.json",
 ) -> list[CorpusWork]:
     """读取 chinese-poetry 的一个 JSON 文件或某目录下的顶层 JSON 文件。
 
-    只扫描目录第一层，避免误把 error/、rank/ 等旁支数据一起灌入实验语料。
+    目录模式必须显式给出合适的 file_pattern（例如 poet.tang.*.json），
+    避免把 authors.*.json 等不同结构的数据混进作品语料。
     """
 
     if path.is_file():
         files = [path]
     elif path.is_dir():
-        files = sorted(path.glob("*.json"))
+        files = sorted(path.glob(file_pattern))
     else:
         raise FileNotFoundError(path)
 

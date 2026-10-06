@@ -25,6 +25,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dynasty")
     parser.add_argument("--genre")
     parser.add_argument(
+        "--file-pattern",
+        default="*.json",
+        help=(
+            "input 为目录时只读取匹配的顶层 JSON；"
+            "例如 poet.tang.*.json / poet.song.*.json / ci.song.*.json"
+        ),
+    )
+    parser.add_argument(
         "--chunk-policy",
         choices=["clause", "sentence", "clause_pair"],
         default="clause",
@@ -41,6 +49,7 @@ def main() -> None:
         args.input,
         dynasty=args.dynasty,
         genre=args.genre,
+        file_pattern=args.file_pattern,
     )
     chunks = [
         chunk
@@ -62,6 +71,7 @@ def main() -> None:
         "input": args.input.name,
         "dynasty": args.dynasty,
         "genre": args.genre,
+        "file_pattern": args.file_pattern,
         "chunk_policy": policy,
         "work_count": len(works),
         "chunk_count": len(chunks),

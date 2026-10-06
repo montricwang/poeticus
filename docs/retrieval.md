@@ -27,7 +27,7 @@ Work 保存来源身份、作者、朝代、题目和原始 paragraphs；Chunk �
 
 > chunk 用于检索，parent work 用于回查上下文。
 
-第一版只提供 `chinese-poetry` adapter。它既可以读取一个 JSON 文件，也可以读取某目录**第一层**的全部 JSON；不会递归进入 `error/` 等旁支目录。
+第一版只提供 `chinese-poetry` adapter。它既可以读取一个 JSON 文件，也可以读取某目录第一层中**符合 file pattern 的 JSON**；不会递归进入 `error/` 等旁支目录。目录里常同时存在 `authors.*.json` 与作品文件，因此批量导入时不要使用无约束的 `*.json`。
 
 外部仓库只作为本地输入，不 vendoring 到 Poeticus。
 
@@ -50,6 +50,7 @@ python -m scripts.retrieval.build_corpus \
   --input D:\data\chinese-poetry\全唐诗 \
   --dynasty 唐 \
   --genre poem \
+  --file-pattern "poet.tang.*.json" \
   --chunk-policy clause
 ```
 

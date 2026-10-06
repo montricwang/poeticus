@@ -83,8 +83,8 @@ def test_chunk_policies_keep_traceable_positions(tmp_path):
     ] == [0, 1]
 
 
-def test_directory_loader_only_reads_top_level_json(tmp_path):
-    top = tmp_path / "top.json"
+def test_directory_loader_respects_top_level_file_pattern(tmp_path):
+    top = tmp_path / "poet.tang.0.json"
     top.write_text(
         json.dumps(
             [{"author": "甲", "paragraphs": ["甲句。"]}],
@@ -92,6 +92,12 @@ def test_directory_loader_only_reads_top_level_json(tmp_path):
         ),
         encoding="utf-8",
     )
+    authors = tmp_path / "authors.tang.json"
+    authors.write_text(
+        json.dumps([{"name": "不应读取"}], ensure_ascii=False),
+        encoding="utf-8",
+    )
+
     nested = tmp_path / "error"
     nested.mkdir()
     (nested / "nested.json").write_text(
@@ -102,7 +108,11 @@ def test_directory_loader_only_reads_top_level_json(tmp_path):
         encoding="utf-8",
     )
 
-    works = load_chinese_poetry(tmp_path, dynasty="唐")
+    works = load_chinese_poetry(
+        tmp_path,
+        dynasty="唐",
+        file_pattern="poet.tang.*.json",
+    )
 
     assert len(works) == 1
     assert works[0].author == "甲"
