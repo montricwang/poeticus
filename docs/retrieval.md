@@ -1,6 +1,6 @@
 # Poeticus Retrieval 实验
 
-> 当前阶段：#119 的第一步。先建立可复用的 Corpus / Chunk / Benchmark，再比较 Embedding。这里不是生产 Agent 架构。
+> 当前阶段：#119 的 Retrieval Benchmark 基线。Corpus / Chunk / 指标契约已经建立；开始 Embedding 前，先固定一组公开可复核的真实 Case，并验证 Ground Truth 确实存在于所选 Corpus。这里不是生产 Agent 架构。
 
 ## 1. 为什么先拆出 Retrieval
 
@@ -87,22 +87,48 @@ Run
 
 Expected Match 使用“核心目标文本 + 可选作者 / 标题 / source_record_id”，因此同一个 benchmark 可以公平比较 clause、sentence 和 clause_pair；只要较大的 chunk 包含目标句，也可判为召回。
 
-如果已经有 Dataset JSON 与某个 Retriever 的 Run JSON：
+公开的第一版真实 Dataset 位于：
+
+```text
+evals/retrieval_cases.json
+```
+
+人工 Ground Truth 的公共核验依据单独放在：
+
+```text
+evals/retrieval_cases.md
+```
+
+它和合成单元测试不同：合成数据只证明指标代码能工作，真实 Dataset 才是后续比较 Retriever 的考题。
+
+### 先检查 Corpus coverage
+
+在跑任何模型前，先确认当前实际生成的 chunk 中确实存在 Dataset 的正确目标：
+
+```powershell
+python -m scripts.retrieval.validate_dataset_coverage \
+  --chunks path\to\chunks.clause.jsonl
+```
+
+如果实验 Corpus 来自多个 shard，可以重复传入 `--chunks`。
+
+coverage 缺失说明“这把尺子的正确答案不在当前题库里”，属于 Corpus / normalization 问题；不能把它记成 Retriever miss。第一版不自动做繁简转换或异文统一，让这些差异先在 coverage 阶段显出来。
+
+如果已经有某个 Retriever 的 Run JSON，再计算 Retrieval 指标：
 
 ```powershell
 python -m scripts.retrieval.evaluate_run \
-  --dataset path\to\dataset.json \
+  --dataset evals\retrieval_cases.json \
   --run path\to\run.json
 ```
 
 ## 6. 下一步
 
-本轮停止在 Corpus + Benchmark。
+当真实 Dataset 对选定 Corpus 的 coverage 检查通过后，才进入 Embedding Baseline：
 
-下一 PR 才比较：
-
-1. 按 BERT-CCPoem 官方方法重新生成 embedding；
-2. 一个现代通用 Embedding baseline；
-3. 全部先用 Exact cosine retrieval。
+1. 按 BERT-CCPoem 官方批量实现的 pooling 方法生成 embedding；
+2. 选择一个现代通用 Embedding baseline；
+3. 全部先用 Exact cosine retrieval；
+4. 用同一 Dataset 比较模型与 chunk policy。
 
 只有确认 Embedding 本身有增量后，才进入 pgvector / ANN。
