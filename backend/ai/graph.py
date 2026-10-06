@@ -19,6 +19,48 @@ from backend.ai.prompt_loader import compose_prompt
 
 logger = logging.getLogger(__name__)
 
+_FINAL_AFTER_TOOL_BUDGET = (
+    "工具调用预算已用完。现在必须直接回答用户，不要再尝试调用工具，"
+    "也不要输出任何工具调用协议、标记或伪代码。"
+    "只能基于已有对话、工具结果和自身知识作答；"
+    "如果仍不能可靠确认，就明确说明不能确认。"
+)
+_TOOL_PROTOCOL_FALLBACK = (
+    "这次检索流程没有形成可可靠展示的最终回答；"
+    "我暂时不把未核实的内容当作结论。"
+)
+
+
+def _looks_like_tool_protocol(text: str) -> bool:
+    """拦截模型把内部工具协议当普通正文吐出的情况。"""
+    return "DSML" in text and ("invoke" in text or "calls" in text)
+
+
+def _final_messages_without_tools(
+    messages: list[ChatCompletionMessageParam],
+) -> list[ChatCompletionMessageParam]:
+    """工具预算耗尽后，明确切换到只能产出最终正文的模式。"""
+    final_messages = [dict(message) for message in messages]
+
+    if final_messages and final_messages[0].get("role") == "system":
+        content = final_messages[0].get("content")
+        if isinstance(content, str):
+            final_messages[0]["content"] = (
+                f"{content}\n\n{_FINAL_AFTER_TOOL_BUDGET}"
+            )
+
+    return cast(
+        list[ChatCompletionMessageParam],
+        final_messages,
+    )
+
+
+def _safe_final_answer(answer: str) -> str:
+    if _looks_like_tool_protocol(answer):
+        return _TOOL_PROTOCOL_FALLBACK
+    return answer
+
+
 evidence_service = EvidenceService(
     {
         "cnkgraph": CNKGraphProvider(),
