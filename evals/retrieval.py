@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from retrieval.schema import CorpusChunk
 
 
 _WHITESPACE = re.compile(r"\s+")
@@ -111,19 +114,87 @@ def _normalize_text(text: str) -> str:
     return _WHITESPACE.sub("", text)
 
 
-def _hit_matches_expected(hit: RetrievalHit, expected: ExpectedMatch) -> bool:
-    if _normalize_text(expected.text) not in _normalize_text(hit.text):
+def _metadata_matches(
+    *,
+    author: str | None,
+    title: str | None,
+    source_record_id: str | None,
+    expected: ExpectedMatch,
+) -> bool:
+    if expected.author is not None and author != expected.author:
         return False
-    if expected.author is not None and hit.author != expected.author:
-        return False
-    if expected.title is not None and hit.title != expected.title:
+    if expected.title is not None and title != expected.title:
         return False
     if (
         expected.source_record_id is not None
-        and hit.source_record_id != expected.source_record_id
+        and source_record_id != expected.source_record_id
     ):
         return False
     return True
+
+
+def _hit_matches_expected(hit: RetrievalHit, expected: ExpectedMatch) -> bool:
+    if _normalize_text(expected.text) not in _normalize_text(hit.text):
+        return False
+    return _metadata_matches(
+        author=hit.author,
+        title=hit.title,
+        source_record_id=hit.source_record_id,
+        expected=expected,
+    )
+
+
+def _chunk_matches_expected(chunk: CorpusChunk, expected: ExpectedMatch) -> bool:
+    if _normalize_text(expected.text) not in _normalize_text(chunk.text):
+        return False
+    return _metadata_matches(
+        author=chunk.author,
+        title=chunk.title,
+        source_record_id=chunk.source_record_id,
+        expected=expected,
+    )
+
+
+def benchmark_corpus_coverage(
+    dataset: RetrievalBenchmarkDataset,
+    chunks: Iterable[CorpusChunk],
+) -> dict[str, list[str]]:
+    """返回每个 Case 在当前 Corpus 中可作为正确目标的 chunk ids。
+
+    这一步只检查 Ground Truth 是否存在于 Corpus，不运行 Retriever。
+    """
+
+    chunk_list = list(chunks)
+    return {
+        case.id: [
+            chunk.chunk_id
+            for chunk in chunk_list
+            if any(
+                _chunk_matches_expected(chunk, expected)
+                for expected in case.expected
+            )
+        ]
+        for case in dataset.cases
+    }
+
+
+def validate_benchmark_corpus_coverage(
+    dataset: RetrievalBenchmarkDataset,
+    chunks: Iterable[CorpusChunk],
+) -> dict[str, list[str]]:
+    """确保每个 Benchmark Case 的正确目标至少在当前 Corpus 中出现一次。"""
+
+    coverage = benchmark_corpus_coverage(dataset, chunks)
+    missing = [
+        case_id
+        for case_id, chunk_ids in coverage.items()
+        if not chunk_ids
+    ]
+    if missing:
+        raise ValueError(
+            "Corpus coverage 缺少 Benchmark target: " + ", ".join(missing)
+        )
+    return coverage
 
 
 def first_relevant_rank(
