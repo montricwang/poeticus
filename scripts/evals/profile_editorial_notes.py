@@ -3,6 +3,9 @@
 脚本只读取本地 normalized JSON；报告默认写入 data/reports/，
 该目录已被 Git 忽略。报告会包含少量截断后的原书派生文本，
 不要提交到公开仓库。
+
+annotations 的结构分类只用于筛选候选样本，不宣称已经判断出
+“词义 / 典故 / 化用”等文学语义。
 """
 
 from __future__ import annotations
@@ -33,6 +36,13 @@ LENGTH_BUCKETS = (
     (201, 500, "201–500"),
     (501, None, "501+"),
 )
+
+ANNOTATION_MARKER = re.compile(r"^[◎○●◆◇※]\s*")
+CROSS_REFERENCE = re.compile(r"(?:见前|见上|见后|参见|详见|见[^。；]{0,20}注)")
+TRAILING_SOURCE = re.compile(r"（[^（）]{0,80}《[^》]{1,80}》[^（）]{0,40}）\s*$")
+HEADWORD_MAX_CHARS = 12
+LONG_NOTE_CHARS = 200
+HEADWORD_FORBIDDEN = frozenset("，。；！？、“”‘’「」『』《》（）()【】[]")
 
 
 def load_records(path: Path) -> list[dict[str, Any]]:
@@ -106,6 +116,21 @@ def item_metadata(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def record_group_name(record: dict[str, Any], key: str) -> str:
+    value = record.get(key)
+    return value if isinstance(value, str) and value.strip() else "（缺失）"
+
+
+def record_body_text(record: dict[str, Any]) -> str:
+    content = record.get("content")
+    if not isinstance(content, dict):
+        return ""
+    pieces = content.get("text", [])
+    if not isinstance(pieces, list):
+        return ""
+    return "".join(piece for piece in pieces if isinstance(piece, str))
+
+
 def collect_category(
     records: list[dict[str, Any]],
     category: str,
@@ -157,6 +182,8 @@ def collect_category(
             continue
 
         valid_count = 0
+        body_text = record_body_text(record)
+
         for item_index, raw in enumerate(raw_items):
             if not isinstance(raw, str):
                 anomalies.append(
@@ -191,6 +218,7 @@ def collect_category(
                     "item_index": item_index,
                     "text": text,
                     "length": len(text),
+                    "_body_text": body_text,
                 }
             )
 
@@ -200,26 +228,83 @@ def collect_category(
 
 
 def aggregate_group(
+    records: list[dict[str, Any]],
     items: list[dict[str, Any]],
     key: str,
     limit: int = 30,
 ) -> list[dict[str, Any]]:
-    grouped: dict[str, list[int]] = defaultdict(list)
+    record_counts = Counter()
+    item_counts = Counter()
+    records_with_items: dict[str, set[str]] = defaultdict(set)
+    lengths: dict[str, list[int]] = defaultdict(list)
+
+    for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            continue
+        group = record_group_name(record, key)
+        record_counts[group] += 1
+
     for item in items:
         value = item.get(key)
-        name = value if isinstance(value, str) and value.strip() else "（缺失）"
-        grouped[name].append(item["length"])
+        group = value if isinstance(value, str) and value.strip() else "（缺失）"
+        item_counts[group] += 1
+        record_id = item.get("record_id")
+        records_with_items[group].add(
+            str(record_id) if record_id is not None else f"missing:{id(item)}"
+        )
+        lengths[group].append(item["length"])
 
-    rows = [
-        {
-            key: name,
-            "items": len(lengths),
-            "median_length": statistics.median(lengths),
-        }
-        for name, lengths in grouped.items()
-    ]
-    rows.sort(key=lambda row: (-row["items"], str(row[key])))
+    rows = []
+    for group, record_count in record_counts.items():
+        count = item_counts[group]
+        annotated_records = len(records_with_items[group])
+        rows.append(
+            {
+                key: group,
+                "records": record_count,
+                "records_with_items": annotated_records,
+                "coverage_rate": round(annotated_records / record_count, 4)
+                if record_count
+                else 0,
+                "items": count,
+                "items_per_record": round(count / record_count, 2)
+                if record_count
+                else 0,
+                "items_per_annotated_record": round(count / annotated_records, 2)
+                if annotated_records
+                else 0,
+                "median_length": (
+                    statistics.median(lengths[group]) if lengths[group] else None
+                ),
+            }
+        )
+
+    rows.sort(key=lambda row: (-row["items_per_record"], -row["items"], str(row[key])))
     return rows[:limit]
+
+
+def public_item(item: dict[str, Any], excerpt_chars: int) -> dict[str, Any]:
+    data = {
+        key: item.get(key)
+        for key in (
+            "record_id",
+            "author",
+            "collection",
+            "cipai",
+            "title",
+            "item_index",
+            "length",
+        )
+    }
+    data["excerpt"] = excerpt(item["text"], excerpt_chars)
+
+    if "structure" in item:
+        data["structure"] = item["structure"]
+    if item.get("headword") is not None:
+        data["headword"] = item["headword"]
+        data["headword_in_body"] = item.get("headword_in_body")
+
+    return data
 
 
 def sample_items(
@@ -232,20 +317,6 @@ def sample_items(
     if not items:
         return {"shortest": [], "longest": [], "random": []}
 
-    def public_item(item: dict[str, Any]) -> dict[str, Any]:
-        return {
-            key: item.get(key)
-            for key in (
-                "record_id",
-                "author",
-                "collection",
-                "cipai",
-                "title",
-                "item_index",
-                "length",
-            )
-        } | {"excerpt": excerpt(item["text"], excerpt_chars)}
-
     by_length = sorted(items, key=lambda item: (item["length"], str(item.get("record_id"))))
     shortest = by_length[:sample_size]
     longest = list(reversed(by_length[-sample_size:]))
@@ -254,9 +325,123 @@ def sample_items(
     random_sample = rng.sample(items, k=min(sample_size, len(items)))
 
     return {
-        "shortest": [public_item(item) for item in shortest],
-        "longest": [public_item(item) for item in longest],
-        "random": [public_item(item) for item in random_sample],
+        "shortest": [public_item(item, excerpt_chars) for item in shortest],
+        "longest": [public_item(item, excerpt_chars) for item in longest],
+        "random": [public_item(item, excerpt_chars) for item in random_sample],
+    }
+
+
+def extract_headword(text: str) -> str | None:
+    cleaned = ANNOTATION_MARKER.sub("", text, count=1).strip()
+    positions = [pos for mark in ("：", ":") if (pos := cleaned.find(mark)) >= 0]
+    if not positions:
+        return None
+
+    colon = min(positions)
+    headword = cleaned[:colon].strip()
+    if not 1 <= len(headword) <= HEADWORD_MAX_CHARS:
+        return None
+    if any(char in HEADWORD_FORBIDDEN for char in headword):
+        return None
+    return headword
+
+
+def classify_annotation_structure(item: dict[str, Any]) -> dict[str, Any]:
+    text = item["text"]
+    headword = extract_headword(text)
+
+    if CROSS_REFERENCE.search(text):
+        structure = "cross_reference"
+    elif headword is not None:
+        structure = "headword_colon"
+    elif len(text) >= LONG_NOTE_CHARS:
+        structure = "long_source_note"
+    elif TRAILING_SOURCE.search(text):
+        structure = "quoted_source"
+    else:
+        structure = "other"
+
+    result = {"structure": structure}
+    if headword is not None:
+        result["headword"] = headword
+        result["headword_in_body"] = headword in item.get("_body_text", "")
+    return result
+
+
+def profile_annotation_structures(
+    items: list[dict[str, Any]],
+    *,
+    sample_size: int,
+    excerpt_chars: int,
+    seed: int,
+) -> dict[str, Any]:
+    buckets: dict[str, list[dict[str, Any]]] = defaultdict(list)
+
+    for item in items:
+        item.update(classify_annotation_structure(item))
+        buckets[item["structure"]].append(item)
+
+    order = (
+        "headword_colon",
+        "quoted_source",
+        "cross_reference",
+        "long_source_note",
+        "other",
+    )
+    counts = [
+        {
+            "structure": name,
+            "count": len(buckets[name]),
+            "rate": round(len(buckets[name]) / len(items), 4) if items else 0,
+        }
+        for name in order
+    ]
+
+    headword_items = [
+        item
+        for item in items
+        if item.get("headword") is not None
+    ]
+    matched = [
+        item
+        for item in headword_items
+        if item.get("headword_in_body") is True
+    ]
+    unmatched = [
+        item
+        for item in headword_items
+        if item.get("headword_in_body") is False
+    ]
+
+    rng = random.Random(seed)
+    samples = {}
+    for name in order:
+        candidates = buckets[name]
+        chosen = rng.sample(candidates, k=min(sample_size, len(candidates)))
+        samples[name] = [public_item(item, excerpt_chars) for item in chosen]
+
+    return {
+        "note": (
+            "以下分类只按文本形态筛选候选，不代表已经判断为词义、典故或化用。"
+        ),
+        "counts": counts,
+        "headword_candidates": {
+            "count": len(headword_items),
+            "matched_in_body": len(matched),
+            "unmatched_in_body": len(unmatched),
+            "match_rate": round(len(matched) / len(headword_items), 4)
+            if headword_items
+            else 0,
+            "matched_samples": [
+                public_item(item, excerpt_chars)
+                for item in rng.sample(matched, k=min(sample_size, len(matched)))
+            ],
+            "unmatched_samples": [
+                public_item(item, excerpt_chars)
+                for item in rng.sample(unmatched, k=min(sample_size, len(unmatched)))
+            ],
+        },
+        "samples": samples,
     }
 
 
@@ -293,44 +478,50 @@ def profile_category(
                 feature_counts[name] += 1
 
     item_count = len(items)
-
-    return (
-        {
-            "record_count": len(records),
-            "records_with_items": sum(1 for count in counts if count > 0),
-            "records_without_items": sum(1 for count in counts if count == 0),
-            "coverage_rate": (
-                round(sum(1 for count in counts if count > 0) / len(records), 4)
-                if records
-                else 0
-            ),
-            "item_count": item_count,
-            "unique_item_count": len(duplicate_counter),
-            "items_per_record": numeric_stats(counts),
-            "item_length": numeric_stats(lengths),
-            "length_buckets": {
-                label: bucket_counts[label]
-                for _, _, label in LENGTH_BUCKETS
-            },
-            "features": {
-                name: {
-                    "count": count,
-                    "rate": round(count / item_count, 4) if item_count else 0,
-                }
-                for name, count in sorted(feature_counts.items())
-            },
-            "by_collection": aggregate_group(items, "collection"),
-            "by_author": aggregate_group(items, "author"),
-            "repeated_items": repeated,
-            "samples": sample_items(
-                items,
-                sample_size=sample_size,
-                excerpt_chars=excerpt_chars,
-                seed=seed,
-            ),
+    result = {
+        "record_count": len(records),
+        "records_with_items": sum(1 for count in counts if count > 0),
+        "records_without_items": sum(1 for count in counts if count == 0),
+        "coverage_rate": (
+            round(sum(1 for count in counts if count > 0) / len(records), 4)
+            if records
+            else 0
+        ),
+        "item_count": item_count,
+        "unique_item_count": len(duplicate_counter),
+        "items_per_record": numeric_stats(counts),
+        "item_length": numeric_stats(lengths),
+        "length_buckets": {
+            label: bucket_counts[label]
+            for _, _, label in LENGTH_BUCKETS
         },
-        anomalies,
-    )
+        "features": {
+            name: {
+                "count": count,
+                "rate": round(count / item_count, 4) if item_count else 0,
+            }
+            for name, count in sorted(feature_counts.items())
+        },
+        "by_collection": aggregate_group(records, items, "collection"),
+        "by_author": aggregate_group(records, items, "author"),
+        "repeated_items": repeated,
+        "samples": sample_items(
+            items,
+            sample_size=sample_size,
+            excerpt_chars=excerpt_chars,
+            seed=seed,
+        ),
+    }
+
+    if category == "annotations":
+        result["structure_candidates"] = profile_annotation_structures(
+            items,
+            sample_size=sample_size,
+            excerpt_chars=excerpt_chars,
+            seed=seed + 100,
+        )
+
+    return result, anomalies
 
 
 def safe_source_label(path: Path) -> str:
@@ -393,6 +584,38 @@ def _md_table(rows: list[list[Any]], headers: list[str]) -> list[str]:
     return output
 
 
+def _identity(item: dict[str, Any]) -> str:
+    return " / ".join(
+        str(value)
+        for value in (
+            item.get("author"),
+            item.get("cipai"),
+            item.get("title"),
+        )
+        if value
+    ) or "（无题名）"
+
+
+def _sample_rows(samples: list[dict[str, Any]]) -> list[list[Any]]:
+    rows = []
+    for item in samples:
+        rows.append(
+            [
+                item.get("record_id"),
+                _identity(item),
+                item.get("headword", ""),
+                (
+                    ""
+                    if item.get("headword_in_body") is None
+                    else "是" if item["headword_in_body"] else "否"
+                ),
+                item["length"],
+                item["excerpt"],
+            ]
+        )
+    return rows
+
+
 def render_markdown(profile: dict[str, Any]) -> str:
     lines = [
         "# Editorial Notes Profile",
@@ -441,19 +664,110 @@ def render_markdown(profile: dict[str, Any]) -> str:
         else:
             lines.append("无。")
 
-        lines.extend(["", "### 按词集", ""])
+        lines.extend(["", "### 按词集（按每首元素数排序）", ""])
         lines.extend(
             _md_table(
                 [
-                    [row["collection"], row["items"], row["median_length"]]
+                    [
+                        row["collection"],
+                        row["records"],
+                        row["records_with_items"],
+                        f"{row['coverage_rate']:.1%}",
+                        row["items"],
+                        row["items_per_record"],
+                        row["items_per_annotated_record"],
+                        row["median_length"],
+                    ]
                     for row in data["by_collection"]
                 ],
-                ["词集", "元素数", "长度中位数"],
+                [
+                    "词集",
+                    "作品数",
+                    "有内容作品",
+                    "覆盖率",
+                    "元素数",
+                    "每首",
+                    "有内容作品每首",
+                    "长度中位数",
+                ],
             )
         )
 
+        if category == "annotations":
+            structure = data["structure_candidates"]
+            lines.extend(
+                [
+                    "",
+                    "### annotation 结构候选",
+                    "",
+                    f"> {structure['note']}",
+                    "",
+                ]
+            )
+            lines.extend(
+                _md_table(
+                    [
+                        [row["structure"], row["count"], f"{row['rate']:.1%}"]
+                        for row in structure["counts"]
+                    ],
+                    ["结构", "数量", "占比"],
+                )
+            )
+
+            headwords = structure["headword_candidates"]
+            lines.extend(
+                [
+                    "",
+                    "### 冒号前词头候选",
+                    "",
+                    f"- 候选：{headwords['count']}",
+                    f"- 能在本词正文找到：{headwords['matched_in_body']} "
+                    f"（{headwords['match_rate']:.1%}）",
+                    f"- 未在本词正文直接找到：{headwords['unmatched_in_body']}",
+                    "",
+                ]
+            )
+
+            for key, title in (
+                ("matched_samples", "词头命中正文样本"),
+                ("unmatched_samples", "词头未命中正文样本"),
+            ):
+                lines.extend([f"#### {title}", ""])
+                samples = headwords[key]
+                if samples:
+                    lines.extend(
+                        _md_table(
+                            _sample_rows(samples),
+                            ["record_id", "作品", "词头", "正文命中", "长度", "文本摘录"],
+                        )
+                    )
+                else:
+                    lines.append("无。")
+                lines.append("")
+
+            structure_titles = {
+                "headword_colon": "短词头 + 冒号",
+                "quoted_source": "带尾部来源的引文",
+                "cross_reference": "交叉引用",
+                "long_source_note": "长篇来源/本事候选",
+                "other": "其他",
+            }
+            for name, title in structure_titles.items():
+                lines.extend([f"#### {title}样本", ""])
+                samples = structure["samples"][name]
+                if samples:
+                    lines.extend(
+                        _md_table(
+                            _sample_rows(samples),
+                            ["record_id", "作品", "词头", "正文命中", "长度", "文本摘录"],
+                        )
+                    )
+                else:
+                    lines.append("无。")
+                lines.append("")
+
         if data["repeated_items"]:
-            lines.extend(["", "### 重复元素（前 20）", ""])
+            lines.extend(["### 重复元素（前 20）", ""])
             lines.extend(
                 _md_table(
                     [
@@ -470,28 +784,13 @@ def render_markdown(profile: dict[str, Any]) -> str:
             ("longest", "最长样本"),
         ):
             lines.extend(["", f"### {title}", ""])
-            sample_rows = []
-            for item in data["samples"][sample_kind]:
-                identity = " / ".join(
-                    str(value)
-                    for value in (
-                        item.get("author"),
-                        item.get("cipai"),
-                        item.get("title"),
-                    )
-                    if value
-                )
-                sample_rows.append(
-                    [
-                        item.get("record_id"),
-                        identity or "（无题名）",
-                        item["length"],
-                        item["excerpt"],
-                    ]
-                )
-            if sample_rows:
+            samples = data["samples"][sample_kind]
+            if samples:
                 lines.extend(
-                    _md_table(sample_rows, ["record_id", "作品", "长度", "文本摘录"])
+                    _md_table(
+                        _sample_rows(samples),
+                        ["record_id", "作品", "词头", "正文命中", "长度", "文本摘录"],
+                    )
                 )
             else:
                 lines.append("无。")
@@ -550,10 +849,12 @@ def main() -> None:
     )
     args.md_output.write_text(render_markdown(profile), encoding="utf-8")
 
+    annotations = profile["categories"]["annotations"]
     print(
         f"作品 {profile['record_count']}；"
-        f"annotations {profile['categories']['annotations']['item_count']}；"
+        f"annotations {annotations['item_count']}；"
         f"commentaries {profile['categories']['commentaries']['item_count']}；"
+        f"词头候选 {annotations['structure_candidates']['headword_candidates']['count']}；"
         f"结构异常 {profile['anomaly_count']}"
     )
     print(f"JSON：{args.json_output}")
