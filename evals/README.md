@@ -1,9 +1,9 @@
 # Poeticus AI Eval
 
-这里先保留一把很小、能重复使用的尺子。第一阶段只做两件事：
+这里保留一把很小、能重复使用的尺子。当前 Seed Eval 主要做两件事：
 
 1. 用固定问题比较当前 Poeticus Agent 与“同 Prompt、同模型、禁止工具调用”的对照组；
-2. 保存结果，人工看哪些地方确实因为 Tool / Evidence 变好或变坏。
+2. 保存回答、Tool Call、Tool Result 与 Evidence 摘要，人工判断差异究竟来自模型、路由、工具还是数据本身。
 
 当前不搭完整评测平台，也不做总分、LLM-as-a-Judge、RAGAS 或全量消融实验。
 
@@ -42,7 +42,21 @@ python -m scripts.evals.run_seed --output evals/results/seed_run.json
 - `control_no_tools`：与当前 Agent 使用同一模型、Prompt 和 Tool Schema，但强制 `tool_choice=none`；
 - `current_agent`：走当前 LangGraph Agent，允许它按现有规则调用 Tool。
 
+Run 还会记录 git SHA、模型、Prompt hash、实际 Tool Call、Tool Result 与 Evidence 数量，方便把“最后答错了”继续定位到执行过程。
+
 这不是对所有改动做严格学术消融，只是当前阶段最便宜、最容易解释的一组对照。
+
+## 当前已经照出的能力边界
+
+Seed Eval 已经说明，Poeticus 当前的两类 Evidence Tool 不能混成一个泛化“检索能力”：
+
+- `lookup_allusion` 更适合人物、故事和典故性短语；
+- `lookup_reference` 更适合仍保留明显文本锚点的前代成句、近似改写和部分拆取重组；
+- 高度压缩、反用或大幅改写的文本关系仍不稳定。
+
+因此后续 Text Retrieval / Embedding 实验单独由 #119 跟踪。它首先研究“检索器本身能否把正确前代文本排到前面”，不把尚未验证的 Retrieval 实验代码写成当前 Agent 能力，也不为了固定 Case 继续堆 Prompt 特例。
+
+另一个长期原则是：Dataset 自身也可能错。发现 Ground Truth、Case 设计或 Corpus coverage 有问题时，应先修评测输入，不能把所有失败都记成模型退化。
 
 ## 从私人编者注中挑选候选 Case
 
@@ -65,7 +79,9 @@ data/reports/eval_editorial_profile.json
 data/reports/eval_editorial_profile.md
 ```
 
-报告分别统计 annotations / commentaries 的覆盖率、每首数量、长度分布、重复项、常见文本特征和词集分布。词集表会同时给出作品数、覆盖率和每首平均元素数，避免把“收录作品多”误当成“注释更密”。\n\n对 annotations 还会额外做一层轻量结构筛选：`headword_colon`、`quoted_source`、`cross_reference`、`long_source_note`、`other`。这只是按文本形态帮助挑候选 Case，不把它包装成可靠的“词义 / 典故 / 化用”语义分类。对冒号前的短词头，还会检查它能否在本词正文直接找到。
+报告分别统计 annotations / commentaries 的覆盖率、每首数量、长度分布、重复项、常见文本特征和词集分布。词集表会同时给出作品数、覆盖率和每首平均元素数，避免把“收录作品多”误当成“注释更密”。
+
+对 annotations 还会额外做一层轻量结构筛选：`headword_colon`、`quoted_source`、`cross_reference`、`long_source_note`、`other`。这只是按文本形态帮助挑候选 Case，不把它包装成可靠的“词义 / 典故 / 化用”语义分类。对冒号前的短词头，还会检查它能否在本词正文直接找到。
 
 这些报告包含商业出版物的少量截断派生文本，只用于本地分析，不能提交到公开仓库。
 
