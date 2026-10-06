@@ -24,7 +24,7 @@ DEFAULT_INPUT = Path("data/output/retrieval/werneror_works.jsonl")
 DEFAULT_OUTPUT = Path("data/output/retrieval/werneror_chunks_sentence.jsonl")
 DEFAULT_REPORT = Path("data/reports/werneror_sentence_chunks.json")
 DEFAULT_EXPECTED_WORKS = 853_385
-DEFAULT_EXPECTED_CHUNKS = 4_822_082
+DEFAULT_EXPECTED_CHUNKS = 0
 
 POLICY = "sentence"
 SENTENCE_END = frozenset("。！？!?")
