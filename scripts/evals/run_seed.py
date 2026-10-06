@@ -83,17 +83,112 @@ def _tool_names(messages: list[dict]) -> list[str]:
     return names
 
 
+def _parse_json_object(value):
+    if not isinstance(value, str):
+        return value
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return value
+    return parsed
+
+
+def _evidence_preview(item: dict) -> dict:
+    source = item.get("source")
+    source_preview = None
+    if isinstance(source, dict):
+        source_preview = {
+            key: source.get(key)
+            for key in ("title", "author", "work")
+            if source.get(key)
+        }
+
+    text = item.get("text")
+    if isinstance(text, str):
+        text = text[:240]
+
+    preview = {
+        "anchor": item.get("anchor"),
+        "provider": item.get("provider"),
+        "status": item.get("status"),
+        "text_preview": text,
+    }
+    if source_preview:
+        preview["source"] = source_preview
+    return preview
+
+
+def _tool_trace(messages: list[dict]) -> dict:
+    calls = []
+    results = []
+
+    for message in messages:
+        if message.get("role") == "assistant":
+            for call in message.get("tool_calls") or []:
+                function = call.get("function") or {}
+                calls.append(
+                    {
+                        "id": call.get("id"),
+                        "name": function.get("name"),
+                        "arguments": _parse_json_object(
+                            function.get("arguments")
+                        ),
+                    }
+                )
+
+        if message.get("role") == "tool":
+            payload = _parse_json_object(message.get("content"))
+            result = {
+                "tool_call_id": message.get("tool_call_id"),
+            }
+
+            if isinstance(payload, dict):
+                evidences = payload.get("evidences") or []
+                result.update(
+                    {
+                        "status": payload.get("status"),
+                        "query": payload.get("query"),
+                        "evidence_count": (
+                            len(evidences)
+                            if isinstance(evidences, list)
+                            else 0
+                        ),
+                        "evidences": [
+                            _evidence_preview(item)
+                            for item in evidences
+                            if isinstance(item, dict)
+                        ],
+                    }
+                )
+                if payload.get("message"):
+                    result["message"] = payload.get("message")
+            else:
+                result["raw_content"] = payload
+
+            results.append(result)
+
+    return {
+        "calls": calls,
+        "results": results,
+    }
+
+
 def run_current_agent(case: EvalCase) -> dict:
     result = graph.invoke(graph_state(case))
     answer = result.get("reply")
     if not isinstance(answer, str) or not answer.strip():
         raise RuntimeError("current_agent 没有返回有效回答")
 
+    messages = result.get("messages") or []
+    trace = _tool_trace(messages)
+
     return {
         "answer": answer,
         "tool_count": result.get("tool_count", 0),
-        "tool_names": _tool_names(result.get("messages") or []),
+        "tool_names": _tool_names(messages),
         "evidence_count": len(result.get("evidences") or []),
+        "tool_calls": trace["calls"],
+        "tool_results": trace["results"],
     }
 
 
@@ -156,10 +251,19 @@ def main() -> None:
         print(control["answer"])
         print("\n[current_agent]")
         print(agent["answer"])
+        result_summary = [
+            {
+                "query": item.get("query"),
+                "status": item.get("status"),
+                "evidence_count": item.get("evidence_count"),
+            }
+            for item in agent["tool_results"]
+        ]
         print(
             f"\nprocess: tools={agent['tool_names']} "
             f"tool_count={agent['tool_count']} "
-            f"evidence_count={agent['evidence_count']}"
+            f"evidence_count={agent['evidence_count']} "
+            f"tool_results={result_summary}"
         )
 
         run["cases"].append(
