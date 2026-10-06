@@ -38,7 +38,9 @@ def test_agent_decide_prompt_contains_tool_selection_principles():
     assert "选区与问题中出现不同对象时" in prompt
     assert "从哪里来、出自哪里、是什么典故" in prompt
     assert "最短且有辨识度的典故锚点" in prompt
-    assert "全文相似检索" in prompt
+    assert "这句是否化用前人诗句" in prompt
+    assert "目标短句" in prompt
+    assert "高度压缩的典故词" in prompt
 
 
 def test_output_style_contains_quote_rules():
