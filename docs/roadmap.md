@@ -1,7 +1,7 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-05  
-> 当前状态：`v0.1.0` 已公开发布；3491 首宋词、PostgreSQL 阅读 API、多轮 SSE 伴读、整首赏析、典故工具和匿名 AI 保护均已上线。
+> 更新日期：2026-10-06  
+> 当前状态：`v0.2.0` 已公开发布；当前 main 已进一步加入响应式阅读体验、Seed AI Eval baseline、Agent Process Trace，以及典故 / 出处两类 Evidence Tool。
 
 Roadmap 只记录**下一阶段方向**。已经完成的发布过程不再混在未来计划里；具体任务和验收进入 GitHub Issues。
 
@@ -43,35 +43,37 @@ Poeticus 已经走通：
 
 ### 2.2 Evidence / RAG
 
-当前只有一个较窄的典故查询工具。下一阶段如果扩展外部知识，优先做一个真实、可验证的最小闭环，而不是为了技术名词堆系统。
+当前已有两类 CNKGraph Evidence Tool：
 
-候选资料：
+- `lookup_allusion`：人物、故事、典故性短语；
+- `lookup_reference`：前代成句、近似文本、改写与拆取重组候选。
 
-- 可靠注释；
-- 词话与历代评论；
-- 作者编年/生平资料；
-- 可追溯的作品出处。
+Seed Eval 已确认它们具有互补性，也确认了共同边界：高度压缩、反用、翻案和大幅重组仍可能无法稳定检索。
+
+下一阶段优先做 [#119 Text Retrieval / BERT-CCPoem Retrieval Benchmark](https://github.com/montricwang/poeticus/issues/119)，先回答“embedding retrieval 到底能补多少”，再决定是否建设正式 RAG。候选资料仍包括可靠注释、词话与历代评论、作者编年 / 生平资料和可追溯的作品出处。
 
 需要实际回答：
 
-- 什么问题应该检索；
-- chunk 和 metadata 如何设计；
-- 如何保留出处；
-- 未命中和冲突证据怎么处理；
-- retrieval 是否真的改善回答。
+- 什么问题应该走 allusion、reference 或未来的 text retrieval；
+- 候选库、chunk 和 metadata 如何设计；
+- 正确来源在 Top-1 / Top-5 / Top-20 的位置；
+- 如何保留出处、处理未命中和冲突证据；
+- retrieval 是否真的改善回答，而不是只增加复杂度。
 
 ### 2.3 Evaluation
 
-建立小而稳定的 AI Eval baseline，优先覆盖：
+第一轮 Seed AI Eval baseline 已完成，并实际用于：
 
-- 工具该用时是否使用；
-- 工具不该用时是否克制；
-- 典故/年代/人物等硬事实；
-- 多轮指代；
-- 文学解释是否落在原文而不是套话；
-- Prompt、模型或 retrieval 变化是否造成退化。
+- 对比 `control_no_tools` 与 `current_agent`；
+- 发现并修复 Tool budget 后的协议泄漏；
+- 增加 Tool Call / Tool Result / Evidence 的 Process Trace；
+- 发现 Routing 缺陷与 Tool 能力边界；
+- 复核并修正一条错误 Ground Truth；
+- 验证 `lookup_reference` 对近似成句检索的增量。
 
-单元测试、AI Eval、LangSmith Trace 和真实浏览器验收继续分层，不互相冒充。
+下一阶段不继续为了固定 Case 调 Prompt。保留小而稳定的 Core Set，并在真实失败、模型 / Prompt / Retrieval 变化时做回归。未来若需要“裸基模 → Poeticus Prompt → Agent + Tool”的严格对照，再单独设计受控实验。
+
+单元测试、AI Eval、Trace 和真实浏览器验收继续分层，不互相冒充。
 
 ### 2.4 UX reliability
 
@@ -112,6 +114,10 @@ Poeticus 已经走通：
 ### Engineering spikes
 
 MCP、Reranker、Hybrid Search、Redis、Checkpointer 等可以做短期 Spike，但进入主线前必须回答“它解决 Poeticus 的哪个真实问题”。
+
+当前已知低优先级优化：
+
+- [#120 避免同一轮 Agent 重复执行相同 Tool Call](https://github.com/montricwang/poeticus/issues/120)：属于效率与 Tool budget 稳健性问题，不阻塞现有正确性。
 
 ## 4. 求职与学习目标
 
