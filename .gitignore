@@ -32,3 +32,6 @@ data/reports/epub_dom_layout_profile.json
 # Local-only corpus reports: generated output may include licensed source excerpts
 data/reports/*
 !data/reports/.gitkeep
+
+# Local AI eval outputs
+evals/results/*.json
