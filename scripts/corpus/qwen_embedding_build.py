@@ -349,6 +349,11 @@ def build_embeddings(
 
     for global_index, record in iter_chunks(input_path):
         seen_chunks = global_index + 1
+        if seen_chunks > expected_chunks:
+            raise ValueError(
+                f"Chunk JSONL 超过 expected-chunks={expected_chunks:,}；"
+                "停止生成，避免把异常输入写入新 shard"
+            )
         if global_index < resume_index:
             continue
         if not batch_records:
