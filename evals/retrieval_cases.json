@@ -1,0 +1,80 @@
+{
+  "schema_version": "1",
+  "dataset_id": "poeticus_retrieval_v01",
+  "dataset_version": 1,
+  "status": "draft",
+  "cases": [
+    {
+      "id": "near_quote_yan_weng",
+      "query": "落花人独立，微雨燕双飞",
+      "expected": [
+        {
+          "text": "落花人獨立，微雨燕雙飛。",
+          "author": "翁宏"
+        }
+      ],
+      "tags": ["near_quote", "predecessor_text"],
+      "rationale": "晏几道《临江仙》直接借用翁宏《春残》成句，作为最容易的 sanity case。"
+    },
+    {
+      "id": "adapted_sushi_libai_moon",
+      "query": "明月几时有，把酒问青天",
+      "expected": [
+        {
+          "text": "青天有月來幾時，我今停杯一問之。",
+          "author": "李白"
+        }
+      ],
+      "tags": ["adapted_quote", "predecessor_text"],
+      "rationale": "苏轼开篇化用李白《把酒问月》，保留问月与举杯结构但重组措辞。"
+    },
+    {
+      "id": "compressed_hezhou_lishangyin_jinse",
+      "query": "锦瑟华年谁与度",
+      "expected": [
+        {
+          "text": "錦瑟無端五十弦，一弦一柱思華年。",
+          "author": "李商隱"
+        }
+      ],
+      "tags": ["compressed_cue", "predecessor_text"],
+      "rationale": "贺铸把李商隐《锦瑟》的核心意象压缩成“锦瑟华年”，测试短提示能否召回完整前代文本。"
+    },
+    {
+      "id": "transformed_liqingzhao_fanzhongyan_brow_heart",
+      "query": "此情无计可消除，才下眉头，却上心头",
+      "expected": [
+        {
+          "text": "都来此事，眉间心上，无计相回避。",
+          "author": "范仲淹"
+        }
+      ],
+      "tags": ["transformed_use", "predecessor_text"],
+      "rationale": "传统评点指出李清照结拍从范仲淹《御街行》相关句脱胎，字面重合有限，作为 transformed-use 诊断题。"
+    },
+    {
+      "id": "adapted_jiangkui_dumu_springwind",
+      "query": "过春风十里，尽荠麦青青",
+      "expected": [
+        {
+          "text": "春風十里揚州路",
+          "author": "杜牧"
+        }
+      ],
+      "tags": ["adapted_quote", "predecessor_text"],
+      "rationale": "姜夔以“春风十里”召回杜牧《赠别》中的扬州旧景，并与眼前荒凉形成对照。"
+    },
+    {
+      "id": "compressed_jiangkui_dumu_qinglou",
+      "query": "青楼梦好，难赋深情",
+      "expected": [
+        {
+          "text": "十年一覺揚州夢",
+          "author": "杜牧"
+        }
+      ],
+      "tags": ["compressed_cue", "predecessor_text"],
+      "rationale": "“青楼梦好”压缩杜牧《遣怀》的“扬州梦 / 青楼”语义锚点，测试比直接成句更远的召回。"
+    }
+  ]
+}
