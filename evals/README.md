@@ -92,3 +92,20 @@ data/reports/eval_candidates_10061450.md
 抽样会在不同词集之间轮转，避免辛弃疾、黄庭坚等大词集淹没候选池。结果只作为人工挑选 Eval Case 的候选，不自动把 `quoted_source` 判定为“化用”，也不自动把 `headword_colon` 判定为“词义解释”。
 
 这类诊断 / 抽样脚本以后默认在文件名后附 `MMDDHHMM` 八位时间戳，避免不同轮次脚本和报告互相覆盖。
+
+### 扩大关系候选样本（10061542）
+
+在 30 条 `quoted_source` 试标之后，下一轮扩大到 100 条关系候选，同时保留 50 条词头候选：
+
+```powershell
+python -m scripts.evals.build_eval_candidates_10061542
+```
+
+默认生成：
+
+```text
+data/reports/eval_candidates_10061542.json
+data/reports/eval_candidates_10061542.md
+```
+
+这一轮仍然只做抽样，不自动给 `quoted_source` 关系分类。先人工标约 100 条，观察 taxonomy 是否稳定，再决定是否引入 AI 辅助初标。
