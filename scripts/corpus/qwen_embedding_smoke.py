@@ -1,23 +1,7 @@
 """Minimal local smoke test for Qwen3 Embedding.
 
-Purpose:
-- let Hugging Face / sentence-transformers download the model on first run;
-- confirm Poeticus can turn classical Chinese lines into embeddings;
-- show vector dimension and cosine similarities on a tiny example.
-
-This is NOT the retrieval benchmark and never reads the 4.8M chunk corpus.
-
-Install the optional local dependency first:
-
-    pip install -r requirements-retrieval.txt
-
-Then run with Hugging Face model id:
-
-    python -m scripts.corpus.qwen_embedding_smoke
-
-Or point at a complete local snapshot downloaded from ModelScope / Hugging Face:
-
-    python -m scripts.corpus.qwen_embedding_smoke --model-path D:\\models\\Qwen3-Embedding-0.6B
+This validates only model loading, embedding shape and a tiny cosine ranking.
+It is not the Poeticus Retrieval quality evaluation.
 """
 from __future__ import annotations
 
@@ -25,7 +9,6 @@ import argparse
 import json
 import math
 from collections.abc import Sequence
-from pathlib import Path
 from pathlib import Path
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
@@ -61,10 +44,7 @@ def rank_candidates(
         raise ValueError("候选文本与候选向量数量不一致")
 
     rows = [
-        {
-            "text": text,
-            "cosine": cosine_similarity(query_vector, vector),
-        }
+        {"text": text, "cosine": cosine_similarity(query_vector, vector)}
         for text, vector in zip(candidate_texts, candidate_vectors)
     ]
     rows.sort(key=lambda row: row["cosine"], reverse=True)
@@ -133,13 +113,14 @@ def main() -> None:
     if len(embeddings.shape) != 2 or embeddings.shape[0] != len(texts):
         raise RuntimeError(f"Embedding 输出形状异常：{embeddings.shape}")
 
-    query_vector = embeddings[0].tolist()
-    candidate_vectors = [row.tolist() for row in embeddings[1:]]
-    ranking = rank_candidates(query_vector, candidate_vectors, CANDIDATES)
+    ranking = rank_candidates(
+        embeddings[0].tolist(),
+        [row.tolist() for row in embeddings[1:]],
+        CANDIDATES,
+    )
 
     result = {
         "model": MODEL_NAME,
-        "model_source": model_source,
         "model_source": model_source,
         "device": str(model.device),
         "texts": len(texts),
