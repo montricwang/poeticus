@@ -39,15 +39,7 @@ class EvalInput(BaseModel):
 class ExpectedBehavior(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    evidence_policy: Literal["required", "optional", "forbidden"]
-    capability: Literal[
-        "direct",
-        "allusion",
-        "dictionary",
-        "reference",
-        "retrieval",
-        "mixed",
-    ]
+    tool_policy: Literal["required", "optional", "forbidden"]
     answer_should_cover: list[str] = Field(default_factory=list)
     answer_must_not_claim: list[str] = Field(default_factory=list)
 
