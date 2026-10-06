@@ -95,6 +95,33 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
                 "additionalProperties": False,
             },
         },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_reference",
+            "description": (
+                "查询一句或短句可能对应的前代诗文、成句或化用候选。"
+                "适合近似成句、改写、拆取重组等文本关系；"
+                "返回结果只是候选，可能包含当前作品或后代作品，"
+                "必须结合作者年代和文本关系判断。"
+                "不适合解释人物故事型典故，也不能保证识别高度压缩或反用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": (
+                            "真正要比较来源的诗句或短句。"
+                            "优先只提交目标短句，不要机械地提交整首诗。"
+                        ),
+                    }
+                },
+                "required": ["text"],
+                "additionalProperties": False,
+            },
+        },
     }
 ]
 
@@ -415,31 +442,43 @@ def execute_tools(state: RouterState) -> dict:
                 count += 1
 
                 try:
-                    if call["name"] != "lookup_allusion":
-                        raise ValueError(f"未知工具：{call['name']}")
-
                     arguments = json.loads(call["arguments"])
 
                     if not isinstance(arguments, dict):
                         raise ValueError("工具参数必须是对象")
 
-                    term = arguments.get("term")
+                    if call["name"] == "lookup_allusion":
+                        query = arguments.get("term")
+                        evidence_type = "allusion"
+                        max_items = 3
+                        invalid_message = "无效的典故查询词"
+                    elif call["name"] == "lookup_reference":
+                        query = arguments.get("text")
+                        evidence_type = "reference"
+                        max_items = 5
+                        invalid_message = "无效的出处查询文本"
+                    else:
+                        raise ValueError(f"未知工具：{call['name']}")
 
-                    if not isinstance(term, str) or not term.strip() or len(term) > 64:
-                        raise ValueError("无效的典故查询词")
+                    if (
+                        not isinstance(query, str)
+                        or not query.strip()
+                        or len(query) > 120
+                    ):
+                        raise ValueError(invalid_message)
 
-                    term = term.strip()
+                    query = query.strip()
 
                     evidences = await evidence_service.search(
-                        query=term,
+                        query=query,
                         provider_name="cnkgraph",
-                        evidence_type="allusion",
+                        evidence_type=evidence_type,
                     )
 
                     # 限制回传给后续 LLM 轮次的工具材料长度，避免外部证据
-                    # 带入过长文本。
+                    # 带入过长文本。reference 多保留两条候选，便于跨年代比较。
                     items = []
-                    for item in evidences[:3]:
+                    for item in evidences[:max_items]:
                         data = item.model_dump()
                         data["text"] = data["text"][:1600]
                         if isinstance(data.get("source"), dict):
@@ -452,7 +491,8 @@ def execute_tools(state: RouterState) -> dict:
 
                     result = {
                         "status": ("ok" if items else "no_hit"),
-                        "query": term,
+                        "query": query,
+                        "evidence_type": evidence_type,
                         "evidences": items,
                     }
 
