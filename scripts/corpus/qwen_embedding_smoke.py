@@ -11,9 +11,13 @@ Install the optional local dependency first:
 
     pip install -r requirements-retrieval.txt
 
-Then run:
+Then run with Hugging Face model id:
 
     python -m scripts.corpus.qwen_embedding_smoke
+
+Or point at a complete local snapshot downloaded from ModelScope / Hugging Face:
+
+    python -m scripts.corpus.qwen_embedding_smoke --model-path D:\\models\\Qwen3-Embedding-0.6B
 """
 from __future__ import annotations
 
@@ -21,6 +25,7 @@ import argparse
 import json
 import math
 from collections.abc import Sequence
+from pathlib import Path
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 
@@ -73,6 +78,14 @@ def main() -> None:
         "--device",
         help="可选：显式指定 cpu / cuda / mps；默认交给 sentence-transformers",
     )
+    parser.add_argument(
+        "--model-path",
+        type=Path,
+        help=(
+            "可选：完整本地模型目录。指定后强制 local_files_only，"
+            "不会访问 Hugging Face。"
+        ),
+    )
     args = parser.parse_args()
 
     try:
@@ -87,11 +100,27 @@ def main() -> None:
     if args.device:
         kwargs["device"] = args.device
 
-    print(
-        f"加载 {MODEL_NAME}；首次运行会由 Hugging Face 自动下载模型……",
-        flush=True,
-    )
-    model = SentenceTransformer(MODEL_NAME, **kwargs)
+    if args.model_path:
+        model_path = args.model_path.expanduser().resolve()
+        if not model_path.is_dir():
+            raise SystemExit(f"本地模型目录不存在：{model_path}")
+        required = ("config.json", "model.safetensors", "tokenizer_config.json")
+        missing = [name for name in required if not (model_path / name).is_file()]
+        if missing:
+            raise SystemExit(
+                "本地模型目录不完整，缺少：" + ", ".join(missing)
+            )
+        model_source = str(model_path)
+        kwargs["local_files_only"] = True
+        print(f"只从本地加载模型：{model_source}", flush=True)
+    else:
+        model_source = MODEL_NAME
+        print(
+            f"加载 {MODEL_NAME}；首次运行会由 Hugging Face 自动下载模型……",
+            flush=True,
+        )
+
+    model = SentenceTransformer(model_source, **kwargs)
 
     texts = [QUERY, *CANDIDATES]
     embeddings = model.encode(
@@ -109,6 +138,7 @@ def main() -> None:
 
     result = {
         "model": MODEL_NAME,
+        "model_source": model_source,
         "device": str(model.device),
         "texts": len(texts),
         "embedding_dimension": int(embeddings.shape[1]),
