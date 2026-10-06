@@ -1,37 +1,45 @@
 # Poeticus AI Eval
 
-这里先保存 Poeticus 的小型离线评测集。当前目标不是搭建完整评测平台，而是固定一把可以重复使用的尺子，用来比较不同版本的 AI 应用行为。
+这里先保留一把很小、能重复使用的尺子。第一阶段只做两件事：
 
-## 第一阶段测什么
+1. 用固定问题比较当前 Poeticus Agent 与“同 Prompt、同模型、禁止工具调用”的对照组；
+2. 保存结果，人工看哪些地方确实因为 Tool / Evidence 变好或变坏。
 
-第一批 Seed Eval 主要做端到端评测（End-to-End Evaluation）：把 Prompt、模型、Agent、Tool / Evidence 看成一个完整系统，观察它是否完成用户任务。
+当前不搭完整评测平台，也不做总分、LLM-as-a-Judge、RAGAS 或全量消融实验。
 
-后续可以另外做组件评测（Component-level Evaluation），例如 Tool Selection、Retrieval、Reranking，但不在第一阶段展开。
+## Dataset
 
-## Case 与 Run 分离
+`seed_cases.json` 中每条 Case 只记录：
 
-- Dataset / Case：描述输入、预期行为和判定约束，是仓库中的 source of truth。
-- Run / Experiment：描述某次系统配置、输出、工具调用和分数，不写回 Case。
+- 用户输入；
+- Tool 是否应当使用；
+- 回答至少应覆盖什么；
+- 不能无依据声称什么；
+- 这道题为什么值得保留。
 
-以后保存 Run 时，至少应记录 git SHA、模型、Prompt 版本、启用的工具以及 RAG / Retrieval 版本。
+Case 描述问题本身；某次模型输出属于 Run，不写回 Case。
 
-## Seed Set 的维护
+第一批数据仍是 `draft`。后续发现真实失败时直接补新的 Case；旧 Case 如果本身有问题，标记 deprecated，不静默删除。
 
-- 第一批只保留少量有诊断价值的问题，不追求覆盖全部宋词。
-- 稳定 Case 使用固定 ID。
-- 发现真实失败后，可以补充 Regression Case。
-- 需要探索上限的问题可以进入 Challenge Set。
-- 如果旧 Case 本身有错或无法稳定评分，应标记 deprecated 并记录原因，不静默删除。
-- 不同 Dataset 版本之间做历史比较时，优先比较共同子集（common subset）。
+## 运行
 
-## 当前状态
+需要本地已有 `LLM_API_KEY` 等 Poeticus 配置。
 
-`seed_cases.json` 目前是 **draft**。诗词文本和预期约束需要先由人工复核，再晋升为 active baseline。
+只跑一题：
 
-第一批同时保留三类问题：
+```powershell
+python -m scripts.evals.run_seed --case allusion_fenglangjuxu
+```
 
-1. 不需要外部资料，模型应直接阅读原文；
-2. 需要典故 / 出处等外部证据；
-3. 当前能力不足时应克制回答，而不是编造确定事实。
+跑全部题并保存结果：
 
-暂不引入 LLM-as-a-Judge、RAGAS、复杂自动评分或全量消融实验。只有当某个组件是否值得保留成为真实工程决策时，再做小范围 controlled experiment。
+```powershell
+python -m scripts.evals.run_seed --output evals/results/seed_run.json
+```
+
+每题会比较：
+
+- `control_no_tools`：与当前 Agent 使用同一模型、Prompt 和 Tool Schema，但强制 `tool_choice=none`；
+- `current_agent`：走当前 LangGraph Agent，允许它按现有规则调用 Tool。
+
+这不是对所有改动做严格学术消融，只是当前阶段最便宜、最容易解释的一组对照。
