@@ -5,6 +5,7 @@ from scripts.evals.profile_editorial_notes import (
     build_profile,
     load_records,
     render_markdown,
+    safe_source_label,
 )
 
 
@@ -122,3 +123,9 @@ def test_load_records_requires_top_level_array(tmp_path):
         assert "顶层必须是数组" in str(exc)
     else:
         raise AssertionError("应拒绝非数组顶层")
+
+
+def test_safe_source_label_does_not_expose_external_absolute_path(tmp_path):
+    external = tmp_path / "private.json"
+
+    assert safe_source_label(external) == "private.json"
