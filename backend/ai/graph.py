@@ -73,8 +73,9 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
         "function": {
             "name": "lookup_allusion",
             "description": (
-                "查询中国古典诗词中的典故及其含义。"
-                "仅在用户确实询问典故时使用。"
+                "查询中国古典诗词中的典故、典故性短语及其出处或含义。"
+                "适合核对某个短词、短语‘出自哪里/是什么典故’；"
+                "不适合做整句诗文的全文相似检索。"
                 "不要用于作品创作年代、作者生平、"
                 "诗中人物身份或普通文学赏析。"
             ),
@@ -85,7 +86,8 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
                         "type": "string",
                         "description": (
                             "真正需要查询的典故词语或短语。"
-                            "不要机械地把整段选区作为查询词。"
+                            "优先使用最短且有辨识度的锚点；"
+                            "不要机械地把整句诗、整段选区作为查询词。"
                         ),
                     }
                 },
