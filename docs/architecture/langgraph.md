@@ -26,11 +26,18 @@ flowchart TD
 
 之后的 Agent 轮次沿用本次请求的 `messages`，其中包含工具调用与工具返回。
 
-模型、输出 Token 预算和工具调用预算都来自后端统一配置。当前单次用户请求最多执行 **2 次实际工具调用**；达到预算后不再允许新的真实工具执行。
+模型、输出 Token 预算和工具调用预算都来自后端统一配置。当前单次用户请求最多执行 **2 次实际工具调用**；达到预算后，最后一轮不再向模型暴露 Tool Schema，只允许基于已有对话、工具结果和自身知识收束回答，并拦截内部工具协议被误当成正文输出。
 
 ## 3. 工具与 Evidence
 
-当前注册工具为 `lookup_allusion`，通过 `EvidenceService` 查询 CNKGraph 典故候选资料。
+当前注册两个 CNKGraph 工具，统一通过 `EvidenceService` 返回候选 Evidence：
+
+| Tool | 主要职责 | 已知边界 |
+| --- | --- | --- |
+| `lookup_allusion` | 人物、故事、典故性短语及其出处 / 含义 | 查询词应优先取短而有辨识度的典故锚点，不用于整句诗文相似检索 |
+| `lookup_reference` | 前代成句、近似文本、改写与拆取重组的出处候选 | 返回的是 candidate，不等于已经证实“化用”；对高度压缩、反用或大幅重组不能保证命中 |
+
+`lookup_reference` 使用 CNKGraph `/api/tool/reference`。实际试验表明，目标短句输入通常比把整首或整段正文一起提交更有效，因此 Agent Prompt 明确要求只查询真正需要比较来源的短句。
 
 工具返回可以是：
 
@@ -39,7 +46,7 @@ flowchart TD
 - `error`
 - `budget_exceeded`
 
-候选资料只是回答材料，不自动等于已经完成文献校勘。外部文本进入后续模型调用前会做长度限制。
+候选资料只是回答材料，不自动等于已经完成文献校勘。Agent 仍需结合作者时代、文本关系和问题语义判断；外部文本进入后续模型调用前会做长度限制。
 
 ## 4. Graph State
 
@@ -51,7 +58,7 @@ flowchart TD
 | `selection` / `context` | 可选选区与作品元数据 |
 | `history` | 此轮之前的短期 user / assistant 历史 |
 | `messages` | 当前一次 Agent 执行内部消息 |
-| `tool_calls` / `tool_results` | 当前工具请求与最近结果 |
+| `tool_calls` / `tool_results` | 当前待执行工具请求与本次请求内累计的工具结果 |
 | `tool_count` | 已执行工具数量 |
 | `evidences` | 累计候选证据 |
 | `reply` | 最终回答 |
