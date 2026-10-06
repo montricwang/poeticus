@@ -331,3 +331,12 @@ def test_tool_budget_exhaustion_disables_tools_and_hides_protocol(
         create_calls[2]["messages"][0]["content"]
     )
 
+def test_allusion_tool_contract_prefers_short_distinctive_anchor(agent):
+    tool = agent.TOOLS[0]["function"]
+
+    assert "典故性短语" in tool["description"]
+    assert "整句诗文的全文相似检索" in tool["description"]
+
+    term = tool["parameters"]["properties"]["term"]
+    assert "最短且有辨识度的锚点" in term["description"]
+
