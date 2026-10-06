@@ -68,3 +68,27 @@ data/reports/eval_editorial_profile.md
 报告分别统计 annotations / commentaries 的覆盖率、每首数量、长度分布、重复项、常见文本特征和词集分布。词集表会同时给出作品数、覆盖率和每首平均元素数，避免把“收录作品多”误当成“注释更密”。\n\n对 annotations 还会额外做一层轻量结构筛选：`headword_colon`、`quoted_source`、`cross_reference`、`long_source_note`、`other`。这只是按文本形态帮助挑候选 Case，不把它包装成可靠的“词义 / 典故 / 化用”语义分类。对冒号前的短词头，还会检查它能否在本词正文直接找到。
 
 这些报告包含商业出版物的少量截断派生文本，只用于本地分析，不能提交到公开仓库。
+
+## 从画像进入候选抽样
+
+完成 annotation 画像后，不继续扩大分类规则，直接从两个相对干净的结构池中抽候选：
+
+```powershell
+python -m scripts.evals.build_eval_candidates_10061450
+```
+
+默认生成：
+
+```text
+data/reports/eval_candidates_10061450.json
+data/reports/eval_candidates_10061450.md
+```
+
+当前只抽两类，各 30 条：
+
+- `headword_colon`：短词头 + 冒号，且词头能在本词正文直接找到；
+- `quoted_source`：编者注末尾带明确作品来源的前人引文。
+
+抽样会在不同词集之间轮转，避免辛弃疾、黄庭坚等大词集淹没候选池。结果只作为人工挑选 Eval Case 的候选，不自动把 `quoted_source` 判定为“化用”，也不自动把 `headword_colon` 判定为“词义解释”。
+
+这类诊断 / 抽样脚本以后默认在文件名后附 `MMDDHHMM` 八位时间戳，避免不同轮次脚本和报告互相覆盖。
