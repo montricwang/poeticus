@@ -1,0 +1,279 @@
+{
+  "schema_version": "1",
+  "dataset_id": "poeticus_seed_eval",
+  "dataset_version": 1,
+  "status": "draft",
+  "cases": [
+    {
+      "id": "direct_hesi_renjian",
+      "status": "draft",
+      "input": {
+        "poem": "明月几时有？把酒问青天。不知天上宫阙，今夕是何年。我欲乘风归去，又恐琼楼玉宇，高处不胜寒。起舞弄清影，何似在人间。\n转朱阁，低绮户，照无眠。不应有恨，何事长向别时圆？人有悲欢离合，月有阴晴圆缺，此事古难全。但愿人长久，千里共婵娟。",
+        "context": {
+          "title": "水调歌头·明月几时有",
+          "author": "苏轼",
+          "dynasty": "宋"
+        },
+        "selection": "何似在人间",
+        "question": "这里的「何似在人间」是什么意思？"
+      },
+      "expected": {
+        "evidence_policy": "forbidden",
+        "capability": "direct",
+        "answer_should_cover": [
+          "结合「起舞弄清影」解释为哪里比得上或何如人间",
+          "说明这里是在天上与人间之间作比较"
+        ],
+        "answer_must_not_claim": [
+          "把这一句解释成需要典故出处才能理解"
+        ]
+      },
+      "tags": ["direct-reading", "lexical", "no-tool"],
+      "rationale": "检查普通诗句解释能否直接落回上下文，而不是滥用典故工具。"
+    },
+    {
+      "id": "direct_gongjin_identity",
+      "status": "draft",
+      "input": {
+        "poem": "大江东去，浪淘尽，千古风流人物。故垒西边，人道是，三国周郎赤壁。乱石穿空，惊涛拍岸，卷起千堆雪。江山如画，一时多少豪杰。\n遥想公瑾当年，小乔初嫁了，雄姿英发。羽扇纶巾，谈笑间，樯橹灰飞烟灭。故国神游，多情应笑我，早生华发。人生如梦，一尊还酹江月。",
+        "context": {
+          "title": "念奴娇·赤壁怀古",
+          "author": "苏轼",
+          "dynasty": "宋"
+        },
+        "selection": "羽扇纶巾",
+        "question": "「羽扇纶巾」在这首词里写的是谁？"
+      },
+      "expected": {
+        "evidence_policy": "forbidden",
+        "capability": "direct",
+        "answer_should_cover": [
+          "指出词中写的是周瑜",
+          "能利用前文「公瑾」和「周郎」完成判断"
+        ],
+        "answer_must_not_claim": [
+          "因为「羽扇纶巾」常与诸葛亮联系，就断言这里写诸葛亮"
+        ]
+      },
+      "tags": ["direct-reading", "coreference", "no-tool"],
+      "rationale": "检查模型是否优先使用当前作品上下文，而不是被常见文化联想带偏。"
+    },
+    {
+      "id": "allusion_foli_identity",
+      "status": "draft",
+      "input": {
+        "poem": "千古江山，英雄无觅，孙仲谋处。舞榭歌台，风流总被，雨打风吹去。斜阳草树，寻常巷陌，人道寄奴曾住。想当年，金戈铁马，气吞万里如虎。\n元嘉草草，封狼居胥，赢得仓皇北顾。四十三年，望中犹记，烽火扬州路。可堪回首，佛狸祠下，一片神鸦社鼓。凭谁问：廉颇老矣，尚能饭否？",
+        "context": {
+          "title": "永遇乐·京口北固亭怀古",
+          "author": "辛弃疾",
+          "dynasty": "宋"
+        },
+        "selection": "佛狸祠下",
+        "question": "这里的「佛狸」是谁？这句为什么放在这里？"
+      },
+      "expected": {
+        "evidence_policy": "required",
+        "capability": "allusion",
+        "answer_should_cover": [
+          "识别「佛狸」与北魏太武帝拓跋焘相关",
+          "解释祠庙祭祀景象与词中历史记忆之间的关系"
+        ],
+        "answer_must_not_claim": [
+          "在没有可靠证据时编造具体史料引文或出处"
+        ]
+      },
+      "tags": ["allusion", "hard-fact", "evidence-required"],
+      "rationale": "当前典故工具应该有机会带来区别于裸模型的证据增益。"
+    },
+    {
+      "id": "allusion_fenglangjuxu",
+      "status": "draft",
+      "input": {
+        "poem": "千古江山，英雄无觅，孙仲谋处。舞榭歌台，风流总被，雨打风吹去。斜阳草树，寻常巷陌，人道寄奴曾住。想当年，金戈铁马，气吞万里如虎。\n元嘉草草，封狼居胥，赢得仓皇北顾。四十三年，望中犹记，烽火扬州路。可堪回首，佛狸祠下，一片神鸦社鼓。凭谁问：廉颇老矣，尚能饭否？",
+        "context": {
+          "title": "永遇乐·京口北固亭怀古",
+          "author": "辛弃疾",
+          "dynasty": "宋"
+        },
+        "selection": "封狼居胥",
+        "question": "「封狼居胥」是什么典故？辛弃疾在这里为什么接着写「赢得仓皇北顾」？"
+      },
+      "expected": {
+        "evidence_policy": "required",
+        "capability": "allusion",
+        "answer_should_cover": [
+          "说明典故与霍去病北征立功相关",
+          "区分典故原事与词中「元嘉草草」所指的失败北伐",
+          "解释这里带有用成功典故反衬草率冒进后果的意味"
+        ],
+        "answer_must_not_claim": [
+          "把霍去病与元嘉北伐说成同一历史事件"
+        ]
+      },
+      "tags": ["allusion", "relation", "evidence-required"],
+      "rationale": "不仅检查能否查到典故，还检查 Agent 能否把外部证据放回当前句法和历史语境。"
+    },
+    {
+      "id": "reference_luohua_yandu",
+      "status": "draft",
+      "input": {
+        "poem": "梦后楼台高锁，酒醒帘幕低垂。去年春恨却来时。落花人独立，微雨燕双飞。\n记得小苹初见，两重心字罗衣。琵琶弦上说相思。当时明月在，曾照彩云归。",
+        "context": {
+          "title": "临江仙·梦后楼台高锁",
+          "author": "晏几道",
+          "dynasty": "宋"
+        },
+        "selection": "落花人独立，微雨燕双飞",
+        "question": "这两句是晏几道原创的吗？如果不是，前面的出处是什么？"
+      },
+      "expected": {
+        "evidence_policy": "required",
+        "capability": "reference",
+        "answer_should_cover": [
+          "需要把「是否原创」视为出处查证问题",
+          "若能核实，应指出这两句早见于翁宏《春残》"
+        ],
+        "answer_must_not_claim": [
+          "仅凭模型记忆就把出处说成已经核实",
+          "把相似文本命中直接等同于确定的化用关系"
+        ]
+      },
+      "tags": ["reference", "citation", "current-gap"],
+      "rationale": "这是当前单一典故工具未必能处理好的出处 / 化用问题，可作为未来 reference tool 或 RAG 的基线。"
+    },
+    {
+      "id": "reference_dulang",
+      "status": "draft",
+      "input": {
+        "poem": "淮左名都，竹西佳处，解鞍少驻初程。过春风十里，尽荠麦青青。自胡马窥江去后，废池乔木，犹厌言兵。渐黄昏，清角吹寒，都在空城。\n杜郎俊赏，算而今，重到须惊。纵豆蔻词工，青楼梦好，难赋深情。二十四桥仍在，波心荡，冷月无声。念桥边红药，年年知为谁生？",
+        "context": {
+          "title": "扬州慢·淮左名都",
+          "author": "姜夔",
+          "dynasty": "宋"
+        },
+        "selection": "杜郎俊赏，算而今，重到须惊。纵豆蔻词工，青楼梦好",
+        "question": "这里的「杜郎」是谁？「豆蔻词工、青楼梦好」具体在借他的哪些旧作？"
+      },
+      "expected": {
+        "evidence_policy": "required",
+        "capability": "reference",
+        "answer_should_cover": [
+          "识别杜郎为杜牧",
+          "说明「豆蔻」与杜牧写扬州女子的诗句相关",
+          "说明「青楼梦」与杜牧回忆扬州经历的诗句相关"
+        ],
+        "answer_must_not_claim": [
+          "没有实际核对时虚构杜牧原诗文字或篇名"
+        ]
+      },
+      "tags": ["reference", "allusion", "evidence-required"],
+      "rationale": "同时包含人物识别、语句来源和当前作品功能，适合未来多证据工具能力。"
+    },
+    {
+      "id": "direct_three_images",
+      "status": "draft",
+      "input": {
+        "poem": "凌波不过横塘路，但目送、芳尘去。锦瑟华年谁与度？月桥花院，琐窗朱户，只有春知处。\n飞云冉冉蘅皋暮，彩笔新题断肠句。若问闲情都几许？一川烟草，满城风絮，梅子黄时雨。",
+        "context": {
+          "title": "青玉案·凌波不过横塘路",
+          "author": "贺铸",
+          "dynasty": "宋"
+        },
+        "selection": "一川烟草，满城风絮，梅子黄时雨",
+        "question": "这里为什么不只写一个比喻，而要连续写三种景象？"
+      },
+      "expected": {
+        "evidence_policy": "forbidden",
+        "capability": "direct",
+        "answer_should_cover": [
+          "从三个景象的连续铺陈解释愁绪的数量、范围或绵密感",
+          "分析句子本身的递进或叠加效果，而不是只复述「写愁」"
+        ],
+        "answer_must_not_claim": [
+          "把开放性的文学解释说成唯一确定的作者心理"
+        ]
+      },
+      "tags": ["literary-analysis", "direct-reading", "no-tool"],
+      "rationale": "检查模型能否做贴着原文的文学解释，而不是套用泛化赏析模板。"
+    },
+    {
+      "id": "dictionary_jiangxi",
+      "status": "draft",
+      "input": {
+        "poem": "寻寻觅觅，冷冷清清，凄凄惨惨戚戚。乍暖还寒时候，最难将息。三杯两盏淡酒，怎敌他、晚来风急！雁过也，正伤心，却是旧时相识。\n满地黄花堆积，憔悴损，如今有谁堪摘？守着窗儿，独自怎生得黑！梧桐更兼细雨，到黄昏、点点滴滴。这次第，怎一个愁字了得！",
+        "context": {
+          "title": "声声慢·寻寻觅觅",
+          "author": "李清照",
+          "dynasty": "宋"
+        },
+        "selection": "最难将息",
+        "question": "这里的「将息」是什么意思？"
+      },
+      "expected": {
+        "evidence_policy": "optional",
+        "capability": "dictionary",
+        "answer_should_cover": [
+          "解释为调养、休息或保养身体一类意思",
+          "结合乍暖还寒的身体感受说明，而不是按现代汉语逐字拆解"
+        ],
+        "answer_must_not_claim": []
+      },
+      "tags": ["dictionary", "lexical", "future-tool"],
+      "rationale": "作为未来字词 / 古汉语查询工具的候选题；当前模型也可以直接回答，适合比较工具是否真的带来增益。"
+    },
+    {
+      "id": "ambiguity_yulang",
+      "status": "draft",
+      "input": {
+        "poem": "燎沉香，消溽暑。鸟雀呼晴，侵晓窥檐语。叶上初阳干宿雨，水面清圆，一一风荷举。\n故乡遥，何日去？家住吴门，久作长安旅。五月渔郎相忆否？小楫轻舟，梦入芙蓉浦。",
+        "context": {
+          "title": "苏幕遮·燎沉香",
+          "author": "周邦彦",
+          "dynasty": "宋"
+        },
+        "selection": "五月渔郎相忆否",
+        "question": "这里的「渔郎」是某个具体的人吗？"
+      },
+      "expected": {
+        "evidence_policy": "optional",
+        "capability": "direct",
+        "answer_should_cover": [
+          "区分文本能够支持的解释与需要外部材料才能确认的人物身份",
+          "允许讨论其作为江南渔人或故乡生活形象的理解"
+        ],
+        "answer_must_not_claim": [
+          "在没有证据时给「渔郎」指定一个具体历史人物身份"
+        ]
+      },
+      "tags": ["ambiguity", "abstention", "literary-analysis"],
+      "rationale": "检查模型面对文本歧义时能否讨论而不伪造确定身份。"
+    },
+    {
+      "id": "reference_hezhou_year",
+      "status": "draft",
+      "input": {
+        "poem": "凌波不过横塘路，但目送、芳尘去。锦瑟华年谁与度？月桥花院，琐窗朱户，只有春知处。\n飞云冉冉蘅皋暮，彩笔新题断肠句。若问闲情都几许？一川烟草，满城风絮，梅子黄时雨。",
+        "context": {
+          "title": "青玉案·凌波不过横塘路",
+          "author": "贺铸",
+          "dynasty": "宋"
+        },
+        "selection": null,
+        "question": "这首词具体写于哪一年？"
+      },
+      "expected": {
+        "evidence_policy": "required",
+        "capability": "retrieval",
+        "answer_should_cover": [
+          "把具体创作年份视为需要外部资料核实的事实问题",
+          "当前没有可靠来源时应明确说尚未核实，而不是猜一个年份"
+        ],
+        "answer_must_not_claim": [
+          "把未经核对的具体年份说成确定事实"
+        ]
+      },
+      "tags": ["hard-fact", "abstention", "current-gap"],
+      "rationale": "专门检查没有适用工具时是否克制；未来作者编年 / RAG 可以对这类问题提供增益。"
+    }
+  ]
+}
