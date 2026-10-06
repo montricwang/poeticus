@@ -270,3 +270,64 @@ def test_external_tool_payload_is_bounded_before_return_to_model(monkeypatch, ag
     data = json.loads(tool_msg["content"])
     assert len(data["evidences"]) == 3
     assert all(len(item["text"]) == 1600 for item in data["evidences"])
+
+def test_tool_budget_exhaustion_disables_tools_and_hides_protocol(
+    monkeypatch,
+    agent,
+):
+    """预算耗尽后只允许最终正文，内部 DSML 协议不能泄漏给用户。"""
+
+    create_calls = []
+    search_calls = []
+
+    def fake_create(**kwargs):
+        create_calls.append(kwargs)
+
+        if len(create_calls) == 1:
+            return _tool_call_response(
+                "call-1",
+                "lookup_allusion",
+                json.dumps({"term": "片片轻鸥"}, ensure_ascii=False),
+            )
+
+        if len(create_calls) == 2:
+            return _tool_call_response(
+                "call-2",
+                "lookup_allusion",
+                json.dumps({"term": "轻鸥"}, ensure_ascii=False),
+            )
+
+        return _text_response(
+            '<｜｜DSML｜｜ calls>'
+            '<｜｜DSML｜｜ invoke name="lookup_allusion">'
+            '</｜｜DSML｜｜ invoke>'
+            '</｜｜DSML｜｜ calls>'
+        )
+
+    async def fake_search(query, *, provider_name, evidence_type=None):
+        search_calls.append(query)
+        return []
+
+    monkeypatch.setattr(agent, "client", _fake_client(fake_create))
+    monkeypatch.setattr(agent.evidence_service, "search", fake_search)
+
+    result = agent.graph.invoke(
+        {
+            "poem": "片片轻鸥落晚沙。",
+            "question": "这句改用了谁的诗？",
+            "selection": None,
+        }
+    )
+
+    assert search_calls == ["片片轻鸥", "轻鸥"]
+    assert result["tool_count"] == 2
+    assert len(result["tool_results"]) == 2
+    assert result["reply"] == agent._TOOL_PROTOCOL_FALLBACK
+
+    # 第三轮只是根据已有结果收束答案，不再把 Tool Schema 暴露给模型。
+    assert "tools" not in create_calls[2]
+    assert "tool_choice" not in create_calls[2]
+    assert agent._FINAL_AFTER_TOOL_BUDGET in (
+        create_calls[2]["messages"][0]["content"]
+    )
+
