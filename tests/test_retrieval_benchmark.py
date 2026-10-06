@@ -44,12 +44,18 @@ def _dataset():
 def _run():
     return RetrievalRun(
         schema_version="1",
+        dataset_id="retrieval_test",
+        dataset_version=1,
         retriever="synthetic",
         cases=[
             RetrievalCaseRun(
                 case_id="near_quote",
                 hits=[
                     RetrievalHit(rank=1, text="无关结果"),
+                    RetrievalHit(
+                        rank=2,
+                        text="另一条无关结果",
+                    ),
                     RetrievalHit(
                         rank=3,
                         text="娟娟戏蝶过闲幔，片片轻鸥下急湍。",
@@ -82,3 +88,70 @@ def test_retrieval_metrics_use_dataset_case_count_as_denominator():
         "20": 0.5,
     }
     assert metrics.mrr == pytest.approx(1 / 6)
+
+
+def test_retrieval_case_run_rejects_non_contiguous_or_out_of_order_ranks():
+    with pytest.raises(ValueError, match="1..N"):
+        RetrievalCaseRun(
+            case_id="near_quote",
+            hits=[
+                RetrievalHit(rank=1, text="第一条"),
+                RetrievalHit(rank=3, text="第三条"),
+            ],
+        )
+
+    with pytest.raises(ValueError, match="1..N"):
+        RetrievalCaseRun(
+            case_id="near_quote",
+            hits=[
+                RetrievalHit(rank=2, text="第二条"),
+                RetrievalHit(rank=1, text="第一条"),
+            ],
+        )
+
+
+def test_evaluate_retrieval_rejects_wrong_dataset_identity():
+    wrong_id_run = RetrievalRun(
+        schema_version="1",
+        dataset_id="another_dataset",
+        dataset_version=1,
+        retriever="synthetic",
+        cases=_run().cases,
+    )
+    with pytest.raises(ValueError, match="dataset_id"):
+        evaluate_retrieval(_dataset(), wrong_id_run)
+
+    wrong_version_run = RetrievalRun(
+        schema_version="1",
+        dataset_id="retrieval_test",
+        dataset_version=2,
+        retriever="synthetic",
+        cases=_run().cases,
+    )
+    with pytest.raises(ValueError, match="dataset_version"):
+        evaluate_retrieval(_dataset(), wrong_version_run)
+
+
+def test_evaluate_retrieval_rejects_missing_or_unknown_cases():
+    missing_case_run = RetrievalRun(
+        schema_version="1",
+        dataset_id="retrieval_test",
+        dataset_version=1,
+        retriever="synthetic",
+        cases=[_run().cases[0]],
+    )
+    with pytest.raises(ValueError, match="缺少 Case"):
+        evaluate_retrieval(_dataset(), missing_case_run)
+
+    unknown_case_run = RetrievalRun(
+        schema_version="1",
+        dataset_id="retrieval_test",
+        dataset_version=1,
+        retriever="synthetic",
+        cases=[
+            *_run().cases,
+            RetrievalCaseRun(case_id="unknown_case", hits=[]),
+        ],
+    )
+    with pytest.raises(ValueError, match="未知 Case"):
+        evaluate_retrieval(_dataset(), unknown_case_run)
