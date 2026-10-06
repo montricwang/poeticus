@@ -1,0 +1,2 @@
+-r requirements-dev.txt
+sentence-transformers>=6,<7
