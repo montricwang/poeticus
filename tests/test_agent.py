@@ -270,3 +270,150 @@ def test_external_tool_payload_is_bounded_before_return_to_model(monkeypatch, ag
     data = json.loads(tool_msg["content"])
     assert len(data["evidences"]) == 3
     assert all(len(item["text"]) == 1600 for item in data["evidences"])
+
+def test_tool_budget_exhaustion_disables_tools_and_hides_protocol(
+    monkeypatch,
+    agent,
+):
+    """预算耗尽后只允许最终正文，内部 DSML 协议不能泄漏给用户。"""
+
+    create_calls = []
+    search_calls = []
+
+    def fake_create(**kwargs):
+        create_calls.append(kwargs)
+
+        if len(create_calls) == 1:
+            return _tool_call_response(
+                "call-1",
+                "lookup_allusion",
+                json.dumps({"term": "片片轻鸥"}, ensure_ascii=False),
+            )
+
+        if len(create_calls) == 2:
+            return _tool_call_response(
+                "call-2",
+                "lookup_allusion",
+                json.dumps({"term": "轻鸥"}, ensure_ascii=False),
+            )
+
+        return _text_response(
+            '<｜｜DSML｜｜ calls>'
+            '<｜｜DSML｜｜ invoke name="lookup_allusion">'
+            '</｜｜DSML｜｜ invoke>'
+            '</｜｜DSML｜｜ calls>'
+        )
+
+    async def fake_search(query, *, provider_name, evidence_type=None):
+        search_calls.append(query)
+        return []
+
+    monkeypatch.setattr(agent, "client", _fake_client(fake_create))
+    monkeypatch.setattr(agent.evidence_service, "search", fake_search)
+
+    result = agent.graph.invoke(
+        {
+            "poem": "片片轻鸥落晚沙。",
+            "question": "这句改用了谁的诗？",
+            "selection": None,
+        }
+    )
+
+    assert search_calls == ["片片轻鸥", "轻鸥"]
+    assert result["tool_count"] == 2
+    assert len(result["tool_results"]) == 2
+    assert result["reply"] == agent._TOOL_PROTOCOL_FALLBACK
+
+    # 第三轮只是根据已有结果收束答案，不再把 Tool Schema 暴露给模型。
+    assert "tools" not in create_calls[2]
+    assert "tool_choice" not in create_calls[2]
+    assert agent._FINAL_AFTER_TOOL_BUDGET in (
+        create_calls[2]["messages"][0]["content"]
+    )
+
+def test_tool_contracts_separate_allusion_and_reference_search(agent):
+    allusion_tool = agent.TOOLS[0]["function"]
+    reference_tool = agent.TOOLS[1]["function"]
+
+    assert allusion_tool["name"] == "lookup_allusion"
+    assert "典故性短语" in allusion_tool["description"]
+    assert "整句诗文的全文相似检索" in allusion_tool["description"]
+
+    term = allusion_tool["parameters"]["properties"]["term"]
+    assert "最短且有辨识度的锚点" in term["description"]
+
+    assert reference_tool["name"] == "lookup_reference"
+    assert "前代诗文" in reference_tool["description"]
+    assert "当前作品或后代作品" in reference_tool["description"]
+    assert "高度压缩或反用" in reference_tool["description"]
+
+    text_param = reference_tool["parameters"]["properties"]["text"]
+    assert "目标短句" in text_param["description"]
+
+
+def test_reference_tool_queries_target_clause_and_returns_candidates(
+    monkeypatch,
+    agent,
+):
+    create_calls = []
+    search_calls = []
+
+    def fake_create(**kwargs):
+        create_calls.append(kwargs)
+        if len(create_calls) == 1:
+            return _tool_call_response(
+                "ref-1",
+                "lookup_reference",
+                json.dumps(
+                    {"text": "片片轻鸥落晚沙"},
+                    ensure_ascii=False,
+                ),
+            )
+        return _text_response("这句与杜甫《小寒食舟中作》关系最直接。")
+
+    async def fake_search(query, *, provider_name, evidence_type=None):
+        search_calls.append(
+            {
+                "query": query,
+                "provider_name": provider_name,
+                "evidence_type": evidence_type,
+            }
+        )
+        return [
+            EvidenceItem(
+                anchor=query,
+                type="reference",
+                text="片片輕鷗下急湍",
+                source={
+                    "title": "小寒食舟中作",
+                    "author": "杜甫",
+                    "work": "小寒食舟中作",
+                },
+                provider="cnkgraph",
+                status="candidate",
+                metadata={"dynasty": "唐"},
+            )
+        ]
+
+    monkeypatch.setattr(agent, "client", _fake_client(fake_create))
+    monkeypatch.setattr(agent.evidence_service, "search", fake_search)
+
+    result = agent.graph.invoke(
+        {
+            "poem": "片片轻鸥落晚沙。",
+            "question": "这句改用了谁的诗？",
+            "selection": None,
+        }
+    )
+
+    assert search_calls == [
+        {
+            "query": "片片轻鸥落晚沙",
+            "provider_name": "cnkgraph",
+            "evidence_type": "reference",
+        }
+    ]
+    assert result["reply"] == "这句与杜甫《小寒食舟中作》关系最直接。"
+    assert result["tool_count"] == 1
+    assert result["evidences"][0]["metadata"]["dynasty"] == "唐"
+

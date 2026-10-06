@@ -19,6 +19,48 @@ from backend.ai.prompt_loader import compose_prompt
 
 logger = logging.getLogger(__name__)
 
+_FINAL_AFTER_TOOL_BUDGET = (
+    "工具调用预算已用完。现在必须直接回答用户，不要再尝试调用工具，"
+    "也不要输出任何工具调用协议、标记或伪代码。"
+    "只能基于已有对话、工具结果和自身知识作答；"
+    "如果仍不能可靠确认，就明确说明不能确认。"
+)
+_TOOL_PROTOCOL_FALLBACK = (
+    "这次检索流程没有形成可可靠展示的最终回答；"
+    "我暂时不把未核实的内容当作结论。"
+)
+
+
+def _looks_like_tool_protocol(text: str) -> bool:
+    """拦截模型把内部工具协议当普通正文吐出的情况。"""
+    return "DSML" in text and ("invoke" in text or "calls" in text)
+
+
+def _final_messages_without_tools(
+    messages: list[ChatCompletionMessageParam],
+) -> list[ChatCompletionMessageParam]:
+    """工具预算耗尽后，明确切换到只能产出最终正文的模式。"""
+    final_messages = [dict(message) for message in messages]
+
+    if final_messages and final_messages[0].get("role") == "system":
+        content = final_messages[0].get("content")
+        if isinstance(content, str):
+            final_messages[0]["content"] = (
+                f"{content}\n\n{_FINAL_AFTER_TOOL_BUDGET}"
+            )
+
+    return cast(
+        list[ChatCompletionMessageParam],
+        final_messages,
+    )
+
+
+def _safe_final_answer(answer: str) -> str:
+    if _looks_like_tool_protocol(answer):
+        return _TOOL_PROTOCOL_FALLBACK
+    return answer
+
+
 evidence_service = EvidenceService(
     {
         "cnkgraph": CNKGraphProvider(),
@@ -31,8 +73,9 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
         "function": {
             "name": "lookup_allusion",
             "description": (
-                "查询中国古典诗词中的典故及其含义。"
-                "仅在用户确实询问典故时使用。"
+                "查询中国古典诗词中的典故、典故性短语及其出处或含义。"
+                "适合核对某个短词、短语‘出自哪里/是什么典故’；"
+                "不适合做整句诗文的全文相似检索。"
                 "不要用于作品创作年代、作者生平、"
                 "诗中人物身份或普通文学赏析。"
             ),
@@ -43,11 +86,39 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
                         "type": "string",
                         "description": (
                             "真正需要查询的典故词语或短语。"
-                            "不要机械地把整段选区作为查询词。"
+                            "优先使用最短且有辨识度的锚点；"
+                            "不要机械地把整句诗、整段选区作为查询词。"
                         ),
                     }
                 },
                 "required": ["term"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_reference",
+            "description": (
+                "查询一句或短句可能对应的前代诗文、成句或化用候选。"
+                "适合近似成句、改写、拆取重组等文本关系；"
+                "返回结果只是候选，可能包含当前作品或后代作品，"
+                "必须结合作者年代和文本关系判断。"
+                "不适合解释人物故事型典故，也不能保证识别高度压缩或反用。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": (
+                            "真正要比较来源的诗句或短句。"
+                            "优先只提交目标短句，不要机械地提交整首诗。"
+                        ),
+                    }
+                },
+                "required": ["text"],
                 "additionalProperties": False,
             },
         },
@@ -87,9 +158,27 @@ def _agent_user_message(state: RouterState) -> str:
 
 def _stream_agent_decision(
     messages: list[ChatCompletionMessageParam],
-    tool_choice: Literal["auto", "none"],
+    tools_enabled: bool,
 ) -> tuple[str, list[dict]]:
     writer = get_stream_writer()
+
+    request_messages = (
+        messages
+        if tools_enabled
+        else _final_messages_without_tools(messages)
+    )
+
+    request_kwargs = {
+        "model": LLM_MODEL,
+        "max_tokens": LLM_MAX_OUTPUT_TOKENS,
+        "messages": request_messages,
+        "temperature": 0,
+        "stream": True,
+        "extra_body": {"thinking": {"type": "disabled"}},
+    }
+    if tools_enabled:
+        request_kwargs["tools"] = TOOLS
+        request_kwargs["tool_choice"] = "auto"
 
     parts: list[str] = []
     pending: dict[int, dict] = {}
@@ -98,16 +187,7 @@ def _stream_agent_decision(
     tool_calls_started = False
 
     try:
-        stream = client.chat.completions.create(
-            model=LLM_MODEL,
-            max_tokens=LLM_MAX_OUTPUT_TOKENS,
-            messages=messages,
-            tools=TOOLS,
-            tool_choice=tool_choice,
-            temperature=0,
-            stream=True,
-            extra_body={"thinking": {"type": "disabled"}},
-        )
+        stream = client.chat.completions.create(**request_kwargs)
 
         for chunk in stream:
             if not chunk.choices:
@@ -140,18 +220,18 @@ def _stream_agent_decision(
                     if call.function.arguments:
                         item["arguments"] += call.function.arguments
 
-            # 只有纯文字回答才向前端发送正文片段。
-            if delta.content:
-                if not tool_calls_started:
-                    parts.append(delta.content)
+            # 工具仍可用时保持正常流式输出；预算耗尽后的最后一轮
+            # 先缓冲全文，避免内部协议片段直接泄漏到 SSE。
+            if delta.content and not tool_calls_started:
+                parts.append(delta.content)
 
-                    if delta.content:
-                        writer(
-                            {
-                                "type": "token",
-                                "text": delta.content,
-                            }
-                        )
+                if tools_enabled:
+                    writer(
+                        {
+                            "type": "token",
+                            "text": delta.content,
+                        }
+                    )
 
             if choice.finish_reason is not None:
                 finish_reason = choice.finish_reason
@@ -164,6 +244,11 @@ def _stream_agent_decision(
             stream.close()
 
     if pending:
+        if not tools_enabled:
+            answer = _TOOL_PROTOCOL_FALLBACK
+            writer({"type": "token", "text": answer})
+            return answer, []
+
         if finish_reason != "tool_calls":
             raise RuntimeError(f"工具调用未正常结束：{finish_reason}")
 
@@ -178,10 +263,13 @@ def _stream_agent_decision(
     if finish_reason != "stop":
         raise RuntimeError(f"模型未正常完成：{finish_reason}")
 
-    answer = "".join(parts)
+    answer = _safe_final_answer("".join(parts))
 
     if not answer.strip():
         raise RuntimeError("模型返回了空回答")
+
+    if not tools_enabled:
+        writer({"type": "token", "text": answer})
 
     return answer, []
 
@@ -226,25 +314,31 @@ def agent_decide(state: RouterState) -> dict:
         messages,
     )
 
-    tool_choice: Literal["auto", "none"] = (
-        "none" if state.get("tool_count", 0) >= AGENT_MAX_TOOL_CALLS else "auto"
-    )
+    tools_enabled = state.get("tool_count", 0) < AGENT_MAX_TOOL_CALLS
 
     stream_reply = state.get("stream_reply", False)
 
     if stream_reply:
-        answer, tool_calls = _stream_agent_decision(messages, tool_choice)
+        answer, tool_calls = _stream_agent_decision(messages, tools_enabled)
     else:
+        request_messages = (
+            messages
+            if tools_enabled
+            else _final_messages_without_tools(messages)
+        )
+        request_kwargs = {
+            "model": LLM_MODEL,
+            "max_tokens": LLM_MAX_OUTPUT_TOKENS,
+            "messages": request_messages,
+            "temperature": 0,
+            "extra_body": {"thinking": {"type": "disabled"}},
+        }
+        if tools_enabled:
+            request_kwargs["tools"] = TOOLS
+            request_kwargs["tool_choice"] = "auto"
+
         try:
-            response = client.chat.completions.create(
-                model=LLM_MODEL,
-                max_tokens=LLM_MAX_OUTPUT_TOKENS,
-                messages=messages,
-                tools=TOOLS,
-                tool_choice=tool_choice,
-                temperature=0,
-                extra_body={"thinking": {"type": "disabled"}},
-            )
+            response = client.chat.completions.create(**request_kwargs)
         except APIError as exc:
             raise RuntimeError("Agent 决策 API 调用失败") from exc
 
@@ -253,7 +347,7 @@ def agent_decide(state: RouterState) -> dict:
 
         message = response.choices[0].message
 
-        if message.tool_calls:
+        if message.tool_calls and tools_enabled:
             tool_calls = []
             for call in message.tool_calls:
                 if call.type != "function":
@@ -266,9 +360,12 @@ def agent_decide(state: RouterState) -> dict:
                     }
                 )
             answer = message.content or ""
+        elif message.tool_calls:
+            tool_calls = []
+            answer = _TOOL_PROTOCOL_FALLBACK
         else:
             tool_calls = []
-            answer = message.content or ""
+            answer = _safe_final_answer(message.content or "")
 
     if tool_calls:
         messages.append(
@@ -345,31 +442,43 @@ def execute_tools(state: RouterState) -> dict:
                 count += 1
 
                 try:
-                    if call["name"] != "lookup_allusion":
-                        raise ValueError(f"未知工具：{call['name']}")
-
                     arguments = json.loads(call["arguments"])
 
                     if not isinstance(arguments, dict):
                         raise ValueError("工具参数必须是对象")
 
-                    term = arguments.get("term")
+                    if call["name"] == "lookup_allusion":
+                        query = arguments.get("term")
+                        evidence_type = "allusion"
+                        max_items = 3
+                        invalid_message = "无效的典故查询词"
+                    elif call["name"] == "lookup_reference":
+                        query = arguments.get("text")
+                        evidence_type = "reference"
+                        max_items = 5
+                        invalid_message = "无效的出处查询文本"
+                    else:
+                        raise ValueError(f"未知工具：{call['name']}")
 
-                    if not isinstance(term, str) or not term.strip() or len(term) > 64:
-                        raise ValueError("无效的典故查询词")
+                    if (
+                        not isinstance(query, str)
+                        or not query.strip()
+                        or len(query) > 120
+                    ):
+                        raise ValueError(invalid_message)
 
-                    term = term.strip()
+                    query = query.strip()
 
                     evidences = await evidence_service.search(
-                        query=term,
+                        query=query,
                         provider_name="cnkgraph",
-                        evidence_type="allusion",
+                        evidence_type=evidence_type,
                     )
 
                     # 限制回传给后续 LLM 轮次的工具材料长度，避免外部证据
-                    # 带入过长文本。
+                    # 带入过长文本。reference 多保留两条候选，便于跨年代比较。
                     items = []
-                    for item in evidences[:3]:
+                    for item in evidences[:max_items]:
                         data = item.model_dump()
                         data["text"] = data["text"][:1600]
                         if isinstance(data.get("source"), dict):
@@ -382,7 +491,8 @@ def execute_tools(state: RouterState) -> dict:
 
                     result = {
                         "status": ("ok" if items else "no_hit"),
-                        "query": term,
+                        "query": query,
+                        "evidence_type": evidence_type,
                         "evidences": items,
                     }
 
@@ -432,7 +542,10 @@ def execute_tools(state: RouterState) -> dict:
 
     return {
         "messages": messages,
-        "tool_results": results,
+        "tool_results": [
+            *(state.get("tool_results") or []),
+            *results,
+        ],
         "tool_count": new_count,
         "evidences": [
             *(state.get("evidences") or []),
