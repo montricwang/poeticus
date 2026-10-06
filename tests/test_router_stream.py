@@ -343,3 +343,76 @@ def test_streaming_preamble_then_tool_call(monkeypatch, agent):
     assert "".join(data["text"] for event, data in events[2:-1]) == "".join(
         answer_parts
     )
+
+def test_streaming_tool_budget_exhaustion_buffers_and_hides_protocol(
+    monkeypatch,
+    agent,
+):
+    """SSE 路径同样不能把预算耗尽后的 DSML 文本直接推给前端。"""
+
+    async def fake_search(query, *, provider_name, evidence_type=None):
+        return []
+
+    monkeypatch.setattr(agent.evidence_service, "search", fake_search)
+
+    chunks = [
+        [
+            make_tool_call_chunk(
+                0,
+                "call-1",
+                "lookup_allusion",
+                '{"term":"片片轻鸥"}',
+                finish_reason="tool_calls",
+            ),
+        ],
+        [
+            make_tool_call_chunk(
+                0,
+                "call-2",
+                "lookup_allusion",
+                '{"term":"轻鸥"}',
+                finish_reason="tool_calls",
+            ),
+        ],
+        [
+            make_delta(
+                content=(
+                    '<｜｜DSML｜｜ calls>'
+                    '<｜｜DSML｜｜ invoke name="lookup_allusion">'
+                    '</｜｜DSML｜｜ invoke>'
+                    '</｜｜DSML｜｜ calls>'
+                ),
+                finish_reason="stop",
+            ),
+        ],
+    ]
+
+    calls = _fake_streaming_client(agent, chunks, monkeypatch)
+
+    events = list(
+        agent.graph.stream(
+            {
+                "poem": "片片轻鸥落晚沙。",
+                "question": "这句改用了谁的诗？",
+                "stream_reply": True,
+            },
+            stream_mode=["custom", "updates"],
+        )
+    )
+
+    custom_tokens = [p.get("text") for m, p in events if m == "custom"]
+    assert custom_tokens == [agent._TOOL_PROTOCOL_FALLBACK]
+    assert "DSML" not in "".join(custom_tokens)
+
+    final_reply = None
+    for mode, payload in events:
+        if mode == "updates" and isinstance(payload, dict):
+            for value in payload.values():
+                if isinstance(value, dict) and value.get("reply"):
+                    final_reply = value["reply"]
+
+    assert final_reply == agent._TOOL_PROTOCOL_FALLBACK
+    assert len(calls) == 3
+    assert "tools" not in calls[2]
+    assert "tool_choice" not in calls[2]
+
