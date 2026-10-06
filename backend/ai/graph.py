@@ -87,9 +87,27 @@ def _agent_user_message(state: RouterState) -> str:
 
 def _stream_agent_decision(
     messages: list[ChatCompletionMessageParam],
-    tool_choice: Literal["auto", "none"],
+    tools_enabled: bool,
 ) -> tuple[str, list[dict]]:
     writer = get_stream_writer()
+
+    request_messages = (
+        messages
+        if tools_enabled
+        else _final_messages_without_tools(messages)
+    )
+
+    request_kwargs = {
+        "model": LLM_MODEL,
+        "max_tokens": LLM_MAX_OUTPUT_TOKENS,
+        "messages": request_messages,
+        "temperature": 0,
+        "stream": True,
+        "extra_body": {"thinking": {"type": "disabled"}},
+    }
+    if tools_enabled:
+        request_kwargs["tools"] = TOOLS
+        request_kwargs["tool_choice"] = "auto"
 
     parts: list[str] = []
     pending: dict[int, dict] = {}
@@ -98,16 +116,7 @@ def _stream_agent_decision(
     tool_calls_started = False
 
     try:
-        stream = client.chat.completions.create(
-            model=LLM_MODEL,
-            max_tokens=LLM_MAX_OUTPUT_TOKENS,
-            messages=messages,
-            tools=TOOLS,
-            tool_choice=tool_choice,
-            temperature=0,
-            stream=True,
-            extra_body={"thinking": {"type": "disabled"}},
-        )
+        stream = client.chat.completions.create(**request_kwargs)
 
         for chunk in stream:
             if not chunk.choices:
@@ -140,18 +149,18 @@ def _stream_agent_decision(
                     if call.function.arguments:
                         item["arguments"] += call.function.arguments
 
-            # 只有纯文字回答才向前端发送正文片段。
-            if delta.content:
-                if not tool_calls_started:
-                    parts.append(delta.content)
+            # 工具仍可用时保持正常流式输出；预算耗尽后的最后一轮
+            # 先缓冲全文，避免内部协议片段直接泄漏到 SSE。
+            if delta.content and not tool_calls_started:
+                parts.append(delta.content)
 
-                    if delta.content:
-                        writer(
-                            {
-                                "type": "token",
-                                "text": delta.content,
-                            }
-                        )
+                if tools_enabled:
+                    writer(
+                        {
+                            "type": "token",
+                            "text": delta.content,
+                        }
+                    )
 
             if choice.finish_reason is not None:
                 finish_reason = choice.finish_reason
@@ -164,6 +173,11 @@ def _stream_agent_decision(
             stream.close()
 
     if pending:
+        if not tools_enabled:
+            answer = _TOOL_PROTOCOL_FALLBACK
+            writer({"type": "token", "text": answer})
+            return answer, []
+
         if finish_reason != "tool_calls":
             raise RuntimeError(f"工具调用未正常结束：{finish_reason}")
 
@@ -178,10 +192,13 @@ def _stream_agent_decision(
     if finish_reason != "stop":
         raise RuntimeError(f"模型未正常完成：{finish_reason}")
 
-    answer = "".join(parts)
+    answer = _safe_final_answer("".join(parts))
 
     if not answer.strip():
         raise RuntimeError("模型返回了空回答")
+
+    if not tools_enabled:
+        writer({"type": "token", "text": answer})
 
     return answer, []
 
@@ -226,25 +243,31 @@ def agent_decide(state: RouterState) -> dict:
         messages,
     )
 
-    tool_choice: Literal["auto", "none"] = (
-        "none" if state.get("tool_count", 0) >= AGENT_MAX_TOOL_CALLS else "auto"
-    )
+    tools_enabled = state.get("tool_count", 0) < AGENT_MAX_TOOL_CALLS
 
     stream_reply = state.get("stream_reply", False)
 
     if stream_reply:
-        answer, tool_calls = _stream_agent_decision(messages, tool_choice)
+        answer, tool_calls = _stream_agent_decision(messages, tools_enabled)
     else:
+        request_messages = (
+            messages
+            if tools_enabled
+            else _final_messages_without_tools(messages)
+        )
+        request_kwargs = {
+            "model": LLM_MODEL,
+            "max_tokens": LLM_MAX_OUTPUT_TOKENS,
+            "messages": request_messages,
+            "temperature": 0,
+            "extra_body": {"thinking": {"type": "disabled"}},
+        }
+        if tools_enabled:
+            request_kwargs["tools"] = TOOLS
+            request_kwargs["tool_choice"] = "auto"
+
         try:
-            response = client.chat.completions.create(
-                model=LLM_MODEL,
-                max_tokens=LLM_MAX_OUTPUT_TOKENS,
-                messages=messages,
-                tools=TOOLS,
-                tool_choice=tool_choice,
-                temperature=0,
-                extra_body={"thinking": {"type": "disabled"}},
-            )
+            response = client.chat.completions.create(**request_kwargs)
         except APIError as exc:
             raise RuntimeError("Agent 决策 API 调用失败") from exc
 
@@ -253,7 +276,7 @@ def agent_decide(state: RouterState) -> dict:
 
         message = response.choices[0].message
 
-        if message.tool_calls:
+        if message.tool_calls and tools_enabled:
             tool_calls = []
             for call in message.tool_calls:
                 if call.type != "function":
@@ -266,9 +289,12 @@ def agent_decide(state: RouterState) -> dict:
                     }
                 )
             answer = message.content or ""
+        elif message.tool_calls:
+            tool_calls = []
+            answer = _TOOL_PROTOCOL_FALLBACK
         else:
             tool_calls = []
-            answer = message.content or ""
+            answer = _safe_final_answer(message.content or "")
 
     if tool_calls:
         messages.append(
@@ -432,7 +458,10 @@ def execute_tools(state: RouterState) -> dict:
 
     return {
         "messages": messages,
-        "tool_results": results,
+        "tool_results": [
+            *(state.get("tool_results") or []),
+            *results,
+        ],
         "tool_count": new_count,
         "evidences": [
             *(state.get("evidences") or []),
