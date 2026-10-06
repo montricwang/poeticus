@@ -141,10 +141,15 @@ def _load_chinese_poetry_file(
                 f"{path.name}#{record_index}: paragraphs 不是数组"
             )
 
+        if any(not isinstance(paragraph, str) for paragraph in raw_paragraphs):
+            raise ValueError(
+                f"{path.name}#{record_index}: paragraphs 含非字符串元素"
+            )
+
         paragraphs = [
             paragraph.strip()
             for paragraph in raw_paragraphs
-            if isinstance(paragraph, str) and paragraph.strip()
+            if paragraph.strip()
         ]
         if not paragraphs:
             raise ValueError(
@@ -182,7 +187,7 @@ def load_chinese_poetry(
     *,
     dynasty: str | None = None,
     genre: str | None = None,
-    file_pattern: str = "*.json",
+    file_pattern: str | None = None,
 ) -> list[CorpusWork]:
     """读取 chinese-poetry 的一个 JSON 文件或某目录下的顶层 JSON 文件。
 
@@ -193,6 +198,8 @@ def load_chinese_poetry(
     if path.is_file():
         files = [path]
     elif path.is_dir():
+        if not file_pattern:
+            raise ValueError("目录输入必须显式提供 file_pattern")
         files = sorted(path.glob(file_pattern))
     else:
         raise FileNotFoundError(path)

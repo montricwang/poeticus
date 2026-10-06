@@ -26,7 +26,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--genre")
     parser.add_argument(
         "--file-pattern",
-        default="*.json",
         help=(
             "input 为目录时只读取匹配的顶层 JSON；"
             "例如 poet.tang.*.json / poet.song.*.json / ci.song.*.json"
