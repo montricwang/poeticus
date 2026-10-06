@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "dataset_id": "poeticus_retrieval_seed",
+  "dataset_version": 1,
+  "status": "draft",
+  "cases": [
+    {
+      "id": "reference_zhou_qingshang",
+      "query": "客舍青青",
+      "relevant_record_ids": [
+        "cp.tang.wangwei.weicheng.qingshe"
+      ],
+      "tags": [
+        "adapted_quote",
+        "public_fixture"
+      ],
+      "rationale": "保留明确字面锚点，后续用于比较不同 Embedding / chunking 是否能把王维候选排到前列；relevant 只表示检索目标，不自动证明直接化用。"
+    },
+    {
+      "id": "reference_li_meitou",
+      "query": "才下眉头，却上心头",
+      "relevant_record_ids": [
+        "cp.song.fanzhongyan.yujiexing.meijian"
+      ],
+      "tags": [
+        "adapted_quote",
+        "public_fixture"
+      ],
+      "rationale": "文本改写幅度更大，用于观察 Retriever 能否找回范仲淹的相似前文本；relevant 只表示候选相关，不等于文学关系已被证明。"
+    }
+  ]
+}
