@@ -1,0 +1,23 @@
+{
+  "schema_version": "1",
+  "dataset_id": "poeticus_retrieval_seed",
+  "retriever_id": "fixture_manual_order",
+  "rankings": [
+    {
+      "case_id": "reference_zhou_qingshang",
+      "ranked_record_ids": [
+        "cp.tang.wangwei.weicheng.chaoyu",
+        "cp.tang.wangwei.weicheng.qingshe",
+        "cp.tang.wangwei.weicheng.beijiu"
+      ]
+    },
+    {
+      "case_id": "reference_li_meitou",
+      "ranked_record_ids": [
+        "cp.song.fanzhongyan.sumuzhe.mingyue",
+        "cp.song.qianweiyan.mulanhuachouchang",
+        "cp.song.fanzhongyan.yujiexing.meijian"
+      ]
+    }
+  ]
+}
