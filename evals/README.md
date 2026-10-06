@@ -113,7 +113,32 @@ data/reports/eval_candidates_10061542.md
 
 ## Poetry Retrieval Benchmark
 
-Text Retrieval / RAG 的第一步先把 **Retriever 的排序质量**单独测出来，不和 Embedding 模型、向量数据库、ANN 或 Agent 同时耦合。
+Text Retrieval / RAG 的第一步先把 **Corpus / Chunk** 与 **Retriever 排序质量**单独测出来，不和 Embedding 模型、向量数据库、ANN 或 Agent 同时耦合。
+
+### 1. 先把外部诗词变成统一 Corpus
+
+当前先支持 chinese-poetry 常见 JSON 列表。父作品保留 author / dynasty / title / source / source_record_id / full_text；检索 chunk 通过稳定 work_id 回查父作品。
+
+支持三种实验粒度：
+
+- `clause`：按 `，。！？；` 切；
+- `sentence`：按 `。！？` 切；
+- `clause_pair`：相邻两个 clause 重叠组合。
+
+例如：
+
+```powershell
+python -m scripts.evals.build_retrieval_corpus \
+  --input data/raw/poet.tang.sample.json \
+  --dynasty 唐 \
+  --policy clause \
+  --works-output data/reports/retrieval_works.jsonl \
+  --chunks-output data/reports/retrieval_chunks.jsonl
+```
+
+第一版只做 adapter 与可追溯切块，不下载全量语料，也不做繁简、去重或年代过滤。
+
+### 2. 用统一 Rankings 契约评测 Retriever
 
 当前文件：
 
@@ -121,6 +146,7 @@ Text Retrieval / RAG 的第一步先把 **Retriever 的排序质量**单独测�
 - `retrieval_cases.json`：Query 与已知 relevant record ids；
 - `retrieval_rankings_sample.json`：**人工构造的排序 fixture**，只用于验证指标计算，不代表任何真实模型表现；
 - `retrieval.py`：Schema、Corpus 校验、first relevant rank、Recall@K、MRR；
+- `retrieval_corpus.py`：父作品契约、chinese-poetry adapter 与三种 chunk policy；
 - `scripts/evals/run_retrieval_benchmark.py`：对任意 Retriever 生成的 rankings 统一评分。
 
 先运行合成排序：
@@ -137,3 +163,4 @@ python -m scripts.evals.run_retrieval_benchmark \
 > 正确候选有没有被召回，排在第几？
 
 它**不回答**“相似文本是否已经证明直接化用”。Chronology、来源关系判断、Rerank 和最终生成留给后续层。
+
