@@ -65,6 +65,6 @@ data/reports/eval_editorial_profile.json
 data/reports/eval_editorial_profile.md
 ```
 
-报告分别统计 annotations / commentaries 的覆盖率、每首数量、长度分布、重复项、常见文本特征、词集分布，并给出固定随机种子的少量正常 / 最短 / 最长样本。
+报告分别统计 annotations / commentaries 的覆盖率、每首数量、长度分布、重复项、常见文本特征和词集分布。词集表会同时给出作品数、覆盖率和每首平均元素数，避免把“收录作品多”误当成“注释更密”。\n\n对 annotations 还会额外做一层轻量结构筛选：`headword_colon`、`quoted_source`、`cross_reference`、`long_source_note`、`other`。这只是按文本形态帮助挑候选 Case，不把它包装成可靠的“词义 / 典故 / 化用”语义分类。对冒号前的短词头，还会检查它能否在本词正文直接找到。
 
 这些报告包含商业出版物的少量截断派生文本，只用于本地分析，不能提交到公开仓库。
