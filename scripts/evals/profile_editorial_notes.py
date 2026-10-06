@@ -333,6 +333,14 @@ def profile_category(
     )
 
 
+def safe_source_label(path: Path) -> str:
+    """报告里避免无意写入本机绝对路径。"""
+    try:
+        return str(path.resolve().relative_to(ROOT))
+    except ValueError:
+        return path.name
+
+
 def build_profile(
     records: list[dict[str, Any]],
     *,
@@ -357,7 +365,7 @@ def build_profile(
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "source_path": str(source_path),
+        "source_path": safe_source_label(source_path),
         "record_count": len(records),
         "sample_size": sample_size,
         "excerpt_chars": excerpt_chars,
