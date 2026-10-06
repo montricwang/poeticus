@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from evals.retrieval import (
@@ -7,9 +9,12 @@ from evals.retrieval import (
     RetrievalCaseRun,
     RetrievalHit,
     RetrievalRun,
+    benchmark_corpus_coverage,
     evaluate_retrieval,
     first_relevant_rank,
+    validate_benchmark_corpus_coverage,
 )
+from retrieval.schema import ChunkPosition, CorpusChunk
 
 
 def _dataset():
@@ -155,3 +160,88 @@ def test_evaluate_retrieval_rejects_missing_or_unknown_cases():
     )
     with pytest.raises(ValueError, match="未知 Case"):
         evaluate_retrieval(_dataset(), unknown_case_run)
+
+
+
+def _chunk(
+    *,
+    chunk_id: str,
+    text: str,
+    author: str | None = None,
+    title: str | None = None,
+    source_record_id: str = "source-record",
+) -> CorpusChunk:
+    return CorpusChunk(
+        chunk_id=chunk_id,
+        work_id=f"work-{chunk_id}",
+        policy="clause",
+        chunk_index=0,
+        text=text,
+        positions=[ChunkPosition(paragraph_index=0, unit_index=0)],
+        source="synthetic",
+        source_record_id=source_record_id,
+        author=author,
+        title=title,
+    )
+
+
+def test_benchmark_corpus_coverage_separates_missing_target_from_retriever_miss():
+    dataset = _dataset()
+    chunks = [
+        _chunk(
+            chunk_id="dufu",
+            text="娟娟戏蝶过闲幔，片片轻鸥下急湍。",
+            author="杜甫",
+        )
+    ]
+
+    coverage = benchmark_corpus_coverage(dataset, chunks)
+
+    assert coverage["near_quote"] == ["dufu"]
+    assert coverage["miss"] == []
+
+    with pytest.raises(ValueError, match="Corpus coverage"):
+        validate_benchmark_corpus_coverage(dataset, chunks)
+
+
+def test_public_retrieval_dataset_v01_is_small_and_schema_valid():
+    path = Path(__file__).resolve().parents[1] / "evals" / "retrieval_cases.json"
+    dataset = RetrievalBenchmarkDataset.model_validate_json(
+        path.read_text(encoding="utf-8")
+    )
+
+    assert dataset.dataset_id == "poeticus_retrieval_v01"
+    assert dataset.dataset_version == 1
+    assert len(dataset.cases) == 6
+
+    tags = {tag for case in dataset.cases for tag in case.tags}
+    assert {
+        "near_quote",
+        "adapted_quote",
+        "compressed_cue",
+        "transformed_use",
+    } <= tags
+
+
+def test_public_retrieval_dataset_can_be_coverage_checked_independently():
+    path = Path(__file__).resolve().parents[1] / "evals" / "retrieval_cases.json"
+    dataset = RetrievalBenchmarkDataset.model_validate_json(
+        path.read_text(encoding="utf-8")
+    )
+
+    chunks = []
+    for index, case in enumerate(dataset.cases):
+        expected = case.expected[0]
+        chunks.append(
+            _chunk(
+                chunk_id=f"expected-{index}",
+                text=expected.text,
+                author=expected.author,
+                title=expected.title,
+                source_record_id=expected.source_record_id or f"record-{index}",
+            )
+        )
+
+    coverage = validate_benchmark_corpus_coverage(dataset, chunks)
+
+    assert all(coverage[case.id] for case in dataset.cases)
