@@ -1,7 +1,7 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-05  
-> 当前状态：`v0.1.0` 已公开发布；3491 首宋词、PostgreSQL 阅读 API、多轮 SSE 伴读、整首赏析、典故工具和匿名 AI 保护均已上线。
+> 更新日期：2026-10-06  
+> 当前状态：公网阅读与 AI 伴读已经形成稳定基线；当前工程重点转向 Evidence、Evaluation 与下一阶段 Text Retrieval 实验。
 
 Roadmap 只记录**下一阶段方向**。已经完成的发布过程不再混在未来计划里；具体任务和验收进入 GitHub Issues。
 
@@ -14,15 +14,16 @@ Poeticus 已经走通：
 - PostgreSQL 作品库与 3491 首宋词；
 - 私人 EPUB → JSON → 私人 DB → 公网 DB 的数据链；
 - LangGraph ReAct Agent；
-- CNKGraph 典故工具；
+- CNKGraph Evidence，以及 `lookup_allusion` / `lookup_reference` 两类 Tool；
 - bounded multi-turn context；
 - SSE 流式回答；
 - localStorage Conversation persistence；
 - Railway 公网部署；
 - Python、前端 build/lint 和 Node 回归测试；
-- 匿名 AI 的限额、并发和预算保护。
+- 匿名 AI 的限额、并发和预算保护；
+- 一套可重复运行的 Seed AI Eval，对照 `control_no_tools` 与当前 Agent，并记录 Process Trace。
 
-因此后续不再把“是否要引入 PostgreSQL”“是否要做多轮”等已完成事项当作未来目标。
+因此后续不再把“是否要引入 PostgreSQL”“是否要做多轮”“是否要建立第一套 AI Eval”之类已完成事项当作未来目标。
 
 ## 2. 近期优先级
 
@@ -41,37 +42,44 @@ Poeticus 已经走通：
 
 > 找到第一层错误数据就停在那里修，不跨层打补丁。
 
-### 2.2 Evidence / RAG
+### 2.2 Evidence / Text Retrieval
 
-当前只有一个较窄的典故查询工具。下一阶段如果扩展外部知识，优先做一个真实、可验证的最小闭环，而不是为了技术名词堆系统。
+当前生产 Agent 已有两类 CNKGraph Tool：
 
-候选资料：
+- `lookup_allusion`：人物、故事、典故性短语；
+- `lookup_reference`：前代成句、近似文本和部分化用候选。
 
-- 可靠注释；
-- 词话与历代评论；
-- 作者编年/生平资料；
-- 可追溯的作品出处。
+它们都返回 Evidence 候选，不自动证明出处关系。Seed Eval 也已经暴露当前边界：保留明显文本锚点的关系相对容易，高度压缩、反用或大幅改写仍不稳定。
+
+下一阶段由 #119 把“文本相似 / 化用候选”单独作为 Retrieval 问题研究。第一步不是直接接 Agent 或向量数据库，而是先检查真实外部语料、建立可信实验输入，再决定 Corpus / Chunk / Benchmark 需要什么结构。只有 Retrieval baseline 证明有稳定增量后，才考虑 pgvector、ANN 或生产 Tool 接入。
 
 需要实际回答：
 
-- 什么问题应该检索；
-- chunk 和 metadata 如何设计；
-- 如何保留出处；
-- 未命中和冲突证据怎么处理；
-- retrieval 是否真的改善回答。
+- 第一版真实 Corpus 应包含什么；
+- 原始作品怎样切成可检索单元；
+- Ground Truth 是否确实存在于 Corpus；
+- Embedding 是否真的把正确来源排到前面；
+- 未命中究竟来自 Corpus、Retriever 还是关系本身超出当前能力；
+- 命中候选以后怎样保留出处并避免把相似文本误写成确定来源。
 
 ### 2.3 Evaluation
 
-建立小而稳定的 AI Eval baseline，优先覆盖：
+Seed AI Eval baseline 已建立，但 Dataset 仍保持小规模、可人工复核，不追求一个总分。
+
+当前重点：
 
 - 工具该用时是否使用；
 - 工具不该用时是否克制；
 - 典故/年代/人物等硬事实；
+- 前代文本 / 出处类问题的 Tool 选择与查询质量；
 - 多轮指代；
 - 文学解释是否落在原文而不是套话；
-- Prompt、模型或 retrieval 变化是否造成退化。
+- Prompt、模型或 Evidence 变化是否造成退化；
+- Ground Truth 本身是否需要修正。
 
-单元测试、AI Eval、LangSmith Trace 和真实浏览器验收继续分层，不互相冒充。
+Run 同时保留 Tool Call、Tool Result 和 Evidence 摘要，使失败可以继续定位到 Dataset、Agent / 路由、Tool Coverage 或当前能力边界，而不是只看最终答案。
+
+单元测试、AI Eval、运行 Trace 和真实浏览器验收继续分层，不互相冒充。
 
 ### 2.4 UX reliability
 
