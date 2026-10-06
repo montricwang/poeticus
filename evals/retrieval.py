@@ -14,7 +14,7 @@ class PoetryCorpusRecord(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    id: str = Field(pattern=r"^[a-z0-9][a-z0-9_.:-]+$")
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9_.:-]*$")
     work_id: str = Field(min_length=1)
     text: str = Field(min_length=1)
     author: str | None = None
