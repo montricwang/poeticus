@@ -26,6 +26,7 @@ import json
 import math
 from collections.abc import Sequence
 from pathlib import Path
+from pathlib import Path
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 
@@ -138,6 +139,7 @@ def main() -> None:
 
     result = {
         "model": MODEL_NAME,
+        "model_source": model_source,
         "model_source": model_source,
         "device": str(model.device),
         "texts": len(texts),
