@@ -30,7 +30,7 @@ CPU only
 single worker
 ```
 
-因此 16 GiB / 320 GiB 足够验证：
+因此 16 GiB / 约 100 GiB 系统盘已经足够验证：
 
 - Linux 实际 RSS；
 - shared CPU 对 Qwen / FAISS / BM25 的影响；
@@ -75,9 +75,14 @@ Embedding 目录在服务器上仍要保留目录结构，但只需要其中的 
 
 ## 4. 创建临时 Linux 主机
 
-建议：
+腾讯云控制台建议：
 
+- 地域：上海；
 - Ubuntu 24.04 LTS；
+- 8 核 16 GiB 标准型；
+- 按量计费；
+- 系统盘约 100 GiB；
+- 公网按流量计费，带宽峰值约 100 Mbps；
 - 只配置 SSH；
 - 暂时不要开放 Retrieval HTTP 端口；
 - 不部署 PostgreSQL；
@@ -195,7 +200,7 @@ python -m scripts.retrieval.probe_serving \
 16 GiB RAM 是否宽裕？
 shared CPU 是否足够？
 单 worker 是否足够？
-SFO3 是否值得成为生产节点？
+腾讯云上海是否值得成为生产节点？
 ```
 
-如果 shared CPU 抖动明显，再比较 dedicated CPU 或其他供应商；不要在没有 Linux 数据前继续猜规格。
+如果标准型 CPU 抖动明显或跨境调用成为瓶颈，再比较阿里云杭州、腾讯云香港或海外节点；不要在没有 Linux 数据前继续猜规格。
