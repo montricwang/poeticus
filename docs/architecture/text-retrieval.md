@@ -101,7 +101,20 @@ source_record_id
 
 **Query Strategy** 回答：当前正在阅读的一整首诗词，哪些片段需要发起 Retrieval？
 
-第一版倾向于让诗句都可以进入 Retrieval，而不是先用分类器判断“值不值得查”。诗词本身较短，预过滤带来的计算节省有限，却可能在 Retriever 之前造成不可恢复的 Recall 损失。
+第一版不先让 LLM 改写 Query，而是确定性地产生三层候选：
+
+```text
+用户选中 / 当前片段
+├─ passage：保留完整上下文
+├─ sentence：按 Corpus sentence policy 切分
+└─ clause：按 Corpus clause policy 切分
+```
+
+Query side 与 Corpus side 复用同一套 sentence / clause 边界规则，避免索引切分和查询切分静默漂移。完全相同的 query text 只执行一次搜索，但保留它来自 passage / sentence / clause 哪些位置的 provenance；例如只有一句且没有逗号的短句，不会因为三层策略重复搜索三次。
+
+这一层只负责生成稳定 Query Plan；Dense / Lexical fan-out、Candidate Fusion 和 chronology filtering 仍属于后续层，不在 Query Planner 内耦合。
+
+第一版仍倾向于让诗句都可以进入 Retrieval，而不是先用分类器判断“值不值得查”。诗词本身较短，预过滤带来的计算节省有限，却可能在 Retriever 之前造成不可恢复的 Recall 损失。
 
 ## 5. Embedding 模型
 
@@ -305,7 +318,7 @@ Lexical 与 Dense 仍然是两条独立召回链，只有真实结果证明互�
 - **character 2-3 gram + BM25**：当前 lexical 主力；已在强字面复用 Case 上证明增量；
 - **标点作为 n-gram 边界**：避免跨标点生成无意义 term；
 - **sentence + clause Corpus 粒度**：真实 Case 已证明互补；
-- **deterministic multi-query** 作为下一步：优先比较完整 passage、sentence、clause，而不是先让 LLM 自由改写 Query。
+- **deterministic multi-query**：先生成 passage / sentence / clause Query Plan；三层切分复用 Corpus policy，相同文本去重但保留来源位置。下一步再把 Query Plan 接入 Dense + Lexical fan-out。
 
 ### 下一阶段优先候选
 
