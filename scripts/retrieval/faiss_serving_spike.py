@@ -30,7 +30,7 @@ DEFAULT_TOP_K = 20
 DEFAULT_NLIST = 512
 DEFAULT_PQ_M = 64
 DEFAULT_PQ_BITS = 8
-DEFAULT_NPROBE = 16
+DEFAULT_NPROBES = (16, 32, 64, 128)
 
 
 def _require_numpy():
@@ -195,6 +195,27 @@ def _search_latency_ms_per_query(index, queries, search_k: int) -> float:
     return elapsed * 1000 / len(queries)
 
 
+def normalize_nprobes(
+    nprobes: Sequence[int],
+    *,
+    nlist: int,
+) -> list[int]:
+    """Clamp nprobe values to nlist and keep first-seen order."""
+    if nlist <= 0:
+        raise ValueError("nlist 必须为正整数")
+    if not nprobes:
+        raise ValueError("至少需要一个 nprobe")
+
+    output: list[int] = []
+    for value in nprobes:
+        if value <= 0:
+            raise ValueError("nprobe 必须为正整数")
+        actual = min(value, nlist)
+        if actual not in output:
+            output.append(actual)
+    return output
+
+
 def benchmark_artifact(
     artifact_dir: Path,
     *,
@@ -204,7 +225,7 @@ def benchmark_artifact(
     nlist: int,
     pq_m: int,
     pq_bits: int,
-    nprobe: int,
+    nprobes: Sequence[int],
     threads: int | None,
 ) -> dict:
     np = _require_numpy()
@@ -220,8 +241,9 @@ def benchmark_artifact(
         raise ValueError(
             f"dimension={dimension} 不能被 pq_m={pq_m} 整除"
         )
-    if nlist <= 0 or pq_m <= 0 or pq_bits <= 0 or nprobe <= 0:
+    if pq_m <= 0 or pq_bits <= 0:
         raise ValueError("FAISS 参数必须为正整数")
+    normalized_nprobes = normalize_nprobes(nprobes, nlist=nlist)
 
     if threads is not None:
         if threads <= 0:
@@ -286,16 +308,30 @@ def benchmark_artifact(
     started = time.perf_counter()
     ann.add(database)
     add_seconds = time.perf_counter() - started
-    ann.nprobe = min(nprobe, nlist)
 
-    ann_latency = _search_latency_ms_per_query(ann, queries, search_k)
-    _, ann_ids = ann.search(queries, search_k)
-    ann_neighbors = strip_self_neighbors(
-        ann_ids,
-        query_positions,
-        top_k=top_k,
-    )
+    nprobe_sweep = []
+    for nprobe in normalized_nprobes:
+        ann.nprobe = nprobe
+        ann_latency = _search_latency_ms_per_query(ann, queries, search_k)
+        _, ann_ids = ann.search(queries, search_k)
+        ann_neighbors = strip_self_neighbors(
+            ann_ids,
+            query_positions,
+            top_k=top_k,
+        )
+        nprobe_sweep.append(
+            {
+                "nprobe": nprobe,
+                "recall_at_k_vs_exact": recall_at_k(
+                    exact_neighbors,
+                    ann_neighbors,
+                    top_k=top_k,
+                ),
+                "latency_ms_per_query_sample": ann_latency,
+            }
+        )
 
+    baseline = nprobe_sweep[0]
     populated_bytes = len(faiss.serialize_index(ann))
     projected_bytes = project_full_index_bytes(
         trained_empty_bytes=empty_bytes,
@@ -325,16 +361,15 @@ def benchmark_artifact(
             "nlist": nlist,
             "pq_m": pq_m,
             "pq_bits": pq_bits,
-            "nprobe": ann.nprobe,
+            "nprobe": baseline["nprobe"],
             "training_vectors": training_count,
             "training_seconds": train_seconds,
             "add_seconds": add_seconds,
-            "recall_at_k_vs_exact": recall_at_k(
-                exact_neighbors,
-                ann_neighbors,
-                top_k=top_k,
-            ),
-            "latency_ms_per_query_sample": ann_latency,
+            "recall_at_k_vs_exact": baseline["recall_at_k_vs_exact"],
+            "latency_ms_per_query_sample": baseline[
+                "latency_ms_per_query_sample"
+            ],
+            "nprobe_sweep": nprobe_sweep,
             "trained_empty_index_bytes": empty_bytes,
             "sample_index_bytes": populated_bytes,
             "sample_index_mib": _mib(populated_bytes),
@@ -376,7 +411,16 @@ def main() -> None:
     parser.add_argument("--nlist", type=int, default=DEFAULT_NLIST)
     parser.add_argument("--pq-m", type=int, default=DEFAULT_PQ_M)
     parser.add_argument("--pq-bits", type=int, default=DEFAULT_PQ_BITS)
-    parser.add_argument("--nprobe", type=int, default=DEFAULT_NPROBE)
+    parser.add_argument(
+        "--nprobe",
+        dest="nprobes",
+        type=int,
+        action="append",
+        help=(
+            "可重复传入；默认依次测试 16 / 32 / 64 / 128，"
+            "同一 IVFPQ index 只训练和 add 一次"
+        ),
+    )
     parser.add_argument("--threads", type=int)
     args = parser.parse_args()
 
@@ -389,7 +433,7 @@ def main() -> None:
             nlist=args.nlist,
             pq_m=args.pq_m,
             pq_bits=args.pq_bits,
-            nprobe=args.nprobe,
+            nprobes=args.nprobes or DEFAULT_NPROBES,
             threads=args.threads,
         )
         for artifact_dir in args.artifact_dir
