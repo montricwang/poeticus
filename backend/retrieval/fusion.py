@@ -70,7 +70,7 @@ def _assert_metadata_consistent(
 def fuse_candidates_rrf(
     results: Sequence[QueryChannelResult],
     *,
-    top_k: int,
+    top_k: int | None,
     rrf_k: int = DEFAULT_RRF_K,
 ) -> list[FusedCandidate]:
     """Fuse ranked chunk results into Work-level candidates with RRF.
@@ -83,7 +83,7 @@ def fuse_candidates_rrf(
     All contributing list-level evidences are retained for later explanation
     or LLM adjudication.
     """
-    if top_k <= 0:
+    if top_k is not None and top_k <= 0:
         raise ValueError("top_k 必须为正整数")
     if rrf_k < 0:
         raise ValueError("rrf_k 不能为负数")
@@ -158,4 +158,4 @@ def fuse_candidates_rrf(
             candidate.work_id,
         )
     )
-    return candidates[:top_k]
+    return candidates if top_k is None else candidates[:top_k]
