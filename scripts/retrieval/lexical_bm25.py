@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Iterator
@@ -153,11 +154,33 @@ def _read_jsonl(path: Path) -> Iterator[dict]:
                 raise ValueError(f"{path} 第 {line_no} 行无法解析") from exc
 
 
+def collect_chunk_work_ids(
+    chunk_path: Path,
+    *,
+    max_chunks: int,
+) -> tuple[set[str], int]:
+    if max_chunks <= 0:
+        raise ValueError("max_chunks 必须为正整数")
+
+    work_ids: set[str] = set()
+    count = 0
+    for chunk in _read_jsonl(chunk_path):
+        if count >= max_chunks:
+            break
+        work_id = chunk.get("work_id")
+        if not isinstance(work_id, str) or not work_id:
+            raise ValueError(f"Chunk row {count} 缺少有效 work_id")
+        work_ids.add(work_id)
+        count += 1
+    return work_ids, count
+
+
 def _insert_works(
     connection: sqlite3.Connection,
     work_path: Path,
     *,
     batch_size: int,
+    allowed_work_ids: set[str] | None = None,
 ) -> int:
     rows: list[tuple] = []
     count = 0
@@ -170,6 +193,8 @@ def _insert_works(
         work_id = work.get("work_id")
         if not isinstance(work_id, str) or not work_id:
             raise ValueError("Work JSONL 存在缺少 work_id 的记录")
+        if allowed_work_ids is not None and work_id not in allowed_work_ids:
+            continue
         rows.append(
             (
                 work_id,
@@ -198,6 +223,7 @@ def _insert_chunks(
     batch_size: int,
     min_n: int,
     max_n: int,
+    max_chunks: int | None = None,
 ) -> int:
     chunk_rows: list[tuple] = []
     fts_rows: list[tuple] = []
@@ -210,6 +236,8 @@ def _insert_chunks(
     fts_sql = "INSERT INTO chunk_fts (rowid, grams) VALUES (?, ?)"
 
     for logical_row, chunk in enumerate(_read_jsonl(chunk_path)):
+        if max_chunks is not None and logical_row >= max_chunks:
+            break
         text = chunk.get("text")
         if not isinstance(text, str) or not text:
             raise ValueError(f"Chunk row {logical_row} 缺少有效 text")
@@ -253,12 +281,15 @@ def build_bm25_index(
     max_n: int = DEFAULT_MAX_N,
     batch_size: int = DEFAULT_BATCH_SIZE,
     expected_chunks: int | None = None,
+    max_chunks: int | None = None,
     force: bool = False,
 ) -> dict:
     if chunk_policy not in CHUNK_PATHS:
         raise ValueError(f"未知 chunk policy：{chunk_policy!r}")
     if batch_size <= 0:
         raise ValueError("batch_size 必须为正整数")
+    if max_chunks is not None and max_chunks <= 0:
+        raise ValueError("max_chunks 必须为正整数")
 
     work_path = work_path.expanduser().resolve()
     chunk_path = chunk_path.expanduser().resolve()
@@ -286,6 +317,15 @@ def build_bm25_index(
     if temp_db_path.exists():
         temp_db_path.unlink()
 
+    allowed_work_ids = None
+    sampled_chunks = None
+    if max_chunks is not None:
+        allowed_work_ids, sampled_chunks = collect_chunk_work_ids(
+            chunk_path,
+            max_chunks=max_chunks,
+        )
+
+    build_started = time.perf_counter()
     connection = sqlite3.connect(temp_db_path)
     try:
         _check_fts5(connection)
@@ -298,6 +338,7 @@ def build_bm25_index(
             connection,
             work_path,
             batch_size=batch_size,
+            allowed_work_ids=allowed_work_ids,
         )
         chunk_count = _insert_chunks(
             connection,
@@ -305,6 +346,7 @@ def build_bm25_index(
             batch_size=batch_size,
             min_n=min_n,
             max_n=max_n,
+            max_chunks=max_chunks,
         )
         if expected_chunks is not None and chunk_count != expected_chunks:
             raise ValueError(
@@ -319,6 +361,8 @@ def build_bm25_index(
         connection.close()
 
     temp_db_path.replace(db_path)
+    build_elapsed = time.perf_counter() - build_started
+    database_bytes = db_path.stat().st_size
     manifest = {
         "status": "complete",
         "engine": "sqlite_fts5",
@@ -329,6 +373,12 @@ def build_bm25_index(
         "max_n": max_n,
         "works": work_count,
         "chunks": chunk_count,
+        "max_chunks": max_chunks,
+        "sampled_chunks_seen": sampled_chunks,
+        "database_bytes": database_bytes,
+        "database_mib": database_bytes / (1024 * 1024),
+        "build_elapsed_seconds": build_elapsed,
+        "chunks_per_second": chunk_count / build_elapsed if build_elapsed else None,
         "work_path": str(work_path),
         "work_sha256": work_sha256,
         "chunk_path": str(chunk_path),
@@ -494,6 +544,11 @@ def main() -> None:
     build_parser.add_argument("--max-n", type=int, default=DEFAULT_MAX_N)
     build_parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
     build_parser.add_argument("--expected-chunks", type=int)
+    build_parser.add_argument(
+        "--max-chunks",
+        type=int,
+        help="只索引前 N 个 Chunk，用于真实规模预估",
+    )
     build_parser.add_argument("--force", action="store_true")
 
     search_parser = subparsers.add_parser("search", help="查询 BM25 lexical index")
@@ -524,8 +579,13 @@ def main() -> None:
                 expected_chunks=(
                     args.expected_chunks
                     if args.expected_chunks is not None
-                    else EXPECTED_CHUNKS[args.chunk_policy]
+                    else (
+                        args.max_chunks
+                        if args.max_chunks is not None
+                        else EXPECTED_CHUNKS[args.chunk_policy]
+                    )
                 ),
+                max_chunks=args.max_chunks,
                 force=args.force,
             )
         else:
