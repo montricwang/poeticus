@@ -5,7 +5,8 @@ from scripts.evals.run_retrieval_increment import (
     RetrievalIncrementCase,
     RetrievalTarget,
     choose_current_work_id,
-    heuristic_bucket,
+    compact_tool_result,
+    comparison_bucket,
     scan_work_matches,
 )
 
@@ -86,24 +87,62 @@ def test_scan_work_matches_and_choose_exact_title(tmp_path):
     ) == "w-current-exact"
 
 
-def test_heuristic_bucket_is_navigation_only():
-    assert heuristic_bucket(
-        base_signal=True,
+def test_comparison_bucket_is_navigation_only():
+    assert comparison_bucket(
+        bare_signal=True,
+        tool_signal=True,
         eligible_rank=3,
-    ) == "both_strong"
-    assert heuristic_bucket(
-        base_signal=True,
+    ) == "base_already_knows"
+    assert comparison_bucket(
+        bare_signal=False,
+        tool_signal=True,
         eligible_rank=40,
-    ) == "base_model_stronger"
-    assert heuristic_bucket(
-        base_signal=False,
-        eligible_rank=4,
-    ) == "retrieval_increment_candidate"
-    assert heuristic_bucket(
-        base_signal=False,
+    ) == "tool_increment_candidate"
+    assert comparison_bucket(
+        bare_signal=True,
+        tool_signal=False,
+        eligible_rank=3,
+    ) == "tool_regression_candidate"
+    assert comparison_bucket(
+        bare_signal=False,
+        tool_signal=False,
         eligible_rank=15,
-    ) == "retrieval_possible_increment"
-    assert heuristic_bucket(
-        base_signal=False,
+    ) == "retrieval_found_model_failed"
+    assert comparison_bucket(
+        bare_signal=False,
+        tool_signal=False,
         eligible_rank=None,
     ) == "both_gap"
+
+
+def test_compact_tool_result_does_not_expose_probe_metadata():
+    result = {
+        "ranking": [
+            {
+                "rank": 1,
+                "title": "前作",
+                "author": "前人",
+                "dynasty": "唐",
+                "support_count": 2,
+                "chronology_status": "clearly_earlier",
+                "best_evidence": {
+                    "text": "前代句。",
+                    "query": "当前句",
+                    "channel": "dense_faiss_sentence",
+                },
+            }
+        ],
+        "probes": [
+            {"work_id": "ground-truth-only"}
+        ],
+    }
+
+    compact = compact_tool_result(result)
+
+    assert compact["status"] == "ok"
+    assert compact["candidates"][0]["author"] == "前人"
+    assert "probes" not in compact
+    assert "ground-truth-only" not in json.dumps(
+        compact,
+        ensure_ascii=False,
+    )
