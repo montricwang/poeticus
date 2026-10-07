@@ -38,6 +38,26 @@ def _load_json(path: Path) -> dict:
         raise ValueError(f"manifest 无法解析：{path}") from exc
 
 
+def _embedding_source_signature(manifest: dict) -> dict:
+    keys = (
+        "model",
+        "model_fingerprint",
+        "input_sha256",
+        "chunk_policy",
+        "embedding_dimension",
+        "dtype",
+        "normalized",
+        "completed_chunks",
+    )
+    missing = [key for key in keys if key not in manifest]
+    if missing:
+        raise ValueError(
+            "Embedding manifest 缺少 serving 字段："
+            + ", ".join(missing)
+        )
+    return {key: manifest[key] for key in keys}
+
+
 def _require_numpy():
     try:
         import numpy as np
@@ -242,6 +262,13 @@ class FaissDenseChannel:
             raise ValueError(
                 f"{policy} FAISS / Embedding corpus size 不一致"
             )
+        if (
+            index_manifest.get("source_embedding")
+            != _embedding_source_signature(embedding_manifest)
+        ):
+            raise ValueError(
+                f"{policy} FAISS index 与 Embedding Artifact 不匹配"
+            )
 
         index_file = index_manifest.get("index_file")
         if not isinstance(index_file, str) or not index_file:
@@ -367,6 +394,7 @@ class SentenceBm25Channel:
             )
         self._min_n = int(manifest["min_n"])
         self._max_n = int(manifest["max_n"])
+        self.manifest = manifest
 
     def profile(self) -> dict:
         return dict(getattr(self._local, "profile", {}))
@@ -503,6 +531,33 @@ class RetrievalServingRuntime:
 
         started = time.perf_counter()
         self.metadata = MetadataStore(paths.metadata_db)
+        metadata_stats = self.metadata.stats()
+        if int(metadata_stats.get("sentence_chunks", "-1")) != int(
+            sentence_manifest["completed_chunks"]
+        ):
+            raise ValueError(
+                "Metadata sentence row count 与 Embedding Artifact 不一致"
+            )
+        if int(metadata_stats.get("clause_chunks", "-1")) != int(
+            clause_manifest["completed_chunks"]
+        ):
+            raise ValueError(
+                "Metadata clause row count 与 Embedding Artifact 不一致"
+            )
+        if (
+            metadata_stats.get("sentence_sha256")
+            != sentence_manifest.get("input_sha256")
+        ):
+            raise ValueError(
+                "Metadata sentence source 与 Embedding Artifact 不一致"
+            )
+        if (
+            metadata_stats.get("clause_sha256")
+            != clause_manifest.get("input_sha256")
+        ):
+            raise ValueError(
+                "Metadata clause source 与 Embedding Artifact 不一致"
+            )
         self.startup_profile["metadata_ready_ms"] = (
             time.perf_counter() - started
         ) * 1000
@@ -543,6 +598,20 @@ class RetrievalServingRuntime:
         self.lexical = SentenceBm25Channel(
             paths.bm25_sentence_dir
         )
+        if (
+            metadata_stats.get("work_sha256")
+            != self.lexical.manifest.get("work_sha256")
+        ):
+            raise ValueError(
+                "Metadata Work source 与 BM25 Artifact 不一致"
+            )
+        if (
+            metadata_stats.get("sentence_sha256")
+            != self.lexical.manifest.get("chunk_sha256")
+        ):
+            raise ValueError(
+                "Metadata sentence source 与 BM25 Artifact 不一致"
+            )
         self.startup_profile["bm25_ready_ms"] = (
             time.perf_counter() - started
         ) * 1000
