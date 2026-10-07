@@ -1,5 +1,7 @@
 """Run exact Retrieval against any supported embedding Artifact.
 
+from backend.retrieval.chronology import candidate_prior_dynasties
+
 The Artifact manifest is the source of truth for:
 - embedding model;
 - chunk policy;
@@ -24,7 +26,6 @@ from scripts.retrieval.exact_search import (
     DEFAULT_TOP_K,
     build_dynasty_row_mask,
     build_result_rows,
-    candidate_prior_dynasties,
     ensure_model_snapshot,
     exact_search,
     find_probe_rows,
