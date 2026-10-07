@@ -237,3 +237,24 @@ def test_rrf_validates_parameters_and_respects_top_k():
 
     with pytest.raises(ValueError, match="rrf_k"):
         fuse_candidates_rrf(results, top_k=10, rrf_k=-1)
+
+
+def test_rrf_can_return_complete_fused_pool():
+    query = build_query_plan("甲。")[0]
+    results = [
+        _result(
+            query,
+            "dense",
+            "dense",
+            "sentence",
+            [
+                _hit(1, work_id="a"),
+                _hit(2, work_id="b"),
+                _hit(3, work_id="c"),
+            ],
+        )
+    ]
+
+    fused = fuse_candidates_rrf(results, top_k=None)
+
+    assert [candidate.work_id for candidate in fused] == ["a", "b", "c"]
