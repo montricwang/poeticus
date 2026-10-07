@@ -5,7 +5,7 @@ import pytest
 from scripts.retrieval.exact_search import (
     build_dynasty_row_mask,
     build_result_rows,
-    definitely_earlier_dynasties,
+    candidate_prior_dynasties,
     load_manifest,
     merge_top_k,
     read_selected_chunks,
@@ -156,12 +156,12 @@ def test_resolve_model_path_keeps_explicit_override(tmp_path):
     assert path == requested.resolve()
 
 
-def test_definitely_earlier_dynasties_is_conservative_for_song():
-    allowed = definitely_earlier_dynasties("宋")
+def test_candidate_prior_dynasties_keeps_transition_period_for_song():
+    allowed = candidate_prior_dynasties("宋")
 
     assert "唐" in allowed
     assert "隋" in allowed
-    assert "唐末宋初" not in allowed
+    assert "唐末宋初" in allowed
     assert "辽" not in allowed
     assert "宋" not in allowed
 
