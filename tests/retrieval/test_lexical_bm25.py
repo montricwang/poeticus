@@ -112,3 +112,53 @@ def test_build_and_search_bm25_with_chronology_filter(tmp_path):
     assert result["ranking"][0]["work"]["author"] == "杜牧"
     assert all(row["work"]["dynasty"] != "宋" for row in result["ranking"])
     assert result["probes"][0]["rank"] == 1
+
+
+
+def test_sample_build_only_keeps_referenced_works(tmp_path):
+    try:
+        connection = sqlite3.connect(":memory:")
+        connection.execute("CREATE VIRTUAL TABLE fts5_check USING fts5(text)")
+        connection.close()
+    except sqlite3.OperationalError:
+        pytest.skip("SQLite build does not include FTS5")
+
+    works = [
+        _work("1", title="一", author="甲", dynasty="唐"),
+        _work("2", title="二", author="乙", dynasty="唐"),
+        _work("3", title="三", author="丙", dynasty="唐"),
+    ]
+    chunks = [
+        _chunk("1", "w:1", "片片轻鸥落晚沙。"),
+        _chunk("2", "w:2", "春水碧于天。"),
+        _chunk("3", "w:3", "画船听雨眠。"),
+    ]
+    work_path = tmp_path / "works.jsonl"
+    chunk_path = tmp_path / "chunks.jsonl"
+    output_dir = tmp_path / "sample"
+    _write_jsonl(work_path, works)
+    _write_jsonl(chunk_path, chunks)
+
+    manifest = build_bm25_index(
+        work_path=work_path,
+        chunk_path=chunk_path,
+        output_dir=output_dir,
+        chunk_policy="sentence",
+        expected_chunks=1,
+        max_chunks=1,
+    )
+
+    connection = sqlite3.connect(output_dir / "index.sqlite3")
+    try:
+        stored_works = connection.execute("SELECT COUNT(*) FROM works").fetchone()[0]
+        stored_chunks = connection.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
+    finally:
+        connection.close()
+
+    assert manifest["works"] == 1
+    assert manifest["chunks"] == 1
+    assert manifest["sampled_chunks_seen"] == 1
+    assert manifest["database_bytes"] > 0
+    assert manifest["build_elapsed_seconds"] >= 0
+    assert stored_works == 1
+    assert stored_chunks == 1
