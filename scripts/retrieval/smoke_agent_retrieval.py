@@ -225,6 +225,11 @@ def main() -> None:
             for event in events
             if event.get("evidence_type") == "text_retrieval"
         ]
+        first_tool_type = (
+            events[0].get("evidence_type")
+            if events
+            else None
+        )
         target = case["target"]
         results.append(
             {
@@ -233,11 +238,16 @@ def main() -> None:
                 "question": case["input"]["question"],
                 "tool_count": result.get("tool_count", 0),
                 "tool_events": events,
+                "first_tool_type": first_tool_type,
+                "text_retrieval_call_count": len(retrieval_events),
                 "retrieval_queries": [
                     event.get("query")
                     for event in retrieval_events
                 ],
                 "used_text_retrieval": bool(retrieval_events),
+                "routing_policy_pass": (
+                    first_tool_type == "text_retrieval"
+                ),
                 "target_answer_anchor_visible": any(
                     anchor in reply
                     for anchor in target.get("answer_anchors", [])
@@ -276,8 +286,8 @@ def main() -> None:
     lines = [
         "# Agent Retrieval E2E Smoke",
         "",
-        "| case | tool calls | used Text Retrieval | retrieval queries | target anchor in reply |",
-        "| --- | ---: | --- | --- | --- |",
+        "| case | tool calls | first tool | Text Retrieval calls | routing pass | retrieval queries | target anchor in reply |",
+        "| --- | ---: | --- | ---: | --- | --- | --- |",
     ]
     for item in results:
         lines.append(
@@ -286,7 +296,9 @@ def main() -> None:
                 [
                     item["case_id"],
                     str(item["tool_count"]),
-                    str(item["used_text_retrieval"]),
+                    str(item["first_tool_type"] or "—"),
+                    str(item["text_retrieval_call_count"]),
+                    str(item["routing_policy_pass"]),
                     " → ".join(
                         query or "?"
                         for query in item["retrieval_queries"]
