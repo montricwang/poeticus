@@ -26,6 +26,7 @@
 | RET-107 | 词话 / 诗话先做“小而精的 curated RAG”，开放 Web Search 负责长尾兜底 | 2 | joint | Poeticus 的评论资料不需要一开始追求全集；精选权威原典主要提供 grounding，Web Search 提供覆盖面 | proposed | 用户问题大量落在 curated corpus 之外，或 Search 质量不足 |
 | RET-108 | 不建立一个混合诗词、词话、辞书的万能索引；按 Retrieval Domain / Tool 保持语义边界 | 2 | AI-proposed | 不同问题的检索目标和证据可信度不同，混在一张榜单会降低解释性和结果质量 | proposed | 真实产品表明统一索引反而更有效且能稳定路由 |
 | RET-109 | 用户明确追问“借了谁哪一句 / 化用了哪段前代文本”时，若 Corpus Tool 可用，优先 `search_predecessor_texts`，不要先消耗 `lookup_reference` / `lookup_allusion` | 1 | AI-proposed | 首次 E2E 暴露错误路由；修订 Prompt / Tool description 后，同一陆游与姜夔 Case 均以 `text_retrieval` 为 first tool，routing gate 均通过；姜夔首轮弱命中后第二轮仍保持 Corpus Retrieval，并以「十年一觉扬州梦」找回杜牧《遣怀》 | active | 更大自然问题集出现系统性误路由，或未来 Tool 数量增加使 Prompt 路由不再稳定 |
+| RET-110 | metadata compact schema 升级为 v2，并拒绝继续加载旧 v1 artifact | 2 | AI-proposed | #152 发现 clause `chunk_id UNIQUE` 与原设计不一致；如果仅改建库代码而不升级版本，旧 2.31 GiB DB 会被新 Serving 静默沿用，无法判断部署节点是否真正重建 | experiment | 全量 v2 metadata 重建并验证 Serving 正常后升级为 Level 1；若强制重建带来不必要运维成本，再考虑兼容读取策略 |
 
 ## C. 为了闭环而暂定的默认值
 
