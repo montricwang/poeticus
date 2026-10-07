@@ -38,6 +38,27 @@ def rss_mib() -> float:
     return psutil.Process().memory_info().rss / (1024 ** 2)
 
 
+def cpu_model() -> str:
+    processor = platform.processor().strip()
+    if processor:
+        return processor
+
+    cpuinfo = Path("/proc/cpuinfo")
+    if cpuinfo.is_file():
+        for line in cpuinfo.read_text(
+            encoding="utf-8",
+            errors="ignore",
+        ).splitlines():
+            if ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            if key.strip() in {"model name", "Hardware"}:
+                value = value.strip()
+                if value:
+                    return value
+    return "unknown"
+
+
 def path_size(path: Path) -> int:
     path = path.expanduser().resolve()
     if path.is_file():
@@ -406,15 +427,21 @@ def main() -> None:
     )
 
     virtual_memory = psutil.virtual_memory()
+    swap_memory = psutil.swap_memory()
+    disk_usage = psutil.disk_usage(paths.metadata_db.parent)
     report = {
         "schema_version": "1",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "system": {
             "platform": platform.platform(),
             "python": platform.python_version(),
+            "cpu_model": cpu_model(),
             "cpu_physical": psutil.cpu_count(logical=False),
             "cpu_logical": psutil.cpu_count(logical=True),
             "ram_total_gib": virtual_memory.total / (1024 ** 3),
+            "swap_total_gib": swap_memory.total / (1024 ** 3),
+            "disk_total_gib": disk_usage.total / (1024 ** 3),
+            "disk_free_gib": disk_usage.free / (1024 ** 3),
         },
         "config": {
             "search_k": args.search_k,

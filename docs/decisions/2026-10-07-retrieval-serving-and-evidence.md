@@ -27,6 +27,7 @@
 | RET-108 | 不建立一个混合诗词、词话、辞书的万能索引；按 Retrieval Domain / Tool 保持语义边界 | 2 | AI-proposed | 不同问题的检索目标和证据可信度不同，混在一张榜单会降低解释性和结果质量 | proposed | 真实产品表明统一索引反而更有效且能稳定路由 |
 | RET-109 | 用户明确追问“借了谁哪一句 / 化用了哪段前代文本”时，若 Corpus Tool 可用，优先 `search_predecessor_texts`，不要先消耗 `lookup_reference` / `lookup_allusion` | 1 | AI-proposed | 首次 E2E 暴露错误路由；修订 Prompt / Tool description 后，同一陆游与姜夔 Case 均以 `text_retrieval` 为 first tool，routing gate 均通过；姜夔首轮弱命中后第二轮仍保持 Corpus Retrieval，并以「十年一觉扬州梦」找回杜牧《遣怀》 | active | 更大自然问题集出现系统性误路由，或未来 Tool 数量增加使 Prompt 路由不再稳定 |
 | RET-110 | metadata compact schema 升级为 v2，并拒绝继续加载旧 v1 artifact | 1 | AI-proposed | 全量 v2 已完成重建并被 Serving 正常加载；DB 从约 2.313 GiB 降到 1.828 GiB（约 -21%），build 约 73 s，陆游 canary 仍 Top-4；强制版本门槛确保部署节点不会静默沿用旧 v1 | active | 未来 schema 迁移频率明显上升、全量重建成本不可接受时，再考虑向后兼容 / migration 策略 |
+| RET-111 | 第一台 Linux Deployment Spike 候选使用 DigitalOcean SFO3 Basic 16 GiB / 8 shared vCPU / 320 GiB，而不是直接锁定 Hetzner | 2 | AI-proposed | 2026-10 当前 DigitalOcean 16 GiB Basic 为 $96/月上限且按秒计费、SFO3 可用；Hetzner 美国 16 GiB CPX41 调价后约 $141.49/月；Spike 只需短时验证 Linux RSS/latency，因此 DO 的按秒计费与 SFO 区域更适合作为第一实验节点 | experiment | Linux benchmark 出现 shared CPU 抖动、延迟不可接受或区域网络问题时，对比 dedicated CPU / Akamai / Hetzner 等候选 |
 
 ## C. 为了闭环而暂定的默认值
 
