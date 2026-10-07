@@ -384,7 +384,7 @@ class SentenceBm25Channel:
 
         started = time.perf_counter()
         connection = sqlite3.connect(
-            f"file:{self._database.as_posix()}?mode=ro",
+            self._database.as_uri() + "?mode=ro",
             uri=True,
         )
         connection.row_factory = sqlite3.Row
