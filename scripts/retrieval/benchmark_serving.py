@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import platform
 import statistics
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -397,10 +398,24 @@ def main() -> None:
         result.timings_ms["total_ms"]
         for result in concurrent_results
     ]
+    memory_samples.append(
+        {
+            "stage": "post_benchmark",
+            "rss_mib": rss_mib(),
+        }
+    )
 
+    virtual_memory = psutil.virtual_memory()
     report = {
         "schema_version": "1",
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "system": {
+            "platform": platform.platform(),
+            "python": platform.python_version(),
+            "cpu_physical": psutil.cpu_count(logical=False),
+            "cpu_logical": psutil.cpu_count(logical=True),
+            "ram_total_gib": virtual_memory.total / (1024 ** 3),
+        },
         "config": {
             "search_k": args.search_k,
             "rrf_k": args.rrf_k,
