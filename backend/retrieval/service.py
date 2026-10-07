@@ -77,8 +77,8 @@ class TextRetrievalService:
         text: str,
         *,
         current_work_id: str | None,
-        current_work_ids: Collection[str] | None = None,
         target_dynasty: str | None,
+        current_work_ids: Collection[str] | None = None,
     ) -> TextRetrievalResult:
         plan = tuple(build_query_plan(text))
         channel_results = execute_query_fanout(
