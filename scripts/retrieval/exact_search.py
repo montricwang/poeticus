@@ -260,6 +260,54 @@ def build_dynasty_row_mask(
     return mask
 
 
+def find_probe_rows(
+    *,
+    work_path: Path,
+    chunk_path: Path,
+    probe_text: str,
+    probe_author: str | None = None,
+) -> set[int]:
+    if not probe_text:
+        raise ValueError("probe_text 不能为空")
+
+    matching_work_ids: set[str] = set()
+    with work_path.open(encoding="utf-8") as stream:
+        for line_no, line in enumerate(stream, 1):
+            if not line.strip():
+                continue
+            try:
+                work = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Work JSONL 第 {line_no} 行无法解析"
+                ) from exc
+            if probe_author and work.get("author") != probe_author:
+                continue
+            if probe_text in work.get("content", ""):
+                matching_work_ids.add(work["work_id"])
+
+    rows: set[int] = set()
+    logical_row = 0
+    with chunk_path.open(encoding="utf-8") as stream:
+        for line_no, line in enumerate(stream, 1):
+            if not line.strip():
+                continue
+            try:
+                chunk = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Chunk JSONL 第 {line_no} 行无法解析"
+                ) from exc
+            if (
+                chunk.get("work_id") in matching_work_ids
+                and probe_text in chunk.get("text", "")
+            ):
+                rows.add(logical_row)
+            logical_row += 1
+
+    return rows
+
+
 def merge_top_k(
     current: Iterable[tuple[float, int]],
     candidates: Iterable[tuple[float, int]],
@@ -279,8 +327,9 @@ def exact_search(
     query_vector,
     top_k: int,
     row_mask=None,
-) -> list[tuple[float, int]]:
-    """Scan every shard and return (score, global_row) Top-K."""
+    probe_rows: set[int] | None = None,
+) -> tuple[list[tuple[float, int]], dict[int, dict]]:
+    """Scan every shard and return Top-K plus optional exact probe ranks."""
     try:
         import numpy as np
     except ImportError as exc:
@@ -296,6 +345,10 @@ def exact_search(
 
     query = np.asarray(query_vector, dtype=np.float32)
     best: list[tuple[float, int]] = []
+    probe_rows = probe_rows or set()
+    probe_scores: dict[int, float] = {}
+    scored_values = []
+    scored_rows = []
 
     for shard_no, item in enumerate(manifest["completed_shards"], 1):
         expected_rows = item["end"] - item["start"]
@@ -327,6 +380,16 @@ def exact_search(
             eligible_local = np.flatnonzero(shard_mask)
 
         scores = matrix[eligible_local] @ query
+        global_rows = item["start"] + eligible_local
+
+        if probe_rows:
+            scored_values.append(scores.copy())
+            scored_rows.append(global_rows.copy())
+            for local_index, global_row in enumerate(global_rows):
+                row_id = int(global_row)
+                if row_id in probe_rows:
+                    probe_scores[row_id] = float(scores[local_index])
+
         local_k = min(top_k, scores.shape[0])
         if local_k == scores.shape[0]:
             selected = np.arange(scores.shape[0])
@@ -349,7 +412,31 @@ def exact_search(
         )
 
     print(" " * 80, end="\r", flush=True)
-    return best
+
+    probes: dict[int, dict] = {}
+    if probe_rows:
+        missing = sorted(probe_rows - set(probe_scores))
+        if missing:
+            raise ValueError(
+                "Probe Chunk 不在当前可检索范围内："
+                + ", ".join(str(row) for row in missing[:10])
+            )
+
+        all_scores = np.concatenate(scored_values)
+        all_rows = np.concatenate(scored_rows)
+        for row_id, score in probe_scores.items():
+            rank = 1 + int(np.count_nonzero(all_scores > score))
+            rank += int(
+                np.count_nonzero(
+                    (all_scores == score) & (all_rows < row_id)
+                )
+            )
+            probes[row_id] = {
+                "cosine": round(score, 6),
+                "rank": rank,
+            }
+
+    return best, probes
 
 
 def read_selected_chunks(
@@ -518,6 +605,14 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--probe-text",
+        help="诊断：指定已知目标文本，报告它在全部候选中的精确分数与名次",
+    )
+    parser.add_argument(
+        "--probe-author",
+        help="诊断：与 --probe-text 一起使用，用作者名缩小目标范围",
+    )
+    parser.add_argument(
         "--device",
         help="可选：显式指定 cpu / cuda / mps；默认交给 sentence-transformers",
     )
@@ -530,6 +625,8 @@ def main() -> None:
 
     if args.top_k <= 0:
         parser.error("--top-k 必须为正整数")
+    if args.probe_author and not args.probe_text:
+        parser.error("--probe-author 必须和 --probe-text 一起使用")
 
     artifact_dir = args.artifact_dir.expanduser().resolve()
     chunk_path = args.chunks.expanduser().resolve()
@@ -574,6 +671,20 @@ def main() -> None:
         if chronology["eligible_chunks"] == 0:
             raise SystemExit("朝代过滤后没有可检索的 Chunk")
 
+    probe_rows: set[int] = set()
+    if args.probe_text:
+        probe_rows = find_probe_rows(
+            work_path=work_path,
+            chunk_path=chunk_path,
+            probe_text=args.probe_text,
+            probe_author=args.probe_author,
+        )
+        if not probe_rows:
+            raise SystemExit(
+                "没有找到符合 probe 条件的 Chunk："
+                f"text={args.probe_text!r}, author={args.probe_author!r}"
+            )
+
     query_vector, device = encode_query(
         query=args.query,
         model_path=model_path,
@@ -581,22 +692,51 @@ def main() -> None:
         expected_model_fingerprint=manifest["model_fingerprint"],
         device=args.device,
     )
-    ranking = exact_search(
+    ranking, probe_stats = exact_search(
         artifact_dir=artifact_dir,
         manifest=manifest,
         query_vector=query_vector,
         top_k=args.top_k,
         row_mask=row_mask,
+        probe_rows=probe_rows,
     )
 
+    selected_rows = {
+        row_id for _, row_id in ranking
+    } | set(probe_stats)
     chunks = read_selected_chunks(
         chunk_path,
-        [row_id for _, row_id in ranking],
+        selected_rows,
     )
     works = read_selected_works(
         work_path,
-        [chunks[row_id]["work_id"] for _, row_id in ranking],
+        [chunks[row_id]["work_id"] for row_id in selected_rows],
     )
+
+    probe_results = []
+    for row_id, stats in sorted(
+        probe_stats.items(),
+        key=lambda item: (item[1]["rank"], item[0]),
+    ):
+        chunk = chunks[row_id]
+        work = works[chunk["work_id"]]
+        probe_results.append(
+            {
+                **stats,
+                "global_row": row_id,
+                "chunk": {
+                    "chunk_id": chunk["chunk_id"],
+                    "text": chunk["text"],
+                },
+                "work": {
+                    "work_id": work["work_id"],
+                    "title": work.get("title"),
+                    "author": work.get("author"),
+                    "dynasty": work.get("dynasty"),
+                    "source_record_id": work.get("source_record_id"),
+                },
+            }
+        )
 
     result = {
         "query": args.query,
@@ -607,6 +747,7 @@ def main() -> None:
         "top_k": args.top_k,
         "chronology_filter": chronology,
         "ranking": build_result_rows(ranking, chunks, works),
+        "probes": probe_results,
         "note": (
             "Exact Retrieval 只负责候选召回；相似度不是文学关系判定。"
         ),
