@@ -1,6 +1,10 @@
 import json
+import sqlite3
+
+import pytest
 
 from backend.retrieval.metadata_store import (
+    METADATA_SCHEMA_VERSION,
     MetadataStore,
     build_metadata_store,
     content_fingerprint,
@@ -99,12 +103,24 @@ def test_metadata_store_builds_and_reads_rows(tmp_path):
         output_path=output,
     )
 
+    assert result["schema_version"] == METADATA_SCHEMA_VERSION
     assert result["works"] == 3
     assert result["sentence_chunks"] == 2
     assert result["clause_chunks"] == 2
     assert output.is_file()
 
+    connection = sqlite3.connect(output)
+    try:
+        for table in ("sentence_chunks", "clause_chunks"):
+            indexes = connection.execute(
+                f"PRAGMA index_list({table})"
+            ).fetchall()
+            assert not any(row[2] for row in indexes)
+    finally:
+        connection.close()
+
     store = MetadataStore(output)
+    assert store.stats()["schema_version"] == METADATA_SCHEMA_VERSION
     chunks = store.read_chunks("sentence", [1, 0])
     assert chunks[0].chunk_id == "s-0"
     assert chunks[1].work_id == "w2"
@@ -129,3 +145,23 @@ def test_content_fingerprint_ignores_whitespace_only():
     assert content_fingerprint("甲句，乙句。") != content_fingerprint(
         "甲句。乙句。"
     )
+
+
+
+def test_metadata_store_rejects_stale_schema(tmp_path):
+    output = tmp_path / "metadata-v1.sqlite3"
+    connection = sqlite3.connect(output)
+    try:
+        connection.execute(
+            "CREATE TABLE artifact_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO artifact_meta(key, value) VALUES (?, ?)",
+            ("schema_version", "1"),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    with pytest.raises(ValueError, match="schema version"):
+        MetadataStore(output)
