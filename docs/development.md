@@ -186,4 +186,4 @@ bash scripts/retrieval/deploy_vps.sh \
 - GitHub Issues：仍需继续处理的任务；
 - `docs/releases/`：版本对外说明。
 
-AI 协作、教学节奏和阶段复盘方式见 [教学与 AI 协作手册](learning-and-collaboration.md)。
+AI 协作、教学节奏和阶段复盘方式见 [Finishing School《教学与开发协作手册》](https://github.com/montricwang/gpt-finishing-school/blob/main/%E5%AE%A1%E6%A0%A1%E4%B8%8E%E5%B7%A5%E4%BD%9C%E6%B5%81/%E6%95%99%E5%AD%A6%E4%B8%8E%E5%BC%80%E5%8F%91%E5%8D%8F%E4%BD%9C%E6%89%8B%E5%86%8C.md)。
