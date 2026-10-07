@@ -231,3 +231,24 @@ Werneror/Poetry 适合作为大规模候选发现语料，但不能把其中的�
 - Hybrid / sparse / reranker。
 
 这些内容只有形成真实证据或正式实现后，再更新本文为当前状态。
+
+
+## Artifact 对照检索
+
+Clause 构建完成后，Retrieval Eval 不再为不同模型维护三套搜索代码。新增 manifest-driven 搜索入口：
+
+```text
+Artifact manifest
+→ 识别 model / chunk_policy / dimension
+→ 选择对应 Query Encoder
+→ 使用同一 chronology filter / probe / Exact Search
+→ 输出同构结果
+```
+
+支持：
+
+- Qwen3-Embedding-0.6B + sentence；
+- Qwen3-Embedding-0.6B + clause；
+- BERT-CCPoem v1.0 + clause。
+
+`scripts/retrieval/compare_artifacts.py` 用同一个已知互文案例依次跑三套 Artifact，最终横向比较 `best_probe_rank` 与 `best_probe_cosine`。它是诊断工具，不是新的 Benchmark Pool；仍然复用既有真实互文案例。
