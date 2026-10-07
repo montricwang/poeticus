@@ -23,6 +23,7 @@ from typing import Iterable
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 DEFAULT_DATA_ROOT = Path("../poeticus-data/output/retrieval")
+DEFAULT_MODEL_ROOT = Path("../poeticus-data/models")
 DEFAULT_CHUNKS = DEFAULT_DATA_ROOT / "werneror_chunks_sentence.jsonl"
 DEFAULT_WORKS = DEFAULT_DATA_ROOT / "werneror_works.jsonl"
 DEFAULT_ARTIFACT_DIR = (
@@ -84,6 +85,53 @@ def load_manifest(artifact_dir: Path) -> dict:
         )
 
     return manifest
+
+
+def resolve_model_path(manifest: dict, requested_path: Path | None) -> Path:
+    if requested_path is not None:
+        return requested_path.expanduser().resolve()
+
+    fingerprint = manifest["model_fingerprint"]
+    return (
+        DEFAULT_MODEL_ROOT
+        / f"Qwen3-Embedding-0.6B-{fingerprint[:12]}"
+    ).resolve()
+
+
+def ensure_model_snapshot(
+    model_path: Path,
+    expected_model_fingerprint: str,
+) -> Path:
+    from scripts.corpus.qwen_embedding_build import fingerprint_model_dir
+
+    if not model_path.exists():
+        try:
+            from modelscope import snapshot_download
+        except ImportError as exc:
+            raise RuntimeError(
+                "本地缺少与 Embedding Artifact 对应的 Qwen 模型，"
+                "自动下载需要 modelscope；请安装 requirements-retrieval.txt"
+            ) from exc
+
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        print(
+            "本地没有与 Embedding Artifact 对应的 Qwen 模型，开始下载……",
+            flush=True,
+        )
+        snapshot_download(MODEL_NAME, local_dir=str(model_path))
+
+    if not model_path.is_dir():
+        raise ValueError(f"本地模型路径不是目录：{model_path}")
+
+    actual_fingerprint = fingerprint_model_dir(model_path)
+    if actual_fingerprint != expected_model_fingerprint:
+        raise ValueError(
+            "本地 Qwen 模型与生成 Corpus Embedding 的模型不一致。\n"
+            f"manifest={expected_model_fingerprint}\n"
+            f"local={actual_fingerprint}\n"
+            f"path={model_path}"
+        )
+    return model_path
 
 
 def merge_top_k(
@@ -248,19 +296,7 @@ def encode_query(
             "pip install -r requirements-retrieval.txt"
         ) from exc
 
-    from scripts.corpus.qwen_embedding_build import fingerprint_model_dir
-
-    if not model_path.is_dir():
-        raise ValueError(f"本地模型目录不存在：{model_path}")
-
-    actual_fingerprint = fingerprint_model_dir(model_path)
-    if actual_fingerprint != expected_model_fingerprint:
-        raise ValueError(
-            "Query 模型与生成 Corpus Embedding 的模型 fingerprint 不一致；"
-            "不要混用不同 snapshot。\n"
-            f"manifest={expected_model_fingerprint}\n"
-            f"query model={actual_fingerprint}"
-        )
+    ensure_model_snapshot(model_path, expected_model_fingerprint)
 
     kwargs = {"local_files_only": True}
     if device:
@@ -318,7 +354,14 @@ def main() -> None:
         description="Qwen Embedding shards 全库 Exact Retrieval baseline"
     )
     parser.add_argument("query", help="要检索的当前诗句或片段")
-    parser.add_argument("--model-path", type=Path, required=True)
+    parser.add_argument(
+        "--model-path",
+        type=Path,
+        help=(
+            "可选：指定本地模型目录；默认按 Embedding manifest 的模型 "
+            "fingerprint 使用 poeticus-data/models 下的独立目录，缺失时自动下载"
+        ),
+    )
     parser.add_argument("--artifact-dir", type=Path, default=DEFAULT_ARTIFACT_DIR)
     parser.add_argument("--chunks", type=Path, default=DEFAULT_CHUNKS)
     parser.add_argument("--works", type=Path, default=DEFAULT_WORKS)
@@ -340,9 +383,9 @@ def main() -> None:
     artifact_dir = args.artifact_dir.expanduser().resolve()
     chunk_path = args.chunks.expanduser().resolve()
     work_path = args.works.expanduser().resolve()
-    model_path = args.model_path.expanduser().resolve()
 
     manifest = load_manifest(artifact_dir)
+    model_path = resolve_model_path(manifest, args.model_path)
 
     if args.verify_input_hash:
         if not chunk_path.is_file():
