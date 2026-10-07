@@ -361,6 +361,12 @@ class MetadataStore:
         if not self.path.is_file():
             raise ValueError(f"Metadata store 不存在：{self.path}")
 
+        stats = self.stats()
+        if stats.get("schema_version") != METADATA_SCHEMA_VERSION:
+            raise ValueError(
+                "Metadata schema version 不匹配；请重建 serving metadata"
+            )
+
     def stats(self) -> dict[str, str]:
         connection = self._connect()
         try:
