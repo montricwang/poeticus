@@ -107,3 +107,11 @@ AI 应在任务过程中自己维护临时 decision ledger，并在阶段结束�
 目标不是让 AI 每做一步都写文档，而是保证：
 
 > **用户可以把一段较长的工程执行交出去，而不用担心执行过程中那些真正影响未来的 AI 决策随着上下文一起消失。**
+
+
+## 当前快照
+
+- [2026-10-07 Retrieval Serving / Evidence](2026-10-07-retrieval-serving-and-evidence.md)：本地 Serving、FAISS、metadata、Agent Tool 和 Linux Spike 前的决策状态；
+- [2026-10-08 Production Retrieval / Deployment](2026-10-08-production-retrieval-and-deployment.md)：2C8G Linux、独立生产服务、HTTPS、readiness、chronology inference 与线上 E2E。
+
+已经形成长期架构边界的决定，同时进入 [ADR](../adr/README.md)。Decision Register 继续保留证据强度和可撤销条件。

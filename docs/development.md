@@ -106,7 +106,7 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 
 `main` 是稳定主线。功能和重构通过短期分支、PR、CI 后合并。
 
-当前生产部署使用 Railway；真实配置见 [deployment.md](deployment.md)。具体未来工作进入 GitHub Issues 或 [roadmap.md](roadmap.md)，不要在操作文档里保留已经结束的预览阶段说明。
+当前生产由 Railway Web / PostgreSQL 与独立 Text Retrieval 节点共同组成；真实配置见 [deployment.md](deployment.md)。具体未来工作进入 GitHub Issues 或 [roadmap.md](roadmap.md)，不要在操作文档里保留已经结束的预览阶段说明。
 
 ## 7. 工程决策审计
 
@@ -129,3 +129,61 @@ Decision Register 使用四层分类：
 - 新证据出现后不知道哪些决定应该优先重新打开。
 
 架构文档仍然负责描述**当前真相**；Decision Register 负责描述**当前真相的决策来路与可撤销条件**。
+
+
+## 8. Text Retrieval 开发环境
+
+需要运行 Retrieval 工具时，再安装额外依赖：
+
+```powershell
+python -m pip install -r requirements-retrieval.txt
+```
+
+当前生产 Retrieval 包含：
+
+- Qwen query encoder；
+- sentence / clause FAISS；
+- sentence character 2-3 gram BM25；
+- compact SQLite metadata；
+- deterministic Query Plan；
+- Work-level RRF；
+- Candidate Eligibility。
+
+完整架构见 [Text Retrieval 架构](architecture/text-retrieval.md)。
+
+本地只做 Web / Agent 开发时，可以不配置 Retrieval URL；此时 `search_predecessor_texts` 不注册给 Agent。
+
+## 9. Retrieval VPS 更新
+
+当前从开发机主动把 Retrieval 代码推到腾讯云，避免服务器直接访问 GitHub raw 的不稳定链路。
+
+Windows Git Bash：
+
+```bash
+bash scripts/retrieval/deploy_vps.sh \
+  /c/Users/you/.ssh/tencent.pem \
+  ubuntu@43.143.103.147
+```
+
+脚本显式使用私钥和 SSH `BatchMode`，不会退回密码认证。它会：
+
+- 上传 Retrieval 代码；
+- compileall；
+- restart systemd；
+- 循环等待 localhost `/health`；
+- ready 后检查公网 HTTPS health。
+
+依赖变更仍需单独更新远端 venv。生产资源、Nginx、证书和端口规则见 [deployment.md](deployment.md)。
+
+## 10. 文档落盘规则
+
+完成一个明显工程阶段后，按内容性质分别更新：
+
+- `docs/devlog/`：当天发生了什么；
+- `docs/architecture/`：系统当前结构；
+- `docs/adr/`：已经接受的长期架构边界；
+- `docs/decisions/`：证据强度、Origin、working defaults、open questions；
+- GitHub Issues：仍需继续处理的任务；
+- `docs/releases/`：版本对外说明。
+
+AI 协作、教学节奏和阶段复盘方式见 [教学与 AI 协作手册](learning-and-collaboration.md)。

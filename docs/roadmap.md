@@ -1,183 +1,205 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-07  
-> 当前状态：`v0.1.0` 已公开发布；3491 首宋词、PostgreSQL 阅读 API、多轮 SSE 伴读、整首赏析、典故工具和匿名 AI 保护均已上线。
+> 更新日期：2026-10-08  
+> 当前状态：v0.3.0 发布基线已经形成。公开阅读、Agent、AI Eval、Hybrid Text Retrieval 和独立 Retrieval Serving 均已跑通真实线上链路。
 
-Roadmap 只记录**下一阶段方向**。已经完成的发布过程不再混在未来计划里；具体任务和验收进入 GitHub Issues。
+Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog、ADR 和 Decision Register；具体任务继续进入 GitHub Issues。
 
 ## 1. 当前基线
 
 Poeticus 已经走通：
 
 - React / TypeScript / Vite 阅读界面；
+- 手机、平板、桌面响应式阅读 / 讨论工作区；
 - FastAPI 同源后端；
-- PostgreSQL 作品库与 3491 首宋词；
+- PostgreSQL 公开作品库与 3491 首词作；
 - 私人 EPUB → JSON → 私人 DB → 公网 DB 的数据链；
 - LangGraph ReAct Agent；
-- CNKGraph 典故工具；
+- CNKGraph 典故 / reference evidence；
 - bounded multi-turn context；
 - SSE 流式回答；
 - localStorage Conversation persistence；
 - Railway 公网部署；
-- Python、前端 build/lint 和 Node 回归测试；
-- 匿名 AI 的限额、并发和预算保护。
+- Seed AI Eval 与 Retrieval Increment Eval；
+- Werneror 853,385 Work Retrieval Corpus；
+- Qwen sentence + clause Dense Retrieval；
+- character 2-3 gram + BM25；
+- deterministic Query Plan；
+- Work-level RRF；
+- chronology Candidate Eligibility；
+- FAISS IVFPQ Serving；
+- 独立 Text Retrieval HTTP Service；
+- 腾讯云 2C8G CPU production node；
+- Railway Agent → HTTPS → Retrieval → candidate → final answer 的真实 E2E。
 
-因此后续不再把“是否要引入 PostgreSQL”“是否要做多轮”等已完成事项当作未来目标。
+Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、更多 Chunk、更多 sparse ranking 变体做惯性扩张。
 
-## 2. 近期优先级
+## 2. v0.3.0 之后的近期事项
 
-### 2.1 Corpus quality
+### 2.1 Production hygiene
 
-当前最大的事实风险不是“作品数量不够”，而是 `imported_unreviewed` 数据质量。
+优先完成已经暴露的运维边界：
 
-近期重点：
+- #167：验证 Let’s Encrypt 公网 IP 证书自动续期和 Nginx reload；
+- #151：Corpus duplicate / variant self-hit profiling；
+- 观察 Railway SFO → 腾讯云上海的长期 latency / timeout；
+- 记录真实流量以后，再判断是否需要 4C8G；
+- 只有 Retrieval 更新频率开始造成维护负担，再建设完整 CI/CD。
 
-- 修复已经发现的 EPUB 结构误判；
-- 为小序、注释、寓声、缺文等边界补回归样本；
-- 保持可重建的数据链；
-- 逐步建立 curated/editorial correction 与原始抽取之间的明确边界。
+当前 2C8G 没有持续 swap / OOM，扩容不作为预防性动作。
 
-原则仍是：
+### 2.2 工程基础补课
 
-> 找到第一层错误数据就停在那里修，不跨层打补丁。
+#166 单独安排一堂简短课程，用本次生产数据讲：
 
-### 2.2 Evidence / RAG
+- database / artifact / index；
+- CPU / RAM / disk；
+- FAISS 大小和资源影响；
+- cold / warm；
+- process / port / health；
+- reverse proxy / HTTPS / token；
+- service-to-service communication；
+- 服务器规格判断。
 
-当前重点已经从“要不要做 Retrieval”进入“怎样建立真实可验证的前代文本检索链”。
+这一轮的目标是把最近几天大量局部判断重新整理成稳定系统图。
 
-当前路线：
+### 2.3 AI Evaluation
+
+当前已经有 Seed Eval、Retrieval Increment Case、真实 Agent E2E。
+
+下一步更值得补：
+
+- Tool routing regression；
+- Retrieval candidate 可见但 Agent 选错的 Case；
+- query reformulation 的成功 / 失败样本；
+- 多轮上下文与工具调用共同出现时的回归；
+- Prompt / 模型更新后的稳定性比较。
+
+单元测试、AI Eval、Trace、生产 E2E 继续分层。
+
+### 2.4 Corpus quality
+
+公开阅读数据仍保留 `imported_unreviewed` 状态。
+
+近期继续：
+
+- 修 EPUB 结构误判；
+- 补小序、注释、寓声、缺文等 regression sample；
+- 建立 curated correction 与原始抽取之间的明确边界；
+- 逐步补充可靠年代 metadata，而不把 Werneror coarse dynasty 回写成阅读库事实。
+
+### 2.5 UX reliability
+
+真实设备问题继续按 Issue 推进：
+
+- iOS 选区；
+- 长对话可读性；
+- SSE 中断 / 重试体验；
+- 目录与阅读区细节；
+- 赏析和对话之间的切换。
+
+## 3. 下一批能力候选
+
+Retrieval 已经可以作为一个完成度较高的求职能力面。下一阶段更适合补新的横向能力。
+
+### Curated literature RAG
+
+候选方向：
+
+- 词话；
+- 诗话；
+- 历代评论；
+- 可靠作者生平 / 编年资料。
+
+目标先做约 10 本高价值材料的小型 Corpus，建立：
 
 ```text
-Werneror Corpus
-→ Work / Chunk
-→ Embedding Artifact
-→ Vector / Lexical Retrieval
-→ Candidate Fusion
-→ DeepSeek / Agent 判断
+问题类型
+→ domain routing
+→ curated retrieval
+→ source-grounded answer
 ```
 
-近期按以下顺序推进：
+Document Corpus 与实时业务数据继续分开。订单、库存、余额一类实时状态应走 API / DB Tool。
 
-1. 再补少量代表性 Case，确认 Qwen sentence + clause 的多粒度互补性，并结束 Embedding 模型选型研究；
-2. 增加 Lexical Retrieval baseline：character n-gram + BM25；
-3. 分别做 pgvector 与 FAISS spike，用同一批 Artifact 比较过滤、性能和部署边界；
-4. 根据真实结果决定 Dense + Lexical 的候选融合方式，以及是否需要 reranker；
-5. 最后再接成正式 Agent Tool。
+### Search / Web fallback
 
-当前已经明确：
+如果 curated Corpus 证明覆盖不足，再研究开放 Search Tool 的路由和证据权重。
 
-- Retrieval hit 只是候选，不自动等于文学关系成立；
-- Corpus Chunking 与 Query Strategy 分开；
-- sentence 与 clause 已被真实 Case 证明具有互补性，当前按多粒度召回处理，不再二选一；
-- Query 需要比较整句、分句和多粒度策略；
-- 向量索引与 Embedding Artifact 解耦；
-- 语料与朝代高度静态，因此允许预计算、多索引，必要时也允许多后端；
-- 新增语料通常做增量 Embedding，不重新全库计算；
-- 古汉语分词属于可替换的 Query / Text Analysis 组件，不提前扩张成独立项目；Lexical baseline 先采用 character n-gram + BM25，再看是否有必要引入专用分词。
+### Multi-span evidence
 
-候选资料仍包括：
+当前 Retrieval Tool 主要围绕一段文本。全文多线索可继续探索：
 
-- 可靠注释；
-- 词话与历代评论；
-- 作者编年/生平资料；
-- 可追溯的作品出处。
+```text
+多个 span 独立召回
+→ Work / source 级证据聚合
+→ 必要时二次检索
+```
 
-Document Corpus 与实时业务信息继续分开：相对静态知识适合 RAG，真正实时状态更适合 API / Database Tool。
+这项工作等真实全文 Case 提供明确增量再开。
 
-### 2.3 Evaluation
+## 4. Retrieval 当前停止线
 
-建立小而稳定的 AI Eval baseline，优先覆盖：
+以下内容暂时不进入主线：
 
-- 工具该用时是否使用；
-- 工具不该用时是否克制；
-- 典故/年代/人物等硬事实；
-- 多轮指代；
-- 文学解释是否落在原文而不是套话；
-- Prompt、模型或 retrieval 变化是否造成退化。
+- pq512；
+- clause BM25；
+- reranker / Cross-Encoder；
+- learned sparse；
+- LTR；
+- 全局同义词 / 意象扩展；
+- 专门古汉语分词工程；
+- 多 worker；
+- GPU Serving；
+- Kubernetes；
+- Corpus pruning #163。
 
-Retrieval 继续优先复用现有 intertext Eval，不为了“严谨”重复制造一套同等复杂度的 Benchmark。
+重新打开的条件很简单：真实产品 Case 稳定失败，而且失败能明确指向其中某一层。
 
-单元测试、AI Eval、LangSmith Trace 和真实浏览器验收继续分层，不互相冒充。
-
-### 2.4 UX reliability
-
-已发布后的体验问题以 Issue 为准，例如：
-
-- 移动端与窄屏；
-- iOS 选区行为；
-- Conversation 交互；
-- SSE 中断与失败恢复；
-- 长对话的可读性。
-
-这类问题按真实用户路径修，不为了“重构漂亮”提前扩张。
-
-## 3. 中期方向
-
-### Conversation
-
-当前 Conversation 存在浏览器 localStorage。只有当出现明确需求时，再考虑：
-
-- 一首作品多个 Conversation；
-- 服务端 Conversation persistence；
-- 跨设备同步；
-- resumable generation；
-- 跨作品比较；
-- 长期记忆。
-
-### Skills
-
-如果把文学分析拆成 Skill，需要有真实不同的输入、数据依赖和验证方式，而不是简单增加几个 Prompt 文件。
-
-可能的方向：
-
-- 文本/章法分析；
-- 典故与 Evidence；
-- 知人论世；
-- 多作品比较。
-
-### Engineering spikes
-
-允许做短期 Spike，但进入主线前必须回答“它解决 Poeticus 的哪个真实问题”。
-
-当前有明确学习 / 选型价值的 Spike：
-
-- pgvector：SQL + metadata filtering + vector index；
-- FAISS：独立向量索引、ANN、索引文件与回表；
-- Hybrid Search：Lexical + Dense 的候选融合；
-- Reranker：只在现有召回候选质量证明需要时再引入。
-
-MCP、Redis、Checkpointer 等仍然按真实需求购买复杂度。
-
-## 4. 求职与学习目标
+## 5. 求职与学习目标
 
 一个技术点准备写进简历前，至少满足：
 
 > 做过 → 遇到过问题 → 能解释为什么这样做，以及没有这样做会怎样。
 
-Poeticus 的价值不是覆盖最多名词，而是用一个真实产品贯穿：
+v0.3.0 已经可以完整讲一条：
 
 ```text
 Frontend
-   ↓
-API / Validation
-   ↓
-Agent / LLM / Tool
-   ↓
-Evidence / Retrieval
-   ↓
-PostgreSQL / pgvector / FAISS / Data Pipeline
-   ↓
-Deployment / Observability / Evaluation
+→ FastAPI
+→ LangGraph Agent
+→ Tool routing
+→ HTTP Retrieval Service
+→ Query Plan
+→ Dense + BM25
+→ RRF
+→ chronology filtering
+→ FAISS Serving
+→ Linux VPS
+→ Nginx / HTTPS
+→ production E2E
 ```
 
-## 5. 停止线
+接下来学习重点从“再多做一个 Retrieval 组件”转向：
 
-每个阶段只打开当前真正需要的一层：
+- 把已经做过的系统讲清楚；
+- 补服务器 / 数据库 / 服务通信的基础心智模型；
+- 增加新的能力面；
+- 保留真实 Eval 和生产证据。
+
+## 6. 开发停止线
+
+每个阶段继续沿用：
 
 1. 明确问题；
 2. 做最小真实闭环；
 3. 运行并观察；
 4. 记录取舍；
-5. 再决定是否深入。
+5. 安排一次消化；
+6. 再决定下一层。
 
-当前不追求把 Poeticus 变成“什么都有”的平台。优先保持现有闭环可信、可解释、可维护。
+长期原则：
+
+> **原理必须理解，判断必须参与，执行可以委托。**
+
+> **复杂度由真实失败购买。**
