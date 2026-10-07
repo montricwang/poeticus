@@ -375,3 +375,40 @@ Lexical 与 Dense 仍然是两条独立召回链，只有真实结果证明互�
 - LTR / learned sparse（如 SPLADE 一类）：当前缺少足够训练标签，也没有证据支持增加模型与索引复杂度。
 
 原则仍然是：**先把 Query Strategy、候选融合和 chronology 这些已经由真实 Case 暴露的问题解决，再优化更细的 lexical 组件。**
+
+
+### Candidate Fusion：Work-level RRF
+
+Query Fan-out 之后，各路结果不能直接比较 raw score：
+
+- Dense 使用 cosine；
+- Lexical 使用 BM25；
+- 不同 Query 长度、不同 Chunk policy 的分数分布也可能不同。
+
+第一版 Candidate Fusion 因此采用 **Reciprocal Rank Fusion（RRF）**，只使用每一路候选的 rank：
+
+```text
+contribution = 1 / (60 + rank)
+```
+
+这里的融合单位不是 `chunk_id`，而是 **Work**。
+
+原因是 sentence / clause 是同一作品的不同观察窗口。同一来源在 sentence index 与 clause index 中天然拥有不同 `chunk_id`；若按 Chunk 融合，它们永远不能相互支持。反过来，如果直接让同一作品的多个 Chunk 在单一路榜单里全部计分，长作品又会因为 Chunk 更多而获得结构性优势。
+
+所以当前规则是：
+
+1. 每一个 `QueryVariant × RetrievalChannel` 视为一条独立 ranked list；
+2. 同一 ranked list 内，同一 Work 只取最高 rank 的 Chunk 产生一次 RRF contribution；
+3. 同一 Work 若在不同 Query、Dense / Lexical、sentence / clause 路径中出现，则 contribution 累加；
+4. Fused Candidate 保留每一次 list-level support 的 Query provenance、channel、best Chunk、rank 与 raw score，供后续 DeepSeek 判断；
+5. passage / sentence / clause、Dense / Lexical 第一版全部同权，不预设人工权重。
+
+这使 RRF 回答的是：
+
+> **哪些前代作品被多种独立检索视角反复支持？**
+
+而不是把 BM25 与 cosine 强行变成一个统一数值。
+
+当前 `rrf_k=60` 只是稳定的第一版常数，不把它当成需要调参的文学参数。只有真实 Eval 显示候选排序对它敏感时才重新讨论。
+
+RRF 之后仍需独立处理 chronology、当前作品 self-hit 与明显后世候选；这些规则不塞进 Fusion score。
