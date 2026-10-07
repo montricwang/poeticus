@@ -24,6 +24,8 @@ from scripts.retrieval.artifact_search import (
     resolve_chunk_path,
     resolve_query_model_path,
 )
+from backend.retrieval.chronology import classify_dynasty_relation
+
 from scripts.retrieval.exact_search import (
     DEFAULT_WORKS,
     find_probe_rows,
@@ -38,6 +40,7 @@ from scripts.retrieval.faiss_full_index import (
 )
 
 DEFAULT_TOP_K = 20
+DEFAULT_SEARCH_K = 100
 
 
 def _require_numpy():
@@ -130,6 +133,68 @@ def probe_ranks(
     ]
 
 
+def build_eligible_work_rows(
+    ranking_pairs: list[tuple[float, int]],
+    chunks: dict[int, dict],
+    works: dict[str, dict],
+    *,
+    current_work_id: str | None,
+    target_dynasty: str | None,
+) -> tuple[list[dict], dict[int, int]]:
+    """Apply the product's current work-level eligibility policy to ANN hits.
+
+    A single retrieval list contributes at most one row per work, matching the
+    Work-level fusion rule. Same-dynasty / overlapping / unknown candidates are
+    intentionally retained; only self-hit and clearly-later candidates are
+    rejected.
+    """
+    seen_work_ids: set[str] = set()
+    eligible: list[dict] = []
+    eligible_rank_by_row: dict[int, int] = {}
+
+    for raw_rank, (score, row_id) in enumerate(ranking_pairs, 1):
+        chunk = chunks[row_id]
+        work = works[chunk["work_id"]]
+        work_id = work["work_id"]
+        if work_id in seen_work_ids:
+            continue
+        seen_work_ids.add(work_id)
+
+        chronology_status = classify_dynasty_relation(
+            work.get("dynasty"),
+            target_dynasty,
+        )
+        if current_work_id and work_id == current_work_id:
+            continue
+        if chronology_status == "clearly_later":
+            continue
+
+        eligible_rank = len(eligible) + 1
+        eligible_rank_by_row[row_id] = eligible_rank
+        eligible.append(
+            {
+                "eligible_rank": eligible_rank,
+                "raw_rank": raw_rank,
+                "ann_score": round(score, 6),
+                "global_row": row_id,
+                "chronology_status": chronology_status,
+                "chunk": {
+                    "chunk_id": chunk["chunk_id"],
+                    "text": chunk["text"],
+                },
+                "work": {
+                    "work_id": work_id,
+                    "title": work.get("title"),
+                    "author": work.get("author"),
+                    "dynasty": work.get("dynasty"),
+                    "source_record_id": work.get("source_record_id"),
+                },
+            }
+        )
+
+    return eligible, eligible_rank_by_row
+
+
 def run_faiss_search(
     *,
     query: str,
@@ -139,6 +204,9 @@ def run_faiss_search(
     chunk_path: Path | None = None,
     model_path: Path | None = None,
     top_k: int = DEFAULT_TOP_K,
+    search_k: int = DEFAULT_SEARCH_K,
+    current_work_id: str | None = None,
+    target_dynasty: str | None = None,
     probe_text: str | None = None,
     probe_author: str | None = None,
     device: str | None = None,
@@ -148,6 +216,10 @@ def run_faiss_search(
         raise ValueError("query 不能为空")
     if top_k <= 0:
         raise ValueError("top_k 必须为正整数")
+    if search_k <= 0:
+        raise ValueError("search_k 必须为正整数")
+    if search_k < top_k:
+        raise ValueError("search_k 不能小于 top_k")
     if probe_author and not probe_text:
         raise ValueError("probe_author 必须和 probe_text 一起使用")
 
@@ -215,12 +287,13 @@ def run_faiss_search(
     nprobe = index_manifest["nprobe"]
     index.nprobe = nprobe
 
+    actual_search_k = min(search_k, int(index.ntotal))
     # Warm once so the measured query latency does not include first-call setup.
-    index.search(queries, min(top_k, int(index.ntotal)))
+    index.search(queries, actual_search_k)
     search_started = time.perf_counter()
     scores, ids = index.search(
         queries,
-        min(top_k, int(index.ntotal)),
+        actual_search_k,
     )
     search_seconds = time.perf_counter() - search_started
 
@@ -238,8 +311,16 @@ def run_faiss_search(
         [chunks[row_id]["work_id"] for row_id in selected_rows],
     )
 
+    eligible_ranking, eligible_rank_by_row = build_eligible_work_rows(
+        ranking_pairs,
+        chunks,
+        works,
+        current_work_id=current_work_id,
+        target_dynasty=target_dynasty,
+    )
+
     ranking = []
-    for rank, (score, row_id) in enumerate(ranking_pairs, 1):
+    for rank, (score, row_id) in enumerate(ranking_pairs[:top_k], 1):
         chunk = chunks[row_id]
         work = works[chunk["work_id"]]
         ranking.append(
@@ -271,6 +352,7 @@ def run_faiss_search(
         probes.append(
             {
                 **item,
+                "eligible_rank": eligible_rank_by_row.get(row_id),
                 "chunk": {
                     "chunk_id": chunk["chunk_id"],
                     "text": chunk["text"],
@@ -293,6 +375,13 @@ def run_faiss_search(
         "dimension": embedding_manifest["embedding_dimension"],
         "corpus_chunks": expected_count,
         "top_k": top_k,
+        "search_k": actual_search_k,
+        "eligibility": {
+            "current_work_id": current_work_id,
+            "target_dynasty": target_dynasty,
+            "eligible_within_search_k": len(eligible_ranking),
+            "ranking": eligible_ranking[:top_k],
+        },
         "index": {
             "engine": index_manifest["engine"],
             "nlist": index_manifest["nlist"],
@@ -322,7 +411,20 @@ def main() -> None:
     parser.add_argument("--chunks", type=Path)
     parser.add_argument("--works", type=Path, default=DEFAULT_WORKS)
     parser.add_argument("--model-path", type=Path)
-    parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=DEFAULT_TOP_K,
+        help="最终展示的 raw / eligible 候选数量",
+    )
+    parser.add_argument(
+        "--search-k",
+        type=int,
+        default=DEFAULT_SEARCH_K,
+        help="FAISS 先 overfetch 的 raw ANN 候选数量；默认 100",
+    )
+    parser.add_argument("--current-work-id")
+    parser.add_argument("--target-dynasty")
     parser.add_argument("--probe-text")
     parser.add_argument("--probe-author")
     parser.add_argument("--device")
@@ -338,6 +440,9 @@ def main() -> None:
             chunk_path=args.chunks,
             model_path=args.model_path,
             top_k=args.top_k,
+            search_k=args.search_k,
+            current_work_id=args.current_work_id,
+            target_dynasty=args.target_dynasty,
             probe_text=args.probe_text,
             probe_author=args.probe_author,
             device=args.device,
