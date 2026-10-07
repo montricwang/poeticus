@@ -30,7 +30,7 @@
 | RET-111 | 第一台 Linux Deployment Spike 候选使用 DigitalOcean SFO3 Basic 16 GiB / 8 shared vCPU / 320 GiB | 2 | AI-proposed | 当时过度围绕 Railway SFO 的网络位置选择海外节点，没有先把国内云作为第一候选；用户明确指出可以优先使用中国云厂商 | superseded | 已由 RET-112 替代 |
 | RET-112 | 第一台 Linux Deployment Spike 改用腾讯云上海 8核16G 标准型按量实例 | 2 | joint | 从海外节点改为国内云是正确方向，但规格仍然把“肯定够”误当成“应该先测” | superseded | 已由 RET-113 替代 |
 | RET-113 | 第一台 Linux Deployment Spike 从腾讯云上海 2核8G 标准型按量实例开始 | 2 | joint | Windows steady RSS 约 5.27 GiB，说明 8 GiB 有可能容纳单进程，但余量有限；2 vCPU 是否让 Qwen / FAISS 延迟不可接受未知。Spike 应先验证最低可行规格，再按“4核8G → 4核16G”逐档升级，而不是一开始购买 8核16G | experiment | 若 8 GiB OOM / 持续 swap / page-cache 压力明显则升 16 GiB；若 RAM 足够但 CPU 慢则先升 4核8G |
-| RET-114 | 当前公开阅读 Corpus 统一向 Agent / Retrieval 注入 `dynasty="宋"` | 2 | joint | 生产库当前只发布 3491 首宋词；首次线上 E2E 因 `dynasty=null` 让元、明后世候选进入 Top-K，而同一陆游 canary 在 benchmark 显式传入“宋”时能看到杜甫目标 | active | 公网 Corpus 开始发布非宋作品，或数据库增加可靠的逐首 dynasty 字段 |
+| RET-114 | 当前作品缺少 dynasty 时，由 Retrieval Service 优先用当前作品 alias、其次用 Werneror 同名作者的 dynasty 分布推断目标朝代；分布并列则保持 unknown | 2 | joint | 首次线上 E2E 因 `dynasty=null` 让元、明后世候选进入 Top-K；但公网词集也包含温庭筠、韦庄、李煜、李璟、冯延巳等唐/五代人物，统一硬编码“宋”会制造新的 chronology 错误。Retrieval metadata 已保存 Werneror 的 per-work dynasty，可直接复用同一语料体系 | active | 公网数据库增加可靠逐首 dynasty 字段，或作者同名/跨 bucket 统计证明 corpus-side inference 不够稳健 |
 
 ## C. 为了闭环而暂定的默认值
 
