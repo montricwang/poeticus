@@ -110,30 +110,60 @@ def main() -> None:
 
     comparison = []
     details = {}
+    errors = []
+
     for label, artifact_dir, model_path, expected_model in specs:
         print(f"=== {label} ===", flush=True)
-        result = run_artifact_search(
-            query=args.query,
-            artifact_dir=artifact_dir,
-            work_path=args.works,
-            model_path=model_path,
-            top_k=args.top_k,
-            before_dynasty=args.before_dynasty,
-            probe_text=args.probe_text,
-            probe_author=args.probe_author,
-            device=args.device,
-        )
-        if result["model"] != expected_model:
-            raise SystemExit(
-                f"{label} 的 Artifact model={result['model']!r}，"
-                f"预期 {expected_model!r}"
+        try:
+            result = run_artifact_search(
+                query=args.query,
+                artifact_dir=artifact_dir,
+                work_path=args.works,
+                model_path=model_path,
+                top_k=args.top_k,
+                before_dynasty=args.before_dynasty,
+                probe_text=args.probe_text,
+                probe_author=args.probe_author,
+                device=args.device,
             )
-        comparison.append(summarize_result(label, result))
-        details[label] = {
-            "chronology_filter": result["chronology_filter"],
-            "probes": result["probes"],
-            "ranking": result["ranking"],
-        }
+            if result["model"] != expected_model:
+                raise ValueError(
+                    f"{label} 的 Artifact model={result['model']!r}，"
+                    f"预期 {expected_model!r}"
+                )
+
+            summary = summarize_result(label, result)
+            comparison.append(summary)
+            details[label] = {
+                "chronology_filter": result["chronology_filter"],
+                "probes": result["probes"],
+                "ranking": result["ranking"],
+            }
+
+            print(
+                json.dumps(
+                    {"result": summary},
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                flush=True,
+            )
+        except Exception as exc:
+            error = {
+                "label": label,
+                "artifact_dir": str(artifact_dir),
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            }
+            errors.append(error)
+            print(
+                json.dumps(
+                    {"error": error},
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                flush=True,
+            )
 
     payload = {
         "query": args.query,
@@ -142,8 +172,13 @@ def main() -> None:
         "before_dynasty": args.before_dynasty,
         "comparison": comparison,
         "details": details,
+        "errors": errors,
     }
-    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    print("=== comparison_summary ===", flush=True)
+    print(json.dumps(payload, ensure_ascii=False, indent=2), flush=True)
+
+    if errors:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
