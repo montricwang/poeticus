@@ -335,4 +335,4 @@ curl -i https://43.143.103.147/health
 - 真实并发是否需要 4C8G；
 - 是否值得建立完整 Retrieval CI/CD。
 
-资源与服务通信的学习复盘见 #166 和 [教学与 AI 协作手册](learning-and-collaboration.md)。
+资源与服务通信的学习复盘见 #166 和 [Finishing School《教学与开发协作手册》](https://github.com/montricwang/gpt-finishing-school/blob/main/%E5%AE%A1%E6%A0%A1%E4%B8%8E%E5%B7%A5%E4%BD%9C%E6%B5%81/%E6%95%99%E5%AD%A6%E4%B8%8E%E5%BC%80%E5%8F%91%E5%8D%8F%E4%BD%9C%E6%89%8B%E5%86%8C.md)。
