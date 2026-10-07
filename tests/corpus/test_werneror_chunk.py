@@ -3,7 +3,9 @@ import json
 import pytest
 
 from scripts.corpus.werneror_chunk import (
+    build_clause_chunks,
     build_sentence_chunks,
+    split_clause_spans,
     split_sentence_spans,
 )
 
@@ -96,3 +98,43 @@ def test_build_sentence_chunks_removes_partial_output_on_count_mismatch(tmp_path
 
     assert not output_path.exists()
     assert not (tmp_path / "chunks.jsonl.tmp").exists()
+
+
+def test_split_clause_spans_cuts_on_comma_semicolon_and_sentence_end():
+    text = "渭城朝雨浥轻尘，客舍青青柳色新。尾句；收束！"
+    chunks = list(split_clause_spans(text))
+
+    assert [chunk[2] for chunk in chunks] == [
+        "渭城朝雨浥轻尘，",
+        "客舍青青柳色新。",
+        "尾句；",
+        "收束！",
+    ]
+    for start, end, chunk in chunks:
+        assert text[start:end] == chunk
+
+
+def test_build_clause_chunks_marks_clause_policy(tmp_path):
+    input_path = tmp_path / "works.jsonl"
+    output_path = tmp_path / "chunks.jsonl"
+    report_path = tmp_path / "report.json"
+    _write_jsonl(
+        input_path,
+        [_work("唐.csv:1", "甲，乙。")],
+    )
+
+    report = build_clause_chunks(
+        input_path,
+        output_path,
+        report_path,
+        expected_works=1,
+        expected_chunks=2,
+    )
+    rows = [
+        json.loads(line)
+        for line in output_path.read_text(encoding="utf-8").splitlines()
+    ]
+
+    assert [row["text"] for row in rows] == ["甲，", "乙。"]
+    assert all(row["policy"] == "clause" for row in rows)
+    assert report["policy"] == "clause"
