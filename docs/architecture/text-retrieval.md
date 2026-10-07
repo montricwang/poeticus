@@ -269,22 +269,27 @@ Werneror/Poetry 适合作为大规模候选发现语料，但不能把其中的�
 
 不在失败证据出现前同时引入这些复杂度。
 
-## 10. 当前未决定
+## 10. 当前待定事项
 
-截至 2026-10-07，以下仍待决定：
+截至 2026-10-07，已经不再待定的部分包括：
 
-- pgvector、FAISS 或组合式向量后端；
-- Exact Search 与 ANN 的具体切换时机；
-- HNSW / IVF 等索引参数；
+- Lexical baseline 已采用 **character 2-3 gram + BM25**；
+- Query Plan 已固定为 passage / sentence / clause 的确定性多粒度策略；
+- Candidate Fusion 第一版已采用 Work-level RRF；
+- Candidate Eligibility 已采用 recall-first 的保守 chronology 规则；
+- FAISS IVFPQ serving-index spike 已证明 raw Embedding 可以保留为离线构建资产，线上只部署压缩 ANN Index。
+
+仍然需要后续真实结果决定的是：
+
+- production Dense backend 最终是否直接使用 FAISS，以及 Retrieval Service 的部署拓扑；
+- full FAISS index 的实际体积、内存占用和查询延迟；
+- 当前候选参数 `pq_m=256, nprobe=64` 在真实 intertext Case 上是否足够；它只是下一轮 full build 候选，不是冻结的 production 参数；
 - Query instruction；
-- chronology filtering 的最终实现位置；
-- Top-K 与多粒度候选融合策略；
-- Lexical Retrieval 的具体实现；
-- Hybrid / reranker 是否有必要。
+- Top-K；
+- Hybrid 后是否仍需要 reranker；
+- author / work 精确年代补齐后，chronology filtering 是否需要进一步收紧。
 
-当前 Lexical baseline 倾向采用 **character n-gram + BM25**：character n-gram 负责适配古诗近似字面复用，BM25 负责词项级排序。是否需要古汉语分词器，留给真实 Eval 决定。
-
-这些内容只有形成真实证据或正式实现后，再更新本文为当前状态。
+这些事项继续由真实失败和部署数据购买复杂度，不提前扩张。
 
 
 ## Artifact 对照检索
@@ -500,3 +505,57 @@ Service 当前固定的产品语义：
 - 重建与发布流程。
 
 在这个 spike 完成前，`TextRetrievalService` 与 Agent Tool contract 都不应反向绑定某一种 Vector DB。
+
+
+### Serving Artifact Spike：原始 Embedding 不等于线上 Index
+
+当前约 27.2 GiB 的 Qwen sentence + clause float16 Embedding 是**离线构建资产**，不是已经冻结的线上部署体积。
+
+两者职责不同：
+
+```text
+离线 Embedding Artifact
+- 保留完整向量
+- 可重建不同 Index
+- 不要求常驻线上
+
+Serving Index
+- 为在线近邻搜索优化
+- 可以使用近似 / 压缩表示
+- 只需保留检索和结果映射所需的信息
+```
+
+因此第一轮 backend spike 先验证一个最小问题：
+
+> **在不重新跑 Qwen 的前提下，压缩 ANN Index 能把线上 Dense footprint 降到什么程度，同时保留多少 Exact-neighbor Recall？**
+
+新增 `scripts/retrieval/faiss_serving_spike.py`，对每个现有 Embedding Artifact：
+
+1. 从完整 Artifact 中按全局 row 均匀、确定性采样；
+2. 在同一批 sampled vectors 上建立 `IndexFlatIP` 作为 Exact reference；
+3. 建立 `IndexIVFPQ` 作为压缩 serving candidate；
+4. 用 sampled corpus vectors 作为 query，移除 self-hit 后比较 ANN 与 Exact Top-K overlap；
+5. 记录 sample 查询延迟、训练 / add 时间；
+6. 序列化 sample IVFPQ，拆出 fixed bytes 与 per-vector bytes，并投影 full-corpus Index 大小。
+
+这一轮的 Recall 含义非常窄：
+
+> **ANN 是否近似复现同一 Embedding 空间里的 Exact nearest neighbors。**
+
+它不是文学关系 Recall，也不替代 intertext Eval。只有 ANN approximation 足够可靠后，才值得把真正的 Poeticus Case 放到 production channel 上验收。
+
+第一版只比较 Exact Flat 与压缩 IVFPQ，不同时开 HNSW / 多算法联赛。真实 Artifact 实验已经得到：
+
+| pq_m | sentence Recall@20 | clause Recall@20 | 两套 full index 投影 |
+| ---: | ---: | ---: | ---: |
+| 64 | 0.397 | 0.516 | 0.962 GiB |
+| 128 | 0.576 | 0.655 | 1.811 GiB |
+| 256 | 0.764 | 0.815 | 3.509 GiB |
+
+扩大 `nprobe` 从 16 到 128 几乎没有改善 Recall，说明主要损失来自 PQ 对单条向量的压缩，而不是 IVF 搜索范围不足。减少压缩后 Recall 明显恢复。
+
+因此这一 spike 已经回答核心部署问题：**约 27.17 GiB raw float16 Embedding 不需要常驻线上；它可以作为离线构建资产，线上部署数量级约几 GiB 的压缩 ANN Index。** 当前先以 `pq_m=256, nprobe=64` 作为 full-build 候选配置，停止继续为“再省一点 GB”做参数微调。
+
+这组 Recall 只衡量 ANN 对 Exact vector neighbors 的复现程度，不是文学关系 Recall。下一步应构建 full index，并回到真实 intertext Case 验证目标前代文本是否稳定进入候选。
+
+pgvector 暂不在这一 PR 建表或扩容 Railway。production backend 与 Retrieval Service 的部署位置，等待 full index 的真实体积、内存、延迟和文学 Case Eval 后再决定。
