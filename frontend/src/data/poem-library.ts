@@ -40,6 +40,10 @@ export type PoemFilters = {
   offset: number;
 };
 
+// 当前公网阅读库只发布宋词。Retrieval chronology 依赖这一产品级事实；
+// 如果以后加入其他朝代，应改为逐首数据库字段，而不是继续扩展这里的映射。
+const CURRENT_PUBLIC_CORPUS_DYNASTY = "宋";
+
 /** 题录只组合展示字段，不改变作品的词牌、寓声与词题。 */
 export function poemTitle(
   work: Pick<PoemSummary, "cipai" | "yusheng_title" | "title">,
@@ -73,8 +77,7 @@ export function poemContext(work: Poem): PoemContext {
     id: work.id,
     title: poemTitle(work),
     author: work.author,
-    // 当前数据库没有可靠的逐首朝代字段，不凭词集补猜。
-    dynasty: null,
+    dynasty: CURRENT_PUBLIC_CORPUS_DYNASTY,
     review_status: work.review_status,
   };
 }
