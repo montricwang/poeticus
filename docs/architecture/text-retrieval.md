@@ -114,6 +114,35 @@ Query side 与 Corpus side 复用同一套 sentence / clause 边界规则，避�
 
 这一层只负责生成稳定 Query Plan；Dense / Lexical fan-out、Candidate Fusion 和 chronology filtering 仍属于后续层，不在 Query Planner 内耦合。
 
+### Query Fan-out
+
+Query Plan 之后增加独立执行层：
+
+```text
+Query Plan
+├─ Dense sentence channel
+├─ Dense clause channel
+├─ Lexical sentence channel
+└─ 未来可增加 Lexical clause / ANN channel
+      ↓
+per-query × per-channel ranked results
+```
+
+Fan-out 层只负责把同一批**去重后的 Query**交给每个已配置的 Retrieval channel，并保留：
+
+- query text 与 passage / sentence / clause provenance；
+- channel identity；
+- retrieval method（Dense / Lexical）；
+- corpus chunk policy（sentence / clause）；
+- 各 channel 自己的 rank 与 raw score。
+
+这里有两个刻意的边界：
+
+1. **Query 粒度与 Corpus Chunk 粒度继续独立。** passage Query 也可以查 sentence / clause Corpus；是否有价值由后续 Eval / Fusion 判断，而不是在 fan-out 前写死路由。
+2. **channel 必须提供 batch-oriented `search_many`。** 一个 channel 一次接收全部 unique query，避免未来 Dense backend 为每条 query 反复加载模型或重复建立连接。
+
+Fan-out 层不归一化 BM25 / cosine，也不做候选去重；这些属于下一层 Candidate Fusion。当前 Exact Search 与 SQLite FTS5 仍是诊断 / baseline 实现，不在这一层反向绑定生产接口。
+
 第一版仍倾向于让诗句都可以进入 Retrieval，而不是先用分类器判断“值不值得查”。诗词本身较短，预过滤带来的计算节省有限，却可能在 Retriever 之前造成不可恢复的 Recall 损失。
 
 ## 5. Embedding 模型
