@@ -269,22 +269,27 @@ Werneror/Poetry 适合作为大规模候选发现语料，但不能把其中的�
 
 不在失败证据出现前同时引入这些复杂度。
 
-## 10. 当前未决定
+## 10. 当前待定事项
 
-截至 2026-10-07，以下仍待决定：
+截至 2026-10-07，已经不再待定的部分包括：
 
-- pgvector、FAISS 或组合式向量后端；
-- Exact Search 与 ANN 的具体切换时机；
-- HNSW / IVF 等索引参数；
+- Lexical baseline 已采用 **character 2-3 gram + BM25**；
+- Query Plan 已固定为 passage / sentence / clause 的确定性多粒度策略；
+- Candidate Fusion 第一版已采用 Work-level RRF；
+- Candidate Eligibility 已采用 recall-first 的保守 chronology 规则；
+- FAISS IVFPQ serving-index spike 已证明 raw Embedding 可以保留为离线构建资产，线上只部署压缩 ANN Index。
+
+仍然需要后续真实结果决定的是：
+
+- production Dense backend 最终是否直接使用 FAISS，以及 Retrieval Service 的部署拓扑；
+- full FAISS index 的实际体积、内存占用和查询延迟；
+- 当前候选参数 `pq_m=256, nprobe=64` 在真实 intertext Case 上是否足够；它只是下一轮 full build 候选，不是冻结的 production 参数；
 - Query instruction；
-- chronology filtering 的最终实现位置；
-- Top-K 与多粒度候选融合策略；
-- Lexical Retrieval 的具体实现；
-- Hybrid / reranker 是否有必要。
+- Top-K；
+- Hybrid 后是否仍需要 reranker；
+- author / work 精确年代补齐后，chronology filtering 是否需要进一步收紧。
 
-当前 Lexical baseline 倾向采用 **character n-gram + BM25**：character n-gram 负责适配古诗近似字面复用，BM25 负责词项级排序。是否需要古汉语分词器，留给真实 Eval 决定。
-
-这些内容只有形成真实证据或正式实现后，再更新本文为当前状态。
+这些事项继续由真实失败和部署数据购买复杂度，不提前扩张。
 
 
 ## Artifact 对照检索
@@ -539,6 +544,18 @@ Serving Index
 
 它不是文学关系 Recall，也不替代 intertext Eval。只有 ANN approximation 足够可靠后，才值得把真正的 Poeticus Case 放到 production channel 上验收。
 
-第一版只比较 Exact Flat 与压缩 IVFPQ，不同时开 HNSW / 多种量化参数联赛。原因是当前首要问题是验证“线上是否可以不常驻 27 GiB raw vectors”，而不是一次性选择所有 ANN 算法。
+第一版只比较 Exact Flat 与压缩 IVFPQ，不同时开 HNSW / 多算法联赛。真实 Artifact 实验已经得到：
 
-pgvector 暂不在这一 PR 建表或扩容 Railway。当前 production PostgreSQL Volume 约 500 MB；在 FAISS serving footprint 有实测前，直接为 pgvector 扩容既没有成本依据，也没有 Recall / latency 对照。
+| pq_m | sentence Recall@20 | clause Recall@20 | 两套 full index 投影 |
+| ---: | ---: | ---: | ---: |
+| 64 | 0.397 | 0.516 | 0.962 GiB |
+| 128 | 0.576 | 0.655 | 1.811 GiB |
+| 256 | 0.764 | 0.815 | 3.509 GiB |
+
+扩大 `nprobe` 从 16 到 128 几乎没有改善 Recall，说明主要损失来自 PQ 对单条向量的压缩，而不是 IVF 搜索范围不足。减少压缩后 Recall 明显恢复。
+
+因此这一 spike 已经回答核心部署问题：**约 27.17 GiB raw float16 Embedding 不需要常驻线上；它可以作为离线构建资产，线上部署数量级约几 GiB 的压缩 ANN Index。** 当前先以 `pq_m=256, nprobe=64` 作为 full-build 候选配置，停止继续为“再省一点 GB”做参数微调。
+
+这组 Recall 只衡量 ANN 对 Exact vector neighbors 的复现程度，不是文学关系 Recall。下一步应构建 full index，并回到真实 intertext Case 验证目标前代文本是否稳定进入候选。
+
+pgvector 暂不在这一 PR 建表或扩容 Railway。production backend 与 Retrieval Service 的部署位置，等待 full index 的真实体积、内存、延迟和文学 Case Eval 后再决定。
