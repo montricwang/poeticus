@@ -500,3 +500,45 @@ Service 当前固定的产品语义：
 - 重建与发布流程。
 
 在这个 spike 完成前，`TextRetrievalService` 与 Agent Tool contract 都不应反向绑定某一种 Vector DB。
+
+
+### Serving Artifact Spike：原始 Embedding 不等于线上 Index
+
+当前约 27.2 GiB 的 Qwen sentence + clause float16 Embedding 是**离线构建资产**，不是已经冻结的线上部署体积。
+
+两者职责不同：
+
+```text
+离线 Embedding Artifact
+- 保留完整向量
+- 可重建不同 Index
+- 不要求常驻线上
+
+Serving Index
+- 为在线近邻搜索优化
+- 可以使用近似 / 压缩表示
+- 只需保留检索和结果映射所需的信息
+```
+
+因此第一轮 backend spike 先验证一个最小问题：
+
+> **在不重新跑 Qwen 的前提下，压缩 ANN Index 能把线上 Dense footprint 降到什么程度，同时保留多少 Exact-neighbor Recall？**
+
+新增 `scripts/retrieval/faiss_serving_spike.py`，对每个现有 Embedding Artifact：
+
+1. 从完整 Artifact 中按全局 row 均匀、确定性采样；
+2. 在同一批 sampled vectors 上建立 `IndexFlatIP` 作为 Exact reference；
+3. 建立 `IndexIVFPQ` 作为压缩 serving candidate；
+4. 用 sampled corpus vectors 作为 query，移除 self-hit 后比较 ANN 与 Exact Top-K overlap；
+5. 记录 sample 查询延迟、训练 / add 时间；
+6. 序列化 sample IVFPQ，拆出 fixed bytes 与 per-vector bytes，并投影 full-corpus Index 大小。
+
+这一轮的 Recall 含义非常窄：
+
+> **ANN 是否近似复现同一 Embedding 空间里的 Exact nearest neighbors。**
+
+它不是文学关系 Recall，也不替代 intertext Eval。只有 ANN approximation 足够可靠后，才值得把真正的 Poeticus Case 放到 production channel 上验收。
+
+第一版只比较 Exact Flat 与压缩 IVFPQ，不同时开 HNSW / 多种量化参数联赛。原因是当前首要问题是验证“线上是否可以不常驻 27 GiB raw vectors”，而不是一次性选择所有 ANN 算法。
+
+pgvector 暂不在这一 PR 建表或扩容 Railway。当前 production PostgreSQL Volume 约 500 MB；在 FAISS serving footprint 有实测前，直接为 pgvector 扩容既没有成本依据，也没有 Recall / latency 对照。
