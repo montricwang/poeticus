@@ -1,6 +1,7 @@
 import pytest
 
 from scripts.retrieval.faiss_serving_spike import (
+    normalize_nprobes,
     project_full_index_bytes,
     recall_at_k,
     strip_self_neighbors,
@@ -30,6 +31,27 @@ def test_recall_at_k_uses_exact_neighbor_overlap():
     ]
 
     assert recall_at_k(exact, ann, top_k=3) == pytest.approx(2 / 3)
+
+
+def test_normalize_nprobes_clamps_and_deduplicates():
+    assert normalize_nprobes([16, 32, 1024, 1024], nlist=512) == [
+        16,
+        32,
+        512,
+    ]
+
+
+@pytest.mark.parametrize(
+    "nprobes,nlist",
+    [
+        ([], 512),
+        ([0], 512),
+        ([16], 0),
+    ],
+)
+def test_normalize_nprobes_rejects_invalid_inputs(nprobes, nlist):
+    with pytest.raises(ValueError):
+        normalize_nprobes(nprobes, nlist=nlist)
 
 
 def test_project_full_index_bytes_separates_fixed_and_per_vector_cost():
