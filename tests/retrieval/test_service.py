@@ -171,3 +171,34 @@ def test_service_requires_at_least_one_channel():
         assert "至少需要一个" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_service_rejects_current_work_aliases():
+    query = "甲。"
+    channel = FakeChannel(
+        "dense_sentence",
+        "dense",
+        "sentence",
+        {
+            query: [
+                _row("current-a", "宋"),
+                _row("current-b", "宋"),
+                _row("valid", "唐"),
+            ],
+        },
+    )
+
+    result = TextRetrievalService(
+        [channel],
+        per_channel_top_k=3,
+        final_top_k=2,
+    ).search(
+        query,
+        current_work_id=None,
+        target_dynasty="宋",
+        current_work_ids={"current-a", "current-b"},
+    )
+
+    assert [item.candidate.work_id for item in result.candidates] == [
+        "valid"
+    ]

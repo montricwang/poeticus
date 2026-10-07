@@ -14,7 +14,7 @@ Storage / ANN choices stay behind RetrievalChannel implementations.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Collection, Literal, Sequence
 
 from backend.retrieval.eligibility import (
     EligibleCandidate,
@@ -78,6 +78,7 @@ class TextRetrievalService:
         *,
         current_work_id: str | None,
         target_dynasty: str | None,
+        current_work_ids: Collection[str] | None = None,
     ) -> TextRetrievalResult:
         plan = tuple(build_query_plan(text))
         channel_results = execute_query_fanout(
@@ -97,6 +98,7 @@ class TextRetrievalService:
         eligibility = apply_candidate_eligibility(
             fused,
             current_work_id=current_work_id,
+            current_work_ids=current_work_ids,
             target_dynasty=target_dynasty,
         )
 
