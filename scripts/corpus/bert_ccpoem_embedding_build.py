@@ -37,6 +37,7 @@ DEFAULT_OUTPUT_DIR = Path(
 )
 DEFAULT_BATCH_SIZE = 512
 DEFAULT_SHARD_SIZE = 10_000
+DEFAULT_EXPECTED_CHUNKS = 9_425_173
 MANIFEST_VERSION = 1
 
 
@@ -333,7 +334,9 @@ def main() -> None:
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--model-path", type=Path, required=True)
-    parser.add_argument("--expected-chunks", type=int, required=True)
+    parser.add_argument(
+        "--expected-chunks", type=int, default=DEFAULT_EXPECTED_CHUNKS
+    )
     parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
     parser.add_argument("--shard-size", type=int, default=DEFAULT_SHARD_SIZE)
     parser.add_argument("--device", help="可选：cuda / cpu")
