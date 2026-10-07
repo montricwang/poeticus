@@ -82,7 +82,7 @@ Railway Agent
 
 ### 2C8G 已经有真实数据
 
-当前节点不是按经验拍出的规格。Linux benchmark 和线上 E2E 已经证明它能承载现阶段低流量服务。
+当前节点规格来自实际 benchmark。Linux benchmark 和线上 E2E 已经证明它能承载现阶段低流量服务。
 
 ## Consequences
 
