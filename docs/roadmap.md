@@ -1,6 +1,6 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-05  
+> 更新日期：2026-10-07  
 > 当前状态：`v0.1.0` 已公开发布；3491 首宋词、PostgreSQL 阅读 API、多轮 SSE 伴读、整首赏析、典故工具和匿名 AI 保护均已上线。
 
 Roadmap 只记录**下一阶段方向**。已经完成的发布过程不再混在未来计划里；具体任务和验收进入 GitHub Issues。
@@ -43,22 +43,45 @@ Poeticus 已经走通：
 
 ### 2.2 Evidence / RAG
 
-当前只有一个较窄的典故查询工具。下一阶段如果扩展外部知识，优先做一个真实、可验证的最小闭环，而不是为了技术名词堆系统。
+当前重点已经从“要不要做 Retrieval”进入“怎样建立真实可验证的前代文本检索链”。
 
-候选资料：
+当前路线：
+
+```text
+Werneror Corpus
+→ Work / Chunk
+→ Embedding Artifact
+→ Vector / Lexical Retrieval
+→ Candidate Fusion
+→ DeepSeek / Agent 判断
+```
+
+近期按以下顺序推进：
+
+1. 完成 Qwen sentence / clause 与 BERT-CCPoem clause Artifact 的真实 Eval 对照；
+2. 分别做 pgvector 与 FAISS spike，用同一批 Artifact 比较过滤、性能和部署边界；
+3. 增加 Lexical Retrieval baseline，优先从 character n-gram / 近似字面检索开始；
+4. 根据真实结果决定是否进入 Hybrid Retrieval；
+5. 最后再接成正式 Agent Tool。
+
+当前已经明确：
+
+- Retrieval hit 只是候选，不自动等于文学关系成立；
+- Corpus Chunking 与 Query Strategy 分开；
+- Query 需要比较整句、分句和多粒度策略；
+- 向量索引与 Embedding Artifact 解耦；
+- 语料与朝代高度静态，因此允许预计算、多索引，必要时也允许多后端；
+- 新增语料通常做增量 Embedding，不重新全库计算；
+- 古汉语分词属于可替换的 Query / Text Analysis 组件，不提前扩张成独立项目；先验证字符级检索是否已经足够。
+
+候选资料仍包括：
 
 - 可靠注释；
 - 词话与历代评论；
 - 作者编年/生平资料；
 - 可追溯的作品出处。
 
-需要实际回答：
-
-- 什么问题应该检索；
-- chunk 和 metadata 如何设计；
-- 如何保留出处；
-- 未命中和冲突证据怎么处理；
-- retrieval 是否真的改善回答。
+Document Corpus 与实时业务信息继续分开：相对静态知识适合 RAG，真正实时状态更适合 API / Database Tool。
 
 ### 2.3 Evaluation
 
@@ -70,6 +93,8 @@ Poeticus 已经走通：
 - 多轮指代；
 - 文学解释是否落在原文而不是套话；
 - Prompt、模型或 retrieval 变化是否造成退化。
+
+Retrieval 继续优先复用现有 intertext Eval，不为了“严谨”重复制造一套同等复杂度的 Benchmark。
 
 单元测试、AI Eval、LangSmith Trace 和真实浏览器验收继续分层，不互相冒充。
 
@@ -111,7 +136,16 @@ Poeticus 已经走通：
 
 ### Engineering spikes
 
-MCP、Reranker、Hybrid Search、Redis、Checkpointer 等可以做短期 Spike，但进入主线前必须回答“它解决 Poeticus 的哪个真实问题”。
+允许做短期 Spike，但进入主线前必须回答“它解决 Poeticus 的哪个真实问题”。
+
+当前有明确学习 / 选型价值的 Spike：
+
+- pgvector：SQL + metadata filtering + vector index；
+- FAISS：独立向量索引、ANN、索引文件与回表；
+- Hybrid Search：Lexical + Dense 的候选融合；
+- Reranker：只在现有召回候选质量证明需要时再引入。
+
+MCP、Redis、Checkpointer 等仍然按真实需求购买复杂度。
 
 ## 4. 求职与学习目标
 
@@ -128,9 +162,9 @@ API / Validation
    ↓
 Agent / LLM / Tool
    ↓
-Evidence
+Evidence / Retrieval
    ↓
-PostgreSQL / Data Pipeline
+PostgreSQL / pgvector / FAISS / Data Pipeline
    ↓
 Deployment / Observability / Evaluation
 ```
