@@ -58,21 +58,22 @@ Werneror Corpus
 
 近期按以下顺序推进：
 
-1. 完成 Qwen sentence / clause 与 BERT-CCPoem clause Artifact 的真实 Eval 对照；
-2. 分别做 pgvector 与 FAISS spike，用同一批 Artifact 比较过滤、性能和部署边界；
-3. 增加 Lexical Retrieval baseline，优先从 character n-gram / 近似字面检索开始；
-4. 根据真实结果决定是否进入 Hybrid Retrieval；
+1. 再补少量代表性 Case，确认 Qwen sentence + clause 的多粒度互补性，并结束 Embedding 模型选型研究；
+2. 增加 Lexical Retrieval baseline：character n-gram + BM25；
+3. 分别做 pgvector 与 FAISS spike，用同一批 Artifact 比较过滤、性能和部署边界；
+4. 根据真实结果决定 Dense + Lexical 的候选融合方式，以及是否需要 reranker；
 5. 最后再接成正式 Agent Tool。
 
 当前已经明确：
 
 - Retrieval hit 只是候选，不自动等于文学关系成立；
 - Corpus Chunking 与 Query Strategy 分开；
+- sentence 与 clause 已被真实 Case 证明具有互补性，当前按多粒度召回处理，不再二选一；
 - Query 需要比较整句、分句和多粒度策略；
 - 向量索引与 Embedding Artifact 解耦；
 - 语料与朝代高度静态，因此允许预计算、多索引，必要时也允许多后端；
 - 新增语料通常做增量 Embedding，不重新全库计算；
-- 古汉语分词属于可替换的 Query / Text Analysis 组件，不提前扩张成独立项目；先验证字符级检索是否已经足够。
+- 古汉语分词属于可替换的 Query / Text Analysis 组件，不提前扩张成独立项目；Lexical baseline 先采用 character n-gram + BM25，再看是否有必要引入专用分词。
 
 候选资料仍包括：
 
