@@ -31,10 +31,11 @@ DEFAULT_ARTIFACT_DIR = (
 )
 DEFAULT_TOP_K = 20
 
-# Conservative coarse chronology for the current Werneror labels.
-# A candidate group is admitted only when its whole period is safely earlier
-# than the target dynasty's start. This intentionally excludes same-dynasty
-# and overlapping periods; exact author/work chronology is a later layer.
+# Coarse chronology for the current Werneror labels.
+# Fully earlier periods are admitted. Transitional labels that begin before
+# the target dynasty and overlap its start (for example 唐末宋初 -> 宋) are
+# also admitted for recall, leaving exact author/work chronology to a later layer.
+# Same-dynasty and parallel regimes remain excluded in this baseline.
 DYNASTY_PERIODS = {
     "先秦": (-3000, -221),
     "秦": (-221, -206),
@@ -168,18 +169,29 @@ def ensure_model_snapshot(
     return model_path
 
 
-def definitely_earlier_dynasties(target_dynasty: str) -> set[str]:
+def candidate_prior_dynasties(target_dynasty: str) -> set[str]:
     if target_dynasty not in DYNASTY_PERIODS:
         raise ValueError(
             f"尚未定义朝代时间范围：{target_dynasty!r}；"
             "不能安全地做前代过滤"
         )
+
     target_start, _ = DYNASTY_PERIODS[target_dynasty]
-    return {
-        dynasty
-        for dynasty, (_, candidate_end) in DYNASTY_PERIODS.items()
-        if candidate_end < target_start
-    }
+    allowed = set()
+    for dynasty, (candidate_start, candidate_end) in DYNASTY_PERIODS.items():
+        if dynasty == target_dynasty:
+            continue
+
+        fully_earlier = candidate_end < target_start
+        transitional_overlap = (
+            candidate_start < target_start <= candidate_end
+            and "末" in dynasty
+            and "初" in dynasty
+        )
+        if fully_earlier or transitional_overlap:
+            allowed.add(dynasty)
+
+    return allowed
 
 
 def build_dynasty_row_mask(
@@ -286,9 +298,18 @@ def exact_search(
     best: list[tuple[float, int]] = []
 
     for shard_no, item in enumerate(manifest["completed_shards"], 1):
+        expected_rows = item["end"] - item["start"]
+        shard_mask = None
+        if row_mask is not None:
+            shard_mask = row_mask[item["start"]:item["end"]]
+            if shard_mask.shape != (expected_rows,):
+                raise ValueError("row_mask 与 Embedding shard 范围不一致")
+            if not shard_mask.any():
+                continue
+
         path = artifact_dir / item["file"]
         vectors = np.load(path, mmap_mode="r", allow_pickle=False)
-        expected_shape = (item["end"] - item["start"], dimension)
+        expected_shape = (expected_rows, dimension)
         if vectors.shape != expected_shape:
             raise ValueError(
                 f"{path.name} shape={vectors.shape}，预期 {expected_shape}"
@@ -300,15 +321,10 @@ def exact_search(
         # reference score.
         matrix = np.asarray(vectors, dtype=np.float32)
 
-        if row_mask is None:
+        if shard_mask is None:
             eligible_local = np.arange(matrix.shape[0])
         else:
-            shard_mask = row_mask[item["start"]:item["end"]]
-            if shard_mask.shape != (matrix.shape[0],):
-                raise ValueError("row_mask 与 Embedding shard 范围不一致")
             eligible_local = np.flatnonzero(shard_mask)
-            if eligible_local.size == 0:
-                continue
 
         scores = matrix[eligible_local] @ query
         local_k = min(top_k, scores.shape[0])
@@ -497,8 +513,8 @@ def main() -> None:
     parser.add_argument(
         "--before-dynasty",
         help=(
-            "只让可以确定早于该朝代的候选参与排名；"
-            "同朝代和时间重叠的朝代暂不纳入"
+            "只让前代候选参与排名；明确更早的朝代和跨入目标朝代初期的"
+            "过渡标签会保留，同朝代和并行政权暂不纳入"
         ),
     )
     parser.add_argument(
@@ -537,17 +553,23 @@ def main() -> None:
     chronology = None
     row_mask = None
     if args.before_dynasty:
-        allowed_dynasties = definitely_earlier_dynasties(args.before_dynasty)
+        allowed_dynasties = candidate_prior_dynasties(args.before_dynasty)
         row_mask = build_dynasty_row_mask(
             work_path=work_path,
             chunk_path=chunk_path,
             allowed_dynasties=allowed_dynasties,
             expected_chunks=manifest["completed_chunks"],
         )
+        eligible_shards = sum(
+            bool(row_mask[item["start"]:item["end"]].any())
+            for item in manifest["completed_shards"]
+        )
         chronology = {
             "before_dynasty": args.before_dynasty,
             "allowed_dynasties": sorted(allowed_dynasties),
             "eligible_chunks": int(row_mask.sum()),
+            "eligible_shards": eligible_shards,
+            "total_shards": len(manifest["completed_shards"]),
         }
         if chronology["eligible_chunks"] == 0:
             raise SystemExit("朝代过滤后没有可检索的 Chunk")
