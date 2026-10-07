@@ -1,10 +1,10 @@
-"""Compare base-model memory with local full-corpus Retrieval.
+"""Compare standalone-LLM knowledge with local full-corpus Retrieval.
 
 This is the first small increment-value eval, not a final RAG benchmark.
 
 For each fixed case it records:
-1. bare_model: no Agent prompt, no Tool Schema;
-2. tool_model: same plain input plus one local Retrieval function tool;
+1. standalone_llm: no Agent prompt, no Tool Schema;
+2. tool_augmented_llm: same plain input plus one local Retrieval function tool;
 3. hybrid_retrieval diagnostics for the canonical fixed query;
 4. a lightweight navigation heuristic, never a Ground Truth score.
 
@@ -14,6 +14,7 @@ results can be uploaded directly instead of copied through chat.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 from datetime import datetime, timezone
@@ -95,6 +96,7 @@ class RetrievalIncrementCase(BaseModel):
     current_match_text: str = Field(min_length=1)
     target: RetrievalTarget
     rationale: str = Field(min_length=1)
+    agent_loop_probe: bool = False
 
 
 class RetrievalIncrementDataset(BaseModel):
@@ -122,6 +124,12 @@ def git_sha() -> str | None:
         ).strip()
     except (OSError, subprocess.CalledProcessError):
         return None
+
+
+def _content_fingerprint(content: str) -> str:
+    """High-confidence duplicate key: exact text after whitespace removal."""
+    normalized = "".join(content.split())
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
 def scan_work_matches(
@@ -162,6 +170,7 @@ def scan_work_matches(
                             "title": work.get("title"),
                             "author": author,
                             "dynasty": work.get("dynasty"),
+                            "content_fingerprint": _content_fingerprint(content),
                         }
                     )
 
@@ -175,6 +184,7 @@ def scan_work_matches(
                             "title": work.get("title"),
                             "author": author,
                             "dynasty": work.get("dynasty"),
+                            "content_fingerprint": _content_fingerprint(content),
                         }
                     )
 
@@ -195,6 +205,35 @@ def choose_current_work_id(
     ]
     chosen = exact_title[0] if exact_title else candidates[0]
     return chosen["work_id"]
+
+
+def choose_current_work_ids(
+    case: RetrievalIncrementCase,
+    candidates: list[dict],
+) -> set[str]:
+    """Return exact-content aliases of the chosen current Work.
+
+    We deliberately avoid fuzzy title/content dedup here. Only records with the
+    same author (already guaranteed by scan_work_matches) and identical content
+    after whitespace removal are treated as self-hit aliases.
+    """
+    chosen_id = choose_current_work_id(case, candidates)
+    if chosen_id is None:
+        return set()
+
+    chosen = next(
+        item for item in candidates
+        if item["work_id"] == chosen_id
+    )
+    fingerprint = chosen.get("content_fingerprint")
+    if not fingerprint:
+        return {chosen_id}
+
+    return {
+        item["work_id"]
+        for item in candidates
+        if item.get("content_fingerprint") == fingerprint
+    }
 
 
 def _plain_user_message(case: RetrievalIncrementCase) -> str:
@@ -241,7 +280,7 @@ def _plain_messages(case: RetrievalIncrementCase) -> list[dict]:
     return messages
 
 
-def run_bare_model(case: RetrievalIncrementCase) -> dict:
+def run_standalone_llm(case: RetrievalIncrementCase) -> dict:
     """Run the model with no Agent prompt and no Tool Schema."""
     from backend.ai.model import client
     from backend.config import LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
@@ -254,7 +293,7 @@ def run_bare_model(case: RetrievalIncrementCase) -> dict:
         extra_body={"thinking": {"type": "disabled"}},
     )
     if not response.choices or not response.choices[0].message.content:
-        raise RuntimeError("bare_model 没有返回有效回答")
+        raise RuntimeError("standalone_llm 没有返回有效回答")
 
     answer = response.choices[0].message.content
     return {
@@ -296,7 +335,7 @@ def compact_tool_result(result: dict, *, max_items: int = 8) -> dict:
     }
 
 
-def run_tool_model(
+def run_tool_augmented_llm(
     case: RetrievalIncrementCase,
     *,
     search_tool: Callable[[str], dict],
@@ -304,7 +343,7 @@ def run_tool_model(
     """Run one plain model with one local Retrieval function-call round trip.
 
     No LangGraph, no Agent system prompt, no autonomous multi-step loop.
-    The only added capability relative to run_bare_model is the Tool Schema.
+    The only added capability relative to run_standalone_llm is the Tool Schema.
     """
     from backend.ai.model import client
     from backend.config import LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
@@ -320,14 +359,14 @@ def run_tool_model(
         extra_body={"thinking": {"type": "disabled"}},
     )
     if not first.choices:
-        raise RuntimeError("tool_model 第一轮没有返回结果")
+        raise RuntimeError("tool_augmented_llm 第一轮没有返回结果")
 
     message = first.choices[0].message
     calls = list(message.tool_calls or [])
     if not calls:
         answer = message.content or ""
         if not answer.strip():
-            raise RuntimeError("tool_model 既没有回答也没有调用工具")
+            raise RuntimeError("tool_augmented_llm 既没有回答也没有调用工具")
         return {
             "model": LLM_MODEL,
             "answer": answer,
@@ -339,15 +378,15 @@ def run_tool_model(
 
     call = calls[0]
     if call.type != "function" or call.function.name != "search_predecessor_texts":
-        raise RuntimeError(f"tool_model 调用了未知工具：{call.function.name}")
+        raise RuntimeError(f"tool_augmented_llm 调用了未知工具：{call.function.name}")
 
     try:
         arguments = json.loads(call.function.arguments)
     except json.JSONDecodeError as exc:
-        raise RuntimeError("tool_model 返回了无效工具参数") from exc
+        raise RuntimeError("tool_augmented_llm 返回了无效工具参数") from exc
     query = arguments.get("text") if isinstance(arguments, dict) else None
     if not isinstance(query, str) or not query.strip() or len(query) > 120:
-        raise RuntimeError("tool_model 的 Retrieval query 无效")
+        raise RuntimeError("tool_augmented_llm 的 Retrieval query 无效")
     query = query.strip()
 
     tool_result = search_tool(query)
@@ -387,7 +426,7 @@ def run_tool_model(
         extra_body={"thinking": {"type": "disabled"}},
     )
     if not final.choices or not final.choices[0].message.content:
-        raise RuntimeError("tool_model 工具返回后没有生成最终回答")
+        raise RuntimeError("tool_augmented_llm 工具返回后没有生成最终回答")
 
     answer = final.choices[0].message.content
     return {
@@ -399,6 +438,21 @@ def run_tool_model(
         "tool_result": tool_result,
         **_answer_signal(case, answer),
     }
+
+def tool_target_support(
+    *,
+    result: dict | None,
+    target_work_ids: set[str],
+    max_items: int = 8,
+) -> tuple[bool | None, int | None]:
+    """Check whether the exact target Work was actually shown to the LLM."""
+    if result is None:
+        return None, None
+    for rank, item in enumerate((result.get("ranking") or [])[:max_items], 1):
+        if item.get("work_id") in target_work_ids:
+            return True, rank
+    return False, None
+
 
 def _best_rank(probes: list[dict], field: str) -> int | None:
     ranks = [
@@ -435,9 +489,11 @@ def summarize_retrieval(result: dict) -> dict:
 
 def comparison_bucket(
     *,
-    bare_signal: bool | None,
+    standalone_signal: bool | None,
     tool_signal: bool | None,
+    target_supported_by_tool: bool | None,
     eligible_rank: int | None,
+    agent_loop_probe: bool,
 ) -> str:
     """Navigation label only; never a correctness score."""
     retrieval_top20 = (
@@ -445,15 +501,21 @@ def comparison_bucket(
         and eligible_rank <= 20
     )
 
-    if bare_signal is True and tool_signal is True:
-        return "base_already_knows"
-    if bare_signal is False and tool_signal is True:
-        return "tool_increment_candidate"
-    if bare_signal is True and tool_signal is False:
+    if standalone_signal is True and tool_signal is True:
+        if target_supported_by_tool is True:
+            return "standalone_knows_tool_confirms"
+        return "standalone_already_knows"
+    if standalone_signal is False and tool_signal is True:
+        if target_supported_by_tool is True:
+            return "tool_increment_candidate"
+        return "answer_changed_without_target_evidence"
+    if standalone_signal is True and tool_signal is False:
+        if agent_loop_probe:
+            return "single_shot_agent_loop_candidate"
         return "tool_regression_candidate"
-    if bare_signal is False and tool_signal is False and retrieval_top20:
+    if standalone_signal is False and tool_signal is False and retrieval_top20:
         return "retrieval_found_model_failed"
-    if bare_signal is False and tool_signal is False:
+    if standalone_signal is False and tool_signal is False:
         return "both_gap"
     return "partial_run"
 
@@ -466,20 +528,20 @@ def render_markdown(run: dict) -> str:
     lines = [
         "# Retrieval Increment Eval",
         "",
-        "> 本轮比较：③ 真裸模 vs ④ 只有一个本地 Text Retrieval Tool 的模型。",
+        "> 本轮比较：③ 独立 LLM vs ④ 只有一个本地 Text Retrieval Tool 的模型。",
         "> 同时保留 Retrieval 本身的候选排名诊断；字符串命中只用于导航，不是自动判分。",
         "",
         "## Summary",
         "",
-        "| Case | 档位 | 裸模目标信号 | Tool 模型目标信号 | Tool used | Retrieval eligible rank | 导航标签 |",
-        "| --- | --- | --- | --- | --- | ---: | --- |",
+        "| Case | 档位 | 独立 LLM 目标信号 | 工具增强 LLM 目标信号 | Tool used | 目标证据在 Tool 中 | Tool target rank | Retrieval eligible rank | 导航标签 |",
+        "| --- | --- | --- | --- | --- | --- | ---: | ---: | --- |",
     ]
 
     for item in run["cases"]:
-        bare = item.get("bare_model")
-        tool = item.get("tool_model")
+        standalone = item.get("standalone_llm")
+        tool = item.get("tool_augmented_llm")
         retrieval = item.get("retrieval")
-        bare_signal = None if not isinstance(bare, dict) else bare.get("target_signal")
+        standalone_signal = None if not isinstance(standalone, dict) else standalone.get("target_signal")
         tool_signal = None if not isinstance(tool, dict) else tool.get("target_signal")
         tool_used = None if not isinstance(tool, dict) else tool.get("tool_used")
         rank = None if not isinstance(retrieval, dict) else retrieval.get("best_eligible_rank")
@@ -489,9 +551,11 @@ def render_markdown(run: dict) -> str:
                 [
                     _md_escape(item["case_id"]),
                     _md_escape(item["tier"]),
-                    _md_escape(bare_signal),
+                    _md_escape(standalone_signal),
                     _md_escape(tool_signal),
                     _md_escape(tool_used),
+                    _md_escape(None if not isinstance(tool, dict) else tool.get("target_supported_by_tool")),
+                    _md_escape(None if not isinstance(tool, dict) else tool.get("target_rank_in_tool_candidates")),
                     _md_escape(rank),
                     _md_escape(item["comparison_bucket"]),
                 ]
@@ -504,8 +568,8 @@ def render_markdown(run: dict) -> str:
             "",
             "## How to read",
             "",
-            "- 裸模没有 Agent Prompt，也没有 Tool Schema。",
-            "- Tool 模型没有 LangGraph / Agent 编排，只多一个 search_predecessor_texts function tool，最多执行一次。",
+            "- 独立 LLM 没有 Agent Prompt，也没有 Tool Schema。",
+            "- 工具增强 LLM 没有 LangGraph / Agent 编排，只多一个 search_predecessor_texts function tool，当前实验最多执行一次。",
             "- target_signal 只是作者名 + 目标特征短语的字符串命中，用于快速导航，不是自动判对错。",
             "- Retrieval rank 是现有 Hybrid + RRF + Eligibility 下的 Work 排名，不等于文学关系概率。",
             "",
@@ -526,28 +590,30 @@ def render_markdown(run: dict) -> str:
             ]
         )
 
-        bare = item.get("bare_model")
-        lines.extend(["### ③ 真裸模", ""])
-        if isinstance(bare, dict):
+        standalone = item.get("standalone_llm")
+        lines.extend(["### ③ 独立 LLM", ""])
+        if isinstance(standalone, dict):
             lines.extend(
                 [
-                    f"- target_author_mentioned: {bare.get('target_author_mentioned')}",
-                    f"- target_anchor_hits: {bare.get('target_anchor_hits')}",
+                    f"- target_author_mentioned: {standalone.get('target_author_mentioned')}",
+                    f"- target_anchor_hits: {standalone.get('target_anchor_hits')}",
                     "",
-                    bare.get("answer", ""),
+                    standalone.get("answer", ""),
                     "",
                 ]
             )
         else:
-            lines.extend([f"运行失败：{item.get('bare_model_error')}", ""])
+            lines.extend([f"运行失败：{item.get('standalone_llm_error')}", ""])
 
-        tool = item.get("tool_model")
-        lines.extend(["### ④ 有 Retrieval Tool 的裸模", ""])
+        tool = item.get("tool_augmented_llm")
+        lines.extend(["### ④ 工具增强 LLM", ""])
         if isinstance(tool, dict):
             lines.extend(
                 [
                     f"- tool_used: {tool.get('tool_used')}",
                     f"- tool_query: {tool.get('tool_query')}",
+                    f"- target_supported_by_tool: {tool.get('target_supported_by_tool')}",
+                    f"- target_rank_in_tool_candidates: {tool.get('target_rank_in_tool_candidates')}",
                     f"- target_author_mentioned: {tool.get('target_author_mentioned')}",
                     f"- target_anchor_hits: {tool.get('target_anchor_hits')}",
                     "",
@@ -565,7 +631,7 @@ def render_markdown(run: dict) -> str:
                     )
                 lines.append("")
         else:
-            lines.extend([f"运行失败：{item.get('tool_model_error')}", ""])
+            lines.extend([f"运行失败：{item.get('tool_augmented_llm_error')}", ""])
 
         retrieval = item.get("retrieval")
         lines.extend(["### Retrieval 诊断", ""])
@@ -606,7 +672,7 @@ def render_markdown(run: dict) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="比较真裸模与仅带本地 Retrieval Tool 的模型"
+        description="比较独立 LLM 与工具增强 LLM"
     )
     parser.add_argument("--dataset", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--case", action="append", dest="case_ids")
@@ -679,7 +745,7 @@ def main() -> None:
     )
 
     run = {
-        "schema_version": "1",
+        "schema_version": "2",
         "dataset_id": dataset.dataset_id,
         "dataset_version": dataset.dataset_version,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -711,23 +777,30 @@ def main() -> None:
             case,
             match_info["current"],
         )
+        current_work_ids = choose_current_work_ids(
+            case,
+            match_info["current"],
+        )
 
         item = {
             "case_id": case.id,
             "tier": case.tier,
             "relation": case.relation,
             "rationale": case.rationale,
+            "agent_loop_probe": case.agent_loop_probe,
             "retrieval_query": case.retrieval_query,
             "question": case.input.question,
             "target": case.target.model_dump(),
             "work_matches": {
                 **match_info,
                 "chosen_current_work_id": chosen_current_work_id,
+                "excluded_current_work_ids": sorted(current_work_ids),
             },
         }
 
-        bare_signal: bool | None = None
+        standalone_signal: bool | None = None
         tool_signal: bool | None = None
+        target_supported_by_tool: bool | None = None
         eligible_rank: int | None = None
 
         def run_retrieval(
@@ -744,6 +817,7 @@ def main() -> None:
                 bm25_sentence_dir=args.bm25_sentence_dir,
                 work_path=work_path,
                 current_work_id=chosen_current_work_id,
+                current_work_ids=current_work_ids,
                 target_dynasty=case.input.context.dynasty,
                 probe_text=(case.target.text if include_probe else None),
                 probe_author=(case.target.author if include_probe else None),
@@ -755,30 +829,45 @@ def main() -> None:
 
         if not args.skip_model:
             try:
-                print("  - ③ 真裸模……")
-                bare = run_bare_model(case)
-                item["bare_model"] = bare
-                bare_signal = bare["target_signal"]
+                print("  - ③ 独立 LLM……")
+                bare = run_standalone_llm(case)
+                item["standalone_llm"] = bare
+                standalone_signal = bare["target_signal"]
             except Exception as exc:
-                item["bare_model_error"] = f"{type(exc).__name__}: {exc}"
-                print(f"    失败：{item['bare_model_error']}")
+                item["standalone_llm_error"] = f"{type(exc).__name__}: {exc}"
+                print(f"    失败：{item['standalone_llm_error']}")
 
             try:
-                print("  - ④ 有 Retrieval Tool 的裸模……")
+                print("  - ④ 工具增强 LLM……")
+
+                tool_search_audit: dict = {}
 
                 def search_tool(query: str) -> dict:
                     result = run_retrieval(query, include_probe=False)
+                    supported, target_rank = tool_target_support(
+                        result=result,
+                        target_work_ids={
+                            item["work_id"]
+                            for item in match_info["target"]
+                        },
+                    )
+                    tool_search_audit["target_supported_by_tool"] = supported
+                    tool_search_audit["target_rank_in_tool_candidates"] = target_rank
                     return compact_tool_result(result)
 
-                tool_model = run_tool_model(
+                tool_augmented_llm = run_tool_augmented_llm(
                     case,
                     search_tool=search_tool,
                 )
-                item["tool_model"] = tool_model
-                tool_signal = tool_model["target_signal"]
+                tool_augmented_llm.update(tool_search_audit)
+                item["tool_augmented_llm"] = tool_augmented_llm
+                tool_signal = tool_augmented_llm["target_signal"]
+                target_supported_by_tool = tool_augmented_llm.get(
+                    "target_supported_by_tool"
+                )
             except Exception as exc:
-                item["tool_model_error"] = f"{type(exc).__name__}: {exc}"
-                print(f"    失败：{item['tool_model_error']}")
+                item["tool_augmented_llm_error"] = f"{type(exc).__name__}: {exc}"
+                print(f"    失败：{item['tool_augmented_llm_error']}")
 
         if not args.skip_retrieval:
             if not match_info["target"]:
@@ -802,14 +891,17 @@ def main() -> None:
                     print(f"    失败：{item['retrieval_error']}")
 
         item["comparison_bucket"] = comparison_bucket(
-            bare_signal=bare_signal,
+            standalone_signal=standalone_signal,
             tool_signal=tool_signal,
+            target_supported_by_tool=target_supported_by_tool,
             eligible_rank=eligible_rank,
+            agent_loop_probe=case.agent_loop_probe,
         )
         print(
             "  -> "
-            f"bare={bare_signal}, "
+            f"bare={standalone_signal}, "
             f"tool={tool_signal}, "
+            f"target_supported_by_tool={target_supported_by_tool}, "
             f"eligible_rank={eligible_rank}, "
             f"bucket={item['comparison_bucket']}"
         )
