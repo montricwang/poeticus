@@ -27,7 +27,9 @@ DEFAULT_EXPECTED_WORKS = 853_385
 DEFAULT_EXPECTED_CHUNKS = 0
 
 POLICY = "sentence"
+CLAUSE_POLICY = "clause"
 SENTENCE_END = frozenset("。！？!?")
+CLAUSE_END = frozenset("，,；;。！？!?")
 CLOSING_MARKS = frozenset("”’」』】）》")
 
 
@@ -39,43 +41,52 @@ def _trim_span(text: str, start: int, end: int) -> tuple[int, int]:
     return start, end
 
 
-def _has_semantic_text(text: str) -> bool:
+def _has_semantic_text(text: str, end_marks: frozenset[str]) -> bool:
     return any(
-        not ch.isspace() and ch not in SENTENCE_END and ch not in CLOSING_MARKS
+        not ch.isspace() and ch not in end_marks and ch not in CLOSING_MARKS
         for ch in text
     )
 
 
-def split_sentence_spans(text: str) -> Iterator[tuple[int, int, str]]:
-    """Yield exact sentence spans as (start, end, text).
-
-    Offsets are Python Unicode code-point offsets into the original content.
-    """
+def _split_spans(
+    text: str,
+    end_marks: frozenset[str],
+) -> Iterator[tuple[int, int, str]]:
     start = 0
     index = 0
     size = len(text)
 
     while index < size:
-        if text[index] not in SENTENCE_END:
+        if text[index] not in end_marks:
             index += 1
             continue
 
         index += 1
-        while index < size and text[index] in SENTENCE_END:
+        while index < size and text[index] in end_marks:
             index += 1
         while index < size and text[index] in CLOSING_MARKS:
             index += 1
 
         left, right = _trim_span(text, start, index)
         candidate = text[left:right]
-        if candidate and _has_semantic_text(candidate):
+        if candidate and _has_semantic_text(candidate, end_marks):
             yield left, right, candidate
         start = index
 
     left, right = _trim_span(text, start, size)
     candidate = text[left:right]
-    if candidate and _has_semantic_text(candidate):
+    if candidate and _has_semantic_text(candidate, end_marks):
         yield left, right, candidate
+
+
+def split_sentence_spans(text: str) -> Iterator[tuple[int, int, str]]:
+    """Yield sentence-level spans after 。！？!?."""
+    yield from _split_spans(text, SENTENCE_END)
+
+
+def split_clause_spans(text: str) -> Iterator[tuple[int, int, str]]:
+    """Yield clause-level spans after commas, semicolons, or sentence ends."""
+    yield from _split_spans(text, CLAUSE_END)
 
 
 def _iter_works(path: Path):
@@ -97,10 +108,13 @@ def _iter_works(path: Path):
             yield work
 
 
-def build_sentence_chunks(
+def _build_chunks(
     input_path: Path,
     output_path: Path,
     report_path: Path,
+    *,
+    policy: str,
+    splitter,
     expected_works: int | None = DEFAULT_EXPECTED_WORKS,
     expected_chunks: int | None = DEFAULT_EXPECTED_CHUNKS,
 ) -> dict:
@@ -127,18 +141,16 @@ def build_sentence_chunks(
                 work_chunk_count = 0
 
                 for chunk_index, (start, end, text) in enumerate(
-                    split_sentence_spans(work["content"])
+                    splitter(work["content"])
                 ):
                     if work["content"][start:end] != text:
                         raise AssertionError(
                             f"{work['source_record_id']}: Chunk offset 无法还原原文"
                         )
                     record = {
-                        "chunk_id": (
-                            f"{work['work_id']}:{POLICY}:{chunk_index}"
-                        ),
+                        "chunk_id": f"{work['work_id']}:{policy}:{chunk_index}",
                         "work_id": work["work_id"],
-                        "policy": POLICY,
+                        "policy": policy,
                         "chunk_index": chunk_index,
                         "start": start,
                         "end": end,
@@ -182,7 +194,7 @@ def build_sentence_chunks(
         raise
 
     report = {
-        "policy": POLICY,
+        "policy": policy,
         "input": str(input_path),
         "output": str(output_path),
         "works": works,
@@ -203,6 +215,41 @@ def build_sentence_chunks(
     )
     return report
 
+
+def build_sentence_chunks(
+    input_path: Path,
+    output_path: Path,
+    report_path: Path,
+    expected_works: int | None = DEFAULT_EXPECTED_WORKS,
+    expected_chunks: int | None = DEFAULT_EXPECTED_CHUNKS,
+) -> dict:
+    return _build_chunks(
+        input_path,
+        output_path,
+        report_path,
+        policy=POLICY,
+        splitter=split_sentence_spans,
+        expected_works=expected_works,
+        expected_chunks=expected_chunks,
+    )
+
+
+def build_clause_chunks(
+    input_path: Path,
+    output_path: Path,
+    report_path: Path,
+    expected_works: int | None = DEFAULT_EXPECTED_WORKS,
+    expected_chunks: int | None = DEFAULT_EXPECTED_CHUNKS,
+) -> dict:
+    return _build_chunks(
+        input_path,
+        output_path,
+        report_path,
+        policy=CLAUSE_POLICY,
+        splitter=split_clause_spans,
+        expected_works=expected_works,
+        expected_chunks=expected_chunks,
+    )
 
 def main() -> None:
     parser = argparse.ArgumentParser(

@@ -1,6 +1,6 @@
 # Text Retrieval 架构基线
 
-> 状态：2026-10-06，随 #119 / PR #132 建立。本文只记录当前已经确定的职责和数据边界；尚未实施的 Vector DB / ANN 只列为待决事项。
+> 状态：2026-10-07，随 #119 / PR #132 / #134 演进。本文记录当前已经确定的职责、数据边界和由真实 Retrieval 实验得到的结论；尚未实施的 Vector DB / ANN 只列为待决事项。
 
 ## 1. 目标与非目标
 
@@ -44,13 +44,13 @@ Werneror CSV
 ↓
 Work JSONL
 ↓
-sentence Chunk JSONL
+sentence / clause Chunk JSONL
 ↓
 Qwen document embedding
 ↓
 Embedding Artifact
 ↓
-未来 Vector Index
+未来 Vector / Lexical Index
 ```
 
 ### Work
@@ -71,29 +71,33 @@ source_record_id
 
 ### Chunk
 
-当前 baseline 为 sentence：
+当前保留两种检索粒度：
+
+**sentence**
 
 - 在 `。！？!?` 后结束；
 - 逗号、分号保留在句内；
-- 保留原标点；
-- 保存 `work_id`；
-- 保存 `[start, end)` Unicode code-point offset，可从 `Work.content` 精确还原。
-
-当前全量结果：
-
-- Work：853,385；
-- Chunk：4,822,054；
+- 4,822,054 Chunk；
 - 平均 5.651 Chunk / Work；
-- 最长 Chunk：132 字符。
+- 最长 132 字符。
 
-sentence 是第一版 baseline，不是永久文学定义。若真实 Retrieval 失败证明粒度过粗，可以从 Work 重新派生 clause，而不改变 Work 层。
+**clause**
+
+- 在逗号、分号和句末标点处分开；
+- 9,425,173 Chunk；
+- 平均 11.044 Chunk / Work；
+- 最长 34 字符。
+
+两者都保留原标点、`work_id` 与 `[start, end)` Unicode code-point offset，可从 `Work.content` 精确还原。
+
+真实 Exact Retrieval 已证明两种粒度互补：当互文只落在 sentence 的一部分时，clause 可以避免上下文稀释；但当化用压缩了同一 sentence 中两个 clause 的信息时，sentence 反而能保留必要上下文。因此当前不再把 sentence / clause 看成二选一，而把它们作为多粒度 Retrieval 的两个候选层。
 
 ## 4. Corpus Chunking 与 Query Strategy 分开
 
 这两个问题不要求采用同一粒度。
 
 **Corpus Chunking** 回答：前代语料以什么单位进入检索索引？  
-当前 baseline：sentence。
+当前保留：sentence + clause。已有真实案例表明两者互补，暂不继续增加更多粒度。
 
 **Query Strategy** 回答：当前正在阅读的一整首诗词，哪些片段需要发起 Retrieval？
 
@@ -116,26 +120,35 @@ Qwen/Qwen3-Embedding-0.6B
 - 两者最终进入同一个可比较向量空间；
 - Query instruction 尚未冻结。
 
-BERT-CCPoem 保留为领域模型反例检查。只有真实 Eval 表明 Qwen baseline 存在值得追查的系统性失败时，才投入专门对照；届时可单独使用更适合它的 clause / 单行粒度，不要求所有模型强行共享一种 Chunk。
+BERT-CCPoem 作为领域模型 challenger。clause-level Artifact 已完成，并与 Qwen clause 用同一批真实互文案例对照。当前两个代表性案例中，Qwen / BERT 各有小幅胜负，但差异远小于 sentence / clause 粒度变化带来的排名变化，因此暂时没有证据支持把 BERT-CCPoem 升为生产候选；它保留为实验对照即可。官方实现对正文 token 做 mean pooling（排除 [CLS] / [SEP] / padding），本项目实验实现保持这一口径。
 
 ## 6. Embedding Artifact
 
-当前全量构建参数：
+当前已完成的 sentence baseline：
 
 ```text
 model: Qwen3-Embedding-0.6B
 chunk policy: sentence
-dimension: 512
+dimension: 1024
 normalized: true
 dtype: float16
 shard size: 10,000
-expected chunks: 4,822,054
+chunks: 4,822,054
 ```
+
+当前新增对照构建：
+
+```text
+Qwen3-Embedding-0.6B + clause + 1024d
+BERT-CCPoem v1.0 + clause + 512d
+```
+
+两套 clause Artifact 都从同一份 clause Chunk JSONL 生成，便于比较模型差异；sentence Artifact 保留，便于比较 Chunk 粒度差异。
 
 Embedding 先作为独立离线构建产物保存：
 
 ```text
-data/output/retrieval/embeddings/qwen3_0.6b_sentence_512/
+../poeticus-data/output/retrieval/embeddings/qwen3_0.6b_sentence_1024/
 ├─ manifest.json
 ├─ shard_00000.npy
 ├─ shard_00001.npy
@@ -170,7 +183,22 @@ Text Retrieval 的产品问题是寻找“前代”文本，而不是任意时�
 
 具体采用 ANN 前过滤、ANN 后过滤还是分区索引，等待真实 Vector Index 方案确定后再决定。
 
-## 8. Eval 策略
+## 8. 语料文本不是最终权威文本
+
+Werneror/Poetry 适合作为大规模候选发现语料，但不能把其中的正文自动当成最终可引用的权威版本。
+
+本轮 Exact Retrieval 已遇到实际例子：王维《渭城曲》在当前语料中出现为“客舍青青杨柳春”，而我们原先用于 Eval 的常见版本是“客舍青青柳色新”。这类差异可能来自版本异文、录入来源差异或语料错误，单靠 Retrieval 本身无法判定。
+
+因此系统边界明确为：
+
+- Retrieval 命中 = 候选证据，不等于原文已经核定；
+- 如果候选只用于继续比较，可以先进入 DeepSeek / Agent；
+- 如果最终回答要把某句明确说成“某作者原文”或据此判断化用关系，且文本存在冲突、异常或来源不明，应再查可靠外部来源核对；
+- 不要求每条候选都联网复核，只有候选将被当作关键证据时才增加这一步。
+
+这也意味着后续 Retrieval 结果应保留 `source` / `source_record_id`，让模型和用户知道当前文本来自哪个语料版本，而不是把语料内容包装成无来源的事实。
+
+## 9. Eval 策略
 
 不为 Embedding 另造一套独立研究 Benchmark。
 
@@ -179,6 +207,13 @@ Text Retrieval 的产品问题是寻找“前代”文本，而不是任意时�
 重点不是要求 Retriever 自己 Rank 1 下结论，而是：
 
 > **Retriever 是否把真正值得比较的前代文本稳定带进 Top-K？**
+
+当前两个代表性结果已经说明 Chunk 粒度是一级变量：
+
+- “片片轻鸥落晚沙” → 杜甫“片片轻鸥下急湍”：Qwen sentence rank 445，Qwen clause rank 2；
+- “蜡烛到明垂泪” → 杜牧“替人垂泪到天明”：Qwen sentence rank 1，Qwen clause rank 10。
+
+因此下一阶段优先保留 sentence + clause 多粒度召回，而不是继续扩大 Embedding 模型比较。
 
 只有真实失败出现后，再按类型判断：
 
@@ -192,18 +227,40 @@ Text Retrieval 的产品问题是寻找“前代”文本，而不是任意时�
 
 不在失败证据出现前同时引入这些复杂度。
 
-## 9. 当前未决定
+## 10. 当前未决定
 
-截至 2026-10-06，以下仍待决定：
+截至 2026-10-07，以下仍待决定：
 
-- pgvector、FAISS 或其他向量存储；
+- pgvector、FAISS 或组合式向量后端；
 - Exact Search 与 ANN 的具体切换时机；
-- HNSW 参数；
+- HNSW / IVF 等索引参数；
 - Query instruction；
-- dynasty filtering 的实现位置；
-- Top-K；
-- Qwen 512 维在真实 intertext Eval 上的质量；
-- BERT-CCPoem 是否值得进入生产候选；
-- Hybrid / sparse / reranker。
+- chronology filtering 的最终实现位置；
+- Top-K 与多粒度候选融合策略；
+- Lexical Retrieval 的具体实现；
+- Hybrid / reranker 是否有必要。
+
+当前 Lexical baseline 倾向采用 **character n-gram + BM25**：character n-gram 负责适配古诗近似字面复用，BM25 负责词项级排序。是否需要古汉语分词器，留给真实 Eval 决定。
 
 这些内容只有形成真实证据或正式实现后，再更新本文为当前状态。
+
+
+## Artifact 对照检索
+
+Clause 构建完成后，Retrieval Eval 不再为不同模型维护三套搜索代码。新增 manifest-driven 搜索入口：
+
+```text
+Artifact manifest
+→ 识别 model / chunk_policy / dimension
+→ 选择对应 Query Encoder
+→ 使用同一 chronology filter / probe / Exact Search
+→ 输出同构结果
+```
+
+支持：
+
+- Qwen3-Embedding-0.6B + sentence；
+- Qwen3-Embedding-0.6B + clause；
+- BERT-CCPoem v1.0 + clause。
+
+`scripts/retrieval/compare_artifacts.py` 用同一个已知互文案例依次跑三套 Artifact，最终横向比较 `best_probe_rank` 与 `best_probe_cosine`。它是诊断工具，不是新的 Benchmark Pool；仍然复用既有真实互文案例。
