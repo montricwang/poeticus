@@ -263,6 +263,43 @@ def _lexical_results(
     }
 
 
+def probe_list_supports(
+    channel_results,
+    probe_work_ids: set[str],
+) -> list[dict]:
+    """Report where a known target appears before RRF.
+
+    Each QueryVariant × RetrievalChannel is one ranked list. This diagnostic
+    makes RRF behavior auditable by showing whether a target is broadly
+    supported or survives only in one particular query granularity/channel.
+    """
+    supports = []
+    for result in channel_results:
+        match = next(
+            (
+                hit
+                for hit in result.hits
+                if hit.work_id in probe_work_ids
+            ),
+            None,
+        )
+        supports.append(
+            {
+                "query": result.query.text,
+                "query_origins": [
+                    origin.level
+                    for origin in result.query.origins
+                ],
+                "channel": result.channel.name,
+                "rank": None if match is None else match.rank,
+                "text": None if match is None else match.text,
+                "score": None if match is None else match.score,
+                "score_name": None if match is None else match.score_name,
+            }
+        )
+    return supports
+
+
 def _candidate_row(candidate, chronology_status: str | None = None) -> dict:
     best = min(
         candidate.evidences,
@@ -434,11 +471,29 @@ def evaluate_hybrid(
         item.candidate.work_id: rank
         for rank, item in enumerate(eligibility.eligible, 1)
     }
+    list_supports = probe_list_supports(
+        channel_results,
+        probe_work_ids,
+    )
     probes = [
         {
             "work_id": work_id,
             "fused_rank": fused_rank_by_work.get(work_id),
             "eligible_rank": eligible_rank_by_work.get(work_id),
+            "list_supports": [
+                item
+                for item in list_supports
+                if item["rank"] is not None
+            ],
+            "missing_lists": [
+                {
+                    "query": item["query"],
+                    "query_origins": item["query_origins"],
+                    "channel": item["channel"],
+                }
+                for item in list_supports
+                if item["rank"] is None
+            ],
         }
         for work_id in sorted(probe_work_ids)
     ]
