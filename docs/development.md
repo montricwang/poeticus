@@ -107,3 +107,25 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 `main` 是稳定主线。功能和重构通过短期分支、PR、CI 后合并。
 
 当前生产部署使用 Railway；真实配置见 [deployment.md](deployment.md)。具体未来工作进入 GitHub Issues 或 [roadmap.md](roadmap.md)，不要在操作文档里保留已经结束的预览阶段说明。
+
+## 7. 工程决策审计
+
+重要工程取舍除了进入 Issue / PR 外，还应在 [Engineering Decision Register](decisions/README.md) 中记录其证据强度、来源和重新审视条件。
+
+Decision Register 使用四层分类：
+
+1. **Evidence-backed**：已有真实 Case、Benchmark、故障或外部约束支持；
+2. **Reasonable but unproven**：理由充分，但还没有足够真实数据证明；
+3. **Working default**：为了闭环先选的参数、阈值和实现默认；
+4. **Open / unresolved**：已有多个合理方向，当前证据不足。
+
+同时记录 `Origin`：`user-directed` / `AI-proposed` / `joint` / `inherited`。
+
+目的不是给每个小实现写 ADR，而是防止：
+
+- AI 在推进实现时自行补上的默认值被遗忘；
+- 临时参数因为存在得够久而被误认为架构原则；
+- 后续复盘只看到“最后选了什么”，看不到“当时为什么这样选”；
+- 新证据出现后不知道哪些决定应该优先重新打开。
+
+架构文档仍然负责描述**当前真相**；Decision Register 负责描述**当前真相的决策来路与可撤销条件**。
