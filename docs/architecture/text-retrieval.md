@@ -264,3 +264,33 @@ Artifact manifest
 - BERT-CCPoem v1.0 + clause。
 
 `scripts/retrieval/compare_artifacts.py` 用同一个已知互文案例依次跑三套 Artifact，最终横向比较 `best_probe_rank` 与 `best_probe_cosine`。它是诊断工具，不是新的 Benchmark Pool；仍然复用既有真实互文案例。
+
+
+## Lexical Retrieval baseline
+
+Dense Retrieval 之外，当前增加一条独立的字面召回链：
+
+```text
+原文
+→ character 2-3 gram
+→ SQLite FTS5 inverted index
+→ BM25 ranking
+```
+
+这里把两个层次分开：
+
+- character n-gram 决定“文本如何变成检索词项”；
+- BM25 决定“这些词项如何参与稀疏检索排序”。
+
+第一版使用 character 2-3 gram，不先依赖古汉语分词。标点作为边界，不生成跨标点 n-gram。这样优先适配诗词中一两字改写、局部近似引用等模式，同时保留后续比较专用分词器的空间。
+
+当前后端先用 Python 自带 SQLite FTS5：
+
+- 直接提供 inverted index 与 BM25；
+- 不新增独立搜索服务；
+- 可以在完整 Werneror sentence / clause Corpus 上建立真实索引；
+- 索引产物继续放在 `../poeticus-data`，不进入 Git。
+
+这只是 lexical baseline 的部署实现，不把 SQLite 预设为最终生产搜索后端。后续重点看真实 Recall、索引大小、构建时间和查询延迟，再决定是否需要 Elasticsearch / OpenSearch 等更重的搜索基础设施。
+
+Lexical 与 Dense 仍然是两条独立召回链，只有真实结果证明互补后才进入 Candidate Fusion。
