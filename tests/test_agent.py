@@ -6,6 +6,10 @@ from types import SimpleNamespace
 import pytest
 
 from backend.evidence.schema import EvidenceItem
+from backend.retrieval.client import (
+    RetrievalCandidate,
+    RetrievalSearchResponse,
+)
 
 POEM = (
     "风卷珠帘自上钩，萧萧乱叶报新秋。"
@@ -350,6 +354,11 @@ def test_tool_contracts_separate_allusion_and_reference_search(agent):
     text_param = reference_tool["parameters"]["properties"]["text"]
     assert "目标短句" in text_param["description"]
 
+    retrieval_tool = agent.TEXT_RETRIEVAL_TOOL["function"]
+    assert retrieval_tool["name"] == "search_predecessor_texts"
+    assert "自建古典诗词 Corpus" in retrieval_tool["description"]
+    assert "长尾互文" in retrieval_tool["description"]
+
 
 def test_reference_tool_queries_target_clause_and_returns_candidates(
     monkeypatch,
@@ -417,3 +426,120 @@ def test_reference_tool_queries_target_clause_and_returns_candidates(
     assert result["tool_count"] == 1
     assert result["evidences"][0]["metadata"]["dynasty"] == "唐"
 
+
+
+
+def test_local_retrieval_tool_is_hidden_when_service_is_disabled(
+    monkeypatch,
+    agent,
+):
+    monkeypatch.setattr(
+        agent,
+        "text_retrieval_client",
+        SimpleNamespace(enabled=False),
+    )
+
+    names = [
+        item["function"]["name"]
+        for item in agent._available_tools()
+    ]
+
+    assert "search_predecessor_texts" not in names
+
+
+def test_local_retrieval_tool_adds_host_poem_context_and_returns_candidates(
+    monkeypatch,
+    agent,
+):
+    create_calls = []
+    retrieval_calls = []
+
+    def fake_create(**kwargs):
+        create_calls.append(kwargs)
+        if len(create_calls) == 1:
+            return _tool_call_response(
+                "retrieval-1",
+                "search_predecessor_texts",
+                json.dumps(
+                    {"text": "片片轻鸥落晚沙"},
+                    ensure_ascii=False,
+                ),
+            )
+        return _text_response("最值得比较的是杜甫《小寒食舟中作》。")
+
+    class FakeRetrievalClient:
+        enabled = True
+
+        async def search(self, *, text, current_poem, top_k):
+            retrieval_calls.append(
+                {
+                    "text": text,
+                    "current_poem": current_poem,
+                    "top_k": top_k,
+                }
+            )
+            return RetrievalSearchResponse(
+                status="ok",
+                query=text,
+                candidates=[
+                    RetrievalCandidate(
+                        rank=1,
+                        work_id="dufu-1",
+                        title="小寒食舟中作",
+                        author="杜甫",
+                        dynasty="唐",
+                        text="片片轻鸥下急湍。",
+                        chronology_status="clearly_earlier",
+                        support_count=2,
+                    )
+                ],
+            )
+
+    monkeypatch.setattr(agent, "client", _fake_client(fake_create))
+    monkeypatch.setattr(
+        agent,
+        "text_retrieval_client",
+        FakeRetrievalClient(),
+    )
+
+    result = agent.graph.invoke(
+        {
+            "poem": "片片轻鸥落晚沙。",
+            "question": "这句改用了谁的诗？",
+            "selection": "片片轻鸥落晚沙",
+            "context": agent.PoemContext(
+                id="poem-1",
+                title="鹧鸪天",
+                author="陆游",
+                dynasty="宋",
+            ),
+        }
+    )
+
+    assert result["reply"] == "最值得比较的是杜甫《小寒食舟中作》。"
+    assert result["tool_count"] == 1
+    assert result.get("evidences") == []
+
+    assert len(retrieval_calls) == 1
+    call = retrieval_calls[0]
+    assert call["text"] == "片片轻鸥落晚沙"
+    assert call["top_k"] == 8
+    assert call["current_poem"].text == "片片轻鸥落晚沙。"
+    assert call["current_poem"].author == "陆游"
+    assert call["current_poem"].dynasty == "宋"
+
+    tool_names = {
+        item["function"]["name"]
+        for item in create_calls[0]["tools"]
+    }
+    assert "search_predecessor_texts" in tool_names
+
+    tool_message = next(
+        message
+        for message in create_calls[1]["messages"]
+        if message.get("role") == "tool"
+    )
+    payload = json.loads(tool_message["content"])
+    assert payload["evidence_type"] == "text_retrieval"
+    assert payload["candidates"][0]["author"] == "杜甫"
+    assert payload["candidates"][0]["text"] == "片片轻鸥下急湍。"
