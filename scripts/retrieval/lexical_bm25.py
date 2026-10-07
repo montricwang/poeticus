@@ -33,6 +33,10 @@ CHUNK_PATHS = {
 DEFAULT_MIN_N = 2
 DEFAULT_MAX_N = 3
 DEFAULT_BATCH_SIZE = 10_000
+EXPECTED_CHUNKS = {
+    "sentence": 4_822_054,
+    "clause": 9_425_173,
+}
 
 
 def iter_character_runs(text: str) -> Iterator[str]:
@@ -264,6 +268,9 @@ def build_bm25_index(
     if not chunk_path.is_file():
         raise ValueError(f"Chunk JSONL 不存在：{chunk_path}")
 
+    work_sha256 = sha256_file(work_path)
+    chunk_sha256 = sha256_file(chunk_path)
+
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "index.sqlite3"
     manifest_path = output_dir / "manifest.json"
@@ -323,9 +330,9 @@ def build_bm25_index(
         "works": work_count,
         "chunks": chunk_count,
         "work_path": str(work_path),
-        "work_sha256": sha256_file(work_path),
+        "work_sha256": work_sha256,
         "chunk_path": str(chunk_path),
-        "chunk_sha256": sha256_file(chunk_path),
+        "chunk_sha256": chunk_sha256,
         "database": db_path.name,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -514,7 +521,11 @@ def main() -> None:
                 min_n=args.min_n,
                 max_n=args.max_n,
                 batch_size=args.batch_size,
-                expected_chunks=args.expected_chunks,
+                expected_chunks=(
+                    args.expected_chunks
+                    if args.expected_chunks is not None
+                    else EXPECTED_CHUNKS[args.chunk_policy]
+                ),
                 force=args.force,
             )
         else:
