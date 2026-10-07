@@ -11,7 +11,7 @@ from backend.corpus.router import router as corpus_router
 
 app = FastAPI(
     title="Poeticus",
-    version=os.getenv("POETICUS_VERSION", "0.1.0-dev"),
+    version=os.getenv("POETICUS_VERSION", "0.3.0-dev"),
 )
 app.include_router(corpus_router)
 app.include_router(service_router)
