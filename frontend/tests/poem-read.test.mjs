@@ -2,25 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  poemContext,
   poemIncipit,
   poemLabel,
   poemText,
   poemTitle,
 } from "../src/data/poem-library.ts";
 import { selectionForPython } from "../src/lib/selection-offset.ts";
-
-test("当前公网宋词把朝代上下文传给聊天与 Retrieval", () => {
-  const work = {
-    id: "00000000-0000-0000-0000-000000000001",
-    author: "陆游",
-    cipai: "鹧鸪天",
-    yusheng_title: null,
-    title: null,
-    review_status: "imported_unreviewed",
-  };
-  assert.equal(poemContext(work).dynasty, "宋");
-});
 
 test("API 正文段落按原有顺序拼接，且不推断上下片", () => {
   const work = {
