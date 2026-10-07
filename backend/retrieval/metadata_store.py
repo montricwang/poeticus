@@ -482,6 +482,35 @@ class MetadataStore:
             )
         return found
 
+    def author_dynasty_counts(
+        self,
+        author: str | None,
+    ) -> dict[str, int]:
+        """Count Werneror dynasty labels for an exact author string."""
+        if not author:
+            return {}
+
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                """
+                SELECT dynasty, COUNT(*) AS work_count
+                FROM works
+                WHERE author = ? AND dynasty IS NOT NULL
+                GROUP BY dynasty
+                ORDER BY work_count DESC, dynasty ASC
+                """,
+                (author,),
+            ).fetchall()
+        finally:
+            connection.close()
+
+        return {
+            row["dynasty"]: int(row["work_count"])
+            for row in rows
+            if isinstance(row["dynasty"], str) and row["dynasty"]
+        }
+
     def find_current_work_aliases(
         self,
         *,

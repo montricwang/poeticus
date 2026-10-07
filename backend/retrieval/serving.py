@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
 
+from backend.retrieval.chronology import DYNASTY_PERIODS
 from backend.retrieval.fanout import (
     ChannelDescriptor,
     RetrievalHit,
@@ -140,6 +141,27 @@ class ServingSearchResult:
     candidates: tuple[ServingCandidate, ...]
     current_work_aliases: tuple[str, ...]
     timings_ms: dict
+
+
+def _dominant_known_dynasty(counts: dict[str, int]) -> str | None:
+    """Pick one corpus dynasty only when the evidence is unambiguous enough.
+
+    Unknown labels are ignored. If two known labels tie for the highest count,
+    leave chronology unresolved rather than inventing an ordering.
+    """
+    ranked = sorted(
+        (
+            (dynasty, count)
+            for dynasty, count in counts.items()
+            if dynasty in DYNASTY_PERIODS and count > 0
+        ),
+        key=lambda item: (-item[1], item[0]),
+    )
+    if not ranked:
+        return None
+    if len(ranked) > 1 and ranked[0][1] == ranked[1][1]:
+        return None
+    return ranked[0][0]
 
 
 class QwenQueryEncoder:
@@ -651,6 +673,31 @@ class RetrievalServingRuntime:
             author=current_author,
         )
         aliases.update(current_work_ids or ())
+
+        effective_target_dynasty = target_dynasty
+        dynasty_source = "request" if target_dynasty else "unknown"
+
+        if not effective_target_dynasty and aliases:
+            alias_works = self.metadata.read_works(aliases)
+            alias_counts: dict[str, int] = {}
+            for work in alias_works.values():
+                if work.dynasty:
+                    alias_counts[work.dynasty] = (
+                        alias_counts.get(work.dynasty, 0) + 1
+                    )
+            effective_target_dynasty = _dominant_known_dynasty(
+                alias_counts
+            )
+            if effective_target_dynasty:
+                dynasty_source = "current_alias"
+
+        if not effective_target_dynasty and current_author:
+            effective_target_dynasty = _dominant_known_dynasty(
+                self.metadata.author_dynasty_counts(current_author)
+            )
+            if effective_target_dynasty:
+                dynasty_source = "author_corpus"
+
         alias_ms = (time.perf_counter() - aliases_started) * 1000
 
         service = TextRetrievalService(
@@ -668,7 +715,7 @@ class RetrievalServingRuntime:
         result = service.search(
             query,
             current_work_id=None,
-            target_dynasty=target_dynasty,
+            target_dynasty=effective_target_dynasty,
             current_work_ids=aliases,
         )
         service_ms = (time.perf_counter() - service_started) * 1000
@@ -710,6 +757,8 @@ class RetrievalServingRuntime:
 
         timings = {
             "current_alias_lookup_ms": alias_ms,
+            "target_dynasty": effective_target_dynasty,
+            "target_dynasty_source": dynasty_source,
             "service_total_ms": service_ms,
             "orchestration_ms": max(0.0, service_ms - channel_total),
             "channels": profiles,
