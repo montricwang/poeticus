@@ -252,12 +252,13 @@ def build_metadata_store(
             raise ValueError(f"输入文件不存在：{path}")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path = output_path.with_suffix(".manifest.json")
     temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
     if output_path.exists() and not force:
         raise ValueError(
             f"Metadata store 已存在：{output_path}；如需重建请传 force=True"
         )
-    for path in (output_path, temp_path):
+    for path in (output_path, manifest_path, temp_path):
         if force and path.exists():
             path.unlink()
     if temp_path.exists():
@@ -325,7 +326,7 @@ def build_metadata_store(
     temp_path.replace(output_path)
     elapsed = time.perf_counter() - started
 
-    return {
+    result = {
         "status": "complete",
         "database": str(output_path),
         "database_bytes": output_path.stat().st_size,
@@ -334,10 +335,20 @@ def build_metadata_store(
         "sentence_chunks": sentence_count,
         "clause_chunks": clause_count,
         "build_seconds": elapsed,
+        "work_path": str(work_path),
+        "sentence_chunk_path": str(sentence_chunk_path),
+        "clause_chunk_path": str(clause_chunk_path),
         "work_sha256": source_hashes["work_sha256"],
         "sentence_sha256": source_hashes["sentence_sha256"],
         "clause_sha256": source_hashes["clause_sha256"],
     }
+    temp_manifest = manifest_path.with_suffix(".json.tmp")
+    temp_manifest.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    temp_manifest.replace(manifest_path)
+    return result
 
 
 class MetadataStore:
