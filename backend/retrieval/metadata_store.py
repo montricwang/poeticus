@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Iterable, Iterator, Literal, Sequence
 
 ChunkPolicy = Literal["sentence", "clause"]
+METADATA_SCHEMA_VERSION = "2"
 _TABLES: dict[ChunkPolicy, str] = {
     "sentence": "sentence_chunks",
     "clause": "clause_chunks",
@@ -99,7 +100,7 @@ def _create_schema(connection: sqlite3.Connection) -> None:
 
         CREATE TABLE clause_chunks (
             global_row INTEGER PRIMARY KEY,
-            chunk_id TEXT NOT NULL UNIQUE,
+            chunk_id TEXT NOT NULL,
             work_id TEXT NOT NULL,
             text TEXT NOT NULL,
             start INTEGER,
@@ -307,7 +308,7 @@ def build_metadata_store(
             "clause_sha256": _sha256_file(clause_chunk_path),
         }
         metadata = {
-            "schema_version": "1",
+            "schema_version": METADATA_SCHEMA_VERSION,
             "works": str(work_count),
             "sentence_chunks": str(sentence_count),
             "clause_chunks": str(clause_count),
@@ -328,6 +329,7 @@ def build_metadata_store(
 
     result = {
         "status": "complete",
+        "schema_version": METADATA_SCHEMA_VERSION,
         "database": str(output_path),
         "database_bytes": output_path.stat().st_size,
         "database_gib": output_path.stat().st_size / (1024 ** 3),
@@ -358,6 +360,12 @@ class MetadataStore:
         self.path = path.expanduser().resolve()
         if not self.path.is_file():
             raise ValueError(f"Metadata store 不存在：{self.path}")
+
+        stats = self.stats()
+        if stats.get("schema_version") != METADATA_SCHEMA_VERSION:
+            raise ValueError(
+                "Metadata schema version 不匹配；请重建 serving metadata"
+            )
 
     def stats(self) -> dict[str, str]:
         connection = self._connect()
