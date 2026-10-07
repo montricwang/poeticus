@@ -71,6 +71,11 @@ def _iter_jsonl(path: Path) -> Iterator[dict]:
 def _create_schema(connection: sqlite3.Connection) -> None:
     connection.executescript(
         """
+        CREATE TABLE artifact_meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        ) WITHOUT ROWID;
+
         CREATE TABLE works (
             work_id TEXT PRIMARY KEY,
             title TEXT,
@@ -102,6 +107,17 @@ def _create_schema(connection: sqlite3.Connection) -> None:
         );
         """
     )
+
+
+def _sha256_file(
+    path: Path,
+    block_size: int = 8 * 1024 * 1024,
+) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        while block := stream.read(block_size):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _insert_works(
@@ -284,6 +300,23 @@ def build_metadata_store(
         )
         connection.commit()
 
+        source_hashes = {
+            "work_sha256": _sha256_file(work_path),
+            "sentence_sha256": _sha256_file(sentence_chunk_path),
+            "clause_sha256": _sha256_file(clause_chunk_path),
+        }
+        metadata = {
+            "schema_version": "1",
+            "works": str(work_count),
+            "sentence_chunks": str(sentence_count),
+            "clause_chunks": str(clause_count),
+            **source_hashes,
+        }
+        connection.executemany(
+            "INSERT INTO artifact_meta(key, value) VALUES (?, ?)",
+            list(metadata.items()),
+        )
+
         connection.execute("ANALYZE")
         connection.commit()
     finally:
@@ -301,6 +334,9 @@ def build_metadata_store(
         "sentence_chunks": sentence_count,
         "clause_chunks": clause_count,
         "build_seconds": elapsed,
+        "work_sha256": source_hashes["work_sha256"],
+        "sentence_sha256": source_hashes["sentence_sha256"],
+        "clause_sha256": source_hashes["clause_sha256"],
     }
 
 
@@ -311,6 +347,16 @@ class MetadataStore:
         self.path = path.expanduser().resolve()
         if not self.path.is_file():
             raise ValueError(f"Metadata store 不存在：{self.path}")
+
+    def stats(self) -> dict[str, str]:
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                "SELECT key, value FROM artifact_meta"
+            ).fetchall()
+        finally:
+            connection.close()
+        return {row["key"]: row["value"] for row in rows}
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(
