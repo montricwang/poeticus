@@ -25,10 +25,7 @@ from backend.retrieval.fanout import (
     ChannelDescriptor,
     RetrievalHit,
 )
-from backend.retrieval.metadata_store import (
-    METADATA_SCHEMA_VERSION,
-    MetadataStore,
-)
+from backend.retrieval.metadata_store import MetadataStore
 from backend.retrieval.service import TextRetrievalService
 
 
@@ -539,10 +536,6 @@ class RetrievalServingRuntime:
         started = time.perf_counter()
         self.metadata = MetadataStore(paths.metadata_db)
         metadata_stats = self.metadata.stats()
-        if metadata_stats.get("schema_version") != METADATA_SCHEMA_VERSION:
-            raise ValueError(
-                "Metadata schema version 不匹配；请重建 serving metadata"
-            )
         if int(metadata_stats.get("sentence_chunks", "-1")) != int(
             sentence_manifest["completed_chunks"]
         ):
