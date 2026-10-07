@@ -17,7 +17,7 @@
 
 | ID | Decision | Level | Origin | Why / Evidence | Status | Re-review trigger |
 | --- | --- | --- | --- | --- | --- | --- |
-| RET-101 | 第一台 Retrieval VPS 优先考虑 16 GiB，而不是 8 GiB | 2 | joint | 当前单进程约 5.27 GiB RSS；8 GiB 可运行但给 OS、page cache、峰值留下的余量偏紧 | proposed | 在目标 Linux VPS 上做一次实际 RSS / latency 测量 |
+| RET-101 | 第一台 Retrieval VPS 优先考虑 16 GiB，而不是 8 GiB | 2 | joint | 当时因为 Windows steady RSS 约 5.27 GiB，担心 8 GiB 给 OS / page cache 的余量偏紧 | superseded | 已由 RET-113 替代：先实测 2核8G 的最低可行性 |
 | RET-102 | 第一版 Retrieval 节点保持单进程 / 单 worker | 2 | AI-proposed | 多 worker 大概率复制 Qwen + FAISS 常驻内存；本地 5 并发单进程约 2.37 req/s，早期流量可能足够 | proposed | 真实并发需求超过单实例能力，或验证 FAISS / 模型可安全共享内存 |
 | RET-103 | 暂时不把 Railway PostgreSQL 搬到 Retrieval VPS | 2 | joint | 不希望数据库与高 CPU / 高 RAM Retrieval 争抢资源，也避免把故障域合并 | proposed | Railway DB 成本、延迟或运维问题出现明确迁移动机 |
 | RET-104 | 第一版仍使用 CPU Serving，不上 GPU | 2 | AI-proposed | CPU 已能完成检索；尚无证据证明 GPU 成本能换来必要的产品收益 | proposed | 新 Query 延迟成为真实 UX 瓶颈，且 Profiling 证明主要时间在 encoder / ANN 可被 GPU 有效降低 |
@@ -27,7 +27,9 @@
 | RET-108 | 不建立一个混合诗词、词话、辞书的万能索引；按 Retrieval Domain / Tool 保持语义边界 | 2 | AI-proposed | 不同问题的检索目标和证据可信度不同，混在一张榜单会降低解释性和结果质量 | proposed | 真实产品表明统一索引反而更有效且能稳定路由 |
 | RET-109 | 用户明确追问“借了谁哪一句 / 化用了哪段前代文本”时，若 Corpus Tool 可用，优先 `search_predecessor_texts`，不要先消耗 `lookup_reference` / `lookup_allusion` | 1 | AI-proposed | 首次 E2E 暴露错误路由；修订 Prompt / Tool description 后，同一陆游与姜夔 Case 均以 `text_retrieval` 为 first tool，routing gate 均通过；姜夔首轮弱命中后第二轮仍保持 Corpus Retrieval，并以「十年一觉扬州梦」找回杜牧《遣怀》 | active | 更大自然问题集出现系统性误路由，或未来 Tool 数量增加使 Prompt 路由不再稳定 |
 | RET-110 | metadata compact schema 升级为 v2，并拒绝继续加载旧 v1 artifact | 1 | AI-proposed | 全量 v2 已完成重建并被 Serving 正常加载；DB 从约 2.313 GiB 降到 1.828 GiB（约 -21%），build 约 73 s，陆游 canary 仍 Top-4；强制版本门槛确保部署节点不会静默沿用旧 v1 | active | 未来 schema 迁移频率明显上升、全量重建成本不可接受时，再考虑向后兼容 / migration 策略 |
-| RET-111 | 第一台 Linux Deployment Spike 候选使用 DigitalOcean SFO3 Basic 16 GiB / 8 shared vCPU / 320 GiB，而不是直接锁定 Hetzner | 2 | AI-proposed | 2026-10 当前 DigitalOcean 16 GiB Basic 为 $96/月上限且按秒计费、SFO3 可用；Hetzner 美国 16 GiB CPX41 调价后约 $141.49/月；Spike 只需短时验证 Linux RSS/latency，因此 DO 的按秒计费与 SFO 区域更适合作为第一实验节点 | experiment | Linux benchmark 出现 shared CPU 抖动、延迟不可接受或区域网络问题时，对比 dedicated CPU / Akamai / Hetzner 等候选 |
+| RET-111 | 第一台 Linux Deployment Spike 候选使用 DigitalOcean SFO3 Basic 16 GiB / 8 shared vCPU / 320 GiB | 2 | AI-proposed | 当时过度围绕 Railway SFO 的网络位置选择海外节点，没有先把国内云作为第一候选；用户明确指出可以优先使用中国云厂商 | superseded | 已由 RET-112 替代 |
+| RET-112 | 第一台 Linux Deployment Spike 改用腾讯云上海 8核16G 标准型按量实例 | 2 | joint | 从海外节点改为国内云是正确方向，但规格仍然把“肯定够”误当成“应该先测” | superseded | 已由 RET-113 替代 |
+| RET-113 | 第一台 Linux Deployment Spike 从腾讯云上海 2核8G 标准型按量实例开始 | 2 | joint | Windows steady RSS 约 5.27 GiB，说明 8 GiB 有可能容纳单进程，但余量有限；2 vCPU 是否让 Qwen / FAISS 延迟不可接受未知。Spike 应先验证最低可行规格，再按“4核8G → 4核16G”逐档升级，而不是一开始购买 8核16G | experiment | 若 8 GiB OOM / 持续 swap / page-cache 压力明显则升 16 GiB；若 RAM 足够但 CPU 慢则先升 4核8G |
 
 ## C. 为了闭环而暂定的默认值
 
@@ -48,7 +50,7 @@
 
 | ID | Open question | Level | Origin | 当前已知 | 下一验证 |
 | --- | --- | --- | --- | --- | --- |
-| RET-301 | 16 GiB VPS 在真实 Linux 上是否足够宽裕 | 4 | joint | Windows 本机 steady RSS 约 5.27 GiB；尚未测 Linux allocator / page cache / daemon 开销 | 选定候选 VPS 后做同脚本 smoke benchmark |
+| RET-301 | 8 GiB VPS 是否能作为单 worker Retrieval 的最低可行规格 | 4 | joint | Windows 本机 steady RSS 约 5.27 GiB；8 GiB 理论可运行，但 Linux allocator / page cache / 峰值余量未知 | 先在腾讯云上海 2核8G 跑同一套 RSS / latency / concurrency benchmark |
 | RET-302 | 当前单实例的并发上限与可接受响应时间 | 4 | joint | 本地 5 并发约 2.37 req/s，individual p50 约 1.42 s；这不是生产压测 | 真实 Agent 流量模型 + Linux VPS benchmark |
 | RET-303 | 新 Query 的端到端 latency 是否需要优化 | 4 | joint | supplement probe：陆游约 1.68 s、姜夔约 1.64 s、李清照 4 QueryVariants 约 3.38 s；包含 uncached Qwen 与冷 page/cache 效应 | 更多 distinct Query、分阶段 profile；不要只看重复 Query warm cache |
 | RET-304 | 全文 multi-span 是否能救回 `青楼梦好`，并改善 transformed-use | 4 | user-directed | 当前单 span miss；理论上《扬州慢》多个独立线索可能形成杜牧 evidence cluster | 专门 multi-span Eval |

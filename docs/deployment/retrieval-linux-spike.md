@@ -2,22 +2,24 @@
 
 > 这是 Issue #160 的临时验证手册，不代表正式生产供应商或长期部署规范。
 
-目标不是立即上线，而是在一台可随时删除的 16 GiB Linux VPS 上复现 Retrieval Serving 的资源与延迟数据。
+目标不是立即上线，而是从一台可随时删除的 2核8G Linux VPS 开始，验证 Retrieval Serving 的最低可行资源规格。
 
 ## 1. 第一候选
 
 当前第一候选：
 
 ```text
-DigitalOcean
-Region: SFO3
-Plan: Basic Droplet
-RAM: 16 GiB
-vCPU: 8 shared
-Disk: 320 GiB SSD
+腾讯云 CVM
+Region: 上海
+Class: 标准型
+vCPU: 2
+RAM: 8 GiB
+System Disk: 约 50–60 GiB
+Billing: 按量计费
+Public Network: 按流量计费
 ```
 
-选择它只用于 Spike。生产供应商仍未锁定。
+选择它只用于 Spike。生产规格仍未锁定。
 
 ## 2. 为什么先测这台
 
@@ -30,7 +32,7 @@ CPU only
 single worker
 ```
 
-因此 16 GiB / 320 GiB 足够验证：
+因此第一轮先故意用更紧的 8 GiB / 约 50–60 GiB 系统盘验证：
 
 - Linux 实际 RSS；
 - shared CPU 对 Qwen / FAISS / BM25 的影响；
@@ -75,9 +77,14 @@ Embedding 目录在服务器上仍要保留目录结构，但只需要其中的 
 
 ## 4. 创建临时 Linux 主机
 
-建议：
+腾讯云控制台建议：
 
+- 地域：上海；
 - Ubuntu 24.04 LTS；
+- 2 核 8 GiB 标准型；
+- 按量计费；
+- 系统盘约 50–60 GiB；
+- 公网按流量计费，带宽峰值约 100 Mbps；
 - 只配置 SSH；
 - 暂时不要开放 Retrieval HTTP 端口；
 - 不部署 PostgreSQL；
@@ -192,10 +199,10 @@ python -m scripts.retrieval.probe_serving \
 数据出来后只回答：
 
 ```text
-16 GiB RAM 是否宽裕？
-shared CPU 是否足够？
+8 GiB RAM 是否真的够？
+2 vCPU 是否足够？
 单 worker 是否足够？
-SFO3 是否值得成为生产节点？
+腾讯云上海是否值得成为生产节点？
 ```
 
-如果 shared CPU 抖动明显，再比较 dedicated CPU 或其他供应商；不要在没有 Linux 数据前继续猜规格。
+如果 8 GiB 内存够但 2 vCPU 太慢，先升级到 4核8G；只有出现 OOM、持续 swap 或明显 page-cache 压力，才升到 16 GiB。跨境调用问题另行比较腾讯云香港或海外节点。
