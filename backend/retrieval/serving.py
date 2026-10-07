@@ -172,6 +172,10 @@ class QwenQueryEncoder:
         self._cache: OrderedDict[str, object] = OrderedDict()
         self._lock = threading.Lock()
 
+    def clear_cache(self) -> None:
+        with self._lock:
+            self._cache.clear()
+
     def encode_many(self, queries: Sequence[str]):
         np = _require_numpy()
         with self._lock:
