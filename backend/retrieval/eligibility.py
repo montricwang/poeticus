@@ -8,7 +8,7 @@ uncertain for later Agent adjudication.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Collection, Literal, Sequence
 
 from backend.retrieval.chronology import (
     ChronologyStatus,
@@ -42,6 +42,7 @@ def apply_candidate_eligibility(
     candidates: Sequence[FusedCandidate],
     *,
     current_work_id: str | None,
+    current_work_ids: Collection[str] | None = None,
     target_dynasty: str | None,
 ) -> EligibilityResult:
     """Filter self-hits and clearly later works without sacrificing recall.
@@ -53,6 +54,9 @@ def apply_candidate_eligibility(
     """
     eligible: list[EligibleCandidate] = []
     rejected: list[RejectedCandidate] = []
+    self_work_ids = set(current_work_ids or ())
+    if current_work_id:
+        self_work_ids.add(current_work_id)
 
     for candidate in candidates:
         chronology_status = classify_dynasty_relation(
@@ -60,7 +64,7 @@ def apply_candidate_eligibility(
             target_dynasty,
         )
 
-        if current_work_id and candidate.work_id == current_work_id:
+        if candidate.work_id in self_work_ids:
             rejected.append(
                 RejectedCandidate(
                     candidate=candidate,
