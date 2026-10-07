@@ -25,7 +25,7 @@
 | RET-106 | 未来多个 span 应优先在一次 Retrieval 请求内 batch，而不是 Agent 连续发很多独立 HTTP 请求 | 2 | AI-proposed | 当前 Dense channel 原生 batch；1/3/4 Query 的 warm latency 显示有摊薄空间 | experiment | 实现 multi-span API 后测真实吞吐与候选质量 |
 | RET-107 | 词话 / 诗话先做“小而精的 curated RAG”，开放 Web Search 负责长尾兜底 | 2 | joint | Poeticus 的评论资料不需要一开始追求全集；精选权威原典主要提供 grounding，Web Search 提供覆盖面 | proposed | 用户问题大量落在 curated corpus 之外，或 Search 质量不足 |
 | RET-108 | 不建立一个混合诗词、词话、辞书的万能索引；按 Retrieval Domain / Tool 保持语义边界 | 2 | AI-proposed | 不同问题的检索目标和证据可信度不同，混在一张榜单会降低解释性和结果质量 | proposed | 真实产品表明统一索引反而更有效且能稳定路由 |
-| RET-109 | 用户明确追问“借了谁哪一句 / 化用了哪段前代文本”时，若 Corpus Tool 可用，优先 `search_predecessor_texts`，不要先消耗 `lookup_reference` / `lookup_allusion` | 2 | AI-proposed | 首次真实 E2E 中陆游先浪费一次 reference；`青楼梦好` 两次都走 allusion，耗尽 Tool budget，证明现有路由边界不足 | experiment | 修订 Prompt / Tool description 后重跑同一 E2E；若仍不稳定，再考虑更显式的 router / tool gating |
+| RET-109 | 用户明确追问“借了谁哪一句 / 化用了哪段前代文本”时，若 Corpus Tool 可用，优先 `search_predecessor_texts`，不要先消耗 `lookup_reference` / `lookup_allusion` | 1 | AI-proposed | 首次 E2E 暴露错误路由；修订 Prompt / Tool description 后，同一陆游与姜夔 Case 均以 `text_retrieval` 为 first tool，routing gate 均通过；姜夔首轮弱命中后第二轮仍保持 Corpus Retrieval，并以「十年一觉扬州梦」找回杜牧《遣怀》 | active | 更大自然问题集出现系统性误路由，或未来 Tool 数量增加使 Prompt 路由不再稳定 |
 
 ## C. 为了闭环而暂定的默认值
 
@@ -81,6 +81,7 @@
 - PR #146 — Retrieval Serving runtime / benchmark
 - `retrieval_serving_20261007_1640` — 第一份 Serving Benchmark
 - `retrieval_serving_probe_20261007_1651` — uncached Query + fixture self-hit supplement probe
-- `agent_retrieval_e2e_20261007_1731` — 首次真实 Agent → HTTP Retrieval Service → Agent E2E
+- `agent_retrieval_e2e_20261007_1731` — 首次真实 Agent → HTTP Retrieval Service → Agent E2E（暴露 Tool Routing 问题）
+- `agent_retrieval_e2e_20261007_1758` — 修订后 E2E；两条 Case 均 first-tool = text_retrieval，姜夔第二轮 query reformulation 找回杜牧
 - Issue #151 — Corpus duplicate / variant self-hit profiling
 - Issue #152 — clause metadata 无用 UNIQUE index / 重新测量 compact DB 体积
