@@ -137,6 +137,10 @@ def test_metadata_store_builds_and_reads_rows(tmp_path):
         author="作者甲",
     ) == {"w1", "w1-copy"}
 
+    assert store.author_dynasty_counts("作者甲") == {"唐": 2}
+    assert store.author_dynasty_counts("作者乙") == {"宋": 1}
+    assert store.author_dynasty_counts("不存在") == {}
+
 
 def test_content_fingerprint_ignores_whitespace_only():
     assert content_fingerprint("甲句。\n乙句。") == content_fingerprint(
