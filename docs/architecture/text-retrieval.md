@@ -264,3 +264,72 @@ Artifact manifest
 - BERT-CCPoem v1.0 + clause。
 
 `scripts/retrieval/compare_artifacts.py` 用同一个已知互文案例依次跑三套 Artifact，最终横向比较 `best_probe_rank` 与 `best_probe_cosine`。它是诊断工具，不是新的 Benchmark Pool；仍然复用既有真实互文案例。
+
+
+## Lexical Retrieval baseline
+
+Dense Retrieval 之外，当前增加一条独立的字面召回链：
+
+```text
+原文
+→ character 2-3 gram
+→ SQLite FTS5 inverted index
+→ BM25 ranking
+```
+
+这里把两个层次分开：
+
+- character n-gram 决定“文本如何变成检索词项”；
+- BM25 决定“这些词项如何参与稀疏检索排序”。
+
+第一版使用 character 2-3 gram，不先依赖古汉语分词。标点作为边界，不生成跨标点 n-gram。这样优先适配诗词中一两字改写、局部近似引用等模式，同时保留后续比较专用分词器的空间。
+
+当前后端先用 Python 自带 SQLite FTS5：
+
+- 直接提供 inverted index 与 BM25；
+- 不新增独立搜索服务；
+- 可以在完整 Werneror sentence / clause Corpus 上建立真实索引；
+- 索引产物继续放在 `../poeticus-data`，不进入 Git。
+
+这只是 lexical baseline 的部署实现，不把 SQLite 预设为最终生产搜索后端。后续重点看真实 Recall、索引大小、构建时间和查询延迟，再决定是否需要 Elasticsearch / OpenSearch 等更重的搜索基础设施。
+
+Lexical 与 Dense 仍然是两条独立召回链，只有真实结果证明互补后才进入 Candidate Fusion。
+
+
+## Lexical / Hybrid 的当前取舍
+
+围绕 BM25 还能继续增加分词、归一化、查询扩展、字段权重、参数变体和重排等大量组件。当前不把这些可能性一次性做成“搜索引擎全家桶”，而按真实互文 Case 购买复杂度。
+
+### 已经采用
+
+- **character 2-3 gram + BM25**：当前 lexical 主力；已在强字面复用 Case 上证明增量；
+- **标点作为 n-gram 边界**：避免跨标点生成无意义 term；
+- **sentence + clause Corpus 粒度**：真实 Case 已证明互补；
+- **deterministic multi-query** 作为下一步：优先比较完整 passage、sentence、clause，而不是先让 LLM 自由改写 Query。
+
+### 下一阶段优先候选
+
+**RRF（Reciprocal Rank Fusion）** 是第一版 Candidate Fusion 的优先候选。
+
+原因是 Dense cosine、BM25 score、不同 query / chunk 粒度的分数并不在同一尺度。第一版若直接做加权分数，需要额外定义归一化和权重；RRF 只使用各路排名，能先回答“多路候选能否稳定合并”这个更基本的问题。
+
+是否正式采用 RRF，等 deterministic multi-query 的真实结果出来后再决定。
+
+### 有价值，但需要真实证据后再做
+
+- **检索字段归一化**：繁简、明确异体字可以作为独立 retrieval representation；原始文本必须继续保留，不能静默改写 Corpus。先画像实际差异，再决定是否实施；
+- **词级分词 + n-gram 多字段**：只有 character n-gram 的真实结果出现大量短片段噪声或系统性漏召回时，再比较古汉语分词方案；
+- **位置 / 邻近信号**：若正确候选已进入 Top-K，但大量偶然共享 n-gram 的结果排在前面，可增加顺序或邻近约束；
+- **专门 reranker / Cross-Encoder**：只有 Candidate Fusion 后的候选排序仍明显影响 DeepSeek 可见范围时再引入。
+
+### 当前明确不做
+
+- edge n-gram：主要服务前缀搜索 / autocomplete，与互文候选发现无直接证据；
+- 拼音字段：当前任务不是输入法容错，同音扩展更可能扩大噪声；
+- 全局同义词 / 意象词扩展：容易把“寻找前代文本来源”漂移成“寻找主题相似诗句”；
+- 字级 unigram：高频单字噪声大，当前没有证据证明收益；
+- fuzzy / 拼写纠错：不是当前互文召回的主要失败类型；
+- BM25+ / BM25L / DFR / Query Likelihood 等 ranking 变体：现有 BM25 尚未暴露需要更换打分模型的真实失败；
+- LTR / learned sparse（如 SPLADE 一类）：当前缺少足够训练标签，也没有证据支持增加模型与索引复杂度。
+
+原则仍然是：**先把 Query Strategy、候选融合和 chronology 这些已经由真实 Case 暴露的问题解决，再优化更细的 lexical 组件。**
