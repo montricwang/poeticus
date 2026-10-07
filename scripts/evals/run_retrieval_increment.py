@@ -699,7 +699,7 @@ def main() -> None:
         },
         "cases": [],
         "note": (
-            "heuristic_bucket 只用于快速导航；"
+            "comparison_bucket 只用于快速导航；"
             "最终判断必须人工阅读模型回答与 Retrieval evidence。"
         ),
     }
