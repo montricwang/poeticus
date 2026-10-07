@@ -528,10 +528,13 @@ def execute_tools(state: RouterState) -> dict:
                             ),
                             top_k=max_items,
                         )
-                        items = [
-                            item.model_dump()
-                            for item in retrieval.candidates[:max_items]
-                        ]
+                        items = []
+                        for candidate in retrieval.candidates[:max_items]:
+                            data = candidate.model_dump()
+                            data["text"] = data["text"][:800]
+                            if isinstance(data.get("title"), str):
+                                data["title"] = data["title"][:200]
+                            items.append(data)
                         result = {
                             "status": retrieval.status,
                             "query": query,
