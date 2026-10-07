@@ -340,7 +340,8 @@ def test_tool_contracts_separate_allusion_and_reference_search(agent):
     reference_tool = agent.TOOLS[1]["function"]
 
     assert allusion_tool["name"] == "lookup_allusion"
-    assert "典故性短语" in allusion_tool["description"]
+    assert "人物故事" in allusion_tool["description"]
+    assert "借了谁哪一句诗" in allusion_tool["description"]
     assert "整句诗文的全文相似检索" in allusion_tool["description"]
 
     term = allusion_tool["parameters"]["properties"]["term"]
@@ -350,6 +351,7 @@ def test_tool_contracts_separate_allusion_and_reference_search(agent):
     assert "前代诗文" in reference_tool["description"]
     assert "当前作品或后代作品" in reference_tool["description"]
     assert "高度压缩或反用" in reference_tool["description"]
+    assert "不要先用本工具重复试探" in reference_tool["description"]
 
     text_param = reference_tool["parameters"]["properties"]["text"]
     assert "目标短句" in text_param["description"]
@@ -357,6 +359,7 @@ def test_tool_contracts_separate_allusion_and_reference_search(agent):
     retrieval_tool = agent.TEXT_RETRIEVAL_TOOL["function"]
     assert retrieval_tool["name"] == "search_predecessor_texts"
     assert "自建古典诗词 Corpus" in retrieval_tool["description"]
+    assert "借了谁哪一句诗" in retrieval_tool["description"]
     assert "长尾互文" in retrieval_tool["description"]
 
 
@@ -543,3 +546,12 @@ def test_local_retrieval_tool_adds_host_poem_context_and_returns_candidates(
     assert payload["evidence_type"] == "text_retrieval"
     assert payload["candidates"][0]["author"] == "杜甫"
     assert payload["candidates"][0]["text"] == "片片轻鸥下急湍。"
+
+
+def test_agent_prompt_prioritizes_corpus_retrieval_for_textual_provenance(agent):
+    prompt = agent.compose_prompt("agent_decide")
+
+    assert "应优先使用它" in prompt
+    assert "即使目标短语同时带有典故色彩" in prompt
+    assert "不要仅因为首轮 miss 就改用典故工具" in prompt
+    assert "不要先用 `lookup_reference`" in prompt
