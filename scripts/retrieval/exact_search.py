@@ -31,6 +31,40 @@ DEFAULT_ARTIFACT_DIR = (
 )
 DEFAULT_TOP_K = 20
 
+# Conservative coarse chronology for the current Werneror labels.
+# A candidate group is admitted only when its whole period is safely earlier
+# than the target dynasty's start. This intentionally excludes same-dynasty
+# and overlapping periods; exact author/work chronology is a later layer.
+DYNASTY_PERIODS = {
+    "先秦": (-3000, -221),
+    "秦": (-221, -206),
+    "汉": (-206, 220),
+    "魏晋": (220, 420),
+    "魏晋末南北朝初": (400, 440),
+    "南北朝": (420, 589),
+    "隋": (581, 618),
+    "隋末唐初": (610, 630),
+    "唐": (618, 907),
+    "唐末宋初": (880, 1000),
+    "辽": (916, 1125),
+    "宋": (960, 1279),
+    "金": (1115, 1234),
+    "宋末金初": (1110, 1140),
+    "宋末元初": (1250, 1300),
+    "金末元初": (1210, 1300),
+    "元": (1271, 1368),
+    "元末明初": (1350, 1400),
+    "明": (1368, 1644),
+    "明末清初": (1620, 1680),
+    "清": (1636, 1912),
+    "清末民国初": (1890, 1930),
+    "清末近现代初": (1890, 1930),
+    "近现代": (1912, 1949),
+    "民国末当代初": (1940, 1960),
+    "近现代末当代初": (1940, 1960),
+    "当代": (1949, 2100),
+}
+
 
 def sha256_file(path: Path, block_size: int = 8 * 1024 * 1024) -> str:
     digest = hashlib.sha256()
@@ -134,6 +168,86 @@ def ensure_model_snapshot(
     return model_path
 
 
+def definitely_earlier_dynasties(target_dynasty: str) -> set[str]:
+    if target_dynasty not in DYNASTY_PERIODS:
+        raise ValueError(
+            f"尚未定义朝代时间范围：{target_dynasty!r}；"
+            "不能安全地做前代过滤"
+        )
+    target_start, _ = DYNASTY_PERIODS[target_dynasty]
+    return {
+        dynasty
+        for dynasty, (_, candidate_end) in DYNASTY_PERIODS.items()
+        if candidate_end < target_start
+    }
+
+
+def build_dynasty_row_mask(
+    *,
+    work_path: Path,
+    chunk_path: Path,
+    allowed_dynasties: set[str],
+    expected_chunks: int,
+):
+    try:
+        import numpy as np
+    except ImportError as exc:
+        raise RuntimeError(
+            "朝代过滤需要 NumPy；请安装 requirements-retrieval.txt"
+        ) from exc
+
+    if not work_path.is_file():
+        raise ValueError(f"Work JSONL 不存在：{work_path}")
+    if not chunk_path.is_file():
+        raise ValueError(f"Chunk JSONL 不存在：{chunk_path}")
+
+    allowed_work_ids: set[str] = set()
+    with work_path.open(encoding="utf-8") as stream:
+        for line_no, line in enumerate(stream, 1):
+            if not line.strip():
+                continue
+            try:
+                work = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Work JSONL 第 {line_no} 行无法解析"
+                ) from exc
+            if work.get("dynasty") in allowed_dynasties:
+                work_id = work.get("work_id")
+                if not isinstance(work_id, str) or not work_id:
+                    raise ValueError(
+                        f"Work JSONL 第 {line_no} 行缺少有效 work_id"
+                    )
+                allowed_work_ids.add(work_id)
+
+    mask = np.zeros(expected_chunks, dtype=bool)
+    logical_row = 0
+    with chunk_path.open(encoding="utf-8") as stream:
+        for line_no, line in enumerate(stream, 1):
+            if not line.strip():
+                continue
+            if logical_row >= expected_chunks:
+                raise ValueError(
+                    "Chunk JSONL 条数超过 Embedding manifest 的 completed_chunks"
+                )
+            try:
+                chunk = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"Chunk JSONL 第 {line_no} 行无法解析"
+                ) from exc
+            if chunk.get("work_id") in allowed_work_ids:
+                mask[logical_row] = True
+            logical_row += 1
+
+    if logical_row != expected_chunks:
+        raise ValueError(
+            f"Chunk JSONL 实际 {logical_row:,} 条，"
+            f"Embedding manifest 为 {expected_chunks:,} 条"
+        )
+    return mask
+
+
 def merge_top_k(
     current: Iterable[tuple[float, int]],
     candidates: Iterable[tuple[float, int]],
@@ -152,6 +266,7 @@ def exact_search(
     manifest: dict,
     query_vector,
     top_k: int,
+    row_mask=None,
 ) -> list[tuple[float, int]]:
     """Scan every shard and return (score, global_row) Top-K."""
     try:
@@ -184,17 +299,30 @@ def exact_search(
         # peak memory bounded while avoiding float16 accumulation as the
         # reference score.
         matrix = np.asarray(vectors, dtype=np.float32)
-        scores = matrix @ query
 
+        if row_mask is None:
+            eligible_local = np.arange(matrix.shape[0])
+        else:
+            shard_mask = row_mask[item["start"]:item["end"]]
+            if shard_mask.shape != (matrix.shape[0],):
+                raise ValueError("row_mask 与 Embedding shard 范围不一致")
+            eligible_local = np.flatnonzero(shard_mask)
+            if eligible_local.size == 0:
+                continue
+
+        scores = matrix[eligible_local] @ query
         local_k = min(top_k, scores.shape[0])
         if local_k == scores.shape[0]:
-            local_indices = np.arange(scores.shape[0])
+            selected = np.arange(scores.shape[0])
         else:
-            local_indices = np.argpartition(scores, -local_k)[-local_k:]
+            selected = np.argpartition(scores, -local_k)[-local_k:]
 
         candidates = [
-            (float(scores[index]), item["start"] + int(index))
-            for index in local_indices
+            (
+                float(scores[index]),
+                item["start"] + int(eligible_local[index]),
+            )
+            for index in selected
         ]
         best = merge_top_k(best, candidates, top_k)
 
@@ -367,6 +495,13 @@ def main() -> None:
     parser.add_argument("--works", type=Path, default=DEFAULT_WORKS)
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
     parser.add_argument(
+        "--before-dynasty",
+        help=(
+            "只让可以确定早于该朝代的候选参与排名；"
+            "同朝代和时间重叠的朝代暂不纳入"
+        ),
+    )
+    parser.add_argument(
         "--device",
         help="可选：显式指定 cpu / cuda / mps；默认交给 sentence-transformers",
     )
@@ -399,6 +534,24 @@ def main() -> None:
                 f"actual={actual_hash}"
             )
 
+    chronology = None
+    row_mask = None
+    if args.before_dynasty:
+        allowed_dynasties = definitely_earlier_dynasties(args.before_dynasty)
+        row_mask = build_dynasty_row_mask(
+            work_path=work_path,
+            chunk_path=chunk_path,
+            allowed_dynasties=allowed_dynasties,
+            expected_chunks=manifest["completed_chunks"],
+        )
+        chronology = {
+            "before_dynasty": args.before_dynasty,
+            "allowed_dynasties": sorted(allowed_dynasties),
+            "eligible_chunks": int(row_mask.sum()),
+        }
+        if chronology["eligible_chunks"] == 0:
+            raise SystemExit("朝代过滤后没有可检索的 Chunk")
+
     query_vector, device = encode_query(
         query=args.query,
         model_path=model_path,
@@ -411,6 +564,7 @@ def main() -> None:
         manifest=manifest,
         query_vector=query_vector,
         top_k=args.top_k,
+        row_mask=row_mask,
     )
 
     chunks = read_selected_chunks(
@@ -429,6 +583,7 @@ def main() -> None:
         "dimension": manifest["embedding_dimension"],
         "corpus_chunks": manifest["completed_chunks"],
         "top_k": args.top_k,
+        "chronology_filter": chronology,
         "ranking": build_result_rows(ranking, chunks, works),
         "note": (
             "Exact Retrieval 只负责候选召回；相似度不是文学关系判定。"
