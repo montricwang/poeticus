@@ -54,11 +54,15 @@ def test_rrf_combines_support_across_dense_and_lexical_lists():
 
     fused = fuse_candidates_rrf(results, top_k=10)
 
-    assert [candidate.work_id for candidate in fused] == ["a", "b"]
+    assert [candidate.work_id for candidate in fused] == ["b", "a"]
     assert fused[0].support_count == 2
     assert fused[1].support_count == 2
     assert math.isclose(
         fused[0].rrf_score,
+        1 / 62 + 1 / 61,
+    )
+    assert math.isclose(
+        fused[1].rrf_score,
         1 / 61 + 1 / 63,
     )
 
