@@ -412,3 +412,44 @@ contribution = 1 / (60 + rank)
 当前 `rrf_k=60` 只是稳定的第一版常数，不把它当成需要调参的文学参数。只有真实 Eval 显示候选排序对它敏感时才重新讨论。
 
 RRF 之后仍需独立处理 chronology、当前作品 self-hit 与明显后世候选；这些规则不塞进 Fusion score。
+
+
+### Candidate Eligibility：只删除明确不可能的前代候选
+
+RRF 得到的是“多路 Retrieval 共同支持的候选作品”，但产品语义仍要求寻找当前作品的**前代**文本。
+
+当前只有粗粒度 dynasty metadata，因此不能把朝代标签当成作者 / 作品精确年代。第一版 Candidate Eligibility 采用保守策略：
+
+```text
+当前作品自身
+→ reject: self_hit
+
+候选朝代明显晚于当前作品朝代
+→ reject: clearly_later
+
+候选朝代明显更早
+→ keep: clearly_earlier
+
+同朝
+→ keep: same_dynasty
+
+并行 / 重叠政权、跨朝过渡标签
+→ keep: overlapping
+
+缺少或未知朝代
+→ keep: unknown
+```
+
+也就是说，**只删除当前 metadata 能高置信度判定为不可能是前代的候选**。
+
+这样刻意避免重演一个已观察到的错误：范仲淹与李清照都标为“宋”，如果直接使用严格 `before_dynasty=宋`，真正的范仲淹前代来源会在 Retrieval 阶段被整个删掉。
+
+Candidate Eligibility 因此与当前诊断脚本中的严格朝代过滤分开：
+
+- Exact / BM25 诊断命令继续保留原先的 strict `candidate_prior_dynasties()` 行为，便于复现实验；
+- 产品候选层使用 coarse interval relation，只排除 self-hit 与 `clearly_later`；
+- 同朝 / overlap / unknown 的 chronology status 保留给 Agent，允许回答“先后尚需核实”。
+
+长期若补齐 author / work dates，再把这些 uncertain case 向更精确 chronology 收敛，而不是继续扩张 dynasty 字符串特例。
+
+这一层当前放在 Fusion 之后定义产品语义；未来生产 Retriever 若支持 metadata pre-filter，可以把同一 eligibility predicate 下推到检索后端以提高效率和改善 eligible-rank 语义，但不能改变这层的判定规则。

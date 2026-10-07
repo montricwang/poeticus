@@ -18,13 +18,14 @@ import argparse
 import json
 from pathlib import Path
 
+from backend.retrieval.chronology import candidate_prior_dynasties
+
 from scripts.retrieval.exact_search import (
     DEFAULT_DATA_ROOT,
     DEFAULT_MODEL_ROOT,
     DEFAULT_TOP_K,
     build_dynasty_row_mask,
     build_result_rows,
-    candidate_prior_dynasties,
     ensure_model_snapshot,
     exact_search,
     find_probe_rows,

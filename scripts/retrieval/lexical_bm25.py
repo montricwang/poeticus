@@ -18,10 +18,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Iterator
 
+from backend.retrieval.chronology import candidate_prior_dynasties
+
 from scripts.retrieval.exact_search import (
     DEFAULT_DATA_ROOT,
     DEFAULT_TOP_K,
-    candidate_prior_dynasties,
     sha256_file,
 )
 

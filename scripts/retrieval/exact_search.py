@@ -21,6 +21,11 @@ import json
 from pathlib import Path
 from typing import Iterable
 
+from backend.retrieval.chronology import (
+    DYNASTY_PERIODS,
+    candidate_prior_dynasties,
+)
+
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 DEFAULT_DATA_ROOT = Path("../poeticus-data/output/retrieval")
 DEFAULT_MODEL_ROOT = Path("../poeticus-data/models")
@@ -30,42 +35,6 @@ DEFAULT_ARTIFACT_DIR = (
     DEFAULT_DATA_ROOT / "embeddings/qwen3_0.6b_sentence_1024"
 )
 DEFAULT_TOP_K = 20
-
-# Coarse chronology for the current Werneror labels.
-# Fully earlier periods are admitted. Transitional labels that begin before
-# the target dynasty and overlap its start (for example 唐末宋初 -> 宋) are
-# also admitted for recall, leaving exact author/work chronology to a later layer.
-# Same-dynasty and parallel regimes remain excluded in this baseline.
-DYNASTY_PERIODS = {
-    "先秦": (-3000, -221),
-    "秦": (-221, -206),
-    "汉": (-206, 220),
-    "魏晋": (220, 420),
-    "魏晋末南北朝初": (400, 440),
-    "南北朝": (420, 589),
-    "隋": (581, 618),
-    "隋末唐初": (610, 630),
-    "唐": (618, 907),
-    "唐末宋初": (880, 1000),
-    "辽": (916, 1125),
-    "宋": (960, 1279),
-    "金": (1115, 1234),
-    "宋末金初": (1110, 1140),
-    "宋末元初": (1250, 1300),
-    "金末元初": (1210, 1300),
-    "元": (1271, 1368),
-    "元末明初": (1350, 1400),
-    "明": (1368, 1644),
-    "明末清初": (1620, 1680),
-    "清": (1636, 1912),
-    "清末民国初": (1890, 1930),
-    "清末近现代初": (1890, 1930),
-    "近现代": (1912, 1949),
-    "民国末当代初": (1940, 1960),
-    "近现代末当代初": (1940, 1960),
-    "当代": (1949, 2100),
-}
-
 
 def sha256_file(path: Path, block_size: int = 8 * 1024 * 1024) -> str:
     digest = hashlib.sha256()
@@ -167,31 +136,6 @@ def ensure_model_snapshot(
             f"path={model_path}"
         )
     return model_path
-
-
-def candidate_prior_dynasties(target_dynasty: str) -> set[str]:
-    if target_dynasty not in DYNASTY_PERIODS:
-        raise ValueError(
-            f"尚未定义朝代时间范围：{target_dynasty!r}；"
-            "不能安全地做前代过滤"
-        )
-
-    target_start, _ = DYNASTY_PERIODS[target_dynasty]
-    allowed = set()
-    for dynasty, (candidate_start, candidate_end) in DYNASTY_PERIODS.items():
-        if dynasty == target_dynasty:
-            continue
-
-        fully_earlier = candidate_end < target_start
-        transitional_overlap = (
-            candidate_start < target_start <= candidate_end
-            and "末" in dynasty
-            and "初" in dynasty
-        )
-        if fully_earlier or transitional_overlap:
-            allowed.add(dynasty)
-
-    return allowed
 
 
 def build_dynasty_row_mask(
