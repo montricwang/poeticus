@@ -85,7 +85,7 @@ def _create_schema(connection: sqlite3.Connection) -> None:
 
         CREATE TABLE sentence_chunks (
             global_row INTEGER PRIMARY KEY,
-            chunk_id TEXT NOT NULL UNIQUE,
+            chunk_id TEXT NOT NULL,
             work_id TEXT NOT NULL,
             text TEXT NOT NULL,
             start INTEGER,
@@ -314,7 +314,7 @@ class MetadataStore:
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(
-            f"file:{self.path.as_posix()}?mode=ro",
+            self.path.as_uri() + "?mode=ro",
             uri=True,
         )
         connection.row_factory = sqlite3.Row
