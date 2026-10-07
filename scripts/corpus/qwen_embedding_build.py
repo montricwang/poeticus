@@ -76,7 +76,10 @@ def fingerprint_model_dir(model_dir: Path) -> str:
     return digest.hexdigest()
 
 
-def iter_chunks(path: Path) -> Iterator[tuple[int, dict]]:
+def iter_chunks(
+    path: Path,
+    chunk_policy: str = CHUNK_POLICY,
+) -> Iterator[tuple[int, dict]]:
     """Yield zero-based corpus row index plus validated Chunk record."""
     index = 0
     with path.open(encoding="utf-8") as stream:
@@ -92,10 +95,10 @@ def iter_chunks(path: Path) -> Iterator[tuple[int, dict]]:
             required = {"chunk_id", "policy", "text"}
             if not required <= set(record):
                 raise ValueError(f"Chunk JSONL 第 {line_no} 行缺少必要字段")
-            if record["policy"] != CHUNK_POLICY:
+            if record["policy"] != chunk_policy:
                 raise ValueError(
                     f"Chunk JSONL 第 {line_no} 行 policy={record['policy']!r}，"
-                    f"预期 {CHUNK_POLICY!r}"
+                    f"预期 {chunk_policy!r}"
                 )
             if not isinstance(record["text"], str) or not record["text"]:
                 raise ValueError(f"Chunk JSONL 第 {line_no} 行 text 不是非空字符串")
@@ -110,13 +113,14 @@ def run_signature(
     dimension: int,
     shard_size: int,
     expected_chunks: int,
+    chunk_policy: str = CHUNK_POLICY,
 ) -> dict:
     return {
         "manifest_version": MANIFEST_VERSION,
         "model": MODEL_NAME,
         "model_fingerprint": model_fingerprint,
         "input_sha256": input_sha256,
-        "chunk_policy": CHUNK_POLICY,
+        "chunk_policy": chunk_policy,
         "embedding_dimension": dimension,
         "dtype": DTYPE,
         "normalized": True,
@@ -200,6 +204,7 @@ def build_embeddings(
     shard_size: int,
     expected_chunks: int,
     device: str | None = None,
+    chunk_policy: str = CHUNK_POLICY,
 ) -> dict:
     if not input_path.is_file():
         raise ValueError(f"Chunk JSONL 不存在：{input_path}")
@@ -233,6 +238,7 @@ def build_embeddings(
         dimension=dimension,
         shard_size=shard_size,
         expected_chunks=expected_chunks,
+        chunk_policy=chunk_policy,
     )
 
     if manifest_path.is_file():
@@ -282,6 +288,7 @@ def build_embeddings(
                 "batch_size": batch_size,
                 "shard_size": shard_size,
                 "expected_chunks": expected_chunks,
+                "chunk_policy": chunk_policy,
                 "resume_from": resume_index,
                 "output_dir": str(output_dir),
             },
@@ -347,7 +354,9 @@ def build_embeddings(
         write_json_atomic(manifest_path, manifest)
         return end
 
-    for global_index, record in iter_chunks(input_path):
+    for global_index, record in iter_chunks(
+        input_path, chunk_policy=chunk_policy
+    ):
         seen_chunks = global_index + 1
         if seen_chunks > expected_chunks:
             raise ValueError(
@@ -419,6 +428,12 @@ def main() -> None:
         "--expected-chunks", type=int, default=DEFAULT_EXPECTED_CHUNKS
     )
     parser.add_argument(
+        "--chunk-policy",
+        default=CHUNK_POLICY,
+        choices=("sentence", "clause"),
+        help="输入 Chunk JSONL 的 policy",
+    )
+    parser.add_argument(
         "--device",
         help="可选：显式指定 cpu / cuda / mps；默认交给 sentence-transformers",
     )
@@ -433,6 +448,7 @@ def main() -> None:
         shard_size=args.shard_size,
         expected_chunks=args.expected_chunks,
         device=args.device,
+        chunk_policy=args.chunk_policy,
     )
 
 
