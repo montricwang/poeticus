@@ -1,0 +1,226 @@
+{
+  "schema_version": "1",
+  "dataset_id": "poeticus_retrieval_increment_v01",
+  "dataset_version": 1,
+  "status": "draft",
+  "cases": [
+    {
+      "id": "near_quote_yanweng",
+      "tier": "known_control",
+      "relation": "near_quote",
+      "input": {
+        "poem": "梦后楼台高锁，酒醒帘幕低垂。去年春恨却来时。落花人独立，微雨燕双飞。",
+        "context": {
+          "title": "临江仙·梦后楼台高锁",
+          "author": "晏几道",
+          "dynasty": "宋"
+        },
+        "selection": "落花人独立，微雨燕双飞",
+        "question": "这两句是晏几道原创的吗？如果不是，前面的出处是什么？",
+        "history": []
+      },
+      "retrieval_query": "落花人独立，微雨燕双飞",
+      "current_match_text": "落花人独立，微雨燕双飞",
+      "target": {
+        "author": "翁宏",
+        "text": "落花人独立，微雨燕双飞",
+        "answer_anchors": [
+          "翁宏"
+        ]
+      },
+      "rationale": "著名近乎原句复用，预期独立 LLM较可能知道；用作 Retrieval 是否至少不劣化的控制题。",
+      "agent_loop_probe": false
+    },
+    {
+      "id": "adapted_sushi_libai_moon",
+      "tier": "known_control",
+      "relation": "adapted_quote",
+      "input": {
+        "poem": "明月几时有？把酒问青天。",
+        "context": {
+          "title": "水调歌头·明月几时有",
+          "author": "苏轼",
+          "dynasty": "宋"
+        },
+        "selection": "明月几时有？把酒问青天",
+        "question": "这两句和前人的诗有没有明显关系？如果有，最值得比较的是哪一句？",
+        "history": []
+      },
+      "retrieval_query": "明月几时有，把酒问青天",
+      "current_match_text": "明月几时有",
+      "target": {
+        "author": "李白",
+        "text": "青天有月来几时，我今停杯一问之",
+        "answer_anchors": [
+          "青天有月来几时",
+          "停杯一问之"
+        ]
+      },
+      "rationale": "著名改写关系，作为独立 LLM参数记忆较强的控制题。",
+      "agent_loop_probe": false
+    },
+    {
+      "id": "compressed_hezhou_lishangyin_jinse",
+      "tier": "mid_distance",
+      "relation": "compressed_cue",
+      "input": {
+        "poem": "凌波不过横塘路，但目送、芳尘去。锦瑟华年谁与度？月桥花院，琐窗朱户，只有春知处。",
+        "context": {
+          "title": "青玉案·凌波不过横塘路",
+          "author": "贺铸",
+          "dynasty": "宋"
+        },
+        "selection": "锦瑟华年谁与度",
+        "question": "「锦瑟华年」有没有借前人的成句？最值得比较的前代文本是什么？",
+        "history": []
+      },
+      "retrieval_query": "锦瑟华年谁与度",
+      "current_match_text": "锦瑟华年谁与度",
+      "target": {
+        "author": "李商隐",
+        "text": "锦瑟无端五十弦，一弦一柱思华年",
+        "answer_anchors": [
+          "一弦一柱思华年"
+        ]
+      },
+      "rationale": "压缩两个显著词汇线索，观察独立 LLM记忆与 Retrieval 对 compressed cue 的表现。",
+      "agent_loop_probe": false
+    },
+    {
+      "id": "transformed_liqingzhao_fanzhongyan",
+      "tier": "known_control",
+      "relation": "transformed_use",
+      "input": {
+        "poem": "花自飘零水自流。一种相思，两处闲愁。此情无计可消除，才下眉头，却上心头。",
+        "context": {
+          "title": "一剪梅·红藕香残玉簟秋",
+          "author": "李清照",
+          "dynasty": "宋"
+        },
+        "selection": "此情无计可消除，才下眉头，却上心头",
+        "question": "这几句有没有化用前人的表达？如果有，最值得比较的是哪一处？",
+        "history": []
+      },
+      "retrieval_query": "此情无计可消除，才下眉头，却上心头",
+      "current_match_text": "此情无计可消除",
+      "target": {
+        "author": "范仲淹",
+        "text": "都来此事，眉间心上，无计相回避",
+        "answer_anchors": [
+          "眉间心上",
+          "无计相回避"
+        ]
+      },
+      "rationale": "已知完整 Query 对 Dense 很重要，同时独立 LLM很可能熟知；用来观察 RRF 多 Query 稀释是否影响产品价值。",
+      "agent_loop_probe": false
+    },
+    {
+      "id": "adapted_jiangkui_dumu_springwind",
+      "tier": "known_control",
+      "relation": "adapted_quote",
+      "input": {
+        "poem": "淮左名都，竹西佳处，解鞍少驻初程。过春风十里，尽荠麦青青。",
+        "context": {
+          "title": "扬州慢·淮左名都",
+          "author": "姜夔",
+          "dynasty": "宋"
+        },
+        "selection": "过春风十里，尽荠麦青青",
+        "question": "「春风十里」在这里有没有借前人的扬州诗句？具体是哪一句？",
+        "history": []
+      },
+      "retrieval_query": "过春风十里，尽荠麦青青",
+      "current_match_text": "过春风十里",
+      "target": {
+        "author": "杜牧",
+        "text": "春风十里扬州路",
+        "answer_anchors": [
+          "春风十里扬州路"
+        ]
+      },
+      "rationale": "著名扬州互文，字面线索强，检验 Hybrid 对强 lexical signal 的稳定性。",
+      "agent_loop_probe": false
+    },
+    {
+      "id": "compressed_jiangkui_dumu_qinglou",
+      "tier": "mid_distance",
+      "relation": "compressed_cue",
+      "input": {
+        "poem": "杜郎俊赏，算而今，重到须惊。纵豆蔻词工，青楼梦好，难赋深情。",
+        "context": {
+          "title": "扬州慢·淮左名都",
+          "author": "姜夔",
+          "dynasty": "宋"
+        },
+        "selection": "青楼梦好，难赋深情",
+        "question": "「青楼梦好」具体借了杜牧哪一层旧事或诗句？",
+        "history": []
+      },
+      "retrieval_query": "青楼梦好，难赋深情",
+      "current_match_text": "青楼梦好",
+      "target": {
+        "author": "杜牧",
+        "text": "十年一觉扬州梦",
+        "answer_anchors": [
+          "十年一觉扬州梦"
+        ]
+      },
+      "rationale": "只保留「青楼 / 梦」等压缩线索，比近乎原句复用更依赖检索策略。",
+      "agent_loop_probe": true
+    },
+    {
+      "id": "longtail_luyou_dufu_gull",
+      "tier": "long_tail_probe",
+      "relation": "adapted_quote",
+      "input": {
+        "poem": "片片轻鸥落晚沙。",
+        "context": {
+          "title": "鹧鸪天",
+          "author": "陆游",
+          "dynasty": "宋"
+        },
+        "selection": "片片轻鸥落晚沙",
+        "question": "这句有没有明显借用更早诗句？如果有，最值得比较的是谁的哪一句？",
+        "history": []
+      },
+      "retrieval_query": "片片轻鸥落晚沙",
+      "current_match_text": "片片轻鸥落晚沙",
+      "target": {
+        "author": "杜甫",
+        "text": "片片轻鸥下急湍",
+        "answer_anchors": [
+          "片片轻鸥下急湍"
+        ]
+      },
+      "rationale": "比经典名句关系更长尾，已知 clause Dense 与 BM25 能提供互补信号。",
+      "agent_loop_probe": false
+    },
+    {
+      "id": "longtail_yanshu_dumu_candle",
+      "tier": "long_tail_probe",
+      "relation": "adapted_quote",
+      "input": {
+        "poem": "蜡烛到明垂泪，熏炉尽日生烟。",
+        "context": {
+          "title": "破阵子·海上蟠桃易熟",
+          "author": "晏殊",
+          "dynasty": "宋"
+        },
+        "selection": "蜡烛到明垂泪",
+        "question": "「蜡烛到明垂泪」有没有明显承接前人的诗句？如果有，最值得比较的是哪一句？",
+        "history": []
+      },
+      "retrieval_query": "蜡烛到明垂泪",
+      "current_match_text": "蜡烛到明垂泪",
+      "target": {
+        "author": "杜牧",
+        "text": "蜡烛有心还惜别，替人垂泪到天明",
+        "answer_anchors": [
+          "替人垂泪到天明"
+        ]
+      },
+      "rationale": "相似意象与词序经过改写，作为第二条较长尾的真实互文探针。",
+      "agent_loop_probe": false
+    }
+  ]
+}

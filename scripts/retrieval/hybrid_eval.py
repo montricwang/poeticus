@@ -348,6 +348,7 @@ def evaluate_hybrid(
     bm25_sentence_dir: Path = DEFAULT_SENTENCE_BM25,
     work_path: Path = DEFAULT_WORKS,
     current_work_id: str | None,
+    current_work_ids: set[str] | None = None,
     target_dynasty: str | None,
     probe_text: str | None,
     probe_author: str | None,
@@ -447,6 +448,7 @@ def evaluate_hybrid(
     eligibility = apply_candidate_eligibility(
         fused,
         current_work_id=current_work_id,
+        current_work_ids=current_work_ids,
         target_dynasty=target_dynasty,
     )
 
@@ -583,6 +585,7 @@ def main() -> None:
             bm25_sentence_dir=args.bm25_sentence_dir,
             work_path=args.works.expanduser().resolve(),
             current_work_id=args.current_work_id,
+            current_work_ids=None,
             target_dynasty=args.target_dynasty,
             probe_text=args.probe_text,
             probe_author=args.probe_author,
