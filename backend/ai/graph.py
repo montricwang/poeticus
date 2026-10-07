@@ -106,10 +106,11 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
         "function": {
             "name": "lookup_reference",
             "description": (
-                "从外部诗词知识来源查询一句或短句可能对应的出处、成句或化用候选。"
+                "从外部诗词知识来源查询一句或短句可能对应的前代诗文、成句或化用候选。"
                 "适合核对已有知识来源是否收录某个文本关系；"
                 "返回结果只是候选，可能包含当前作品或后代作品，"
                 "必须结合作者年代和文本关系判断。"
+                "不适合解释人物故事型典故，也不能保证识别高度压缩或反用。"
                 "若目标是从 Poeticus 自建大 Corpus 中发现长尾相似文本，"
                 "优先使用 search_predecessor_texts。"
             ),
