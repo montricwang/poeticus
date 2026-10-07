@@ -88,3 +88,25 @@ def test_eligibility_preserves_fused_candidate_order():
         "first",
         "second",
     ]
+
+
+def test_eligibility_rejects_all_known_current_work_aliases():
+    result = apply_candidate_eligibility(
+        [
+            _candidate("current-a", dynasty="宋"),
+            _candidate("current-b", dynasty="宋"),
+            _candidate("other", dynasty="宋"),
+        ],
+        current_work_id="current-a",
+        current_work_ids={"current-a", "current-b"},
+        target_dynasty="宋",
+    )
+
+    assert [item.candidate.work_id for item in result.eligible] == ["other"]
+    assert [
+        (item.candidate.work_id, item.reason)
+        for item in result.rejected
+    ] == [
+        ("current-a", "self_hit"),
+        ("current-b", "self_hit"),
+    ]
