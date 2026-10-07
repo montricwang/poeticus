@@ -453,3 +453,50 @@ Candidate Eligibility 因此与当前诊断脚本中的严格朝代过滤分开�
 长期若补齐 author / work dates，再把这些 uncertain case 向更精确 chronology 收敛，而不是继续扩张 dynasty 字符串特例。
 
 这一层当前放在 Fusion 之后定义产品语义；未来生产 Retriever 若支持 metadata pre-filter，可以把同一 eligibility predicate 下推到检索后端以提高效率和改善 eligible-rank 语义，但不能改变这层的判定规则。
+
+
+### Product Service：先固定编排边界，再选择索引后端
+
+截至 2026-10-07，Query Plan、Fan-out、Work-level RRF 与 Candidate Eligibility 已经形成稳定职责，因此增加产品侧 `TextRetrievalService`：
+
+```text
+text
+→ Query Plan
+→ Retrieval Channels
+→ Work-level RRF
+→ Candidate Eligibility
+→ final candidates
+```
+
+这个 Service **不绑定存储实现**。它只依赖 `RetrievalChannel.search_many()` 契约，因此后续 Dense channel 可以由 FAISS、pgvector 或其他 ANN 实现；Lexical channel 也可以继续由 SQLite FTS5 或未来其他倒排后端实现。
+
+Service 当前固定的产品语义：
+
+- per-channel Top-K 先限制每一路召回池；
+- RRF 对这个有界候选池做完整融合；
+- Eligibility 在完整 fused pool 上过滤 self-hit / clearly-later；
+- **最后**才截 final Top-K，避免 self-hit / 后世候选提前占满最终名额；
+- 无候选时返回 `no_hit`，而不是伪造弱候选；
+- backend / index unavailable 仍应作为错误与 `no_hit` 区分，具体 failure contract 等真实 channel 落地时定义。
+
+#### 为什么暂不直接把现有 PostgreSQL 变成 pgvector
+
+当前 Railway production 实际资源画像：
+
+- `poeticus-web` 无持久 Volume；
+- PostgreSQL Volume 当前约 500 MB；
+- Qwen 1024d float16 sentence Artifact 约 9.2 GiB；
+- Qwen 1024d float16 clause Artifact 约 18.0 GiB；
+- 两套原始 Dense Artifact 合计约 27.2 GiB，尚未计算 ANN / metadata / database overhead。
+
+因此“项目已经有 PostgreSQL，所以直接上 pgvector”不是一个零成本延伸。后端选择必须单独做部署 spike，比较真实：
+
+- 索引磁盘体积；
+- 查询延迟；
+- Recall；
+- metadata filtering；
+- Query embedding 运行方式；
+- Railway Volume / memory / service topology；
+- 重建与发布流程。
+
+在这个 spike 完成前，`TextRetrievalService` 与 Agent Tool contract 都不应反向绑定某一种 Vector DB。
