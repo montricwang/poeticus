@@ -28,7 +28,8 @@
           "翁宏"
         ]
       },
-      "rationale": "著名近乎原句复用，预期裸模型较可能知道；用作 Retrieval 是否至少不劣化的控制题。"
+      "rationale": "著名近乎原句复用，预期独立 LLM较可能知道；用作 Retrieval 是否至少不劣化的控制题。",
+      "agent_loop_probe": false
     },
     {
       "id": "adapted_sushi_libai_moon",
@@ -55,7 +56,8 @@
           "停杯一问之"
         ]
       },
-      "rationale": "著名改写关系，作为裸模型参数记忆较强的控制题。"
+      "rationale": "著名改写关系，作为独立 LLM参数记忆较强的控制题。",
+      "agent_loop_probe": false
     },
     {
       "id": "compressed_hezhou_lishangyin_jinse",
@@ -81,7 +83,8 @@
           "一弦一柱思华年"
         ]
       },
-      "rationale": "压缩两个显著词汇线索，观察基模记忆与 Retrieval 对 compressed cue 的表现。"
+      "rationale": "压缩两个显著词汇线索，观察独立 LLM记忆与 Retrieval 对 compressed cue 的表现。",
+      "agent_loop_probe": false
     },
     {
       "id": "transformed_liqingzhao_fanzhongyan",
@@ -108,7 +111,8 @@
           "无计相回避"
         ]
       },
-      "rationale": "已知完整 Query 对 Dense 很重要，同时裸模型很可能熟知；用来观察 RRF 多 Query 稀释是否影响产品价值。"
+      "rationale": "已知完整 Query 对 Dense 很重要，同时独立 LLM很可能熟知；用来观察 RRF 多 Query 稀释是否影响产品价值。",
+      "agent_loop_probe": false
     },
     {
       "id": "adapted_jiangkui_dumu_springwind",
@@ -134,7 +138,8 @@
           "春风十里扬州路"
         ]
       },
-      "rationale": "著名扬州互文，字面线索强，检验 Hybrid 对强 lexical signal 的稳定性。"
+      "rationale": "著名扬州互文，字面线索强，检验 Hybrid 对强 lexical signal 的稳定性。",
+      "agent_loop_probe": false
     },
     {
       "id": "compressed_jiangkui_dumu_qinglou",
@@ -160,7 +165,8 @@
           "十年一觉扬州梦"
         ]
       },
-      "rationale": "只保留「青楼 / 梦」等压缩线索，比近乎原句复用更依赖检索策略。"
+      "rationale": "只保留「青楼 / 梦」等压缩线索，比近乎原句复用更依赖检索策略。",
+      "agent_loop_probe": true
     },
     {
       "id": "longtail_luyou_dufu_gull",
@@ -186,7 +192,8 @@
           "片片轻鸥下急湍"
         ]
       },
-      "rationale": "比经典名句关系更长尾，已知 clause Dense 与 BM25 能提供互补信号。"
+      "rationale": "比经典名句关系更长尾，已知 clause Dense 与 BM25 能提供互补信号。",
+      "agent_loop_probe": false
     },
     {
       "id": "longtail_yanshu_dumu_candle",
@@ -212,7 +219,8 @@
           "替人垂泪到天明"
         ]
       },
-      "rationale": "相似意象与词序经过改写，作为第二条较长尾的真实互文探针。"
+      "rationale": "相似意象与词序经过改写，作为第二条较长尾的真实互文探针。",
+      "agent_loop_probe": false
     }
   ]
 }
