@@ -8,6 +8,7 @@ from scripts.retrieval.exact_search import (
     merge_top_k,
     read_selected_chunks,
     read_selected_works,
+    resolve_model_path,
 )
 
 
@@ -129,3 +130,25 @@ def test_build_result_rows_joins_chunk_and_work_metadata():
     assert rows[0]["cosine"] == 0.91
     assert rows[0]["chunk"]["text"] == "客舍青青柳色新。"
     assert rows[0]["work"]["author"] == "王维"
+
+
+def test_resolve_model_path_uses_artifact_fingerprint_by_default(monkeypatch, tmp_path):
+    from scripts.retrieval import exact_search
+
+    monkeypatch.setattr(exact_search, "DEFAULT_MODEL_ROOT", tmp_path)
+    manifest = {"model_fingerprint": "abcdef1234567890"}
+
+    path = resolve_model_path(manifest, None)
+
+    assert path == (tmp_path / "Qwen3-Embedding-0.6B-abcdef123456").resolve()
+
+
+def test_resolve_model_path_keeps_explicit_override(tmp_path):
+    requested = tmp_path / "custom-model"
+
+    path = resolve_model_path(
+        {"model_fingerprint": "abcdef1234567890"},
+        requested,
+    )
+
+    assert path == requested.resolve()
