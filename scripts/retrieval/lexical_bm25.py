@@ -1,5 +1,7 @@
 """Character n-gram + BM25 lexical retrieval baseline.
 
+from backend.retrieval.chronology import candidate_prior_dynasties
+
 This module builds a local SQLite FTS5 artifact over Werneror Chunk JSONL and
 searches it with BM25. The text representation and ranking layers stay
 explicit:
@@ -21,7 +23,6 @@ from typing import Iterable, Iterator
 from scripts.retrieval.exact_search import (
     DEFAULT_DATA_ROOT,
     DEFAULT_TOP_K,
-    candidate_prior_dynasties,
     sha256_file,
 )
 
