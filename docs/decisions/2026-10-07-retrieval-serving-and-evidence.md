@@ -8,7 +8,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | RET-001 | Retrieval 从 Web / Agent 进程中独立成服务边界 | 1 | joint | 本机 Serving 实测单进程 steady RSS 约 5.27 GiB；FAISS + Qwen 明显不适合塞入 Railway Web 进程 | active | Retrieval 资源模型根本改变，或托管平台能稳定承载同等常驻内存 |
 | RET-002 | 先本地做常驻 Serving + Benchmark，再决定租服务器 | 1 | AI-proposed | #145 已实际得到启动、RSS、磁盘、单请求和 5 并发数据；避免先租后猜规格 | active | 无；已验证这种顺序有效 |
-| RET-003 | FAISS row id 不再通过扫描 JSONL 回查，而使用 compact SQLite metadata store | 1 | AI-proposed | metadata build 约 81 s，DB 约 2.31 GiB；请求期 metadata lookup 已降到毫秒级 | active | metadata DB 体积或 lookup 成为主要瓶颈 |
+| RET-003 | FAISS row id 不再通过扫描 JSONL 回查，而使用 compact SQLite metadata store | 1 | AI-proposed | metadata build 约 81 s；请求期 lookup 已降到毫秒级。首轮 DB 约 2.31 GiB，但后续审计发现 clause `chunk_id` 仍误留 UNIQUE index，因此该体积是偏保守上界，见 #152 | active | metadata DB 体积或 lookup 成为主要瓶颈 |
 | RET-004 | sentence + clause 两套 Dense Retrieval 都保留 | 1 | joint | 历史真实 Case 已证明二者互补；陆游 Case clause 明显优于 sentence，蜡烛 Case sentence 更强 | active | 更大 Eval 证明某一路长期没有增量或成本不可接受 |
 | RET-005 | 当前不为了经典 transformed-use 排名难看继续调 RRF / pq_m / clause BM25 / reranker | 1 | joint | #143 显示强 LLM 已掌握大量经典互文；陆游 Case 才是更干净的 Retrieval 增量，当前瓶颈不是缺少更多参数 | active | 长尾真实失败明确指向某一组件 |
 | RET-006 | `青楼梦好` 保留为 Agent-loop / multi-span bad case | 1 | joint | 单 span 首轮 Retrieval miss；模型实际尝试改 Query；全文其他线索可能共同指向杜牧 | active | multi-span / iterative Eval 得到稳定结论 |
@@ -83,3 +83,4 @@
 - `retrieval_serving_probe_20261007_1651` — uncached Query + fixture self-hit supplement probe
 - `agent_retrieval_e2e_20261007_1731` — 首次真实 Agent → HTTP Retrieval Service → Agent E2E
 - Issue #151 — Corpus duplicate / variant self-hit profiling
+- Issue #152 — clause metadata 无用 UNIQUE index / 重新测量 compact DB 体积
