@@ -202,6 +202,19 @@ def render_markdown(report: dict) -> str:
             f"- individual p95_ms: {concurrent['individual_p95_ms']:.1f}",
             f"- throughput req/s: {concurrent['throughput_rps']:.2f}",
             "",
+            "## Metadata build",
+            "",
+            (
+                f"- build_seconds: {report['metadata_build']['build_seconds']:.1f}"
+                if report.get("metadata_build")
+                else "- metadata build manifest: unavailable"
+            ),
+            (
+                f"- database_gib: {report['metadata_build']['database_gib']:.3f}"
+                if report.get("metadata_build")
+                else ""
+            ),
+            "",
             "## Startup profile",
             "",
             "~~~json",
@@ -310,6 +323,16 @@ def main() -> None:
         "metadata_db": path_size(paths.metadata_db),
         "qwen_model": path_size(paths.model_path),
     }
+    metadata_manifest_path = paths.metadata_db.with_suffix(
+        ".manifest.json"
+    )
+    metadata_build = (
+        json.loads(
+            metadata_manifest_path.read_text(encoding="utf-8")
+        )
+        if metadata_manifest_path.is_file()
+        else None
+    )
 
     case_reports = []
     for case in cases:
@@ -392,6 +415,7 @@ def main() -> None:
             "steady_rss_mib": rss_mib(),
         },
         "disk": disk,
+        "metadata_build": metadata_build,
         "cases": case_reports,
         "concurrency": {
             "requests": args.concurrency,
