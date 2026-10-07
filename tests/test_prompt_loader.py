@@ -40,7 +40,7 @@ def test_agent_decide_prompt_contains_tool_selection_principles():
     assert "最短且有辨识度的典故锚点" in prompt
     assert "这句是否化用前人诗句" in prompt
     assert "目标短句" in prompt
-    assert "高度压缩的典故词" in prompt
+    assert "不要仅因为首轮 miss 就改用典故工具" in prompt
 
 
 def test_output_style_contains_quote_rules():
