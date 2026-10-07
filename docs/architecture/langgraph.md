@@ -30,7 +30,15 @@ flowchart TD
 
 ## 3. 工具与 Evidence
 
-当前注册工具为 `lookup_allusion`，通过 `EvidenceService` 查询 CNKGraph 典故候选资料。
+当前 Agent 可见三类工具：
+
+- `lookup_allusion`：人物故事、掌故、神话与典故性短语；
+- `lookup_reference`：外部 reference evidence；
+- `search_predecessor_texts`：Poeticus 自建 Corpus 的前代文本候选检索。
+
+`search_predecessor_texts` 只有在 Retrieval URL 已配置时才注册。它通过 `TextRetrievalClient` 调用独立 Retrieval Service；当前作品正文、作者、题名和可用 dynasty 由 host application 注入，模型只决定检索文本。
+
+用户明确追问“借了谁哪一句 / 化用了哪段前代文本”时，Agent 优先使用 `search_predecessor_texts`。第一轮结果弱时，可以在当前 2 次工具预算内换一个更有辨识度的文本锚点继续检索。
 
 工具返回可以是：
 
@@ -40,6 +48,22 @@ flowchart TD
 - `budget_exceeded`
 
 候选资料只是回答材料，不自动等于已经完成文献校勘。外部文本进入后续模型调用前会做长度限制。
+
+Text Retrieval 返回的 chronology status 也只是粗粒度信号。Werneror 的 dynasty label 会把部分五代人物标成“唐”；Agent 不能把它直接表述成精确历史断代。
+
+当前已验证的产品路径：
+
+```text
+textual provenance question
+→ search_predecessor_texts
+→ first corpus result
+→ 必要时 query reformulation
+→ second corpus retrieval
+→ candidate evidence
+→ final answer
+```
+
+陆游“片片轻鸥落晚沙”已经完成真实线上 E2E：Retriever 在 `dynasty=null` 的请求下召回杜甫“片片轻鸥下急湍”，Agent 最终采用该证据，并保留“文本对应很强 / 缺少明确引用记载”的不确定性边界。
 
 ## 4. Graph State
 
