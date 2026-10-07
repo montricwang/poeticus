@@ -35,3 +35,6 @@ data/reports/*
 
 # Local AI eval outputs
 evals/results/*.json
+
+# Local model weights
+models/
