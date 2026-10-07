@@ -6,6 +6,7 @@ from scripts.retrieval.exact_search import (
     build_dynasty_row_mask,
     build_result_rows,
     candidate_prior_dynasties,
+    find_probe_rows,
     load_manifest,
     merge_top_k,
     read_selected_chunks,
@@ -196,3 +197,50 @@ def test_build_dynasty_row_mask_aligns_with_chunk_rows(tmp_path):
     )
 
     assert mask.tolist() == [False, True, True]
+
+
+def test_find_probe_rows_can_narrow_by_author(tmp_path):
+    work_path = tmp_path / "works.jsonl"
+    chunk_path = tmp_path / "chunks.jsonl"
+
+    works = [
+        {
+            "work_id": "wangwei",
+            "author": "王维",
+            "content": "渭城朝雨浥轻尘，客舍青青柳色新。",
+        },
+        {
+            "work_id": "other",
+            "author": "他人",
+            "content": "客舍青青柳色新。",
+        },
+    ]
+    chunks = [
+        {
+            "chunk_id": "c0",
+            "work_id": "wangwei",
+            "text": "渭城朝雨浥轻尘，客舍青青柳色新。",
+        },
+        {
+            "chunk_id": "c1",
+            "work_id": "other",
+            "text": "客舍青青柳色新。",
+        },
+    ]
+    work_path.write_text(
+        "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in works),
+        encoding="utf-8",
+    )
+    chunk_path.write_text(
+        "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in chunks),
+        encoding="utf-8",
+    )
+
+    rows = find_probe_rows(
+        work_path=work_path,
+        chunk_path=chunk_path,
+        probe_text="客舍青青柳色新",
+        probe_author="王维",
+    )
+
+    assert rows == {0}
