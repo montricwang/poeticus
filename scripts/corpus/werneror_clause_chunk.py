@@ -22,6 +22,7 @@ DEFAULT_OUTPUT = Path(
 DEFAULT_REPORT = Path(
     "../poeticus-data/output/retrieval/werneror_clause_chunks.json"
 )
+DEFAULT_EXPECTED_CHUNKS = 9_425_173
 
 
 def main() -> None:
@@ -37,8 +38,8 @@ def main() -> None:
     parser.add_argument(
         "--expect-chunks",
         type=int,
-        default=0,
-        help="预期 Chunk 数；0 表示只按实际结果生成并报告",
+        default=DEFAULT_EXPECTED_CHUNKS,
+        help="预期 Clause Chunk 数；传 0 可关闭数量校验",
     )
     args = parser.parse_args()
 
