@@ -1,6 +1,6 @@
 # Text Retrieval 架构基线
 
-> 状态：2026-10-07，随 #119 / PR #132 / #134 演进。本文记录当前已经确定的职责、数据边界和由真实 Retrieval 实验得到的结论；尚未实施的 Vector DB / ANN 只列为待决事项。
+> 状态：2026-10-08。本文从 Retrieval 实验一路记录到 v0.3.0 的生产 Serving；早期 spike 段落保留形成过程，文末“Production baseline”代表当前线上状态。
 
 ## 1. 目标与非目标
 
@@ -50,7 +50,7 @@ Qwen document embedding
 ↓
 Embedding Artifact
 ↓
-未来 Vector / Lexical Index
+FAISS / BM25 Serving Index
 ```
 
 ### Work
@@ -559,3 +559,159 @@ Serving Index
 这组 Recall 只衡量 ANN 对 Exact vector neighbors 的复现程度，不是文学关系 Recall。下一步应构建 full index，并回到真实 intertext Case 验证目标前代文本是否稳定进入候选。
 
 pgvector 暂不在这一 PR 建表或扩容 Railway。production backend 与 Retrieval Service 的部署位置，等待 full index 的真实体积、内存、延迟和文学 Case Eval 后再决定。
+
+
+## Production baseline：v0.3.0
+
+截至 2026-10-08，Text Retrieval 已经进入线上 Agent。
+
+### 运行期链路
+
+```text
+Agent search_predecessor_texts
+        ↓ HTTPS + Bearer
+Text Retrieval Service
+        ↓
+deterministic Query Plan
+        ↓
+┌───────────────────────────────┐
+│ sentence Dense / clause Dense │
+│ sentence char 2-3gram BM25    │
+└───────────────────────────────┘
+        ↓
+Work-level RRF
+        ↓
+Candidate Eligibility
+        ↓
+Top-K candidates
+        ↓
+Agent 判断
+```
+
+Agent 对“借了谁哪一句 / 化用了哪段前代文本”优先使用自建 Corpus Tool。第一轮结果弱时，允许在 2 次工具预算内换文本锚点再检索。
+
+### Full Corpus
+
+```text
+Works            853,385
+sentence chunks  4,822,054
+clause chunks    9,425,173
+```
+
+Embedding：
+
+```text
+Qwen/Qwen3-Embedding-0.6B
+1024 dimensions
+normalized
+float16 build artifacts
+```
+
+原始 sentence + clause Embedding 合计约 27.17 GiB，继续作为离线构建资产。
+
+### Serving Index
+
+生产使用两套 FAISS IVFPQ：
+
+```text
+sentence FAISS   1.189 GiB
+clause FAISS     2.320 GiB
+total            3.509 GiB
+```
+
+当前参数：
+
+```text
+nlist=512
+pq_m=256
+pq_bits=8
+nprobe=64
+```
+
+pq64 在 ANN Recall 上损失过大；pq256 通过真实 Case 验证后进入 full build。继续增加 nprobe 几乎没有补回主要 Recall，说明当前误差主要来自 PQ 表示压缩。
+
+### Lexical 与 metadata
+
+```text
+sentence BM25          1.557 GiB
+metadata v2 SQLite     1.828 GiB
+Qwen model             1.125 GiB
+full serving bundle    ≈ 8.02 GiB
+```
+
+metadata v2 删除了请求期不需要的 clause `chunk_id UNIQUE` index。全量 DB 从约 2.313 GiB 降到 1.828 GiB，build 约 73 s。
+
+### Current-work chronology
+
+公开阅读数据库当前没有可靠逐首 dynasty。请求缺少该字段时：
+
+1. 根据当前正文寻找 Werneror exact-content alias；
+2. alias 无法解决时，对 exact author 统计 Werneror dynasty；
+3. 唯一最高计数作为 corpus-compatible target label；
+4. 并列或未知时保持 unknown。
+
+这一值只参与 Candidate Eligibility。
+
+生产节点观测到：
+
+```text
+温庭筠 → 唐
+韦庄   → 唐
+冯延巳 → 唐
+李璟   → 唐
+李煜   → 唐
+```
+
+因此 Werneror dynasty 只能支持粗 chronology。同朝、overlap、unknown 继续保留给 Agent 判断。
+
+### Production service boundary
+
+```text
+Railway Web / Agent
+        │
+        │ HTTPS + Bearer
+        ▼
+Tencent Cloud Nginx
+        │ localhost HTTP
+        ▼
+Text Retrieval Service :8787
+```
+
+2C8G Linux single worker 已通过 full Corpus benchmark：
+
+- ready RSS 约 4.4 GiB；
+- benchmark 后约 5.3 GiB；
+- 首次 cold start 约 34.9 s；
+- page cache 后一次 restart 约 18.25 s；
+- 5 并发约 1.78 req/s。
+
+资源与运维细节见 [当前生产部署](../deployment.md)。
+
+### 线上 E2E canary
+
+陆游：
+
+```text
+片片轻鸥落晚沙
+```
+
+在请求显式 `dynasty=null` 的情况下，Retriever 仍返回：
+
+```text
+杜甫《小寒食舟中作》
+娟娟戏蝶过闲幔，片片轻鸥下急湍。
+chronology_status=clearly_earlier
+```
+
+线上 Agent 随后正确使用杜甫候选，并把“文本对应很强”与“缺少明确引用记载”同时交代。
+
+### 当前已知边界
+
+- duplicate / variant self-hit：#151；
+- 粗 dynasty overlap 会保留部分晚于目标作者的候选；
+- Werneror dynasty 不能承担精细历史断代；
+- transformed-use 仍可能需要 Agent query reformulation；
+- 当前 2C8G 的长期并发上限尚未由真实流量确定；
+- 唐宋 Serving Profile / Corpus pruning：#163，deferred。
+
+当前 Retrieval 继续遵循一个停止线：真实产品 Case 出现新的稳定失败，再决定是否增加 reranker、clause BM25、pq512、multi-span 或更细 chronology。
