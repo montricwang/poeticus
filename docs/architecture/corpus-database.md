@@ -2,7 +2,7 @@
 
 ## 1. 当前状态
 
-Poeticus 当前以 PostgreSQL 作为作品读取的唯一运行时数据源。生产库公开读取 3491 首宋词，前端不再使用静态作品 JSON 作为正式阅读数据源。
+Poeticus 当前以 PostgreSQL 作为作品读取的唯一运行时数据源。生产库公开读取 3491 首词作，前端不再使用静态作品 JSON 作为正式阅读数据源。当前公开数据包含晚唐、五代与宋代作者，数据库尚未提供可靠的逐首 dynasty 字段。
 
 作品数据同时存在两个边界不同的数据库环境：
 
@@ -123,3 +123,25 @@ uvicorn backend.app:app --reload
 - 所有批量导入作品仍可标记为 `imported_unreviewed`，进入数据库不等于逐首人工校勘。
 
 私人 EPUB、完整抽取 JSON、现代编者注评和数据库凭证不得提交到公开仓库。
+
+
+## 7. 与 Retrieval Corpus 的边界
+
+公开阅读库和 Text Retrieval Corpus 是两套数据源：
+
+```text
+Railway PostgreSQL
+→ 3491 首公开阅读词作
+→ 负责目录、正文、当前作品上下文
+
+Werneror Retrieval Corpus
+→ 853,385 Works
+→ sentence / clause / BM25 / FAISS
+→ 负责发现前代文本候选
+```
+
+阅读库当前没有可靠逐首 dynasty。调用 Retrieval 时缺失的 chronology context 由 Retrieval Service 在 Werneror metadata 内部做 coarse inference，详见 [Text Retrieval 架构](text-retrieval.md)。
+
+Werneror 的 dynasty label 只服务候选资格判断；它不能回写成公开阅读库的历史断代字段。实际 probe 中，冯延巳、李璟、李煜等南唐人物在 Werneror 中也标为“唐”。
+
+未来如果公开 Corpus 增加可靠的逐首年代，应从数据库/API 直接传给 Agent，并逐步减少 corpus-side inference。
