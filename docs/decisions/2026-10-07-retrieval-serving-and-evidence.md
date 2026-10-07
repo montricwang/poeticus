@@ -25,6 +25,7 @@
 | RET-106 | 未来多个 span 应优先在一次 Retrieval 请求内 batch，而不是 Agent 连续发很多独立 HTTP 请求 | 2 | AI-proposed | 当前 Dense channel 原生 batch；1/3/4 Query 的 warm latency 显示有摊薄空间 | experiment | 实现 multi-span API 后测真实吞吐与候选质量 |
 | RET-107 | 词话 / 诗话先做“小而精的 curated RAG”，开放 Web Search 负责长尾兜底 | 2 | joint | Poeticus 的评论资料不需要一开始追求全集；精选权威原典主要提供 grounding，Web Search 提供覆盖面 | proposed | 用户问题大量落在 curated corpus 之外，或 Search 质量不足 |
 | RET-108 | 不建立一个混合诗词、词话、辞书的万能索引；按 Retrieval Domain / Tool 保持语义边界 | 2 | AI-proposed | 不同问题的检索目标和证据可信度不同，混在一张榜单会降低解释性和结果质量 | proposed | 真实产品表明统一索引反而更有效且能稳定路由 |
+| RET-109 | 用户明确追问“借了谁哪一句 / 化用了哪段前代文本”时，若 Corpus Tool 可用，优先 `search_predecessor_texts`，不要先消耗 `lookup_reference` / `lookup_allusion` | 2 | AI-proposed | 首次真实 E2E 中陆游先浪费一次 reference；`青楼梦好` 两次都走 allusion，耗尽 Tool budget，证明现有路由边界不足 | experiment | 修订 Prompt / Tool description 后重跑同一 E2E；若仍不稳定，再考虑更显式的 router / tool gating |
 
 ## C. 为了闭环而暂定的默认值
 
@@ -51,6 +52,7 @@
 | RET-304 | 全文 multi-span 是否能救回 `青楼梦好`，并改善 transformed-use | 4 | user-directed | 当前单 span miss；理论上《扬州慢》多个独立线索可能形成杜牧 evidence cluster | 专门 multi-span Eval |
 | RET-305 | 评论 / 词话 curated corpus 第一批到底选哪些书、需要什么 Chunk 策略 | 4 | user-directed | 当前只形成“小而精 + Search fallback”的产品方向 | 先选约 10 本高价值原典做最小试验，不先做全集工程 |
 | RET-306 | Web Search 与 curated RAG 的路由 / 证据权重如何表达给 Agent | 4 | joint | 已明确两者可信度与覆盖面不同，但尚未形成 Tool policy | 等 Search Tool 接入方案确定后做 Eval |
+| RET-307 | 外部 Corpus 中同一作品的异本 / 重复记录如何做 self-hit canonical identity | 4 | joint | 真实 E2E 已用完整当前作品，但仍返回另一条陆游《鹧鸪天 送叶梦锡》同句记录；exact full-content fingerprint 不足 | Issue #151 先做 duplicate profiling；不直接按“同作者”粗暴过滤 |
 
 ## 这次特别记录的 AI 决策
 
@@ -79,3 +81,5 @@
 - PR #146 — Retrieval Serving runtime / benchmark
 - `retrieval_serving_20261007_1640` — 第一份 Serving Benchmark
 - `retrieval_serving_probe_20261007_1651` — uncached Query + fixture self-hit supplement probe
+- `agent_retrieval_e2e_20261007_1731` — 首次真实 Agent → HTTP Retrieval Service → Agent E2E
+- Issue #151 — Corpus duplicate / variant self-hit profiling
