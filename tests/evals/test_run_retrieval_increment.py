@@ -5,9 +5,11 @@ from scripts.evals.run_retrieval_increment import (
     RetrievalIncrementCase,
     RetrievalTarget,
     choose_current_work_id,
+    choose_current_work_ids,
     compact_tool_result,
     comparison_bucket,
     scan_work_matches,
+    tool_target_support,
 )
 
 
@@ -85,33 +87,54 @@ def test_scan_work_matches_and_choose_exact_title(tmp_path):
         case,
         matches["current"],
     ) == "w-current-exact"
+    assert choose_current_work_ids(
+        case,
+        matches["current"],
+    ) == {"w-current-other", "w-current-exact"}
 
 
 def test_comparison_bucket_is_navigation_only():
     assert comparison_bucket(
-        bare_signal=True,
+        standalone_signal=True,
         tool_signal=True,
+        target_supported_by_tool=True,
         eligible_rank=3,
-    ) == "base_already_knows"
+        agent_loop_probe=False,
+    ) == "standalone_knows_tool_confirms"
     assert comparison_bucket(
-        bare_signal=False,
+        standalone_signal=True,
         tool_signal=True,
+        target_supported_by_tool=False,
         eligible_rank=40,
+        agent_loop_probe=False,
+    ) == "standalone_already_knows"
+    assert comparison_bucket(
+        standalone_signal=False,
+        tool_signal=True,
+        target_supported_by_tool=True,
+        eligible_rank=40,
+        agent_loop_probe=False,
     ) == "tool_increment_candidate"
     assert comparison_bucket(
-        bare_signal=True,
+        standalone_signal=True,
         tool_signal=False,
-        eligible_rank=3,
-    ) == "tool_regression_candidate"
+        target_supported_by_tool=False,
+        eligible_rank=None,
+        agent_loop_probe=True,
+    ) == "single_shot_agent_loop_candidate"
     assert comparison_bucket(
-        bare_signal=False,
+        standalone_signal=False,
         tool_signal=False,
+        target_supported_by_tool=False,
         eligible_rank=15,
+        agent_loop_probe=False,
     ) == "retrieval_found_model_failed"
     assert comparison_bucket(
-        bare_signal=False,
+        standalone_signal=False,
         tool_signal=False,
+        target_supported_by_tool=False,
         eligible_rank=None,
+        agent_loop_probe=False,
     ) == "both_gap"
 
 
@@ -146,3 +169,22 @@ def test_compact_tool_result_does_not_expose_probe_metadata():
         compact,
         ensure_ascii=False,
     )
+
+
+def test_tool_target_support_uses_exact_target_work_id():
+    result = {
+        "ranking": [
+            {"work_id": "noise"},
+            {"work_id": "target"},
+            {"work_id": "other"},
+        ]
+    }
+
+    assert tool_target_support(
+        result=result,
+        target_work_ids={"target"},
+    ) == (True, 2)
+    assert tool_target_support(
+        result=result,
+        target_work_ids={"missing"},
+    ) == (False, None)
