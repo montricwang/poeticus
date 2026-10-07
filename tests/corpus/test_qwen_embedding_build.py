@@ -41,6 +41,22 @@ def test_iter_chunks_preserves_global_nonblank_row_index(tmp_path):
     assert [record["chunk_id"] for _, record in actual] == ["c0", "c1"]
 
 
+def test_iter_chunks_accepts_requested_clause_policy(tmp_path):
+    path = tmp_path / "chunks.jsonl"
+    path.write_text(
+        json.dumps(
+            {"chunk_id": "c0", "policy": "clause", "text": "甲，"},
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    actual = list(iter_chunks(path, chunk_policy="clause"))
+
+    assert actual[0][1]["policy"] == "clause"
+
+
 def test_iter_chunks_rejects_wrong_policy(tmp_path):
     path = tmp_path / "chunks.jsonl"
     path.write_text(
