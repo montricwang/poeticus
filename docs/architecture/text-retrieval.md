@@ -86,7 +86,7 @@ source_record_id
 - 平均 5.651 Chunk / Work；
 - 最长 Chunk：132 字符。
 
-sentence 是第一版 baseline，不是永久文学定义。若真实 Retrieval 失败证明粒度过粗，可以从 Work 重新派生 clause，而不改变 Work 层。
+sentence 是第一版 baseline，不是永久文学定义。Exact Retrieval 已出现明确反例：当互文只对应 sentence 的一部分且同时发生改写时，已知前代文本可能掉到数百名；因此当前新增 clause Corpus 作为对照，不改变 Work 层，也保留 sentence baseline。
 
 ## 4. Corpus Chunking 与 Query Strategy 分开
 
@@ -116,26 +116,35 @@ Qwen/Qwen3-Embedding-0.6B
 - 两者最终进入同一个可比较向量空间；
 - Query instruction 尚未冻结。
 
-BERT-CCPoem 保留为领域模型反例检查。只有真实 Eval 表明 Qwen baseline 存在值得追查的系统性失败时，才投入专门对照；届时可单独使用更适合它的 clause / 单行粒度，不要求所有模型强行共享一种 Chunk。
+BERT-CCPoem 作为领域模型 challenger。现在已经出现真实失败证据，因此允许在同一次离线 GPU 构建中生成 clause-level BERT-CCPoem Embedding，与 Qwen clause 直接对照。它不是预设的生产模型；是否采用仍由同一批 Retrieval Eval 决定。官方实现对正文 token 做 mean pooling（排除 [CLS] / [SEP] / padding），本项目实验实现保持这一口径。
 
 ## 6. Embedding Artifact
 
-当前全量构建参数：
+当前已完成的 sentence baseline：
 
 ```text
 model: Qwen3-Embedding-0.6B
 chunk policy: sentence
-dimension: 512
+dimension: 1024
 normalized: true
 dtype: float16
 shard size: 10,000
-expected chunks: 4,822,054
+chunks: 4,822,054
 ```
+
+当前新增对照构建：
+
+```text
+Qwen3-Embedding-0.6B + clause + 1024d
+BERT-CCPoem v1.0 + clause + 512d
+```
+
+两套 clause Artifact 都从同一份 clause Chunk JSONL 生成，便于比较模型差异；sentence Artifact 保留，便于比较 Chunk 粒度差异。
 
 Embedding 先作为独立离线构建产物保存：
 
 ```text
-data/output/retrieval/embeddings/qwen3_0.6b_sentence_512/
+../poeticus-data/output/retrieval/embeddings/qwen3_0.6b_sentence_1024/
 ├─ manifest.json
 ├─ shard_00000.npy
 ├─ shard_00001.npy
