@@ -637,6 +637,7 @@ class RetrievalServingRuntime:
         current_author: str | None,
         target_dynasty: str | None,
         final_top_k: int = 8,
+        current_work_ids: set[str] | None = None,
     ) -> ServingSearchResult:
         query = text.strip()
         if not query:
@@ -649,6 +650,7 @@ class RetrievalServingRuntime:
             text=current_text,
             author=current_author,
         )
+        aliases.update(current_work_ids or ())
         alias_ms = (time.perf_counter() - aliases_started) * 1000
 
         service = TextRetrievalService(
