@@ -6,6 +6,10 @@ from types import SimpleNamespace
 import pytest
 
 from backend.evidence.schema import EvidenceItem
+from backend.retrieval.client import (
+    RetrievalCandidate,
+    RetrievalSearchResponse,
+)
 
 POEM = (
     "风卷珠帘自上钩，萧萧乱叶报新秋。"
@@ -336,7 +340,8 @@ def test_tool_contracts_separate_allusion_and_reference_search(agent):
     reference_tool = agent.TOOLS[1]["function"]
 
     assert allusion_tool["name"] == "lookup_allusion"
-    assert "典故性短语" in allusion_tool["description"]
+    assert "人物故事" in allusion_tool["description"]
+    assert "借了谁哪一句诗" in allusion_tool["description"]
     assert "整句诗文的全文相似检索" in allusion_tool["description"]
 
     term = allusion_tool["parameters"]["properties"]["term"]
@@ -346,9 +351,16 @@ def test_tool_contracts_separate_allusion_and_reference_search(agent):
     assert "前代诗文" in reference_tool["description"]
     assert "当前作品或后代作品" in reference_tool["description"]
     assert "高度压缩或反用" in reference_tool["description"]
+    assert "不要先用本工具重复试探" in reference_tool["description"]
 
     text_param = reference_tool["parameters"]["properties"]["text"]
     assert "目标短句" in text_param["description"]
+
+    retrieval_tool = agent.TEXT_RETRIEVAL_TOOL["function"]
+    assert retrieval_tool["name"] == "search_predecessor_texts"
+    assert "自建古典诗词 Corpus" in retrieval_tool["description"]
+    assert "借了谁哪一句诗" in retrieval_tool["description"]
+    assert "长尾互文" in retrieval_tool["description"]
 
 
 def test_reference_tool_queries_target_clause_and_returns_candidates(
@@ -417,3 +429,129 @@ def test_reference_tool_queries_target_clause_and_returns_candidates(
     assert result["tool_count"] == 1
     assert result["evidences"][0]["metadata"]["dynasty"] == "唐"
 
+
+
+
+def test_local_retrieval_tool_is_hidden_when_service_is_disabled(
+    monkeypatch,
+    agent,
+):
+    monkeypatch.setattr(
+        agent,
+        "text_retrieval_client",
+        SimpleNamespace(enabled=False),
+    )
+
+    names = [
+        item["function"]["name"]
+        for item in agent._available_tools()
+    ]
+
+    assert "search_predecessor_texts" not in names
+
+
+def test_local_retrieval_tool_adds_host_poem_context_and_returns_candidates(
+    monkeypatch,
+    agent,
+):
+    create_calls = []
+    retrieval_calls = []
+
+    def fake_create(**kwargs):
+        create_calls.append(kwargs)
+        if len(create_calls) == 1:
+            return _tool_call_response(
+                "retrieval-1",
+                "search_predecessor_texts",
+                json.dumps(
+                    {"text": "片片轻鸥落晚沙"},
+                    ensure_ascii=False,
+                ),
+            )
+        return _text_response("最值得比较的是杜甫《小寒食舟中作》。")
+
+    class FakeRetrievalClient:
+        enabled = True
+
+        async def search(self, *, text, current_poem, top_k):
+            retrieval_calls.append(
+                {
+                    "text": text,
+                    "current_poem": current_poem,
+                    "top_k": top_k,
+                }
+            )
+            return RetrievalSearchResponse(
+                status="ok",
+                query=text,
+                candidates=[
+                    RetrievalCandidate(
+                        rank=1,
+                        work_id="dufu-1",
+                        title="小寒食舟中作",
+                        author="杜甫",
+                        dynasty="唐",
+                        text="片片轻鸥下急湍。",
+                        chronology_status="clearly_earlier",
+                        support_count=2,
+                    )
+                ],
+            )
+
+    monkeypatch.setattr(agent, "client", _fake_client(fake_create))
+    monkeypatch.setattr(
+        agent,
+        "text_retrieval_client",
+        FakeRetrievalClient(),
+    )
+
+    result = agent.graph.invoke(
+        {
+            "poem": "片片轻鸥落晚沙。",
+            "question": "这句改用了谁的诗？",
+            "selection": "片片轻鸥落晚沙",
+            "context": agent.PoemContext(
+                id="poem-1",
+                title="鹧鸪天",
+                author="陆游",
+                dynasty="宋",
+            ),
+        }
+    )
+
+    assert result["reply"] == "最值得比较的是杜甫《小寒食舟中作》。"
+    assert result["tool_count"] == 1
+    assert result.get("evidences") == []
+
+    assert len(retrieval_calls) == 1
+    call = retrieval_calls[0]
+    assert call["text"] == "片片轻鸥落晚沙"
+    assert call["top_k"] == 8
+    assert call["current_poem"].text == "片片轻鸥落晚沙。"
+    assert call["current_poem"].author == "陆游"
+    assert call["current_poem"].dynasty == "宋"
+
+    tool_names = {
+        item["function"]["name"]
+        for item in create_calls[0]["tools"]
+    }
+    assert "search_predecessor_texts" in tool_names
+
+    tool_message = next(
+        message
+        for message in create_calls[1]["messages"]
+        if message.get("role") == "tool"
+    )
+    payload = json.loads(tool_message["content"])
+    assert payload["evidence_type"] == "text_retrieval"
+    assert payload["candidates"][0]["author"] == "杜甫"
+    assert payload["candidates"][0]["text"] == "片片轻鸥下急湍。"
+
+
+def test_agent_prompt_prioritizes_corpus_retrieval_for_textual_provenance(agent):
+    prompt = agent.compose_prompt("agent_decide")
+
+    assert "应优先使用它" in prompt
+    assert "即使目标短语同时带有典故色彩" in prompt
+    assert "不要仅因为首轮 miss 就改用典故工具" in prompt
+    assert "不要先用 `lookup_reference`" in prompt

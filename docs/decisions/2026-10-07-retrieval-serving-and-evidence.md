@@ -8,7 +8,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | RET-001 | Retrieval 从 Web / Agent 进程中独立成服务边界 | 1 | joint | 本机 Serving 实测单进程 steady RSS 约 5.27 GiB；FAISS + Qwen 明显不适合塞入 Railway Web 进程 | active | Retrieval 资源模型根本改变，或托管平台能稳定承载同等常驻内存 |
 | RET-002 | 先本地做常驻 Serving + Benchmark，再决定租服务器 | 1 | AI-proposed | #145 已实际得到启动、RSS、磁盘、单请求和 5 并发数据；避免先租后猜规格 | active | 无；已验证这种顺序有效 |
-| RET-003 | FAISS row id 不再通过扫描 JSONL 回查，而使用 compact SQLite metadata store | 1 | AI-proposed | metadata build 约 81 s，DB 约 2.31 GiB；请求期 metadata lookup 已降到毫秒级 | active | metadata DB 体积或 lookup 成为主要瓶颈 |
+| RET-003 | FAISS row id 不再通过扫描 JSONL 回查，而使用 compact SQLite metadata store | 1 | AI-proposed | metadata build 约 81 s；请求期 lookup 已降到毫秒级。首轮 DB 约 2.31 GiB，但后续审计发现 clause `chunk_id` 仍误留 UNIQUE index，因此该体积是偏保守上界，见 #152 | active | metadata DB 体积或 lookup 成为主要瓶颈 |
 | RET-004 | sentence + clause 两套 Dense Retrieval 都保留 | 1 | joint | 历史真实 Case 已证明二者互补；陆游 Case clause 明显优于 sentence，蜡烛 Case sentence 更强 | active | 更大 Eval 证明某一路长期没有增量或成本不可接受 |
 | RET-005 | 当前不为了经典 transformed-use 排名难看继续调 RRF / pq_m / clause BM25 / reranker | 1 | joint | #143 显示强 LLM 已掌握大量经典互文；陆游 Case 才是更干净的 Retrieval 增量，当前瓶颈不是缺少更多参数 | active | 长尾真实失败明确指向某一组件 |
 | RET-006 | `青楼梦好` 保留为 Agent-loop / multi-span bad case | 1 | joint | 单 span 首轮 Retrieval miss；模型实际尝试改 Query；全文其他线索可能共同指向杜牧 | active | multi-span / iterative Eval 得到稳定结论 |
@@ -25,6 +25,7 @@
 | RET-106 | 未来多个 span 应优先在一次 Retrieval 请求内 batch，而不是 Agent 连续发很多独立 HTTP 请求 | 2 | AI-proposed | 当前 Dense channel 原生 batch；1/3/4 Query 的 warm latency 显示有摊薄空间 | experiment | 实现 multi-span API 后测真实吞吐与候选质量 |
 | RET-107 | 词话 / 诗话先做“小而精的 curated RAG”，开放 Web Search 负责长尾兜底 | 2 | joint | Poeticus 的评论资料不需要一开始追求全集；精选权威原典主要提供 grounding，Web Search 提供覆盖面 | proposed | 用户问题大量落在 curated corpus 之外，或 Search 质量不足 |
 | RET-108 | 不建立一个混合诗词、词话、辞书的万能索引；按 Retrieval Domain / Tool 保持语义边界 | 2 | AI-proposed | 不同问题的检索目标和证据可信度不同，混在一张榜单会降低解释性和结果质量 | proposed | 真实产品表明统一索引反而更有效且能稳定路由 |
+| RET-109 | 用户明确追问“借了谁哪一句 / 化用了哪段前代文本”时，若 Corpus Tool 可用，优先 `search_predecessor_texts`，不要先消耗 `lookup_reference` / `lookup_allusion` | 1 | AI-proposed | 首次 E2E 暴露错误路由；修订 Prompt / Tool description 后，同一陆游与姜夔 Case 均以 `text_retrieval` 为 first tool，routing gate 均通过；姜夔首轮弱命中后第二轮仍保持 Corpus Retrieval，并以「十年一觉扬州梦」找回杜牧《遣怀》 | active | 更大自然问题集出现系统性误路由，或未来 Tool 数量增加使 Prompt 路由不再稳定 |
 
 ## C. 为了闭环而暂定的默认值
 
@@ -51,6 +52,7 @@
 | RET-304 | 全文 multi-span 是否能救回 `青楼梦好`，并改善 transformed-use | 4 | user-directed | 当前单 span miss；理论上《扬州慢》多个独立线索可能形成杜牧 evidence cluster | 专门 multi-span Eval |
 | RET-305 | 评论 / 词话 curated corpus 第一批到底选哪些书、需要什么 Chunk 策略 | 4 | user-directed | 当前只形成“小而精 + Search fallback”的产品方向 | 先选约 10 本高价值原典做最小试验，不先做全集工程 |
 | RET-306 | Web Search 与 curated RAG 的路由 / 证据权重如何表达给 Agent | 4 | joint | 已明确两者可信度与覆盖面不同，但尚未形成 Tool policy | 等 Search Tool 接入方案确定后做 Eval |
+| RET-307 | 外部 Corpus 中同一作品的异本 / 重复记录如何做 self-hit canonical identity | 4 | joint | 真实 E2E 已用完整当前作品，但仍返回另一条陆游《鹧鸪天 送叶梦锡》同句记录；exact full-content fingerprint 不足 | Issue #151 先做 duplicate profiling；不直接按“同作者”粗暴过滤 |
 
 ## 这次特别记录的 AI 决策
 
@@ -79,3 +81,7 @@
 - PR #146 — Retrieval Serving runtime / benchmark
 - `retrieval_serving_20261007_1640` — 第一份 Serving Benchmark
 - `retrieval_serving_probe_20261007_1651` — uncached Query + fixture self-hit supplement probe
+- `agent_retrieval_e2e_20261007_1731` — 首次真实 Agent → HTTP Retrieval Service → Agent E2E（暴露 Tool Routing 问题）
+- `agent_retrieval_e2e_20261007_1758` — 修订后 E2E；两条 Case 均 first-tool = text_retrieval，姜夔第二轮 query reformulation 找回杜牧
+- Issue #151 — Corpus duplicate / variant self-hit profiling
+- Issue #152 — clause metadata 无用 UNIQUE index / 重新测量 compact DB 体积

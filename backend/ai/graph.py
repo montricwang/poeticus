@@ -16,6 +16,11 @@ from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
 from backend.ai.context import PoemContext, format_poem_context
 from backend.ai.prompt_loader import compose_prompt
+from backend.retrieval.client import (
+    CurrentPoem,
+    RetrievalClientError,
+    text_retrieval_client,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +78,11 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
         "function": {
             "name": "lookup_allusion",
             "description": (
-                "查询中国古典诗词中的典故、典故性短语及其出处或含义。"
-                "适合核对某个短词、短语‘出自哪里/是什么典故’；"
-                "不适合做整句诗文的全文相似检索。"
-                "不要用于作品创作年代、作者生平、"
+                "查询中国古典诗词中的人物故事、掌故、神话传说和典故性短语的出处或含义。"
+                "适合回答‘这个典故是什么故事/什么意思’；"
+                "如果用户明确问‘借了谁哪一句诗、化用了哪段前代文本’，"
+                "不要用本工具，应优先使用 search_predecessor_texts。"
+                "不要用于整句诗文的全文相似检索、作品创作年代、作者生平、"
                 "诗中人物身份或普通文学赏析。"
             ),
             "parameters": {
@@ -101,11 +107,13 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
         "function": {
             "name": "lookup_reference",
             "description": (
-                "查询一句或短句可能对应的前代诗文、成句或化用候选。"
-                "适合近似成句、改写、拆取重组等文本关系；"
+                "从外部诗词知识来源查询一句或短句可能对应的前代诗文、成句或化用候选。"
+                "适合核对已有外部 reference evidence；"
                 "返回结果只是候选，可能包含当前作品或后代作品，"
                 "必须结合作者年代和文本关系判断。"
                 "不适合解释人物故事型典故，也不能保证识别高度压缩或反用。"
+                "若 search_predecessor_texts 可用，同一个文本来源问题不要先用本工具重复试探；"
+                "只有本地 Corpus Tool 不可用，或已有明确理由需要外部 reference evidence 时再使用。"
             ),
             "parameters": {
                 "type": "object",
@@ -124,6 +132,45 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
         },
     }
 ]
+
+TEXT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
+    "type": "function",
+    "function": {
+        "name": "search_predecessor_texts",
+        "description": (
+            "在 Poeticus 自建古典诗词 Corpus 中检索可能对应当前文本的前代候选。"
+            "用户问‘借了谁哪一句诗、化用了哪段前代文本、和哪一句前代文本有关’时，"
+            "应优先使用本工具，即使目标短语同时带有典故色彩。"
+            "适合寻找近似成句、改写、拆取重组和长尾互文；"
+            "这是全文检索候选发现，不等于已经证明引用或化用。"
+            "普通赏析、作者生平和人物故事型典故不要调用。"
+            "如果第一轮结果不足，而问题仍然是文本来源，"
+            "可以换一个更有辨识度的文本锚点再检索一次。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": (
+                        "真正需要寻找前代文本的目标诗句或短片段。"
+                        "优先保留有辨识度的原文；不要机械提交整首作品，"
+                        "也不要把自己猜测的出处改写成 Query。"
+                    ),
+                }
+            },
+            "required": ["text"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
+def _available_tools() -> list[ChatCompletionFunctionToolParam]:
+    """Only expose the local-corpus tool when its service endpoint is configured."""
+    if text_retrieval_client.enabled:
+        return [*TOOLS, TEXT_RETRIEVAL_TOOL]
+    return list(TOOLS)
 
 
 class HistoryMessage(TypedDict):
@@ -177,7 +224,7 @@ def _stream_agent_decision(
         "extra_body": {"thinking": {"type": "disabled"}},
     }
     if tools_enabled:
-        request_kwargs["tools"] = TOOLS
+        request_kwargs["tools"] = _available_tools()
         request_kwargs["tool_choice"] = "auto"
 
     parts: list[str] = []
@@ -334,7 +381,7 @@ def agent_decide(state: RouterState) -> dict:
             "extra_body": {"thinking": {"type": "disabled"}},
         }
         if tools_enabled:
-            request_kwargs["tools"] = TOOLS
+            request_kwargs["tools"] = _available_tools()
             request_kwargs["tool_choice"] = "auto"
 
         try:
@@ -457,6 +504,11 @@ def execute_tools(state: RouterState) -> dict:
                         evidence_type = "reference"
                         max_items = 5
                         invalid_message = "无效的出处查询文本"
+                    elif call["name"] == "search_predecessor_texts":
+                        query = arguments.get("text")
+                        evidence_type = "text_retrieval"
+                        max_items = 8
+                        invalid_message = "无效的 Text Retrieval 查询文本"
                     else:
                         raise ValueError(f"未知工具：{call['name']}")
 
@@ -469,38 +521,69 @@ def execute_tools(state: RouterState) -> dict:
 
                     query = query.strip()
 
-                    evidences = await evidence_service.search(
-                        query=query,
-                        provider_name="cnkgraph",
-                        evidence_type=evidence_type,
-                    )
+                    if call["name"] == "search_predecessor_texts":
+                        context = state.get("context")
+                        retrieval = await text_retrieval_client.search(
+                            text=query,
+                            current_poem=CurrentPoem(
+                                text=state["poem"],
+                                title=(context.title if context else None),
+                                author=(context.author if context else None),
+                                dynasty=(context.dynasty if context else None),
+                            ),
+                            top_k=max_items,
+                        )
+                        items = []
+                        for candidate in retrieval.candidates[:max_items]:
+                            data = candidate.model_dump()
+                            data["text"] = data["text"][:800]
+                            if isinstance(data.get("title"), str):
+                                data["title"] = data["title"][:200]
+                            items.append(data)
+                        result = {
+                            "status": retrieval.status,
+                            "query": query,
+                            "evidence_type": evidence_type,
+                            "candidates": items,
+                            "note": (
+                                "这些是 Corpus 文本候选，不自动证明引用、化用或影响关系；"
+                                "请结合年代、全文上下文和文本对应关系判断。"
+                            ),
+                        }
+                    else:
+                        evidences = await evidence_service.search(
+                            query=query,
+                            provider_name="cnkgraph",
+                            evidence_type=evidence_type,
+                        )
 
-                    # 限制回传给后续 LLM 轮次的工具材料长度，避免外部证据
-                    # 带入过长文本。reference 多保留两条候选，便于跨年代比较。
-                    items = []
-                    for item in evidences[:max_items]:
-                        data = item.model_dump()
-                        data["text"] = data["text"][:1600]
-                        if isinstance(data.get("source"), dict):
-                            title = data["source"].get("title")
-                            if isinstance(title, str):
-                                data["source"]["title"] = title[:200]
-                        items.append(data)
+                        # 限制回传给后续 LLM 轮次的工具材料长度，避免外部证据
+                        # 带入过长文本。reference 多保留两条候选，便于跨年代比较。
+                        items = []
+                        for item in evidences[:max_items]:
+                            data = item.model_dump()
+                            data["text"] = data["text"][:1600]
+                            if isinstance(data.get("source"), dict):
+                                title = data["source"].get("title")
+                                if isinstance(title, str):
+                                    data["source"]["title"] = title[:200]
+                            items.append(data)
 
-                    all_evidences.extend(items)
+                        all_evidences.extend(items)
 
-                    result = {
-                        "status": ("ok" if items else "no_hit"),
-                        "query": query,
-                        "evidence_type": evidence_type,
-                        "evidences": items,
-                    }
+                        result = {
+                            "status": ("ok" if items else "no_hit"),
+                            "query": query,
+                            "evidence_type": evidence_type,
+                            "evidences": items,
+                        }
 
                 except (
                     ValueError,
                     KeyError,
                     TypeError,
                     CNKGraphError,
+                    RetrievalClientError,
                 ) as exc:
                     logger.warning(
                         "工具执行失败：%s",
