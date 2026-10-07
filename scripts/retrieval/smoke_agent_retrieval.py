@@ -124,6 +124,8 @@ def parse_tool_events(tool_results: list[dict]) -> list[dict]:
 
 
 def main() -> None:
+    load_dotenv()
+
     parser = argparse.ArgumentParser(
         description="真实 Agent -> Retrieval Service 端到端 smoke"
     )
@@ -153,7 +155,6 @@ def main() -> None:
     parser.add_argument("--output-prefix", type=Path)
     args = parser.parse_args()
 
-    load_dotenv()
     if not os.getenv("LLM_API_KEY"):
         raise SystemExit("缺少 LLM_API_KEY；请检查本地 .env")
 
