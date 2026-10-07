@@ -1,8 +1,8 @@
 # Retrieval Linux Deployment Spike
 
-> 这是 Issue #160 的临时验证手册，不代表正式生产供应商或长期部署规范。
+> 这是 Issue #160 的临时验证手册。Spike 已于 2026-10-08 完成；当前生产结构见 [docs/deployment.md](../deployment.md)。
 
-目标不是立即上线，而是从一台可随时删除的 2核8G Linux VPS 开始，验证 Retrieval Serving 的最低可行资源规格。
+目标是从一台 2核8G Linux VPS 开始，验证 Retrieval Serving 的最低可行资源规格。
 
 ## 1. 第一候选
 
@@ -206,3 +206,41 @@ python -m scripts.retrieval.probe_serving \
 ```
 
 如果 8 GiB 内存够但 2 vCPU 太慢，先升级到 4核8G；只有出现 OOM、持续 swap 或明显 page-cache 压力，才升到 16 GiB。跨境调用问题另行比较腾讯云香港或海外节点。
+
+
+## 11. Spike 结果
+
+最终实际使用腾讯云上海 2C8G：
+
+- Ubuntu 24.04；
+- CPU only；
+- single worker；
+- 50 GiB 系统盘；
+- Serving Artifact 约 8.02 GiB。
+
+Linux benchmark：
+
+```text
+ready RSS          ≈ 4.4 GiB
+post benchmark RSS ≈ 5.3 GiB
+swap used          ≈ 6 MiB
+startup cold       ≈ 34.9 s
+5-concurrency      ≈ 1.78 req/s
+```
+
+结论：
+
+- 8 GiB RAM 能承载当前 full Corpus single worker；
+- 当前资源限制更偏向 CPU / concurrency；
+- 没有理由因为“看起来更稳”直接升级 16 GiB；
+- 2C8G 后来继续承担第一版生产 Retrieval。
+
+后续部署又观察到 Linux page cache 影响：一次 systemd restart 的 startup total 约 18.25 s，明显快于首次冷启动。
+
+Spike 完成后，服务通过 Nginx HTTPS + Bearer token 接入 Railway Agent；陆游 → 杜甫 long-tail Case 已完成真实线上 E2E。
+
+详细生产结论见：
+
+- [ADR-0001](../adr/0001-separate-text-retrieval-service.md)
+- [2026-10-08 Decision Register](../decisions/2026-10-08-production-retrieval-and-deployment.md)
+- [2026-10-08 devlog](../devlog/2026-10-08.md)
