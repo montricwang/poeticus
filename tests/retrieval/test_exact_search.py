@@ -3,7 +3,9 @@ import json
 import pytest
 
 from scripts.retrieval.exact_search import (
+    build_dynasty_row_mask,
     build_result_rows,
+    definitely_earlier_dynasties,
     load_manifest,
     merge_top_k,
     read_selected_chunks,
@@ -152,3 +154,45 @@ def test_resolve_model_path_keeps_explicit_override(tmp_path):
     )
 
     assert path == requested.resolve()
+
+
+def test_definitely_earlier_dynasties_is_conservative_for_song():
+    allowed = definitely_earlier_dynasties("宋")
+
+    assert "唐" in allowed
+    assert "隋" in allowed
+    assert "唐末宋初" not in allowed
+    assert "辽" not in allowed
+    assert "宋" not in allowed
+
+
+def test_build_dynasty_row_mask_aligns_with_chunk_rows(tmp_path):
+    work_path = tmp_path / "works.jsonl"
+    chunk_path = tmp_path / "chunks.jsonl"
+
+    works = [
+        {"work_id": "tang", "dynasty": "唐"},
+        {"work_id": "song", "dynasty": "宋"},
+    ]
+    chunks = [
+        {"chunk_id": "c0", "work_id": "song", "text": "甲"},
+        {"chunk_id": "c1", "work_id": "tang", "text": "乙"},
+        {"chunk_id": "c2", "work_id": "tang", "text": "丙"},
+    ]
+    work_path.write_text(
+        "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in works),
+        encoding="utf-8",
+    )
+    chunk_path.write_text(
+        "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in chunks),
+        encoding="utf-8",
+    )
+
+    mask = build_dynasty_row_mask(
+        work_path=work_path,
+        chunk_path=chunk_path,
+        allowed_dynasties={"唐"},
+        expected_chunks=3,
+    )
+
+    assert mask.tolist() == [False, True, True]
