@@ -2,3 +2,4 @@
 pytest
 httpx
 numpy
+basedpyright==1.40.2
