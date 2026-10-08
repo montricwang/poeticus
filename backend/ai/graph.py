@@ -182,6 +182,17 @@ class HistoryMessage(TypedDict):
     content: str
 
 
+class ToolCall(TypedDict):
+    id: str
+    name: str
+    arguments: str
+
+
+class ToolResult(TypedDict):
+    id: str
+    content: str
+
+
 class RouterState(TypedDict):
     poem: str
     question: str
@@ -191,9 +202,9 @@ class RouterState(TypedDict):
     messages: NotRequired[list[ChatCompletionMessageParam]]
     tool_count: NotRequired[int]
     reply: NotRequired[str]
-    evidences: NotRequired[list[dict]]
-    tool_calls: NotRequired[list[dict]]
-    tool_results: NotRequired[list[dict]]
+    evidences: NotRequired[list[dict[str, object]]]
+    tool_calls: NotRequired[list[ToolCall]]
+    tool_results: NotRequired[list[ToolResult]]
     stream_reply: NotRequired[bool]
 
 
@@ -210,7 +221,7 @@ def _agent_user_message(state: RouterState) -> str:
 def _stream_agent_decision(
     messages: list[ChatCompletionMessageParam],
     tools_enabled: bool,
-) -> tuple[str, list[dict]]:
+) -> tuple[str, list[ToolCall]]:
     writer = get_stream_writer()
 
     request_messages = (
@@ -231,7 +242,7 @@ def _stream_agent_decision(
         request_kwargs["tool_choice"] = "auto"
 
     parts: list[str] = []
-    pending: dict[int, dict] = {}
+    pending: dict[int, ToolCall] = {}
     finish_reason = None
     stream = None
     tool_calls_started = False
@@ -370,6 +381,7 @@ def agent_decide(state: RouterState) -> dict:
     tools_enabled = state.get("tool_count", 0) < AGENT_MAX_TOOL_CALLS
 
     stream_reply = state.get("stream_reply", False)
+    tool_calls: list[ToolCall]
 
     if stream_reply:
         answer, tool_calls = _stream_agent_decision(messages, tools_enabled)
@@ -481,9 +493,9 @@ def execute_tools(state: RouterState) -> dict:
     if len(ids) != len(set(ids)):
         raise RuntimeError("工具调用 ID 重复")
 
-    async def run_tools():
-        results = []
-        all_evidences = []
+    async def run_tools() -> tuple[list[ToolResult], list[dict[str, object]], int]:
+        results: list[ToolResult] = []
+        all_evidences: list[dict[str, object]] = []
         count = tool_count
 
         for call in calls:
