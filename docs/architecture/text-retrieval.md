@@ -1,6 +1,161 @@
 # Text Retrieval 架构基线
 
-> 状态：2026-10-08。本文从 Retrieval 实验一路记录到 v0.3.0 的生产 Serving；早期 spike 段落保留形成过程，文末“Production baseline”代表当前线上状态。
+> 当前版本：v0.3.0（2026-10-08）。**第 0–10 节描述现行系统和仍开放的边界；第 11 节是 10 月 7 日的实验演进记录，其中的“下一步 / 候选”不是当前待办。** 生产部署以 [Deployment](../deployment.md) 为准。
+
+## 0. 当前生产基线（v0.3.0）
+
+截至 2026-10-08，Text Retrieval 已经进入线上 Agent。
+
+### 运行期链路
+
+```text
+Agent search_predecessor_texts
+        ↓ HTTPS + Bearer
+Text Retrieval Service
+        ↓
+deterministic Query Plan
+        ↓
+┌───────────────────────────────┐
+│ sentence Dense / clause Dense │
+│ sentence char 2-3gram BM25    │
+└───────────────────────────────┘
+        ↓
+Work-level RRF
+        ↓
+Candidate Eligibility
+        ↓
+Top-K candidates
+        ↓
+Agent 判断
+```
+
+Agent 对“借了谁哪一句 / 化用了哪段前代文本”优先使用自建 Corpus Tool。第一轮结果弱时，允许在 2 次工具预算内换文本锚点再检索。
+
+### Full Corpus
+
+```text
+Works            853,385
+sentence chunks  4,822,054
+clause chunks    9,425,173
+```
+
+Embedding：
+
+```text
+Qwen/Qwen3-Embedding-0.6B
+1024 dimensions
+normalized
+float16 build artifacts
+```
+
+原始 sentence + clause Embedding 合计约 27.17 GiB，继续作为离线构建资产。
+
+### Serving Index
+
+生产使用两套 FAISS IVFPQ：
+
+```text
+sentence FAISS   1.189 GiB
+clause FAISS     2.320 GiB
+total            3.509 GiB
+```
+
+当前参数：
+
+```text
+nlist=512
+pq_m=256
+pq_bits=8
+nprobe=64
+```
+
+pq64 在 ANN Recall 上损失过大；pq256 通过真实 Case 验证后进入 full build。继续增加 nprobe 几乎没有补回主要 Recall，说明当前误差主要来自 PQ 表示压缩。
+
+### Lexical 与 metadata
+
+```text
+sentence BM25          1.557 GiB
+metadata v2 SQLite     1.828 GiB
+Qwen model             1.125 GiB
+full serving bundle    ≈ 8.02 GiB
+```
+
+metadata v2 删除了请求期不需要的 clause `chunk_id UNIQUE` index。全量 DB 从约 2.313 GiB 降到 1.828 GiB，build 约 73 s。
+
+### Current-work chronology
+
+公开阅读数据库当前没有可靠逐首 dynasty。请求缺少该字段时：
+
+1. 根据当前正文寻找 Werneror exact-content alias；
+2. alias 无法解决时，对 exact author 统计 Werneror dynasty；
+3. 唯一最高计数作为 corpus-compatible target label；
+4. 并列或未知时保持 unknown。
+
+这一值只参与 Candidate Eligibility。
+
+生产节点观测到：
+
+```text
+温庭筠 → 唐
+韦庄   → 唐
+冯延巳 → 唐
+李璟   → 唐
+李煜   → 唐
+```
+
+因此 Werneror dynasty 只能支持粗 chronology。同朝、overlap、unknown 继续保留给 Agent 判断。
+
+### Production service boundary
+
+```text
+Railway Web / Agent
+        │
+        │ HTTPS + Bearer
+        ▼
+Tencent Cloud Nginx
+        │ localhost HTTP
+        ▼
+Text Retrieval Service :8787
+```
+
+2C8G Linux single worker 已通过 full Corpus benchmark：
+
+- ready RSS 约 4.4 GiB；
+- benchmark 后约 5.3 GiB；
+- 首次 cold start 约 34.9 s；
+- page cache 后一次 restart 约 18.25 s；
+- 5 并发约 1.78 req/s。
+
+资源与运维细节见 [当前生产部署](../deployment.md)。
+
+### 线上 E2E canary
+
+陆游：
+
+```text
+片片轻鸥落晚沙
+```
+
+在请求显式 `dynasty=null` 的情况下，Retriever 仍返回：
+
+```text
+杜甫《小寒食舟中作》
+娟娟戏蝶过闲幔，片片轻鸥下急湍。
+chronology_status=clearly_earlier
+```
+
+线上 Agent 随后正确使用杜甫候选，并把“文本对应很强”与“缺少明确引用记载”同时交代。
+
+### 当前已知边界
+
+- duplicate / variant self-hit：#151；
+- 粗 dynasty overlap 会保留部分晚于目标作者的候选；
+- Werneror dynasty 不能承担精细历史断代；
+- transformed-use 仍可能需要 Agent query reformulation；
+- 当前 2C8G 的长期并发上限尚未由真实流量确定；
+- 唐宋 Serving Profile / Corpus pruning：#163，deferred。
+
+当前 Retrieval 继续遵循一个停止线：真实产品 Case 出现新的稳定失败，再决定是否增加 reranker、clause BM25、pq512、multi-span 或更细 chronology。
 
 ## 1. 目标与非目标
 
@@ -269,30 +424,26 @@ Werneror/Poetry 适合作为大规模候选发现语料，但不能把其中的�
 
 不在失败证据出现前同时引入这些复杂度。
 
-## 10. 当前待定事项
+## 10. 当前已定事项与仍开放的边界
 
-截至 2026-10-07，已经不再待定的部分包括：
+**v0.3.0 已完成**：sentence / clause Qwen Dense、sentence character 2–3 gram BM25、deterministic Query Plan、Work-level RRF、Candidate Eligibility、FAISS IVFPQ、compact metadata v2、独立 HTTP Retrieval Service、Railway Agent Tool 接入和真实线上 E2E。这些不再是“待选后端 / 下一轮 Spike”。当前生产参数与资源测量见第 0 节和 [Deployment](../deployment.md)。
 
-- Lexical baseline 已采用 **character 2-3 gram + BM25**；
-- Query Plan 已固定为 passage / sentence / clause 的确定性多粒度策略；
-- Candidate Fusion 第一版已采用 Work-level RRF；
-- Candidate Eligibility 已采用 recall-first 的保守 chronology 规则；
-- FAISS IVFPQ serving-index spike 已证明 raw Embedding 可以保留为离线构建资产，线上只部署压缩 ANN Index。
+**待解决或待观察**：
 
-仍然需要后续真实结果决定的是：
+- #151：同一作品重复版本或异本导致的 self-hit；
+- 粗粒度朝代与同朝先后无法提供准确 chronology，可靠逐首年代数据仍待补；
+- #167：Let's Encrypt 公网 IP 证书首次自动续期验证；
+- 真实流量下的网络稳定性、延迟和 2C8G 并发上限；
+- 全文 multi-span evidence、curated 文献 RAG，以及必要时的 Agent / Retrieval Eval 增量；
+- #163：唐宋 Serving Profile 属 deferred，不是本版发布阻塞项。
 
-- production Dense backend 最终是否直接使用 FAISS，以及 Retrieval Service 的部署拓扑；
-- full FAISS index 的实际体积、内存占用和查询延迟；
-- 当前候选参数 `pq_m=256, nprobe=64` 在真实 intertext Case 上是否足够；它只是下一轮 full build 候选，不是冻结的 production 参数；
-- Query instruction；
-- Top-K；
-- Hybrid 后是否仍需要 reranker；
-- author / work 精确年代补齐后，chronology filtering 是否需要进一步收紧。
+**停止线**：没有新增稳定失败前，不再惯性引入 pq512、clause BM25、reranker、古汉语分词、GPU 或多 worker。具体的阶段顺序由 [Roadmap](../roadmap.md) 和各 Issue 维护。
 
-这些事项继续由真实失败和部署数据购买复杂度，不提前扩张。
+## 11. 实验阶段的设计演进（2026-10-07，历史记录）
 
+以下保留当日 Artifact 对照、Lexical/RRF、Service 抽象和 FAISS Spike 的形成过程。文中如出现“下一阶段优先候选”“暂不选择 FAISS / RRF”等表述，**仅表示当时尚未完成验证时的判断**；实际落地结果以第 0、10 节为准。更完整的时间线见 [开发日志](../devlog/2026-10-07.md) 与 [当日 Decision Register](../decisions/2026-10-07-retrieval-serving-and-evidence.md)。
 
-## Artifact 对照检索
+### Artifact 对照检索
 
 Clause 构建完成后，Retrieval Eval 不再为不同模型维护三套搜索代码。新增 manifest-driven 搜索入口：
 
@@ -313,7 +464,7 @@ Artifact manifest
 `scripts/retrieval/compare_artifacts.py` 用同一个已知互文案例依次跑三套 Artifact，最终横向比较 `best_probe_rank` 与 `best_probe_cosine`。它是诊断工具，不是新的 Benchmark Pool；仍然复用既有真实互文案例。
 
 
-## Lexical Retrieval baseline
+### Lexical Retrieval baseline
 
 Dense Retrieval 之外，当前增加一条独立的字面召回链：
 
@@ -343,18 +494,18 @@ Dense Retrieval 之外，当前增加一条独立的字面召回链：
 Lexical 与 Dense 仍然是两条独立召回链，只有真实结果证明互补后才进入 Candidate Fusion。
 
 
-## Lexical / Hybrid 的当前取舍
+### Lexical / Hybrid 的当前取舍
 
 围绕 BM25 还能继续增加分词、归一化、查询扩展、字段权重、参数变体和重排等大量组件。当前不把这些可能性一次性做成“搜索引擎全家桶”，而按真实互文 Case 购买复杂度。
 
-### 已经采用
+#### 已经采用
 
 - **character 2-3 gram + BM25**：当前 lexical 主力；已在强字面复用 Case 上证明增量；
 - **标点作为 n-gram 边界**：避免跨标点生成无意义 term；
 - **sentence + clause Corpus 粒度**：真实 Case 已证明互补；
 - **deterministic multi-query**：先生成 passage / sentence / clause Query Plan；三层切分复用 Corpus policy，相同文本去重但保留来源位置。下一步再把 Query Plan 接入 Dense + Lexical fan-out。
 
-### 下一阶段优先候选
+#### 下一阶段优先候选
 
 **RRF（Reciprocal Rank Fusion）** 是第一版 Candidate Fusion 的优先候选。
 
@@ -362,14 +513,14 @@ Lexical 与 Dense 仍然是两条独立召回链，只有真实结果证明互�
 
 是否正式采用 RRF，等 deterministic multi-query 的真实结果出来后再决定。
 
-### 有价值，但需要真实证据后再做
+#### 有价值，但需要真实证据后再做
 
 - **检索字段归一化**：繁简、明确异体字可以作为独立 retrieval representation；原始文本必须继续保留，不能静默改写 Corpus。先画像实际差异，再决定是否实施；
 - **词级分词 + n-gram 多字段**：只有 character n-gram 的真实结果出现大量短片段噪声或系统性漏召回时，再比较古汉语分词方案；
 - **位置 / 邻近信号**：若正确候选已进入 Top-K，但大量偶然共享 n-gram 的结果排在前面，可增加顺序或邻近约束；
 - **专门 reranker / Cross-Encoder**：只有 Candidate Fusion 后的候选排序仍明显影响 DeepSeek 可见范围时再引入。
 
-### 当前明确不做
+#### 当前明确不做
 
 - edge n-gram：主要服务前缀搜索 / autocomplete，与互文候选发现无直接证据；
 - 拼音字段：当前任务不是输入法容错，同音扩展更可能扩大噪声；
@@ -382,7 +533,7 @@ Lexical 与 Dense 仍然是两条独立召回链，只有真实结果证明互�
 原则仍然是：**先把 Query Strategy、候选融合和 chronology 这些已经由真实 Case 暴露的问题解决，再优化更细的 lexical 组件。**
 
 
-### Candidate Fusion：Work-level RRF
+#### Candidate Fusion：Work-level RRF
 
 Query Fan-out 之后，各路结果不能直接比较 raw score：
 
@@ -419,7 +570,7 @@ contribution = 1 / (60 + rank)
 RRF 之后仍需独立处理 chronology、当前作品 self-hit 与明显后世候选；这些规则不塞进 Fusion score。
 
 
-### Candidate Eligibility：只删除明确不可能的前代候选
+#### Candidate Eligibility：只删除明确不可能的前代候选
 
 RRF 得到的是“多路 Retrieval 共同支持的候选作品”，但产品语义仍要求寻找当前作品的**前代**文本。
 
@@ -460,7 +611,7 @@ Candidate Eligibility 因此与当前诊断脚本中的严格朝代过滤分开�
 这一层当前放在 Fusion 之后定义产品语义；未来生产 Retriever 若支持 metadata pre-filter，可以把同一 eligibility predicate 下推到检索后端以提高效率和改善 eligible-rank 语义，但不能改变这层的判定规则。
 
 
-### Product Service：先固定编排边界，再选择索引后端
+#### Product Service：先固定编排边界，再选择索引后端
 
 截至 2026-10-07，Query Plan、Fan-out、Work-level RRF 与 Candidate Eligibility 已经形成稳定职责，因此增加产品侧 `TextRetrievalService`：
 
@@ -484,7 +635,7 @@ Service 当前固定的产品语义：
 - 无候选时返回 `no_hit`，而不是伪造弱候选；
 - backend / index unavailable 仍应作为错误与 `no_hit` 区分，具体 failure contract 等真实 channel 落地时定义。
 
-#### 为什么暂不直接把现有 PostgreSQL 变成 pgvector
+##### 为什么暂不直接把现有 PostgreSQL 变成 pgvector
 
 当前 Railway production 实际资源画像：
 
@@ -507,7 +658,7 @@ Service 当前固定的产品语义：
 在这个 spike 完成前，`TextRetrievalService` 与 Agent Tool contract 都不应反向绑定某一种 Vector DB。
 
 
-### Serving Artifact Spike：原始 Embedding 不等于线上 Index
+#### Serving Artifact Spike：原始 Embedding 不等于线上 Index
 
 当前约 27.2 GiB 的 Qwen sentence + clause float16 Embedding 是**离线构建资产**，不是已经冻结的线上部署体积。
 
@@ -559,159 +710,3 @@ Serving Index
 这组 Recall 只衡量 ANN 对 Exact vector neighbors 的复现程度，不是文学关系 Recall。下一步应构建 full index，并回到真实 intertext Case 验证目标前代文本是否稳定进入候选。
 
 pgvector 暂不在这一 PR 建表或扩容 Railway。production backend 与 Retrieval Service 的部署位置，等待 full index 的真实体积、内存、延迟和文学 Case Eval 后再决定。
-
-
-## Production baseline：v0.3.0
-
-截至 2026-10-08，Text Retrieval 已经进入线上 Agent。
-
-### 运行期链路
-
-```text
-Agent search_predecessor_texts
-        ↓ HTTPS + Bearer
-Text Retrieval Service
-        ↓
-deterministic Query Plan
-        ↓
-┌───────────────────────────────┐
-│ sentence Dense / clause Dense │
-│ sentence char 2-3gram BM25    │
-└───────────────────────────────┘
-        ↓
-Work-level RRF
-        ↓
-Candidate Eligibility
-        ↓
-Top-K candidates
-        ↓
-Agent 判断
-```
-
-Agent 对“借了谁哪一句 / 化用了哪段前代文本”优先使用自建 Corpus Tool。第一轮结果弱时，允许在 2 次工具预算内换文本锚点再检索。
-
-### Full Corpus
-
-```text
-Works            853,385
-sentence chunks  4,822,054
-clause chunks    9,425,173
-```
-
-Embedding：
-
-```text
-Qwen/Qwen3-Embedding-0.6B
-1024 dimensions
-normalized
-float16 build artifacts
-```
-
-原始 sentence + clause Embedding 合计约 27.17 GiB，继续作为离线构建资产。
-
-### Serving Index
-
-生产使用两套 FAISS IVFPQ：
-
-```text
-sentence FAISS   1.189 GiB
-clause FAISS     2.320 GiB
-total            3.509 GiB
-```
-
-当前参数：
-
-```text
-nlist=512
-pq_m=256
-pq_bits=8
-nprobe=64
-```
-
-pq64 在 ANN Recall 上损失过大；pq256 通过真实 Case 验证后进入 full build。继续增加 nprobe 几乎没有补回主要 Recall，说明当前误差主要来自 PQ 表示压缩。
-
-### Lexical 与 metadata
-
-```text
-sentence BM25          1.557 GiB
-metadata v2 SQLite     1.828 GiB
-Qwen model             1.125 GiB
-full serving bundle    ≈ 8.02 GiB
-```
-
-metadata v2 删除了请求期不需要的 clause `chunk_id UNIQUE` index。全量 DB 从约 2.313 GiB 降到 1.828 GiB，build 约 73 s。
-
-### Current-work chronology
-
-公开阅读数据库当前没有可靠逐首 dynasty。请求缺少该字段时：
-
-1. 根据当前正文寻找 Werneror exact-content alias；
-2. alias 无法解决时，对 exact author 统计 Werneror dynasty；
-3. 唯一最高计数作为 corpus-compatible target label；
-4. 并列或未知时保持 unknown。
-
-这一值只参与 Candidate Eligibility。
-
-生产节点观测到：
-
-```text
-温庭筠 → 唐
-韦庄   → 唐
-冯延巳 → 唐
-李璟   → 唐
-李煜   → 唐
-```
-
-因此 Werneror dynasty 只能支持粗 chronology。同朝、overlap、unknown 继续保留给 Agent 判断。
-
-### Production service boundary
-
-```text
-Railway Web / Agent
-        │
-        │ HTTPS + Bearer
-        ▼
-Tencent Cloud Nginx
-        │ localhost HTTP
-        ▼
-Text Retrieval Service :8787
-```
-
-2C8G Linux single worker 已通过 full Corpus benchmark：
-
-- ready RSS 约 4.4 GiB；
-- benchmark 后约 5.3 GiB；
-- 首次 cold start 约 34.9 s；
-- page cache 后一次 restart 约 18.25 s；
-- 5 并发约 1.78 req/s。
-
-资源与运维细节见 [当前生产部署](../deployment.md)。
-
-### 线上 E2E canary
-
-陆游：
-
-```text
-片片轻鸥落晚沙
-```
-
-在请求显式 `dynasty=null` 的情况下，Retriever 仍返回：
-
-```text
-杜甫《小寒食舟中作》
-娟娟戏蝶过闲幔，片片轻鸥下急湍。
-chronology_status=clearly_earlier
-```
-
-线上 Agent 随后正确使用杜甫候选，并把“文本对应很强”与“缺少明确引用记载”同时交代。
-
-### 当前已知边界
-
-- duplicate / variant self-hit：#151；
-- 粗 dynasty overlap 会保留部分晚于目标作者的候选；
-- Werneror dynasty 不能承担精细历史断代；
-- transformed-use 仍可能需要 Agent query reformulation；
-- 当前 2C8G 的长期并发上限尚未由真实流量确定；
-- 唐宋 Serving Profile / Corpus pruning：#163，deferred。
-
-当前 Retrieval 继续遵循一个停止线：真实产品 Case 出现新的稳定失败，再决定是否增加 reranker、clause BM25、pq512、multi-span 或更细 chronology。
