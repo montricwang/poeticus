@@ -19,15 +19,20 @@ import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Sequence
 
 from backend.retrieval.chronology import DYNASTY_PERIODS
 from backend.retrieval.fanout import (
     ChannelDescriptor,
+    ChunkPolicy,
     RetrievalHit,
 )
 from backend.retrieval.metadata_store import MetadataStore
 from backend.retrieval.service import TextRetrievalService
+
+if TYPE_CHECKING:
+    import numpy as np
+    from numpy.typing import NDArray
 
 
 def _load_json(path: Path) -> dict:
@@ -140,7 +145,7 @@ class ServingSearchResult:
     query: str
     candidates: tuple[ServingCandidate, ...]
     current_work_aliases: tuple[str, ...]
-    timings_ms: dict
+    timings_ms: dict[str, object]
 
 
 def _dominant_known_dynasty(counts: dict[str, int]) -> str | None:
@@ -183,7 +188,7 @@ class QwenQueryEncoder:
                 "请安装 requirements-retrieval.txt"
             ) from exc
 
-        kwargs = {"local_files_only": True}
+        kwargs: dict[str, bool | str] = {"local_files_only": True}
         if device:
             kwargs["device"] = device
 
@@ -191,7 +196,7 @@ class QwenQueryEncoder:
         self.dimension = dimension
         self.device = str(self._model.device)
         self._cache_size = cache_size
-        self._cache: OrderedDict[str, object] = OrderedDict()
+        self._cache: OrderedDict[str, NDArray[np.float32]] = OrderedDict()
         self._lock = threading.Lock()
 
     def clear_cache(self) -> None:
@@ -242,7 +247,7 @@ class FaissDenseChannel:
         self,
         *,
         name: str,
-        policy: str,
+        policy: ChunkPolicy,
         embedding_dir: Path,
         index_dir: Path,
         encoder: QwenQueryEncoder,
