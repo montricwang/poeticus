@@ -108,28 +108,11 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 
 当前生产由 Railway Web / PostgreSQL 与独立 Text Retrieval 节点共同组成；真实配置见 [deployment.md](deployment.md)。具体未来工作进入 GitHub Issues 或 [roadmap.md](roadmap.md)，不要在操作文档里保留已经结束的预览阶段说明。
 
-## 7. 工程决策审计
+## 7. 工程决策的记录边界
 
-重要工程取舍除了进入 Issue / PR 外，还应在 [Engineering Decision Register](decisions/README.md) 中记录其证据强度、来源和重新审视条件。
+重要、长期影响系统边界或数据语义的技术取舍记录到 [ADR](adr/README.md)，包括 Context、Alternatives、Evidence、Origin、Confidence、Consequences 与 Revisit when。普通参数的当前值以代码和相关架构说明为准，尚未确认的工作进入 GitHub Issues。
 
-Decision Register 使用四层分类：
-
-1. **Evidence-backed**：已有真实 Case、Benchmark、故障或外部约束支持；
-2. **Reasonable but unproven**：理由充分，但还没有足够真实数据证明；
-3. **Working default**：为了闭环先选的参数、阈值和实现默认；
-4. **Open / unresolved**：已有多个合理方向，当前证据不足。
-
-同时记录 `Origin`：`user-directed` / `AI-proposed` / `joint` / `inherited`。
-
-目的不是给每个小实现写 ADR，而是防止：
-
-- AI 在推进实现时自行补上的默认值被遗忘；
-- 临时参数因为存在得够久而被误认为架构原则；
-- 后续复盘只看到“最后选了什么”，看不到“当时为什么这样选”；
-- 新证据出现后不知道哪些决定应该优先重新打开。
-
-架构文档仍然负责描述**当前真相**；Decision Register 负责描述**当前真相的决策来路与可撤销条件**。
-
+不要再并行维护 Decision Register；2026-10-07/08 的旧决策快照已在 Git 历史保存，长期结论已迁移到 ADR。完整职责见 [文档导航](README.md)。
 
 ## 8. Text Retrieval 开发环境
 
@@ -169,7 +152,8 @@ bash scripts/retrieval/deploy_vps.sh \
 
 脚本显式使用私钥和 SSH `BatchMode`，不会退回密码认证。它会：
 
-- 上传 Retrieval 代码；
+- 在远端检查新 `retrieval/` 布局中必要的 Embedding Manifest 已迁移，未迁移则拒绝替换/重启旧服务；
+- 上传 Retrieval 代码（含 `backend/data_paths.py`）；
 - compileall；
 - restart systemd；
 - 循环等待 localhost `/health`；
@@ -179,13 +163,13 @@ bash scripts/retrieval/deploy_vps.sh \
 
 ## 10. 文档落盘规则
 
-完成一个明显工程阶段后，按内容性质分别更新：
+完成一个明显工程阶段后，按 [文档导航](README.md) 更新唯一权威位置：
 
 - `docs/devlog/`：当天发生了什么；
 - `docs/architecture/`：系统当前结构；
-- `docs/adr/`：已经接受的长期架构边界；
-- `docs/decisions/`：证据强度、Origin、working defaults、open questions；
+- `docs/adr/`：长期技术决策的背景、证据、Origin、代价和复审条件；
 - GitHub Issues：仍需继续处理的任务；
-- `docs/releases/`：版本对外说明。
+- `docs/releases/`：版本对外说明；
+- `docs/data-management.md`：`poeticus-data/` 私有资产布局和恢复规则。
 
 AI 协作、教学节奏和阶段复盘方式统一维护在 [GPT Finishing School《教学与开发协作手册》](https://github.com/montricwang/gpt-finishing-school/blob/main/审校与工作流/教学与开发协作手册.md)。

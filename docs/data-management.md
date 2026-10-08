@@ -1,6 +1,6 @@
-# Poeticus 本地数据管理
+# poeticus-data：私人数据工作区与资产管理
 
-本文件描述**开发仓库以外的私人数据资产**；它们不进入公开 Git 历史，是否值得保留也不能由 `.gitignore` 判断。
+本文件专门说明仓库旁边的 **`poeticus-data/`**：目录职责、哪些输入/Artifact 值得保存、如何备份和迁移，以及如何验证重建。它**不**解释全项目的数据库 Schema、在线 Retrieval 架构或通用文件存储原则；相关内容分别见 [Corpus Database](architecture/corpus-database.md) 与 [Text Retrieval](architecture/text-retrieval.md)。这些私人文件不进入公开 Git 历史，是否值得保留也不能由 `.gitignore` 判断。
 
 ## 1. 数据根目录和路径规则
 
@@ -98,8 +98,8 @@ python -m scripts.retrieval.inspect_serving_bundle
 
 - **保留正式入口**：EPUB 全量预检、字形复核/导入、Werneror 语料转换、Embedding/索引构建、DB 恢复、Retrieval Serving。
 - **保留可复用诊断能力**：`scripts/corpus/epub_import/diagnostics/` 和 Retrieval Eval 中有实际复现价值的工具。
-- **实验和一次性 Probe**：逐个判断是否已有替代入口及测试，先记录去留原因，再删除或移入历史归档；本次路径重构不擅自删脚本。
+- **实验和一次性 Probe**：按功能、正式调用、测试与知识沉淀逐个评估；已经退役的入口可从 Git 历史找回。其余九个专项脚本的验收见 #177。
 - **报告与脚本分开决定**：可重建报告不必全部永久放在活跃目录，但作为选型证据或含人工结论的历史报告可归档。脚本不常运行也不等于无价值。
 - 若脚本输出私人 EPUB 原文、glyph 上下文或私有证据，一律不能写入公开仓库或 `VITE_*` 等前端配置。
 
-本文件为当前目录契约。旧布局中的具体文件应先盘点，再分批迁移；脚本整理工作跟踪 [#177](https://github.com/montricwang/poeticus/issues/177)。
+本文件为当前目录契约。EPUB 相关报告的标准子目录拼写是 `reports/epub-import/`（连字符），不是 `reports/epub_import/`。旧布局中的具体文件应先盘点，再分批迁移；脚本整理工作跟踪 [#177](https://github.com/montricwang/poeticus/issues/177)。
