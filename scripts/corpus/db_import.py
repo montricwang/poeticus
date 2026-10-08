@@ -13,9 +13,11 @@ import uuid
 from collections import Counter
 from pathlib import Path
 
+from backend.data_paths import READING_NORMALIZED_ROOT
+
 from .adapter import ConvertedPoem, convert_corpus
 
-DEFAULT_INPUT = Path("data/output/all_normalized.json")
+DEFAULT_INPUT = READING_NORMALIZED_ROOT / "all_normalized.json"
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "db/migrations"
 LATEST_VERSION = "0005_ai_ip_daily_quotas"
 

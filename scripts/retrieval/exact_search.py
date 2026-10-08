@@ -19,6 +19,8 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+
+from backend.data_paths import MODELS_ROOT, RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
 from typing import Iterable
 
 from backend.retrieval.chronology import (
@@ -27,10 +29,10 @@ from backend.retrieval.chronology import (
 )
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
-DEFAULT_DATA_ROOT = Path("../poeticus-data/output/retrieval")
-DEFAULT_MODEL_ROOT = Path("../poeticus-data/models")
-DEFAULT_CHUNKS = DEFAULT_DATA_ROOT / "werneror_chunks_sentence.jsonl"
-DEFAULT_WORKS = DEFAULT_DATA_ROOT / "werneror_works.jsonl"
+DEFAULT_DATA_ROOT = RETRIEVAL_ROOT
+DEFAULT_MODEL_ROOT = MODELS_ROOT
+DEFAULT_CHUNKS = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl"
+DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 DEFAULT_ARTIFACT_DIR = (
     DEFAULT_DATA_ROOT / "embeddings/qwen3_0.6b_sentence_1024"
 )

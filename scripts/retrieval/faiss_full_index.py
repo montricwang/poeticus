@@ -18,15 +18,17 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+from backend.data_paths import RETRIEVAL_ROOT
 from typing import Sequence
 
 from scripts.retrieval.artifact_search import load_artifact_manifest
-from scripts.retrieval.faiss_serving_spike import (
+from scripts.retrieval.vector_sampling import (
     load_sampled_vectors,
     sample_global_rows,
 )
 
-DEFAULT_OUTPUT_ROOT = Path("../poeticus-data/output/retrieval/faiss")
+DEFAULT_OUTPUT_ROOT = RETRIEVAL_ROOT / "faiss"
 DEFAULT_NLIST = 512
 DEFAULT_PQ_M = 256
 DEFAULT_PQ_BITS = 8

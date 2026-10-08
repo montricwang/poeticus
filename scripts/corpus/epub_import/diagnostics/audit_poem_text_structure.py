@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """只读审计各分册 Poeticus 中间 JSON 的 content.text 结构。
 
-Default input: data/output/all_normalized.json (private, not present in GitHub).
+Default input: poeticus-data/reading-corpus/normalized/all_normalized.json (private, not present in GitHub).
 Produces a metadata-only report and a SEPARATE, private literary-text review file
-under data/reports/ (gitignored by Poeticus). Does not change source JSON.
+under poeticus-data/reports/epub-import/ (gitignored by Poeticus). Does not change source JSON.
 
 This tool describes structures, NOT literary correctness. In particular, an array
 entry is not necessarily a ci stanza (片), or a sentence (句).
@@ -15,6 +15,8 @@ import json
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
+
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_NORMALIZED_ROOT
 from statistics import median
 
 # 这些只是供人工复核的候选信号，不代表已经确认文本有误。
@@ -294,8 +296,8 @@ def self_test() -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="全库 content.text 结构画像；默认只读私人中间 JSON")
-    parser.add_argument("--input", default="data/output/all_normalized.json", help="私有规范化中间作品数组")
-    parser.add_argument("--report-dir", default="data/reports", help="本地私人报告目录（默认受 .gitignore 保护）")
+    parser.add_argument("--input", default=str(READING_NORMALIZED_ROOT / "all_normalized.json"), help="私有规范化中间作品数组")
+    parser.add_argument("--report-dir", default=str(EPUB_REPORTS_ROOT), help="本地私人报告目录（默认受 .gitignore 保护）")
     parser.add_argument("--preview-count", type=int, default=24, help="原文私有抽样上限，0 表示不创建私有预览")
     parser.add_argument("--self-test", action="store_true", help="仅运行合成测试，不接触真实数据")
     args = parser.parse_args()

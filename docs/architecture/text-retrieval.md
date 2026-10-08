@@ -345,7 +345,7 @@ BERT-CCPoem v1.0 + clause + 512d
 Embedding 先作为独立离线构建产物保存：
 
 ```text
-../poeticus-data/output/retrieval/embeddings/qwen3_0.6b_sentence_1024/
+../poeticus-data/retrieval/embeddings/qwen3_0.6b_sentence_1024/
 ├─ manifest.json
 ├─ shard_00000.npy
 ├─ shard_00001.npy
@@ -461,7 +461,7 @@ Artifact manifest
 - Qwen3-Embedding-0.6B + clause；
 - BERT-CCPoem v1.0 + clause。
 
-`scripts/retrieval/compare_artifacts.py` 用同一个已知互文案例依次跑三套 Artifact，最终横向比较 `best_probe_rank` 与 `best_probe_cosine`。它是诊断工具，不是新的 Benchmark Pool；仍然复用既有真实互文案例。
+早期曾由 `scripts/retrieval/compare_artifacts.py` 固定遍历三套 Artifact，对比 `best_probe_rank` 和 `best_probe_cosine`；这属于已完成的历史选型实验，运行器已退役，代码仍可从 Git 历史追溯。后续按需使用 `scripts/retrieval/artifact_search.py` 对单个 Artifact 复核，正式效果回归使用固定 Case 的 Hybrid Retrieval Eval。
 
 
 ### Lexical Retrieval baseline

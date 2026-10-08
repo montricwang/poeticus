@@ -1,12 +1,14 @@
 """审计 15 个作者分册的版式，不执行 normalize，也不发布正文。
 
-This script writes *private local reports* in data/reports/. It does not
+This script writes *private local reports* in poeticus-data/reports/epub-import/. It does not
 resolve glyphs, write curated Poem data, or make quality-accuracy claims.
 """
 import argparse
 import json
 from collections import Counter
 from pathlib import Path
+
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
 
 from ebooklib import epub
 
@@ -257,13 +259,10 @@ def render_md(report):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--epub", type=Path, default=Path(
-        "data/raw/历代名家词集精华录.epub"))
+    parser.add_argument("--epub", type=Path, default=READING_RAW_ROOT / "历代名家词集精华录.epub")
     parser.add_argument("--book", help="只审计指定分册；默认 15 册全量")
-    parser.add_argument("--output", type=Path, default=Path(
-        "data/reports/epub_extraction_audit.md"))
-    parser.add_argument("--json-output", type=Path, default=Path(
-        "data/reports/epub_extraction_audit.json"))
+    parser.add_argument("--output", type=Path, default=EPUB_REPORTS_ROOT / "epub_extraction_audit.md")
+    parser.add_argument("--json-output", type=Path, default=EPUB_REPORTS_ROOT / "epub_extraction_audit.json")
     args = parser.parse_args()
     book = epub.read_epub(str(args.epub))
     result = audit_book(book, parse_toc(book.toc), args.book)

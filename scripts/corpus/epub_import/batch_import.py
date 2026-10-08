@@ -12,6 +12,8 @@ from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_NORMALIZED_ROOT, READING_RAW_ROOT
+
 from .config import COLLECTIONS
 from .extractor.extractor import extract_collection
 from .pipeline.normalize import normalize_poem, unresolved_glyphs
@@ -22,9 +24,9 @@ from .import_poems import (
 )
 
 
-DEFAULT_MAP_DIR = Path("data/raw/glyph_maps")
-DEFAULT_OUTPUT_DIR = Path("data/output")
-DEFAULT_REPORT = Path("data/reports/epub_import_preflight.json")
+DEFAULT_MAP_DIR = READING_RAW_ROOT / "glyph_maps"
+DEFAULT_OUTPUT_DIR = READING_NORMALIZED_ROOT
+DEFAULT_REPORT = EPUB_REPORTS_ROOT / "epub_import_preflight.json"
 
 
 def _write_json_atomic(path, data):

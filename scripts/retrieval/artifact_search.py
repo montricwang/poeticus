@@ -18,6 +18,8 @@ import argparse
 import json
 from pathlib import Path
 
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT
+
 from backend.retrieval.chronology import candidate_prior_dynasties
 
 from scripts.retrieval.exact_search import (
@@ -38,10 +40,10 @@ QWEN_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 BERT_CCPOEM_MODEL = "THUNLP-AIPoet/BERT-CCPoem-v1.0"
 SUPPORTED_MODELS = frozenset({QWEN_MODEL, BERT_CCPOEM_MODEL})
 
-DEFAULT_WORKS = DEFAULT_DATA_ROOT / "werneror_works.jsonl"
+DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 CHUNK_PATHS = {
-    "sentence": DEFAULT_DATA_ROOT / "werneror_chunks_sentence.jsonl",
-    "clause": DEFAULT_DATA_ROOT / "werneror_chunks_clause.jsonl",
+    "sentence": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl",
+    "clause": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl",
 }
 
 
@@ -392,6 +394,23 @@ def run_artifact_search(
     }
 
 
+def summarize_result(label: str, result: dict) -> dict:
+    """Compact an Artifact search into an interpretable target-rank summary."""
+    probes = result.get("probes") or []
+    best = min(probes, key=lambda item: item["rank"]) if probes else None
+    return {
+        "label": label,
+        "model": result["model"],
+        "chunk_policy": result["chunk_policy"],
+        "dimension": result["dimension"],
+        "corpus_chunks": result["corpus_chunks"],
+        "best_probe_rank": best["rank"] if best else None,
+        "best_probe_cosine": best["cosine"] if best else None,
+        "probe_matches": len(probes),
+        "best_probe_text": best["chunk"]["text"] if best else None,
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="按 Artifact manifest 自动选择编码器的 Exact Retrieval"
@@ -407,6 +426,8 @@ def main() -> None:
     parser.add_argument("--probe-author")
     parser.add_argument("--device")
     parser.add_argument("--verify-input-hash", action="store_true")
+    parser.add_argument("--summary", action="store_true",
+                        help="只输出目标匹配的名次与最相近片段摘要")
     args = parser.parse_args()
 
     try:
@@ -426,7 +447,8 @@ def main() -> None:
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
 
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    payload = summarize_result(args.artifact_dir.name, result) if args.summary else result
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

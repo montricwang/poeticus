@@ -15,7 +15,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
-import psutil
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
+
 
 from backend.retrieval.serving import RetrievalServingRuntime
 from scripts.retrieval.run_serving import (
@@ -26,7 +27,7 @@ from scripts.retrieval.run_serving import (
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CASES = ROOT / "evals/retrieval_increment_cases.json"
-DEFAULT_REPORT_ROOT = ROOT / "data/reports"
+DEFAULT_REPORT_ROOT = RETRIEVAL_REPORTS_ROOT
 DEFAULT_CASE_IDS = (
     "longtail_luyou_dufu_gull",
     "transformed_liqingzhao_fanzhongyan",
@@ -34,8 +35,18 @@ DEFAULT_CASE_IDS = (
 )
 
 
+def _require_psutil():
+    try:
+        import psutil
+    except ImportError as exc:
+        raise RuntimeError(
+            "Serving Benchmark 需要 psutil；请安装 requirements-retrieval.txt"
+        ) from exc
+    return psutil
+
+
 def rss_mib() -> float:
-    return psutil.Process().memory_info().rss / (1024 ** 2)
+    return _require_psutil().Process().memory_info().rss / (1024 ** 2)
 
 
 def cpu_model() -> str:
@@ -148,6 +159,62 @@ def run_case(runtime, case: dict, top_k: int):
     )
 
 
+def resolve_current_work_ids(
+    work_path: Path,
+    cases: list[dict],
+) -> dict[str, set[str]]:
+    """Resolve excerpt fixtures to corpus Works outside measured latency."""
+    resolved = {case["id"]: set() for case in cases}
+    with work_path.open(encoding="utf-8") as stream:
+        for line in stream:
+            if not line.strip():
+                continue
+            work = json.loads(line)
+            author = work.get("author")
+            content = work.get("content", "")
+            if not isinstance(content, str):
+                continue
+            for case in cases:
+                if author != case["input"]["context"].get("author"):
+                    continue
+                if case["current_match_text"] in content:
+                    resolved[case["id"]].add(work["work_id"])
+    return resolved
+
+
+def run_uncached_cases(runtime, cases: list[dict], work_path: Path, top_k: int) -> list[dict]:
+    """Measure actual uncached query encoding while excluding fixture self-hits.
+
+    Resolving full Work IDs and scanning the corpus happen outside measured
+    request timings. Cache is cleared before each case, never the warm runs.
+    """
+    current_ids = resolve_current_work_ids(work_path, cases)
+    results = []
+    for case in cases:
+        runtime.encoder.clear_cache()
+        result = runtime.search(
+            case["retrieval_query"],
+            current_text=case["input"]["poem"],
+            current_author=case["input"]["context"].get("author"),
+            target_dynasty=case["input"]["context"].get("dynasty"),
+            final_top_k=top_k,
+            current_work_ids=current_ids[case["id"]],
+        )
+        results.append({
+            "case_id": case["id"],
+            "query": case["retrieval_query"],
+            "resolved_current_work_ids": sorted(current_ids[case["id"]]),
+            "target_visible": target_visible(result, case),
+            "timings": flatten_timings(result),
+            "candidates": [
+                {"rank": item.rank, "author": item.author,
+                 "title": item.title, "text": item.text}
+                for item in result.candidates
+            ],
+        })
+    return results
+
+
 def render_markdown(report: dict) -> str:
     lines = [
         "# Retrieval Serving Benchmark",
@@ -255,6 +322,29 @@ def render_markdown(report: dict) -> str:
             "- 并发测试使用同一进程、同一 runtime；当前 encoder / FAISS 有锁，结果用来判断单实例是否足够，不是最终扩展方案。",
         ]
     )
+
+    if report.get("uncached_cases"):
+        lines.extend([
+            "",
+            "## Uncached queries (self-hit excluded)",
+            "",
+            "| case | current IDs | target visible | total ms | encode ms | sentence ANN ms | clause ANN ms | BM25 ms |",
+            "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |",
+        ])
+        for item in report["uncached_cases"]:
+            timing = item["timings"]
+            lines.append(
+                "| " + " | ".join([
+                    item["case_id"],
+                    str(len(item["resolved_current_work_ids"])),
+                    str(item["target_visible"]),
+                    f"{timing['total_ms']:.1f}",
+                    f"{timing['sentence_encode_ms']:.1f}",
+                    f"{timing['sentence_ann_ms']:.1f}",
+                    f"{timing['clause_ann_ms']:.1f}",
+                    f"{timing['bm25_ms']:.1f}",
+                ]) + " |"
+            )
     return "\n".join(lines) + "\n"
 
 
@@ -288,6 +378,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--top-k", type=int, default=8)
     parser.add_argument("--runs", type=int, default=5)
     parser.add_argument("--concurrency", type=int, default=5)
+    parser.add_argument("--include-uncached", action="store_true",
+                        help="额外测量清空 Query cache 后的首查，并按完整作品排除 self-hit")
+    parser.add_argument("--works", type=Path,
+                        default=RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl",
+                        help="--include-uncached 使用的来源 Work JSONL")
     parser.add_argument(
         "--output-prefix",
         type=Path,
@@ -297,6 +392,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    psutil = _require_psutil()
     if args.runs <= 0:
         raise SystemExit("--runs 必须为正整数")
     if args.concurrency <= 0:
@@ -419,6 +515,10 @@ def main() -> None:
         result.timings_ms["total_ms"]
         for result in concurrent_results
     ]
+    uncached_cases = (
+        run_uncached_cases(runtime, cases, args.works, args.top_k)
+        if args.include_uncached else None
+    )
     memory_samples.append(
         {
             "stage": "post_benchmark",
@@ -459,6 +559,7 @@ def main() -> None:
         "disk": disk,
         "metadata_build": metadata_build,
         "cases": case_reports,
+        "uncached_cases": uncached_cases,
         "concurrency": {
             "requests": args.concurrency,
             "wall_ms": concurrent_wall_ms,

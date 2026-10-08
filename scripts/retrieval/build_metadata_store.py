@@ -5,11 +5,13 @@ import argparse
 import json
 from pathlib import Path
 
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT
+
 from backend.retrieval.metadata_store import build_metadata_store
 from scripts.retrieval.exact_search import DEFAULT_DATA_ROOT, DEFAULT_WORKS
 
-DEFAULT_SENTENCE_CHUNKS = DEFAULT_DATA_ROOT / "werneror_chunks_sentence.jsonl"
-DEFAULT_CLAUSE_CHUNKS = DEFAULT_DATA_ROOT / "werneror_chunks_clause.jsonl"
+DEFAULT_SENTENCE_CHUNKS = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl"
+DEFAULT_CLAUSE_CHUNKS = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl"
 DEFAULT_OUTPUT = DEFAULT_DATA_ROOT / "serving/retrieval_metadata.sqlite3"
 
 

@@ -6,6 +6,8 @@ attributes and source-block ordinals. It does NOT infer literary semantics.
 import argparse
 from pathlib import Path
 
+from backend.data_paths import READING_RAW_ROOT
+
 from bs4 import BeautifulSoup, Tag
 from ebooklib import epub
 
@@ -125,9 +127,7 @@ def inspect_hierarchy(book, html_name, groups):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--epub", type=Path, default=Path(
-        "data/raw/历代名家词集精华录.epub"
-    ))
+    parser.add_argument("--epub", type=Path, default=READING_RAW_ROOT / "历代名家词集精华录.epub")
     parser.add_argument("--html", required=True, help="EPUB 内 XHTML 相对路径")
     parser.add_argument(
         "--group", action="append", required=True,

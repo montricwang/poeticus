@@ -18,20 +18,19 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+from backend.data_paths import RETRIEVAL_REPORTS_ROOT, RETRIEVAL_ROOT
+
 import httpx
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CASES = ROOT / "evals/retrieval_increment_cases.json"
-DEFAULT_REPORT_ROOT = ROOT / "data/reports"
+DEFAULT_REPORT_ROOT = RETRIEVAL_REPORTS_ROOT
 DEFAULT_CASE_IDS = (
     "longtail_luyou_dufu_gull",
     "compressed_jiangkui_dumu_qinglou",
 )
-DEFAULT_METADATA_MANIFEST = Path(
-    "../poeticus-data/output/retrieval/"
-    "serving/retrieval_metadata.manifest.json"
-)
+DEFAULT_METADATA_MANIFEST = RETRIEVAL_ROOT / "serving/retrieval_metadata.manifest.json"
 
 
 def load_cases(path: Path, case_ids: tuple[str, ...]) -> list[dict]:

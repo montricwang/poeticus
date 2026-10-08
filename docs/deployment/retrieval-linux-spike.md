@@ -4,6 +4,8 @@
 
 目标是从一台 2核8G Linux VPS 开始，验证 Retrieval Serving 的最低可行资源规格。
 
+> **目录迁移提示**：以下 `/opt/poeticus-data/output/retrieval` 是实验时的真实旧路径，保留作历史记录。新版脚本默认使用 `/opt/poeticus-data/retrieval`，不能未经迁移直接在旧主机上部署。见 [本地数据管理](../data-management.md)。
+
 ## 1. 当时的第一候选
 
 当时第一候选：
@@ -169,17 +171,18 @@ python -m scripts.retrieval.benchmark_serving \
 - 三个真实 Case；
 - 5-request concurrency。
 
-## 8. Uncached Probe
+## 8. Uncached Probe（历史说明，已并入 Benchmark）
 
 随后：
 
 ```bash
-python -m scripts.retrieval.probe_serving \
-  --data-root /opt/poeticus-data/output/retrieval \
-  --model-root /opt/poeticus-data/models
+python -m scripts.retrieval.benchmark_serving \
+  --data-root /opt/poeticus-data/retrieval \
+  --model-root /opt/poeticus-data/models \
+  --include-uncached
 ```
 
-它负责区分 query-vector cache 后的 warm latency 与真实新 Query。
+新版统一入口保留了历史补测能力：除 warm latency 外，还测量 query-vector cache 清空后的请求，并在测量前解析完整 Work ID 以排除当前作品的 self-hit。旧版 `probe_serving.py` 已退役；生产主机必须先迁移 Artifact 后才能运行新版命令。
 
 ## 9. 当时在 Spike 阶段暂不做的事
 

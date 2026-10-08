@@ -23,13 +23,13 @@ import math
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
 from typing import Iterator
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
-DEFAULT_INPUT = Path("data/output/retrieval/werneror_chunks_sentence.jsonl")
-DEFAULT_OUTPUT_DIR = Path(
-    "data/output/retrieval/embeddings/qwen3_0.6b_sentence_512"
-)
+DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl"
+DEFAULT_OUTPUT_DIR = RETRIEVAL_ROOT / "embeddings/qwen3_0.6b_sentence_512"
 DEFAULT_DIMENSION = 512
 DEFAULT_BATCH_SIZE = 64
 DEFAULT_SHARD_SIZE = 10_000

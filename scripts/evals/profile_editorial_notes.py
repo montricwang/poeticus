@@ -1,6 +1,6 @@
 """画像私人词集中的 annotations / commentaries，帮助挑选 Eval Case。
 
-脚本只读取本地 normalized JSON；报告默认写入 data/reports/，
+脚本只读取本地 normalized JSON；报告默认写入 poeticus-data/reports/evals/，
 该目录已被 Git 忽略。报告会包含少量截断后的原书派生文本，
 不要提交到公开仓库。
 
@@ -19,13 +19,15 @@ import statistics
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+from backend.data_paths import EVAL_REPORTS_ROOT, READING_NORMALIZED_ROOT
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_INPUT = ROOT / "data" / "output" / "all_normalized.json"
-DEFAULT_JSON_OUTPUT = ROOT / "data" / "reports" / "eval_editorial_profile.json"
-DEFAULT_MD_OUTPUT = ROOT / "data" / "reports" / "eval_editorial_profile.md"
+DEFAULT_INPUT = READING_NORMALIZED_ROOT / "all_normalized.json"
+DEFAULT_JSON_OUTPUT = EVAL_REPORTS_ROOT / "eval_editorial_profile.json"
+DEFAULT_MD_OUTPUT = EVAL_REPORTS_ROOT / "eval_editorial_profile.md"
 
 CATEGORIES = ("annotations", "commentaries")
 LENGTH_BUCKETS = (

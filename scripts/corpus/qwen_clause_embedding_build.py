@@ -11,14 +11,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
+
 from scripts.corpus.qwen_embedding_build import build_embeddings
 
-DEFAULT_INPUT = Path(
-    "../poeticus-data/output/retrieval/werneror_chunks_clause.jsonl"
-)
-DEFAULT_OUTPUT_DIR = Path(
-    "../poeticus-data/output/retrieval/embeddings/qwen3_0.6b_clause_1024"
-)
+DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl"
+DEFAULT_OUTPUT_DIR = RETRIEVAL_ROOT / "embeddings/qwen3_0.6b_clause_1024"
 DEFAULT_EXPECTED_CHUNKS = 9_425_173
 DEFAULT_DIMENSION = 1024
 DEFAULT_BATCH_SIZE = 64

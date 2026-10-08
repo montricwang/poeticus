@@ -10,6 +10,8 @@ import re
 import warnings
 from collections import Counter, defaultdict
 from pathlib import Path
+
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
 from urllib.parse import unquote
 
 from bs4 import (
@@ -29,9 +31,9 @@ from ..epub.reader import parse_toc
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
-EPUB_PATH = Path("data/raw/历代名家词集精华录.epub")
-MD_PATH = Path("data/reports/epub_dom_layout_profile.md")
-JSON_PATH = Path("data/reports/epub_dom_layout_profile.json")
+EPUB_PATH = READING_RAW_ROOT / "历代名家词集精华录.epub"
+MD_PATH = EPUB_REPORTS_ROOT / "epub_dom_layout_profile.md"
+JSON_PATH = EPUB_REPORTS_ROOT / "epub_dom_layout_profile.json"
 HEADINGS = {f"h{i}" for i in range(1, 7)}
 YEAR_PATTERN = re.compile(r"[（(]\d{4}[）)]$")
 SAMPLE_LIMIT = 4  # 高频模板展示数量
@@ -840,7 +842,7 @@ def main():
     parser.add_argument(
         "--details-dir",
         type=Path,
-        default=Path("data/reports/epub_dom_layout_details"),
+        default=EPUB_REPORTS_ROOT / "epub_dom_layout_details",
         help="每分册详细 Markdown 的输出文件夹",
     )
     args = parser.parse_args()

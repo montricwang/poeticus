@@ -18,9 +18,11 @@ import argparse
 import json
 import os
 from pathlib import Path
-DEFAULT_INPUT = Path("data/output/retrieval/werneror_works.jsonl")
-DEFAULT_OUTPUT = Path("data/output/retrieval/werneror_chunks_sentence.jsonl")
-DEFAULT_REPORT = Path("data/reports/werneror_sentence_chunks.json")
+
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
+DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
+DEFAULT_OUTPUT = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl"
+DEFAULT_REPORT = RETRIEVAL_REPORTS_ROOT / "werneror_sentence_chunks.json"
 DEFAULT_EXPECTED_WORKS = 853_385
 DEFAULT_EXPECTED_CHUNKS = 0
 

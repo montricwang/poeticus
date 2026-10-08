@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Sequence
 
 from scripts.retrieval.artifact_search import load_artifact_manifest
+from scripts.retrieval.vector_sampling import load_sampled_vectors, sample_global_rows
 
 DEFAULT_SAMPLE_VECTORS = 100_000
 DEFAULT_QUERY_COUNT = 50
@@ -52,61 +53,6 @@ def _require_faiss():
             "请安装 requirements-retrieval.txt"
         ) from exc
     return faiss
-
-
-def sample_global_rows(total: int, sample_size: int):
-    """Return deterministic, corpus-wide row ids for a representative sample."""
-    if total <= 0:
-        raise ValueError("total 必须为正整数")
-    if sample_size <= 0:
-        raise ValueError("sample_size 必须为正整数")
-
-    np = _require_numpy()
-    size = min(total, sample_size)
-    if size == total:
-        return np.arange(total, dtype=np.int64)
-
-    rows = np.linspace(0, total - 1, num=size, dtype=np.int64)
-    return np.unique(rows)
-
-
-def load_sampled_vectors(
-    artifact_dir: Path,
-    manifest: dict,
-    rows,
-):
-    """Load only requested global rows from sharded .npy embeddings."""
-    np = _require_numpy()
-
-    rows = np.asarray(rows, dtype=np.int64)
-    dimension = manifest["embedding_dimension"]
-    vectors = np.empty((len(rows), dimension), dtype=np.float32)
-    filled = np.zeros(len(rows), dtype=bool)
-
-    for shard in manifest["completed_shards"]:
-        start = shard["start"]
-        end = shard["end"]
-
-        positions = np.flatnonzero((rows >= start) & (rows < end))
-        if positions.size == 0:
-            continue
-
-        shard_path = artifact_dir / shard["file"]
-        matrix = np.load(shard_path, mmap_mode="r")
-        local_rows = rows[positions] - start
-
-        vectors[positions] = np.asarray(matrix[local_rows], dtype=np.float32)
-        filled[positions] = True
-
-    if not bool(filled.all()):
-        missing = rows[~filled][:10].tolist()
-        raise ValueError(f"Embedding Artifact 缺少采样 row：{missing}")
-
-    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-    if bool((norms == 0).any()):
-        raise ValueError("采样 Embedding 中存在零向量")
-    vectors /= norms
-    return vectors
 
 
 def choose_query_positions(sample_count: int, query_count: int):

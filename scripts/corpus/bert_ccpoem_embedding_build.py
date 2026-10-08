@@ -15,6 +15,8 @@ import json
 import math
 from pathlib import Path
 
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
+
 from scripts.corpus.qwen_embedding_build import (
     assert_compatible_manifest,
     iter_chunks,
@@ -29,12 +31,8 @@ MODEL_NAME = "THUNLP-AIPoet/BERT-CCPoem-v1.0"
 CHUNK_POLICY = "clause"
 DIMENSION = 512
 DTYPE = "float16"
-DEFAULT_INPUT = Path(
-    "../poeticus-data/output/retrieval/werneror_chunks_clause.jsonl"
-)
-DEFAULT_OUTPUT_DIR = Path(
-    "../poeticus-data/output/retrieval/embeddings/bert_ccpoem_clause_512"
-)
+DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl"
+DEFAULT_OUTPUT_DIR = RETRIEVAL_ROOT / "embeddings/bert_ccpoem_clause_512"
 DEFAULT_BATCH_SIZE = 512
 DEFAULT_SHARD_SIZE = 10_000
 DEFAULT_EXPECTED_CHUNKS = 9_425_173

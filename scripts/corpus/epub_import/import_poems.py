@@ -3,6 +3,8 @@ import json
 import sys
 from collections import defaultdict
 from pathlib import Path, PurePosixPath
+
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_NORMALIZED_ROOT, READING_RAW_ROOT
 from dataclasses import asdict
 
 from ebooklib import epub
@@ -13,7 +15,7 @@ from .extract_images import extract_referenced_images
 from .pipeline.normalize import normalize_poems, resolve_mapping, get_output_form
 
 
-EPUB_PATH = Path("data/raw/历代名家词集精华录.epub")
+EPUB_PATH = READING_RAW_ROOT / "历代名家词集精华录.epub"
 
 # 这些 warning 类型对应的来源段落仍保存在抽取器的私人 section/审计证据中，
 # 但 PoemContent 正式结构没有承载位置。若直接写 normalized JSON 会静默丢失，
@@ -79,7 +81,7 @@ def resolve_missing_glyphs(missing, map_path, epub_path=EPUB_PATH):
 
     for html_name, srcs in missing.items():
         folder = PurePosixPath(html_name).stem
-        output_dir = Path("data/raw/extracted_images") / folder
+        output_dir = EPUB_REPORTS_ROOT / "extracted_images" / folder
 
         extract_referenced_images(
             epub_path=epub_path,
@@ -169,15 +171,15 @@ def main():
     )
     parser.add_argument(
         "--glyph-map-dir", type=Path,
-        default=Path("data/raw/glyph_maps"),
+        default=READING_RAW_ROOT / "glyph_maps",
         help="--all 时查找每册已有的图片字映射 JSON 的目录",
     )
     parser.add_argument(
         "--preflight-report", type=Path,
-        default=Path("data/reports/epub_import_preflight.json"),
+        default=EPUB_REPORTS_ROOT / "epub_import_preflight.json",
     )
     parser.add_argument(
-        "--output-dir", type=Path, default=Path("data/output"),
+        "--output-dir", type=Path, default=READING_NORMALIZED_ROOT,
     )
 
     parser.add_argument(
@@ -233,7 +235,7 @@ def main():
     extracted = output_dir / f"{stem}.json"
     normalized = output_dir / f"{stem}_normalized.json"
 
-    map_path = args.glyph_map or Path("data/raw/glyph_maps") / f"{stem}.json"
+    map_path = args.glyph_map or READING_RAW_ROOT / "glyph_maps" / f"{stem}.json"
 
     # 1. EPUB 抽取
     book = epub.read_epub(str(args.epub))

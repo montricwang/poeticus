@@ -6,6 +6,8 @@
 import argparse
 from pathlib import Path
 
+from backend.data_paths import READING_RAW_ROOT
+
 from bs4 import BeautifulSoup
 from ebooklib import epub
 
@@ -125,9 +127,7 @@ def inspect_source(book, html_name, targets=(), *, find=(), collection="",
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--epub", type=Path, default=Path(
-        "data/raw/历代名家词集精华录.epub"
-    ), help="本地 EPUB；默认使用数据目录中的词集")
+    parser.add_argument("--epub", type=Path, default=READING_RAW_ROOT / "历代名家词集精华录.epub", help="本地 EPUB；默认使用数据目录中的词集")
     parser.add_argument("--html", required=True,
                         help="例如 text00264.html")
     parser.add_argument("--block", type=int, action="append", default=[],

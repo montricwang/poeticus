@@ -58,7 +58,7 @@ python -m scripts.corpus.db_import --migrate
 python -m scripts.corpus.db_import --import
 ```
 
-默认私有导入检查点是 `data/output/all_normalized.json`。源 EPUB、glyph maps 和该输出文件都不进入公开仓库；完整数据生命周期见 [data/README](../data/README.md) 和 [作品数据库架构](architecture/corpus-database.md)。
+默认私有导入检查点是仓库相邻的 `poeticus-data/reading-corpus/normalized/all_normalized.json`；源 EPUB、glyph maps 与中间快照均不进入公开仓库。默认数据目录根据仓库位置计算，与当前工作目录无关；特殊部署可通过绝对路径环境变量 `POETICUS_DATA_ROOT` 覆盖。目录布局、迁移说明与恢复方法见 [本地数据管理](data-management.md) 和 [作品数据库架构](architecture/corpus-database.md)。
 
 只有 schema、没有作品数据时，目录为空是正常现象。
 
@@ -132,6 +132,8 @@ Decision Register 使用四层分类：
 
 
 ## 8. Text Retrieval 开发环境
+
+完整本地 Serving Artifact 的默认位置为 `../poeticus-data/retrieval/`，模型在 `../poeticus-data/models/`；仅用于构建的 Work/Chunk JSONL 在 `retrieval/corpus/`，不需要复制到生产 Serving Bundle。
 
 需要运行 Retrieval 工具时，再安装额外依赖：
 

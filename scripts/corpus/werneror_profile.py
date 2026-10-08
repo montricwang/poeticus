@@ -17,9 +17,11 @@ import re
 from collections import Counter
 from pathlib import Path
 
-DEFAULT_INPUT = Path("data/output/retrieval/werneror_works.jsonl")
-DEFAULT_JSON_REPORT = Path("data/reports/werneror_corpus_profile.json")
-DEFAULT_MD_REPORT = Path("data/reports/werneror_corpus_profile.md")
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
+
+DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
+DEFAULT_JSON_REPORT = RETRIEVAL_REPORTS_ROOT / "werneror_corpus_profile.json"
+DEFAULT_MD_REPORT = RETRIEVAL_REPORTS_ROOT / "werneror_corpus_profile.md"
 
 CLAUSE_SPLIT = re.compile(r"[，。！？；!?;]+")
 SENTENCE_SPLIT = re.compile(r"[。！？!?]+")

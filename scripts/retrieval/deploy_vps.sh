@@ -20,6 +20,7 @@ if [[ -z "$PUBLIC_URL" ]]; then
 fi
 
 REMOTE_ROOT="${POETICUS_RETRIEVAL_REMOTE_ROOT:-/opt/poeticus}"
+REMOTE_DATA_ROOT="${POETICUS_RETRIEVAL_REMOTE_DATA_ROOT:-/opt/poeticus-data}"
 REMOTE_PYTHON="$REMOTE_ROOT/.venv/bin/python"
 SSH_OPTS=(
   -i "$KEY"
@@ -33,11 +34,21 @@ cd "$repo_root"
 
 echo "Deploying Retrieval code to $HOST"
 
-tar -czf -   backend/retrieval   scripts/retrieval   requirements-retrieval.txt | ssh "${SSH_OPTS[@]}" "$HOST" "
+# Refuse to replace a running service if its artifacts have not been migrated.
+# This checks the *new* layout before the remote install/restart.
+ssh "${SSH_OPTS[@]}" "$HOST" "
+    set -euo pipefail
+    test -f '$REMOTE_DATA_ROOT/retrieval/embeddings/qwen3_0.6b_sentence_1024/manifest.json' || {
+      echo 'Missing migrated Retrieval artifacts at $REMOTE_DATA_ROOT/retrieval; refusing deployment' >&2
+      exit 1
+    }
+"
+
+tar -czf -   backend/retrieval   backend/data_paths.py   scripts/retrieval   requirements-retrieval.txt | ssh "${SSH_OPTS[@]}" "$HOST" "
     set -euo pipefail
     sudo tar -xzf - -C '$REMOTE_ROOT'
     cd '$REMOTE_ROOT'
-    '$REMOTE_PYTHON' -m compileall -q backend/retrieval scripts/retrieval
+    '$REMOTE_PYTHON' -m compileall -q backend/data_paths.py backend/retrieval scripts/retrieval
     sudo systemctl restart poeticus-retrieval
 
     ready=false
