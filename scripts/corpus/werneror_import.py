@@ -16,7 +16,7 @@ Override paths when needed:
 
     python -m scripts.corpus.werneror_import \
         --source-dir ../Poetry \
-        --output data/output/retrieval/werneror_works.jsonl
+        --output ../poeticus-data/retrieval/corpus/werneror_works.jsonl
 """
 from __future__ import annotations
 
@@ -27,13 +27,15 @@ import json
 import os
 from collections import Counter
 from pathlib import Path
+
+from backend.data_paths import REPOSITORY_ROOT, RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
 from typing import Iterator
 
 SOURCE_NAME = "werneror_poetry"
 EXPECTED_HEADERS = ("题目", "朝代", "作者", "内容")
-DEFAULT_SOURCE_DIR = Path("../Poetry")
-DEFAULT_OUTPUT = Path("data/output/retrieval/werneror_works.jsonl")
-DEFAULT_REPORT = Path("data/reports/werneror_corpus_import.json")
+DEFAULT_SOURCE_DIR = REPOSITORY_ROOT.parent / "Poetry"
+DEFAULT_OUTPUT = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
+DEFAULT_REPORT = RETRIEVAL_REPORTS_ROOT / "werneror_corpus_import.json"
 DEFAULT_EXPECTED_COUNT = 853_385
 EXCLUDED_CSV = frozenset({"poetry.csv"})
 

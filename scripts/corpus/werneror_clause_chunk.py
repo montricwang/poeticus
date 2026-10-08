@@ -10,18 +10,16 @@ import argparse
 import json
 from pathlib import Path
 
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT
+
 from scripts.corpus.werneror_chunk import (
     DEFAULT_EXPECTED_WORKS,
     build_clause_chunks,
 )
 
-DEFAULT_INPUT = Path("../poeticus-data/output/retrieval/werneror_works.jsonl")
-DEFAULT_OUTPUT = Path(
-    "../poeticus-data/output/retrieval/werneror_chunks_clause.jsonl"
-)
-DEFAULT_REPORT = Path(
-    "../poeticus-data/output/retrieval/werneror_clause_chunks.json"
-)
+DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
+DEFAULT_OUTPUT = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl"
+DEFAULT_REPORT = RETRIEVAL_CORPUS_ROOT / "werneror_clause_chunks.json"
 DEFAULT_EXPECTED_CHUNKS = 9_425_173
 
 
