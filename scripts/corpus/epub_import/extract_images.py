@@ -1,6 +1,8 @@
 import warnings
 from pathlib import Path, PurePosixPath
 
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
+
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 from ebooklib import epub
@@ -57,7 +59,7 @@ def extract_referenced_images(
 
 if __name__ == "__main__":
     extract_referenced_images(
-        epub_path=Path("data/raw/历代名家词集精华录.epub"),
+        epub_path=READING_RAW_ROOT / "历代名家词集精华录.epub",
         html_name="text00005.html",
-        output_dir=Path("data/raw/extracted_images/text00005"),
+        output_dir=EPUB_REPORTS_ROOT / "extracted_images/text00005",
     )

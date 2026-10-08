@@ -7,6 +7,8 @@
 import argparse
 from pathlib import Path
 
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
+
 from ebooklib import epub
 
 from ..epub.reader import parse_toc
@@ -229,17 +231,11 @@ def private_packet_markdown(book, cases):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--epub", type=Path, default=Path(
-        "data/raw/历代名家词集精华录.epub"
-    ))
+    parser.add_argument("--epub", type=Path, default=READING_RAW_ROOT / "历代名家词集精华录.epub")
     parser.add_argument("--round", type=int, default=1)
     parser.add_argument("--limit", type=int, default=5)
-    parser.add_argument("--output", type=Path, default=Path(
-        "data/reports/classification_review_plan.md"
-    ), help="结构性复核计划（不含书中文字）")
-    parser.add_argument("--private-output", type=Path, default=Path(
-        "data/reports/classification_review_private.md"
-    ), help="本地复核材料（含商业 EPUB 的原文，不可公开）")
+    parser.add_argument("--output", type=Path, default=EPUB_REPORTS_ROOT / "classification_review_plan.md", help="结构性复核计划（不含书中文字）")
+    parser.add_argument("--private-output", type=Path, default=EPUB_REPORTS_ROOT / "classification_review_private.md", help="本地复核材料（含商业 EPUB 的原文，不可公开）")
     args = parser.parse_args()
     if args.output.resolve() == args.private_output.resolve():
         parser.error("计划与私有材料必须使用不同的路径")

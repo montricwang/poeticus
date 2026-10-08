@@ -9,6 +9,8 @@ import json
 import posixpath
 from collections import defaultdict
 from pathlib import Path
+
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT, READING_REVIEW_ROOT
 from urllib.parse import quote
 
 from ebooklib import epub
@@ -210,27 +212,13 @@ def main():
     action.add_argument("--apply", action="store_true")
     action.add_argument("--import-backup", action="store_true",
                         help="直接导入已填写的 glyph_review_backup.json，无需抄写 TSV")
-    parser.add_argument("--epub", type=Path, default=Path(
-        "data/raw/历代名家词集精华录.epub"
-    ))
-    parser.add_argument("--report", type=Path, default=Path(
-        "data/reports/epub_import_preflight.json"
-    ))
-    parser.add_argument("--html", type=Path, default=Path(
-        "data/reports/glyph_review.html"
-    ))
-    parser.add_argument("--tsv", type=Path, default=Path(
-        "data/reports/glyph_review.tsv"
-    ))
-    parser.add_argument("--backup", type=Path, default=Path(
-        "data/reports/glyph_review_backup.json"
-    ))
-    parser.add_argument("--context-html", type=Path, default=Path(
-        "data/reports/glyph_contexts.html"
-    ))
-    parser.add_argument("--map-dir", type=Path, default=Path(
-        "data/raw/glyph_maps"
-    ))
+    parser.add_argument("--epub", type=Path, default=READING_RAW_ROOT / "历代名家词集精华录.epub")
+    parser.add_argument("--report", type=Path, default=EPUB_REPORTS_ROOT / "epub_import_preflight.json")
+    parser.add_argument("--html", type=Path, default=EPUB_REPORTS_ROOT / "glyph_review.html")
+    parser.add_argument("--tsv", type=Path, default=EPUB_REPORTS_ROOT / "glyph_review.tsv")
+    parser.add_argument("--backup", type=Path, default=READING_REVIEW_ROOT / "glyph_review_backup.json")
+    parser.add_argument("--context-html", type=Path, default=EPUB_REPORTS_ROOT / "glyph_contexts.html")
+    parser.add_argument("--map-dir", type=Path, default=READING_RAW_ROOT / "glyph_maps")
     parser.add_argument("--partial", action="store_true",
                         help="保存已填写部分的映射")
     args = parser.parse_args()

@@ -8,6 +8,8 @@ import json
 import re
 from pathlib import Path
 
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
+
 from bs4 import BeautifulSoup
 from ebooklib import epub
 
@@ -97,15 +99,9 @@ def render_contexts(items):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--epub", type=Path, default=Path(
-        "data/raw/历代名家词集精华录.epub"
-    ))
-    parser.add_argument("--report", type=Path, default=Path(
-        "data/reports/epub_import_preflight.json"
-    ))
-    parser.add_argument("--output", type=Path, default=Path(
-        "data/reports/glyph_contexts_private.md"
-    ))
+    parser.add_argument("--epub", type=Path, default=READING_RAW_ROOT / "历代名家词集精华录.epub")
+    parser.add_argument("--report", type=Path, default=EPUB_REPORTS_ROOT / "epub_import_preflight.json")
+    parser.add_argument("--output", type=Path, default=EPUB_REPORTS_ROOT / "glyph_contexts_private.md")
     parser.add_argument("--window", type=int, default=16)
     parser.add_argument("--max-examples", type=int, default=2)
     args = parser.parse_args()

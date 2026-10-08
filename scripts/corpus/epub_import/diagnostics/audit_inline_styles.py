@@ -8,6 +8,8 @@ import argparse
 from collections import Counter
 from pathlib import Path
 
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
+
 from bs4 import BeautifulSoup
 from ebooklib import epub
 
@@ -182,13 +184,9 @@ def render_md(report):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--epub", type=Path, default=Path(
-        "data/raw/历代名家词集精华录.epub"
-    ))
+    parser.add_argument("--epub", type=Path, default=READING_RAW_ROOT / "历代名家词集精华录.epub")
     parser.add_argument("--book", help="可选：只检查某一完整分册名称")
-    parser.add_argument("--output", type=Path, default=Path(
-        "data/reports/epub_inline_style_audit.md"
-    ))
+    parser.add_argument("--output", type=Path, default=EPUB_REPORTS_ROOT / "epub_inline_style_audit.md")
     args = parser.parse_args()
     selected = [
         entry for entry in COLLECTIONS

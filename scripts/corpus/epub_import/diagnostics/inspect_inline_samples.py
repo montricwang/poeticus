@@ -1,11 +1,13 @@
 """挑选真实带样式的行内词句 span，供本地视觉与语义复核。
 
 公开计划只包含结构信息。可选的私人材料包含已出版正文与 XHTML，
-只能保存在被 Git 忽略的 data/reports/ 中，绝不能提交。
+只能保存在被 Git 忽略的 poeticus-data/reports/epub-import/ 中，绝不能提交。
 """
 import argparse
 from collections import defaultdict
 from pathlib import Path
+
+from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
 
 from ebooklib import epub
 
@@ -146,20 +148,14 @@ def render_private_packet(book, picks):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--epub", type=Path, default=Path(
-        "data/raw/历代名家词集精华录.epub"
-    ))
+    parser.add_argument("--epub", type=Path, default=READING_RAW_ROOT / "历代名家词集精华录.epub")
     parser.add_argument("--style", choices=("kaiti", "font1"),
                         action="append", help="仅抽取指定的 span class；可重复")
     parser.add_argument("--per-style", type=int, default=3)
     parser.add_argument("--remaining", action="store_true",
                         help="跳过此前已人工核对的 font1 位置，只看剩余样本")
-    parser.add_argument("--output", type=Path, default=Path(
-        "data/reports/inline_style_review_plan.md"
-    ))
-    parser.add_argument("--private-output", type=Path, default=Path(
-        "data/reports/inline_style_review_private.md"
-    ))
+    parser.add_argument("--output", type=Path, default=EPUB_REPORTS_ROOT / "inline_style_review_plan.md")
+    parser.add_argument("--private-output", type=Path, default=EPUB_REPORTS_ROOT / "inline_style_review_private.md")
     args = parser.parse_args()
     if args.output.resolve() == args.private_output.resolve():
         parser.error("结构报告与原文报告必须分开存储")
