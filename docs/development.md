@@ -103,8 +103,8 @@ node --experimental-strip-types --test tests/*.test.mjs
 Python 静态类型检查（开发依赖固定 BasedPyright 1.40.2，与 CI 共用根目录 `pyrightconfig.json`）：
 
 ```powershell
-python -m basedpyright
-python -m basedpyright --outputjson > basedpyright-report.json
+basedpyright
+basedpyright --outputjson > basedpyright-report.json
 ```
 
 `recommended` 模式包含 Warning，CI 对 Error 和 Warning 都会失败。类型治理期间在独立 Draft PR 上运行；每轮按文件/共同根因修复并重新检查，不以 `Any`、`cast()` 或大面积忽略规则换取绿灯。完整 JSON 在 GitHub Actions 中作为短期 Artifact 保存，本地报告由 `.gitignore` 排除。尚未通过的检查不代表 `main` 已经纳入类型门禁。
