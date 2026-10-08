@@ -1,6 +1,6 @@
 # EPUB 作品抽取：数据取舍与维护地图
 
-适用范围：本项目的商业 EPUB《历代名家词集精华录》**15 个作者词集**。**输入来自私人持有的 EPUB；带原文的抽取结果、图字映射与现代注评不得提交公开仓库。**本文是后续修改/数据库建设的快速入口；证据与具体样式规则详见 [epub-extraction-audit.md](epub-extraction-audit.md)、[epub-classifier-design.md](epub-classifier-design.md)，执行命令详见 [epub-import-sop.md](epub-import-sop.md)。
+适用范围：本项目的商业 EPUB《历代名家词集精华录》**15 个作者词集**。**输入来自私人持有的 EPUB；带原文的抽取结果、图字映射与现代注评不得提交公开仓库。**本文是后续修改/数据库建设的快速入口；分册调查过程与尚未关闭的行内样式复核详见 [epub-classifier-design.md](epub-classifier-design.md)，执行命令详见 [epub-import-sop.md](epub-import-sop.md)。
 
 > 当前已知真实本地导出验收（2026-10-02）：15 册、3491 首；用户核对 3491 个唯一 ID，0 首空正文。此结果说明数量检查通过，**不等于文学分类逐首正确，也不代表整个 EPUB 无损保存**。所有作品仍是 `imported_unreviewed` 性质的候选数据；中间 JSON 不是阅读前端/数据库 Schema。
 
@@ -12,7 +12,7 @@
   → extractor/：按来源结构识别作品、正文、题序、注评与告警
   → pipeline/normalize.py：按 glyph map 替换图片字占位符并重算附注偏移
   → batch_import.py / import_poems.py：15 册预检、阻断、输出私有 JSON
-  → data/output/all_normalized.json：合并的私人中间作品数据
+  → ../poeticus-data/reading-corpus/normalized/all_normalized.json：合并的私人中间作品数据
   → scripts/corpus/adapter.py：拆成阅读字段与私人来源证据
   → scripts/corpus/db_import.py：写入私人 PostgreSQL（poems + poem_source_texts）
   → scripts/corpus/public_corpus_transfer.py：只复制白名单阅读字段到 Railway PostgreSQL
@@ -88,9 +88,9 @@
 **GitHub 只有代码和合成测试，不保存商业原书或用户手工辨字结果。** 要在换电脑、迁移数据库或修订分类后完整重跑，需要用户私下备份：
 
 - 所使用的**准确版本 EPUB**（可记录 SHA-256 文件指纹）；
-- `data/raw/glyph_maps/`：当前完整重跑真正需要的人工辨字结果；`glyph_review_backup.json` 只是第二份人工备份，glyph maps 完整时不是运行必需输入；
+- `../poeticus-data/reading-corpus/raw/glyph_maps/`：当前完整重跑真正需要的人工辨字结果；`glyph_review_backup.json` 只是第二份人工备份，glyph maps 完整时不是运行必需输入；
 - 生成时的 Git commit / PR 修订版本、15 册预检摘要与导出 manifest；
-- `data/output/all_normalized.json` 可作为“跳过重新抽 EPUB、直接重建私人数据库”的便利检查点；其余分册输出和报告均可由源 EPUB、glyph maps 与对应 Git commit 重建。详见 [`data/README.md`](../../data/README.md)。
+- `../poeticus-data/reading-corpus/normalized/all_normalized.json` 可作为“跳过重新抽 EPUB、直接重建私人数据库”的便利检查点；其余分册输出和报告均可由源 EPUB、glyph maps 与对应 Git commit 重建。详见 [私有数据管理](../data-management.md)。
 
 上述资料包含私人来源或者来源文字，不得提交公开仓库。特别注意：当前每首 ID 是“分册 slug + 提取顺序号”，**在同一版本同一规则下稳定，但当原书顺序/作品切分规则改变时可能整体后移**。未来数据库需要自己的稳定身份策略，至少存作品源锚点、版本来源以及可能的跨版本映射，不要只按旧 ID 把两次导出盲目覆盖。
 
@@ -112,7 +112,7 @@ python -m scripts.corpus.epub_import.import_poems --all --check
 python -m scripts.corpus.epub_import.import_poems --all
 @'
 import json
-p = json.load(open("data/output/all_normalized.json", encoding="utf-8"))
+p = json.load(open("../poeticus-data/reading-corpus/normalized/all_normalized.json", encoding="utf-8"))
 h = [x for x in p if x["author"] == "贺铸"]
 print("贺铸总首数：", len(h), "具有寓声名：", sum(bool(x["yusheng"]) for x in h))
 for x in h:
@@ -122,3 +122,27 @@ for x in h:
 ```
 
 **本轮两首已经通过用户本地复核。** 如果以后更换 EPUB 版本，或更多贺铸题头不能得到 `tune=思越人/yusheng=翦朝霞/title=牡丹` 这类正确结构，应先查看源 XHTML/DOM，再修改针对性规则；参见仍待全面复核的 [Issue #60](https://github.com/montricwang/poeticus/issues/60)。此次变更只影响中间数据，未来数据库是否有专门的 `yusheng` 列应由下游 Schema 决定。
+
+
+## 9. 十五册来源规则与人工核实结果
+
+本节只记录**后续修改解析器仍需要的已确认语义**。早期调查中曾做出的临时判断（特别是纳兰题序一度被归入 `title`）已经由真实原书核对推翻，不应再当成现行规则。完整逐轮调查仍可通过 [2026-10-02 开发日志](../devlog/2026-10-02.md) 和 Git 历史找回。
+
+| 来源 / 情形 | 当前有效的边界 | 核实/回归位置 |
+| --- | --- | --- |
+| 苏轼、辛弃疾、晏殊、欧阳修 | 标题中的字体或内嵌 span 可提供词题线索；小序仅在局部模板确证时识别，不能跨分册直接套用 | `extractor/rules.py`、`tests/corpus/test_epub_layout_rules.py` |
+| 黄庭坚、姜夔、李清照 | 楷体、指定 `p.kindle-cn-ref` 可能对应词题/小序；姜夔四位年份编年标记不是前一首正文；李清照显式空段不自动解释为上下阕 | 同上及结构审计 |
+| 秦观、周邦彦、陆游 | 标题第二子片段可能是词题；正文后未能证明类型的 `ref/ref1/ref2` 必须警告，不直接吞入正文 | `extractor/rules.py`、`tests/corpus/test_epub_layout_rules.py` |
+| 柳永 | 指定独立居中楷体段落是词题，不能仅依赖通用 `h2` 规则 | `extractor/rules.py` |
+| 贺铸 | **必须分别记录 `tune`（旧词调）、`yusheng`（寓声名）、`title`（作品题注）**。不通过连写字面推断别名，必须依据明确 XHTML 子片段/全角空格等来源结构 | `tests/corpus/test_epub_he_zhu_yusheng.py` |
+| 纳兰附词 | `h4 → 独立题序 p → 右对齐署名 p → 正文` 需分别解析；三处补出的作者为严绳孙、陈维崧、严绳孙，独立题序经原书核实应进 `prefaces`，**不是 `title`** | `rules.py`、真实 EPUB 人工核对、合成回归 |
+| 周邦彦评论续段 | 原书 `text00241.html` 的来源块 20–38、511–512 属于两个作品 `◆` 后评论/考证；DOM 中它们与正文同为 `body` 直接子节点，**不能仅凭 DOM 父子结构判断语义**。只允许窄范围且相同样式/上下文下的已核实续评规则 | `rules.py`、`audit_extraction.py` 和合成测试 |
+| 温庭筠、韦庄等 | 单段只有词牌时不臆造词题；「又」的继承严格限定作者与文献区域 | `extractor/rules.py` |
+
+其他已验证的导入安全行为：
+
+- 合刊中的无作者证据不能猜归属；二晏合刊 `h2`「总评」等非作品内容已用精确范围排除，不能以「全部 h2 都是词题」替代。
+- `◎`/ `◆` 后的普通段落不能都猜成正文或评论；如不确定，产生 `unclassified_after_notes`、`unclassified_before_inserted_author`、`ambiguous_reference_after_verse` 并在批量写文件前停止，不默默丢失来源块。
+- 行内 `font1` / `kaiti` 等样式既可能是作者注，也可能是编校标记；不能凭字号或字体判定文学语义，原文字符及可逆偏移应继续保留，详见 [尚在进行的分类复核](epub-classifier-design.md)。
+- 2026-10-02 曾出现候选作品数和常规样式告警的大幅变化，那是结构规则/告警口径的修正，不代表 3491 首作品已全部完成文学审校。真实 EPUB 全量重新核查与合成测试属于不同验收层次。
+
