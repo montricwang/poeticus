@@ -17,7 +17,6 @@ from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
 
-import psutil
 
 from backend.retrieval.serving import RetrievalServingRuntime
 from scripts.retrieval.run_serving import (
@@ -36,8 +35,18 @@ DEFAULT_CASE_IDS = (
 )
 
 
+def _require_psutil():
+    try:
+        import psutil
+    except ImportError as exc:
+        raise RuntimeError(
+            "Serving Benchmark 需要 psutil；请安装 requirements-retrieval.txt"
+        ) from exc
+    return psutil
+
+
 def rss_mib() -> float:
-    return psutil.Process().memory_info().rss / (1024 ** 2)
+    return _require_psutil().Process().memory_info().rss / (1024 ** 2)
 
 
 def cpu_model() -> str:
@@ -383,6 +392,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    psutil = _require_psutil()
     if args.runs <= 0:
         raise SystemExit("--runs 必须为正整数")
     if args.concurrency <= 0:

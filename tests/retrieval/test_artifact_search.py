@@ -8,8 +8,8 @@ from scripts.retrieval.artifact_search import (
     load_artifact_manifest,
     resolve_chunk_path,
     resolve_query_model_path,
+    summarize_result,
 )
-from scripts.retrieval.compare_artifacts import summarize_result
 
 
 def _write_artifact(tmp_path, *, model=QWEN_MODEL, policy="sentence"):
