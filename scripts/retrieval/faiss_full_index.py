@@ -23,7 +23,7 @@ from backend.data_paths import RETRIEVAL_ROOT
 from typing import Sequence
 
 from scripts.retrieval.artifact_search import load_artifact_manifest
-from scripts.retrieval.faiss_serving_spike import (
+from scripts.retrieval.vector_sampling import (
     load_sampled_vectors,
     sample_global_rows,
 )
