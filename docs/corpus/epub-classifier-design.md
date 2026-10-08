@@ -71,7 +71,7 @@ python -m scripts.corpus.epub_import.diagnostics.audit_extraction
 python -m scripts.corpus.epub_import.diagnostics.sample_classification --round 1 --limit 5
 ```
 
-生成两个报告，均默认位于 gitignore 保护的 `../poeticus-data/reports/epub-import/`：
+生成两个报告，均默认位于**仓库外**的 `../poeticus-data/reports/epub-import/`（不会进入当前 Git 工作树）：
 
 - `classification_review_plan.md`：只有书名、作品 ID、块号、角色、需要人回答的问题，**没有原文**，可以直接拿来讨论分配复核任务。
 - `classification_review_private.md`：在本地展示每个目标块的前后原文、样式、DOM 路径与当前抽取角色，**含商业出版物原文**，不要提交到公开 GitHub，也不应原样整体分享。对无告警但含注评的作品，会额外显示词牌、小序、正文、注释、评论的代表位置。
