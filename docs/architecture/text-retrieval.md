@@ -345,7 +345,7 @@ BERT-CCPoem v1.0 + clause + 512d
 Embedding 先作为独立离线构建产物保存：
 
 ```text
-../poeticus-data/output/retrieval/embeddings/qwen3_0.6b_sentence_1024/
+../poeticus-data/retrieval/embeddings/qwen3_0.6b_sentence_1024/
 ├─ manifest.json
 ├─ shard_00000.npy
 ├─ shard_00001.npy

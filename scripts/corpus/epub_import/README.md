@@ -25,7 +25,7 @@
 
 人工图片字复核工具。只有预检发现未解决 glyph 时才需要运行。
 
-人工决定最终必须落到 `data/raw/glyph_maps/`；HTML、图片、TSV、短上下文和 backup 都只是帮助完成这一步的本地工作材料。各类产物能否删除见 [`data/README.md`](../../../data/README.md)。
+人工决定最终必须落到 `../poeticus-data/reading-corpus/raw/glyph_maps/`；HTML、图片、TSV 和短上下文是本地复核材料；`glyph_review_backup.json` 则是值得独立备份的人工判断记录。各类产物能否删除见 [本地数据管理](../../../docs/data-management.md)。
 
 ## 不要再新增“临时但永久”的脚本
 

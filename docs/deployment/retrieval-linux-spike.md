@@ -4,6 +4,8 @@
 
 目标是从一台 2核8G Linux VPS 开始，验证 Retrieval Serving 的最低可行资源规格。
 
+> **目录迁移提示**：以下 `/opt/poeticus-data/output/retrieval` 是实验时的真实旧路径，保留作历史记录。新版脚本默认使用 `/opt/poeticus-data/retrieval`，不能未经迁移直接在旧主机上部署。见 [本地数据管理](../data-management.md)。
+
 ## 1. 当时的第一候选
 
 当时第一候选：

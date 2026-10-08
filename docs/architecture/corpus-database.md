@@ -36,11 +36,11 @@ Railway PostgreSQL
 标准本地路径：
 
 ```text
-private EPUB + data/raw/glyph_maps/
+private EPUB + ../poeticus-data/reading-corpus/raw/glyph_maps/
         ↓
 scripts/corpus/epub_import/
         ↓
-data/output/all_normalized.json
+../poeticus-data/reading-corpus/normalized/all_normalized.json
         ↓
 scripts/corpus/adapter.py
         ↓

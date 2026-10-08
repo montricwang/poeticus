@@ -220,6 +220,9 @@ Let’s Encrypt 当前使用公网 IP 证书。Certbot 已建立自动续期任�
 
 ## 8. Retrieval 代码部署
 
+> **迁移提醒（#177）**：下面是截至 v0.3.0 已在腾讯云运行的生产信息；仓库路径重构后，Serving 将默认从 `/opt/poeticus-data/retrieval/` 加载 Artifact，而线上现有目录仍为 `/opt/poeticus-data/output/retrieval/`。在验收数据迁移和可用性前，不要直接把新版本 Retrieval 代码部署到这台机器。旧路径表示生产现状，并非新版推荐布局。
+
+
 服务器访问 `raw.githubusercontent.com` 曾出现长时间无数据，因此当前维护路径从开发机主动推送。
 
 仓库提供：
