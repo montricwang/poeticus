@@ -208,6 +208,17 @@ class RouterState(TypedDict):
     stream_reply: NotRequired[bool]
 
 
+class RouterUpdate(TypedDict, total=False):
+    """LangGraph nodes return only the state fields they changed."""
+
+    messages: list[ChatCompletionMessageParam]
+    tool_count: int
+    reply: str
+    evidences: list[dict[str, object]]
+    tool_calls: list[ToolCall]
+    tool_results: list[ToolResult]
+
+
 def _agent_user_message(state: RouterState) -> str:
     return (
         f"{format_poem_context(state.get('context'))}"
@@ -338,7 +349,7 @@ def _stream_agent_decision(
     return answer, []
 
 
-def agent_decide(state: RouterState) -> dict:
+def agent_decide(state: RouterState) -> RouterUpdate:
     # 第一次进入 Agent 时建立消息历史；
     # 再次进入时沿用已有记录。
     messages = list(state.get("messages") or [])
@@ -479,7 +490,7 @@ def route_agent(state: RouterState) -> Literal["tools", "done"]:
     return "done"
 
 
-def execute_tools(state: RouterState) -> dict:
+def execute_tools(state: RouterState) -> RouterUpdate:
     calls = state.get("tool_calls") or []
 
     if not calls:
