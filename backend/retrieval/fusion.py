@@ -114,15 +114,15 @@ def fuse_candidates_rrf(
             accumulator = accumulators.get(hit.work_id)
 
             if accumulator is None:
-                accumulator = {
-                    "title": hit.title,
-                    "author": hit.author,
-                    "dynasty": hit.dynasty,
-                    "source_record_id": hit.source_record_id,
-                    "rrf_score": 0.0,
-                    "best_rank": hit.rank,
-                    "evidences": [],
-                }
+                accumulator = _FusionAccumulator(
+                    title=hit.title,
+                    author=hit.author,
+                    dynasty=hit.dynasty,
+                    source_record_id=hit.source_record_id,
+                    rrf_score=0.0,
+                    best_rank=hit.rank,
+                    evidences=[],
+                )
                 accumulators[hit.work_id] = accumulator
             else:
                 for field in ("title", "author", "dynasty", "source_record_id"):
