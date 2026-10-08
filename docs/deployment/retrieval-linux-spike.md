@@ -1,12 +1,12 @@
 # Retrieval Linux Deployment Spike
 
-> 这是 Issue #160 的临时验证手册。Spike 已于 2026-10-08 完成；当前生产结构见 [docs/deployment.md](../deployment.md)。
+> **历史实验 Runbook，已完成（2026-10-08）**。以下步骤、候选规格与“待决定”均记录当时的执行顺序，**不是当前生产待办**。该 Spike 已验证腾讯云上海 2C8G，并已用于 v0.3.0 生产；现行操作请以 [生产部署](../deployment.md) 为准。
 
 目标是从一台 2核8G Linux VPS 开始，验证 Retrieval Serving 的最低可行资源规格。
 
-## 1. 第一候选
+## 1. 当时的第一候选
 
-当前第一候选：
+当时第一候选：
 
 ```text
 腾讯云 CVM
@@ -19,11 +19,11 @@ Billing: 按量计费
 Public Network: 按流量计费
 ```
 
-选择它只用于 Spike。生产规格仍未锁定。
+选择它用于当时的 Spike；此时生产规格尚未锁定。最终决定见第 11 节。
 
 ## 2. 为什么先测这台
 
-当前本机 Retrieval Serving：
+当时的 Windows 本机 Retrieval Serving：
 
 ```text
 steady RSS       ≈ 5.27 GiB
@@ -181,7 +181,7 @@ python -m scripts.retrieval.probe_serving \
 
 它负责区分 query-vector cache 后的 warm latency 与真实新 Query。
 
-## 9. 暂时不要做的事
+## 9. 当时在 Spike 阶段暂不做的事
 
 第一轮数据出来前：
 
@@ -194,9 +194,9 @@ python -m scripts.retrieval.probe_serving \
 - 不开放 8787 到公网；
 - 不把 Spike 机器直接当 production。
 
-## 10. 验收后再决定
+## 10. 当时约定验收后决定
 
-数据出来后只回答：
+当时约定数据出来后只回答：
 
 ```text
 8 GiB RAM 是否真的够？
@@ -208,7 +208,7 @@ python -m scripts.retrieval.probe_serving \
 如果 8 GiB 内存够但 2 vCPU 太慢，先升级到 4核8G；只有出现 OOM、持续 swap 或明显 page-cache 压力，才升到 16 GiB。跨境调用问题另行比较腾讯云香港或海外节点。
 
 
-## 11. Spike 结果
+## 11. Spike 实测结果与生产结论（已完成）
 
 最终实际使用腾讯云上海 2C8G：
 
