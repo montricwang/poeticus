@@ -9,6 +9,10 @@ from openai.types.chat import (
     ChatCompletionFunctionToolParam,
     ChatCompletionMessageParam,
 )
+from openai.types.chat.completion_create_params import (
+    CompletionCreateParamsNonStreaming,
+    CompletionCreateParamsStreaming,
+)
 
 from backend.ai.model import client
 from backend.config import AGENT_MAX_TOOL_CALLS, LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
@@ -215,13 +219,12 @@ def _stream_agent_decision(
         else _final_messages_without_tools(messages)
     )
 
-    request_kwargs = {
+    request_kwargs: CompletionCreateParamsStreaming = {
         "model": LLM_MODEL,
         "max_tokens": LLM_MAX_OUTPUT_TOKENS,
         "messages": request_messages,
         "temperature": 0,
         "stream": True,
-        "extra_body": {"thinking": {"type": "disabled"}},
     }
     if tools_enabled:
         request_kwargs["tools"] = _available_tools()
@@ -234,7 +237,10 @@ def _stream_agent_decision(
     tool_calls_started = False
 
     try:
-        stream = client.chat.completions.create(**request_kwargs)
+        stream = client.chat.completions.create(
+            **request_kwargs,
+            extra_body={"thinking": {"type": "disabled"}},
+        )
 
         for chunk in stream:
             if not chunk.choices:
@@ -373,19 +379,21 @@ def agent_decide(state: RouterState) -> dict:
             if tools_enabled
             else _final_messages_without_tools(messages)
         )
-        request_kwargs = {
+        request_kwargs: CompletionCreateParamsNonStreaming = {
             "model": LLM_MODEL,
             "max_tokens": LLM_MAX_OUTPUT_TOKENS,
             "messages": request_messages,
             "temperature": 0,
-            "extra_body": {"thinking": {"type": "disabled"}},
         }
         if tools_enabled:
             request_kwargs["tools"] = _available_tools()
             request_kwargs["tool_choice"] = "auto"
 
         try:
-            response = client.chat.completions.create(**request_kwargs)
+            response = client.chat.completions.create(
+                **request_kwargs,
+                extra_body={"thinking": {"type": "disabled"}},
+            )
         except APIError as exc:
             raise RuntimeError("Agent 决策 API 调用失败") from exc
 
