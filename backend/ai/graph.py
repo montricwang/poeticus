@@ -510,6 +510,7 @@ def execute_tools(state: RouterState) -> RouterUpdate:
         count = tool_count
 
         for call in calls:
+            result: dict[str, object]
             if count >= AGENT_MAX_TOOL_CALLS:
                 result = {
                     "status": "budget_exceeded",
@@ -520,10 +521,12 @@ def execute_tools(state: RouterState) -> RouterUpdate:
                 count += 1
 
                 try:
-                    arguments = json.loads(call["arguments"])
+                    parsed_arguments: object = json.loads(call["arguments"])
 
-                    if not isinstance(arguments, dict):
+                    if not isinstance(parsed_arguments, dict):
                         raise ValueError("工具参数必须是对象")
+                    # JSON object keys are strings; values still require checks below.
+                    arguments = cast(dict[str, object], parsed_arguments)
 
                     if call["name"] == "lookup_allusion":
                         query = arguments.get("term")
@@ -564,12 +567,13 @@ def execute_tools(state: RouterState) -> RouterUpdate:
                             ),
                             top_k=max_items,
                         )
-                        items = []
+                        items: list[dict[str, object]] = []
                         for candidate in retrieval.candidates[:max_items]:
-                            data = candidate.model_dump()
-                            data["text"] = data["text"][:800]
-                            if isinstance(data.get("title"), str):
-                                data["title"] = data["title"][:200]
+                            data: dict[str, object] = candidate.model_dump()
+                            data["text"] = candidate.text[:800]
+                            title = data.get("title")
+                            if isinstance(title, str):
+                                data["title"] = title[:200]
                             items.append(data)
                         result = {
                             "status": retrieval.status,
@@ -590,14 +594,15 @@ def execute_tools(state: RouterState) -> RouterUpdate:
 
                         # 限制回传给后续 LLM 轮次的工具材料长度，避免外部证据
                         # 带入过长文本。reference 多保留两条候选，便于跨年代比较。
-                        items = []
+                        items: list[dict[str, object]] = []
                         for item in evidences[:max_items]:
-                            data = item.model_dump()
-                            data["text"] = data["text"][:1600]
-                            if isinstance(data.get("source"), dict):
-                                title = data["source"].get("title")
+                            data: dict[str, object] = item.model_dump()
+                            data["text"] = item.text[:1600]
+                            source = data.get("source")
+                            if isinstance(source, dict):
+                                title = source.get("title")
                                 if isinstance(title, str):
-                                    data["source"]["title"] = title[:200]
+                                    source["title"] = title[:200]
                             items.append(data)
 
                         all_evidences.extend(items)
