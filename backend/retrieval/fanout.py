@@ -71,6 +71,7 @@ class RetrievalChannel(Protocol):
         top_k: int,
     ) -> Sequence[Sequence[RetrievalHit]]:
         """Return one ranked hit list for every input query, in the same order."""
+        ...
 
 
 def execute_query_fanout(
