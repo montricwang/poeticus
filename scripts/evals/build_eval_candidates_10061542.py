@@ -4,7 +4,7 @@
 - headword_colon: 50 条
 - quoted_source: 100 条
 
-输出仍写入 data/reports/，用于人工打标，不提交公开仓库。
+输出仍写入 poeticus-data/reports/evals/，用于人工打标，不提交公开仓库。
 """
 
 from __future__ import annotations
@@ -12,6 +12,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+
+from backend.data_paths import EVAL_REPORTS_ROOT, READING_NORMALIZED_ROOT
 
 from scripts.evals.build_eval_candidates_10061450 import (
     ROOT,
@@ -22,9 +24,9 @@ from scripts.evals.build_eval_candidates_10061450 import (
 
 
 STAMP = "10061542"
-DEFAULT_INPUT = ROOT / "data" / "output" / "all_normalized.json"
-DEFAULT_JSON_OUTPUT = ROOT / "data" / "reports" / f"eval_candidates_{STAMP}.json"
-DEFAULT_MD_OUTPUT = ROOT / "data" / "reports" / f"eval_candidates_{STAMP}.md"
+DEFAULT_INPUT = READING_NORMALIZED_ROOT / "all_normalized.json"
+DEFAULT_JSON_OUTPUT = EVAL_REPORTS_ROOT / f"eval_candidates_{STAMP}.json"
+DEFAULT_MD_OUTPUT = EVAL_REPORTS_ROOT / f"eval_candidates_{STAMP}.md"
 
 
 def parse_args() -> argparse.Namespace:

@@ -5,7 +5,7 @@
 - 带明确尾部来源的前人引文。
 
 脚本不自动把这些候选解释成“词义”“典故”或“化用”。
-输出位于 data/reports/，包含商业出版物派生文本，不得提交公开仓库。
+输出位于 poeticus-data/reports/evals/，包含商业出版物派生文本，不得提交公开仓库。
 """
 
 from __future__ import annotations
@@ -17,6 +17,8 @@ import re
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+
+from backend.data_paths import EVAL_REPORTS_ROOT, READING_NORMALIZED_ROOT
 from typing import Any
 
 from scripts.evals.profile_editorial_notes import (
@@ -32,9 +34,9 @@ from scripts.evals.profile_editorial_notes import (
 
 
 STAMP = "10061450"
-DEFAULT_INPUT = ROOT / "data" / "output" / "all_normalized.json"
-DEFAULT_JSON_OUTPUT = ROOT / "data" / "reports" / f"eval_candidates_{STAMP}.json"
-DEFAULT_MD_OUTPUT = ROOT / "data" / "reports" / f"eval_candidates_{STAMP}.md"
+DEFAULT_INPUT = READING_NORMALIZED_ROOT / "all_normalized.json"
+DEFAULT_JSON_OUTPUT = EVAL_REPORTS_ROOT / f"eval_candidates_{STAMP}.json"
+DEFAULT_MD_OUTPUT = EVAL_REPORTS_ROOT / f"eval_candidates_{STAMP}.md"
 
 
 def compact_poem(record: dict[str, Any], limit: int = 360) -> str:

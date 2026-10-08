@@ -10,11 +10,13 @@ import asyncio
 import json
 from pathlib import Path
 
+from backend.data_paths import EVAL_REPORTS_ROOT
+
 from backend.evidence.providers.cnkgraph import CNKGraphProvider
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_OUTPUT = ROOT / "data" / "reports" / "cnkgraph_probe_10061619.json"
+DEFAULT_OUTPUT = EVAL_REPORTS_ROOT / "cnkgraph_probe_10061619.json"
 
 DEFAULT_TERMS = [
     "食牛",

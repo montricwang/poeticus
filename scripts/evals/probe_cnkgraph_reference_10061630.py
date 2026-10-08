@@ -11,13 +11,15 @@ import asyncio
 import json
 import os
 from pathlib import Path
+
+from backend.data_paths import EVAL_REPORTS_ROOT
 from typing import Any
 
 import httpx
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_OUTPUT = ROOT / "data" / "reports" / "cnkgraph_reference_probe_10061630.json"
+DEFAULT_OUTPUT = EVAL_REPORTS_ROOT / "cnkgraph_reference_probe_10061630.json"
 BASE_URL = os.getenv("CNKGRAPH_BASE_URL", "https://api.cnkgraph.com").rstrip("/")
 
 DEFAULT_CASES = [

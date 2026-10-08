@@ -19,6 +19,8 @@ import json
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+from backend.data_paths import RETRIEVAL_REPORTS_ROOT
 from typing import Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,7 +33,7 @@ from scripts.retrieval.lexical_bm25 import DEFAULT_INDEX_ROOT
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATASET = ROOT / "evals" / "retrieval_increment_cases.json"
-DEFAULT_REPORT_ROOT = ROOT / "data" / "reports"
+DEFAULT_REPORT_ROOT = RETRIEVAL_REPORTS_ROOT
 
 DEFAULT_SENTENCE_ARTIFACT = (
     DEFAULT_DATA_ROOT / "embeddings/qwen3_0.6b_sentence_1024"

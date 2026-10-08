@@ -7,10 +7,12 @@ import json
 import os
 from pathlib import Path
 
+from backend.data_paths import EVAL_REPORTS_ROOT
+
 import httpx
 
 ROOT = Path(__file__).resolve().parents[2]
-OUTPUT = ROOT / "data" / "reports" / "cnkgraph_reference_targets_10061645.json"
+OUTPUT = EVAL_REPORTS_ROOT / "cnkgraph_reference_targets_10061645.json"
 BASE_URL = os.getenv("CNKGRAPH_BASE_URL", "https://api.cnkgraph.com").rstrip("/")
 
 CASES = [
