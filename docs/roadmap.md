@@ -3,7 +3,7 @@
 > 更新日期：2026-10-08  
 > 当前状态：v0.3.0 发布基线已经形成。公开阅读、Agent、AI Eval、Hybrid Text Retrieval 和独立 Retrieval Serving 均已跑通真实线上链路。
 
-Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog、ADR 和 Decision Register；具体任务继续进入 GitHub Issues。
+Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog 和 ADR；具体任务继续进入 GitHub Issues。
 
 ## 1. 当前基线
 

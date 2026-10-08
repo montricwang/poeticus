@@ -39,7 +39,7 @@ Poeticus 尝试让**作品成为阅读中心，AI 成为可以随时交谈的伴
 
 作品读取采用 `GET /api/poems` 与 `GET /api/poems/{UUID}`；聊天在正式部署中使用同源 `POST /api/chat/stream` SSE；FastAPI 同时提供 Vite 静态文件和作品 API。`GET /health` 用于存活检查，`GET /api/info` 返回非敏感版本元数据。公网 AI 使用量限制及故障保护见 [#77](https://github.com/montricwang/poeticus/issues/77)。
 
-了解技术细节，可阅读 [LangGraph 架构](docs/architecture/langgraph.md)、[Text Retrieval 架构](docs/architecture/text-retrieval.md)、[作品数据库架构](docs/architecture/corpus-database.md)、[当前生产部署](docs/deployment.md) 和 [开发日志](docs/devlog/)。
+文档按当前架构、决策、开发操作、私有数据和历史日志分工，先看 [文档导航](docs/README.md)。了解技术细节，可阅读 [LangGraph 架构](docs/architecture/langgraph.md)、[Text Retrieval 架构](docs/architecture/text-retrieval.md)、[作品数据库架构](docs/architecture/corpus-database.md)、[当前生产部署](docs/deployment.md) 和 [开发日志](docs/devlog/)。
 
 后端实现统一位于 `backend/` 包：`app.py` 组装 FastAPI，`api/` 负责 HTTP 接口，`ai/` 放模型与 LangGraph，`corpus/` 管作品数据，`evidence/` 管典故查证。生产环境直接以 `backend.app:app` 启动，不再保留根目录兼容模块。
 

@@ -3,6 +3,8 @@
 - **Status:** Accepted
 - **Date:** 2026-10-08
 - **Scope:** Production architecture
+- **Origin:** joint（拆分部署方向）；2C8G 最小规格由逐步实测收敛；Nginx、Bearer、readiness 方案含 AI-proposed 与 joint 判断
+- **Confidence:** 已在 2C8G Linux、真实 Railway → 腾讯云 E2E 和健康检查中验证「能运行」；长期 p95、真实峰值并发及跨境链路可靠性尚无充分生产证据
 - **Related:** #145、#160、#164、PR #146、#162、#165
 
 ## Context
@@ -54,6 +56,19 @@ Retrieval 节点：
 - token 保存在 root-only environment file。
 
 Railway PostgreSQL 继续留在 Railway，不迁入 Retrieval VPS。
+
+## Evidence and decision evolution
+
+选择独立 Service 不是因为预设「微服务更先进」，而是实测 Serving Bundle ≈ 8.02 GiB、Linux ready RSS ≈ 4.4 GiB、Benchmark 后 ≈ 5.3 GiB，确认它与轻量 Web/Agent 的资源周期不同。这一选择最初在 `RET-001`（Evidence-backed）和 `DEP-001` 被记录。
+
+服务器规格曾考虑海外 16 GiB、腾讯云 8C16G，最后才根据最低可行性问题改用腾讯云上海 2C8G 做 Spike。**这些旧候选属于已被后续实测替代的假设，不是新的上线步骤。** 2C8G 当时完成 5 并发约 1.78 req/s；这只证明低流量可用，不证明未来吞吐上限。
+
+安全和启动方面，真实线上联调曾发现：
+- `systemd active` 发生在 Qwen/FAISS 加载完成之前；启动期间 Nginx 短暂返回 502，因此部署必须等待 **HTTP readiness**，不能只检查进程。
+- 服务暴露 `127.0.0.1:8787`，公网只走 Nginx HTTPS + Bearer；缺失或错误 token 应被拒绝。
+- 外部主机直接访问 GitHub raw 曾卡住，因此当前使用开发机主动上传和 systemd 重启；这属于**暂时的运维做法**，不是长期架构原则。
+
+证据与故障过程见 [当日开发日志](../devlog/2026-10-08.md)；当前部署命令及实际服务器状态以 [deployment.md](../deployment.md) 为准。
 
 ## Why this fits the current system
 
@@ -140,4 +155,4 @@ Linux Spike 已证明 2C8G 能运行完整服务。容量升级继续以真实 p
 - 进入私网互联 / mTLS；
 - PostgreSQL / Retrieval 的数据边界发生明显变化。
 
-更细的证据等级、working defaults 与 open questions 见 [2026-10-08 Decision Register](../decisions/2026-10-08-production-retrieval-and-deployment.md)。
+本 ADR 只固定独立服务边界，不冻结具体主机品牌、IP、实例规格、worker、请求超时或证书实现。它们随真实负载和部署环境调整，当前数值以 [deployment.md](../deployment.md) 和代码配置为准。

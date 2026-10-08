@@ -1,4 +1,6 @@
-# 15 册词集：可追溯分类器与人工复核闭环（第一阶段）
+# EPUB 分类器：历史调查与仍需人工核实的样式
+
+**文档状态：复核研究记录，不作为当前解析规则的唯一权威。** 其中 2026-10-02 的阶段性假设可能已被后续真实 EPUB 复核修订；当前有效的分册规则与源码定位见 [EPUB 维护地图](epub-pipeline-maintenance-map.md)，运行与诊断命令见 [EPUB SOP](epub-import-sop.md)。本文件重点保留尚未结束的 `font1` / `kaiti` 样本复核、可逆行内注释及其证据，不按临时判断改写现行 Schema。
 
 目标不是“全部输出、零 warning”，而是让每一项来自选中 XHTML 的文字都有可解释的去向，在不确定时不静默丢失、不伪装为已经分类正确。
 
@@ -48,7 +50,7 @@
 python -m scripts.corpus.epub_import.diagnostics.audit_extraction
 ```
 
-分享报告的结构性摘要即可，尤其每册的 `未追踪源块`、`其他标签文字`、`待分类段落` 与实例结构；不提交 `data/reports/*.json` 或原书内容。先根据完整 15 册结果决定哪些是缺陷、哪些是有意排除，再继续拆分分册规则。
+分享报告的结构性摘要即可，尤其每册的 `未追踪源块`、`其他标签文字`、`待分类段落` 与实例结构；不提交 `../poeticus-data/reports/epub-import/*.json` 或原书内容。先根据完整 15 册结果决定哪些是缺陷、哪些是有意排除，再继续拆分分册规则。
 
 
 ## 第一份真实全量源块审计（2026-10-02）
@@ -69,7 +71,7 @@ python -m scripts.corpus.epub_import.diagnostics.audit_extraction
 python -m scripts.corpus.epub_import.diagnostics.sample_classification --round 1 --limit 5
 ```
 
-生成两个报告，均默认位于 gitignore 保护的 `data/reports/`：
+生成两个报告，均默认位于**仓库外**的 `../poeticus-data/reports/epub-import/`（不会进入当前 Git 工作树）：
 
 - `classification_review_plan.md`：只有书名、作品 ID、块号、角色、需要人回答的问题，**没有原文**，可以直接拿来讨论分配复核任务。
 - `classification_review_private.md`：在本地展示每个目标块的前后原文、样式、DOM 路径与当前抽取角色，**含商业出版物原文**，不要提交到公开 GitHub，也不应原样整体分享。对无告警但含注评的作品，会额外显示词牌、小序、正文、注释、评论的代表位置。
@@ -85,7 +87,7 @@ python -m scripts.corpus.epub_import.diagnostics.sample_classification --round 1
 新增只读的全册结构诊断（不改正文归类）：
 
 ```powershell
-python -m scripts.corpus.epub_import.diagnostics.audit_inline_styles --output data/reports/epub_inline_style_audit.md
+python -m scripts.corpus.epub_import.diagnostics.audit_inline_styles --output ../poeticus-data/reports/epub-import/epub_inline_style_audit.md
 ```
 
 它对所有正文段落同时检测两件事：是否触发 `inline_body_style_review`，以及是否出现明确形态的 `（以下缺）` 残缺标记（兼容半角括号）。分别统计残缺标记是否处在带样式 span 内、是否出现在完全没有样式告警的段落，按分册聚合样式 class/style 和块号。报告**只含结构、计数与源位置，不含商业原文**。
@@ -93,7 +95,7 @@ python -m scripts.corpus.epub_import.diagnostics.audit_inline_styles --output da
 定位李煜原始标签可单独运行：
 
 ```powershell
-python -m scripts.corpus.epub_import.diagnostics.inspect_source --html text00045.html --block 2 --before 0 --after 0 --show-html --book "李煜词集（附：李璟词集 冯延巳词集）" --output data/reports/nantang_030_markup_private.md
+python -m scripts.corpus.epub_import.diagnostics.inspect_source --html text00045.html --block 2 --before 0 --after 0 --show-html --book "李煜词集（附：李璟词集 冯延巳词集）" --output ../poeticus-data/reports/epub-import/nantang_030_markup_private.md
 ```
 
 后者**包含原文，只能留在本地**；要交流时截取必要的最短 HTML 片段即可。先确认“（以下缺）”是否与 CSS span 对齐、其他 56 处样式是否同一类，再决定是否需要专门的行内校勘数据结构。无证据时不得直接删除正文中的残缺标记，也不得将所有样式 span 一律当注释。
@@ -121,7 +123,7 @@ python -m scripts.corpus.epub_import.diagnostics.inspect_source --html text00045
 python -m scripts.corpus.epub_import.diagnostics.inspect_inline_samples --style kaiti --per-style 3
 ```
 
-生成 `data/reports/inline_style_review_plan.md`（可分享无原文）和 `data/reports/inline_style_review_private.md`（含版权正文及原始 span，只供本地人工复核）。待核实 `kaiti` 版式后，再设计明确区分**行内原文**与**行内附注/残缺标记**的结构；当前 `PoemContent.text` 一字不删，避免未经确认的规则扩大影响。
+生成 `../poeticus-data/reports/epub-import/inline_style_review_plan.md`（可分享无原文）和 `../poeticus-data/reports/epub-import/inline_style_review_private.md`（含版权正文及原始 span，只供本地人工复核）。待核实 `kaiti` 版式后，再设计明确区分**行内原文**与**行内附注/残缺标记**的结构；当前 `PoemContent.text` 一字不删，避免未经确认的规则扩大影响。
 
 ### `font1` 自注与 `kaiti` 分页：第二轮语义复核（2026-10-02）
 

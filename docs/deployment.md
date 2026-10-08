@@ -1,6 +1,6 @@
 # Poeticus｜当前生产部署
 
-本文描述 v0.3.0 的生产结构、资源边界和常用运维检查。历史预览环境、首次上线过程和 Retrieval Spike 过程保留在 `docs/devlog/`、Release notes 和 `docs/deployment/retrieval-linux-spike.md`。
+本文描述 v0.3.0 的生产结构、资源边界和常用运维检查。历史预览环境、首次上线过程和 Retrieval Spike 的经历保留在 [开发日志](devlog/)、Release notes 与 [ADR-0001](adr/0001-separate-text-retrieval-service.md)；历史运行命令不是当前部署依据。
 
 ## 1. 生产拓扑
 

@@ -27,6 +27,12 @@
 
 人工决定最终必须落到 `../poeticus-data/reading-corpus/raw/glyph_maps/`；HTML、图片、TSV 和短上下文是本地复核材料；`glyph_review_backup.json` 则是值得独立备份的人工判断记录。各类产物能否删除见 [本地数据管理](../../../docs/data-management.md)。
 
+## 文档入口
+
+- [EPUB 维护地图](../../../docs/corpus/epub-pipeline-maintenance-map.md)：当前分类规则、字段语义、来源特例和代码位置。
+- [EPUB SOP](../../../docs/corpus/epub-import-sop.md)：如何重建、复核、审计与本地查看原书。
+- [样式复核记录](../../../docs/corpus/epub-classifier-design.md)：仍待人工确认的少量复杂行内样式。
+
 ## 不要再新增“临时但永久”的脚本
 
 - 能反复用于定位 EPUB 结构问题：放进 `diagnostics/`，并补合成测试。
