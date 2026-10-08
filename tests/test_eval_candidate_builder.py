@@ -1,4 +1,4 @@
-from scripts.evals.build_eval_candidates_10061450 import (
+from scripts.evals.build_eval_candidates import (
     balanced_sample,
     build_candidate_pool,
     source_hint,

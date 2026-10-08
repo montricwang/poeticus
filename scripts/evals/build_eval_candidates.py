@@ -1,6 +1,6 @@
-"""从私人 annotations 中抽取一小批 Eval 候选。
+"""从私人 annotations 中筛选可供人工标注的 Eval 候选。
 
-这是 2026-10-06 14:50 的诊断脚本版本。它只做候选筛选：
+候选筛选规则：
 - 词头 + 冒号，并且词头能在本词正文直接找到；
 - 带明确尾部来源的前人引文。
 
@@ -33,10 +33,9 @@ from scripts.evals.profile_editorial_notes import (
 )
 
 
-STAMP = "10061450"
 DEFAULT_INPUT = READING_NORMALIZED_ROOT / "all_normalized.json"
-DEFAULT_JSON_OUTPUT = EVAL_REPORTS_ROOT / f"eval_candidates_{STAMP}.json"
-DEFAULT_MD_OUTPUT = EVAL_REPORTS_ROOT / f"eval_candidates_{STAMP}.md"
+DEFAULT_JSON_OUTPUT = EVAL_REPORTS_ROOT / "eval_candidates.json"
+DEFAULT_MD_OUTPUT = EVAL_REPORTS_ROOT / "eval_candidates.md"
 
 
 def compact_poem(record: dict[str, Any], limit: int = 360) -> str:
@@ -252,7 +251,7 @@ def render_markdown(profile: dict[str, Any], source_path: Path) -> str:
     selected = profile["selection_stats"]
 
     lines = [
-        f"# Eval Candidates {STAMP}",
+        "# Eval Candidates",
         "",
         "> 私人候选报告。内容来自商业出版物的编者注，仅用于人工挑选 Eval Case，不得提交公开仓库。",
         "",
@@ -339,7 +338,7 @@ def render_markdown(profile: dict[str, Any], source_path: Path) -> str:
             "",
             "## 下一步人工选择",
             "",
-            "先从这 60 条里挑约 20 条真正像用户会问的问题；暂不自动写入 seed_cases.json。",
+            f"本轮筛出 {stats['headword_colon'] + stats['quoted_source']} 条候选；请人工选择真正值得评测的案例，暂不自动写入 seed_cases.json。",
             "",
             "- 词义 / 用法清楚、适合直接问「X 是什么意思」；",
             "- 容易望文生义或与现代义不同；",
@@ -358,8 +357,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     parser.add_argument("--json-output", type=Path, default=DEFAULT_JSON_OUTPUT)
     parser.add_argument("--md-output", type=Path, default=DEFAULT_MD_OUTPUT)
-    parser.add_argument("--headword-limit", type=int, default=30)
-    parser.add_argument("--quoted-limit", type=int, default=30)
+    parser.add_argument("--headword-limit", type=int, default=50)
+    parser.add_argument("--quoted-limit", type=int, default=100)
     parser.add_argument("--seed", type=int, default=20261006)
     return parser.parse_args()
 
