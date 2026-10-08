@@ -18,6 +18,8 @@ import argparse
 import json
 from pathlib import Path
 
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT
+
 from backend.retrieval.chronology import candidate_prior_dynasties
 
 from scripts.retrieval.exact_search import (
@@ -38,10 +40,10 @@ QWEN_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 BERT_CCPOEM_MODEL = "THUNLP-AIPoet/BERT-CCPoem-v1.0"
 SUPPORTED_MODELS = frozenset({QWEN_MODEL, BERT_CCPOEM_MODEL})
 
-DEFAULT_WORKS = DEFAULT_DATA_ROOT / "werneror_works.jsonl"
+DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 CHUNK_PATHS = {
-    "sentence": DEFAULT_DATA_ROOT / "werneror_chunks_sentence.jsonl",
-    "clause": DEFAULT_DATA_ROOT / "werneror_chunks_clause.jsonl",
+    "sentence": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl",
+    "clause": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl",
 }
 
 

@@ -14,14 +14,16 @@ import argparse
 import json
 from pathlib import Path
 
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
+
 from scripts.retrieval.artifact_search import (
     BERT_CCPOEM_MODEL,
     QWEN_MODEL,
     run_artifact_search,
 )
 
-DEFAULT_DATA_ROOT = Path("../poeticus-data/output/retrieval")
-DEFAULT_WORKS = DEFAULT_DATA_ROOT / "werneror_works.jsonl"
+DEFAULT_DATA_ROOT = RETRIEVAL_ROOT
+DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 DEFAULT_QWEN_SENTENCE = (
     DEFAULT_DATA_ROOT / "embeddings/qwen3_0.6b_sentence_1024"
 )

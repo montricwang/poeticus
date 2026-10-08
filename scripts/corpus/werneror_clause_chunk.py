@@ -10,7 +10,7 @@ import argparse
 import json
 from pathlib import Path
 
-from backend.data_paths import RETRIEVAL_CORPUS_ROOT
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
 
 from scripts.corpus.werneror_chunk import (
     DEFAULT_EXPECTED_WORKS,
@@ -19,7 +19,7 @@ from scripts.corpus.werneror_chunk import (
 
 DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 DEFAULT_OUTPUT = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl"
-DEFAULT_REPORT = RETRIEVAL_CORPUS_ROOT / "werneror_clause_chunks.json"
+DEFAULT_REPORT = RETRIEVAL_REPORTS_ROOT / "werneror_clause_chunks.json"
 DEFAULT_EXPECTED_CHUNKS = 9_425_173
 
 

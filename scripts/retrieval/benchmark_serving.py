@@ -15,6 +15,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
+from backend.data_paths import RETRIEVAL_REPORTS_ROOT
+
 import psutil
 
 from backend.retrieval.serving import RetrievalServingRuntime
@@ -26,7 +28,7 @@ from scripts.retrieval.run_serving import (
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CASES = ROOT / "evals/retrieval_increment_cases.json"
-DEFAULT_REPORT_ROOT = ROOT / "data/reports"
+DEFAULT_REPORT_ROOT = RETRIEVAL_REPORTS_ROOT
 DEFAULT_CASE_IDS = (
     "longtail_luyou_dufu_gull",
     "transformed_liqingzhao_fanzhongyan",

@@ -10,6 +10,8 @@ import json
 import os
 from pathlib import Path
 
+from backend.data_paths import MODELS_ROOT, RETRIEVAL_ROOT
+
 import uvicorn
 
 from backend.retrieval.server import create_app
@@ -18,8 +20,8 @@ from backend.retrieval.serving import (
     ServingPaths,
 )
 
-DEFAULT_DATA_ROOT = Path("../poeticus-data/output/retrieval")
-DEFAULT_MODEL_ROOT = Path("../poeticus-data/models")
+DEFAULT_DATA_ROOT = RETRIEVAL_ROOT
+DEFAULT_MODEL_ROOT = MODELS_ROOT
 
 
 def default_paths(

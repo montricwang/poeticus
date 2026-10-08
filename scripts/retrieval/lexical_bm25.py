@@ -16,6 +16,8 @@ import sqlite3
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT
 from typing import Iterable, Iterator
 
 from backend.retrieval.chronology import candidate_prior_dynasties
@@ -27,10 +29,10 @@ from scripts.retrieval.exact_search import (
 )
 
 DEFAULT_INDEX_ROOT = DEFAULT_DATA_ROOT / "lexical"
-DEFAULT_WORKS = DEFAULT_DATA_ROOT / "werneror_works.jsonl"
+DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 CHUNK_PATHS = {
-    "sentence": DEFAULT_DATA_ROOT / "werneror_chunks_sentence.jsonl",
-    "clause": DEFAULT_DATA_ROOT / "werneror_chunks_clause.jsonl",
+    "sentence": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl",
+    "clause": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl",
 }
 DEFAULT_MIN_N = 2
 DEFAULT_MAX_N = 3
