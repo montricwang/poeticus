@@ -57,6 +57,17 @@ def test_load_manifest_rejects_incomplete_artifact(tmp_path):
         load_manifest(artifact_dir)
 
 
+def test_load_manifest_rejects_non_integer_shard_start(tmp_path):
+    artifact_dir = _write_manifest(tmp_path)
+    manifest_path = artifact_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["completed_shards"][0]["start"] = "0"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="连续区间"):
+        load_manifest(artifact_dir)
+
+
 def test_merge_top_k_keeps_global_best_and_stable_row_order():
     actual = merge_top_k(
         [(0.8, 9), (0.7, 3)],
