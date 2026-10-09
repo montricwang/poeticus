@@ -1,9 +1,11 @@
 import json
 
-from evals.schema import EvalInput, EvalPoemContext
+from evals.schema import EvalHistoryMessage, EvalInput, EvalPoemContext
 from scripts.evals.run_retrieval_increment import (
     RetrievalIncrementCase,
     RetrievalTarget,
+    _best_rank,
+    _plain_messages,
     choose_current_work_id,
     choose_current_work_ids,
     compact_tool_result,
@@ -188,3 +190,29 @@ def test_tool_target_support_uses_exact_target_work_id():
         result=result,
         target_work_ids={"missing"},
     ) == (False, None)
+
+
+def test_plain_chat_messages_preserve_history_roles() -> None:
+    case = make_case()
+    case.input.history = [
+        EvalHistoryMessage(role="user", content="之前的问题"),
+        EvalHistoryMessage(role="assistant", content="之前的回答"),
+    ]
+    messages = _plain_messages(case)
+    assert messages[:2] == [
+        {"role": "user", "content": "之前的问题"},
+        {"role": "assistant", "content": "之前的回答"},
+    ]
+    assert messages[-1]["role"] == "user"
+    assert "当前句。" in str(messages[-1]["content"])
+
+
+def test_best_rank_ignores_non_integer_probe_values() -> None:
+    probes: list[dict[str, object]] = [
+        {"eligible_rank": None},
+        {"eligible_rank": "2"},
+        {"eligible_rank": 12},
+        {"eligible_rank": 4},
+    ]
+    assert _best_rank(probes, "eligible_rank") == 4
+    assert _best_rank(probes, "missing_rank") is None
