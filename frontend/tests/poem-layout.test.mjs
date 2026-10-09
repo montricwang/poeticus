@@ -28,5 +28,11 @@ test('句内顿号保持原样并可独立着色', () => {
   const source = '风、雨，花。'
   const runs = buildPoemTextRuns(source)
   assert.equal(runs.map((run) => run.text).join(''), source)
-  assert.equal(runs.filter((run) => run.punctuation).map((run) => run.text).join(''), '、，。')
+  assert.equal(
+    runs
+      .filter((run) => run.punctuation)
+      .map((run) => run.text)
+      .join(''),
+    '、，。',
+  )
 })
