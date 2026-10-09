@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 import { buildPoemLines, buildPoemTextRuns } from '../src/lib/poem-layout.ts'
 
+// 视觉分行不能改变原文内容、顺序或引用位置。
 test('分行保留原文及 UTF-16 位置', () => {
   const source = '春𠮷、夏雨，秋月。\n\n翠翘金缕双鸂鶒，水纹细起春池碧。'
   const lines = buildPoemLines(source)
@@ -15,6 +16,7 @@ test('分行保留原文及 UTF-16 位置', () => {
   assert.equal(lines[2].start, '春𠮷、夏雨，秋月。\n\n'.length)
 })
 
+// 连续标点与闭合引号不能被丢弃或错分到下一诗行。
 test('行末引号不丢失', () => {
   const source = '读《清平乐》，问：“归来否？！”犹见故人。'
   const lines = buildPoemLines(source)
@@ -24,6 +26,7 @@ test('行末引号不丢失', () => {
   assert.equal(lines.map((line) => line.text).join(''), source)
 })
 
+// 顿号可以单独设置样式，但不构成强制断行条件。
 test('句内顿号保持原样并可独立着色', () => {
   const source = '风、雨，花。'
   const runs = buildPoemTextRuns(source)
