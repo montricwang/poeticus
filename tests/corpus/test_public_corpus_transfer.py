@@ -12,7 +12,7 @@ from scripts.corpus.public_corpus_transfer import (
 )
 
 
-def example(order: int) -> dict:
+def example(order: int) -> dict[str, object]:
     return {
         "id": UUID(f"10000000-0000-4000-8000-{order:012d}"),
         "source_record_id": f"example-{order}",
@@ -52,7 +52,9 @@ class FakeCopy:
             raise RuntimeError("synthetic COPY interruption")
         row = dict(zip(PUBLIC_COLUMNS, params, strict=True))
         for key in ("body_segments", "prefaces"):
-            row[key] = row[key].obj
+            wrapped = row[key]
+            assert hasattr(wrapped, "obj")
+            row[key] = wrapped.obj
         self.conn.rows.append(row)
         self.conn.writes += 1
 
