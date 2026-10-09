@@ -105,7 +105,7 @@ def _source_digest(record):
     return hashlib.sha256(packed.encode("utf-8")).hexdigest()
 
 
-def convert_record(record: dict, order: int) -> ConvertedPoem:
+def convert_record(record: dict[str, Any], order: int) -> ConvertedPoem:
     if not isinstance(record, dict) or not isinstance(record.get("id"), str) or not record["id"]:
         raise ValueError("来源作品缺少有效 ID")
     content = record.get("content")
