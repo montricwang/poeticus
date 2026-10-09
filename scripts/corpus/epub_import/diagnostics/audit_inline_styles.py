@@ -172,7 +172,7 @@ def render_md(report: InlineEvidenceReport) -> str:
         lines.append("| （无） | — | — | — | — |")
     for site in marker_sites:
         lines.append(
-            f"| {site['collection']} | \`{site['html']}\` | "
+            f"| {site['collection']} | \\`{site['html']}\\` | "
             f"{site['block']} | {'是' if site['warned'] else '否'} | "
             f"{'是' if site['gap_inside_styled_span'] else '否'} |"
         )
@@ -190,7 +190,7 @@ def render_md(report: InlineEvidenceReport) -> str:
             continue
         shown[collection] += 1
         lines.append(
-            f"| {collection} | \`{site['html']}\` | "
+            f"| {collection} | \\`{site['html']}\\` | "
             f"{site['block']} | "
             f"{','.join(site['paragraph_classes']) or '-'} | "
             f"{site['styled_spans']} |"
@@ -200,7 +200,7 @@ def render_md(report: InlineEvidenceReport) -> str:
     lines.extend([
         "",
         "复核方式：如需准确判断某一处，将上表的文件名与块号传入 "
-        "\`inspect_source --show-html\`，查看原始 span 和周围段落。",
+        "\\`inspect_source --show-html\\`，查看原始 span 和周围段落。",
         "",
     ])
     return "\n".join(lines)
