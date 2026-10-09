@@ -89,3 +89,38 @@ test('不正确或过期的引用不得发送给 Python', () => {
   assert.equal(selectionForPython({ text: '月', start: 0, end: 1 }, '春月'), null)
   assert.equal(selectionForPython({ text: '月', start: 1, end: 7 }, '春月'), null)
 })
+
+test('逐句分行不修改原文内容、顺序或 UTF-16 位置', async () => {
+  const { buildPoemLines } = await import('../src/lib/poem-layout.ts')
+  const source = '春𠮷、夏雨，秋月。\n\n翠翘金缕双鸂鶒，水纹细起春池碧。'
+  const lines = buildPoemLines(source)
+  assert.equal(lines.map((line) => line.text).join(''), source)
+  assert.deepEqual(lines.map((line) => line.text), [
+    '春𠮷、夏雨，',
+    '秋月。\n\n',
+    '翠翘金缕双鸂鶒，',
+    '水纹细起春池碧。',
+  ])
+  assert.equal(lines[2].sourceGapBefore, true)
+  assert.equal(lines[2].start, '春𠮷、夏雨，秋月。\n\n'.length)
+})
+
+test('书名号、引号和连续句末标点不被错误拆行', async () => {
+  const { buildPoemLines } = await import('../src/lib/poem-layout.ts')
+  const source = '读《清平乐》，问：“归来否？！”犹见故人。'
+  const lines = buildPoemLines(source)
+  assert.deepEqual(lines.map((line) => line.text), [
+    '读《清平乐》，',
+    '问：“归来否？！”',
+    '犹见故人。',
+  ])
+  assert.equal(lines.map((line) => line.text).join(''), source)
+})
+
+test('标点识别涵盖内部顿号，且分组不吞字', async () => {
+  const { buildPoemTextRuns } = await import('../src/lib/poem-layout.ts')
+  const source = '风、雨，花。'
+  const runs = buildPoemTextRuns(source)
+  assert.equal(runs.map((run) => run.text).join(''), source)
+  assert.deepEqual(runs.filter((run) => run.punctuation).map((run) => run.text), ['、', '，', '。'])
+})

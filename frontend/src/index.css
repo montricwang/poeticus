@@ -268,6 +268,19 @@
     line-height: var(--reader-preface-line-height);
   }
 
+  .poem-reader-line {
+    display: block;
+  }
+
+  /* Source paragraph breaks are known; do not infer an upper/lower stanza. */
+  .poem-reader-source-gap {
+    margin-block-start: 0.5em;
+  }
+
+  .poem-reader-punctuation {
+    color: color-mix(in oklab, currentColor 70%, var(--background));
+  }
+
   .poem-reader-body {
     font-size: var(--reader-poem-size);
     font-weight: var(--reader-poem-weight);
