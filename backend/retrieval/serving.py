@@ -75,6 +75,44 @@ def _dominant_known_dynasty(counts: dict[str, int]) -> str | None:
         return None
     return ranked[0][0]
 
+
+def _resolve_target_dynasty(
+    metadata: MetadataStore,
+    *,
+    aliases: set[str],
+    target_dynasty: str | None,
+    current_author: str | None,
+) -> tuple[str | None, str]:
+    """按请求、当前作品别名、作者语料的顺序确定朝代。
+
+    若各来源都无法给出明确结果，则保留未知状态；不根据并列
+    或无法识别的朝代标签猜测先后。
+    """
+    if target_dynasty:
+        return target_dynasty, "request"
+
+    if aliases:
+        alias_works = metadata.read_works(aliases)
+        alias_counts: dict[str, int] = {}
+        for work in alias_works.values():
+            if work.dynasty:
+                alias_counts[work.dynasty] = (
+                    alias_counts.get(work.dynasty, 0) + 1
+                )
+        inferred = _dominant_known_dynasty(alias_counts)
+        if inferred:
+            return inferred, "current_alias"
+
+    if current_author:
+        inferred = _dominant_known_dynasty(
+            metadata.author_dynasty_counts(current_author)
+        )
+        if inferred:
+            return inferred, "author_corpus"
+
+    return target_dynasty, "unknown"
+
+
 class RetrievalServingRuntime:
     def __init__(
         self,
@@ -248,29 +286,12 @@ class RetrievalServingRuntime:
         )
         aliases.update(current_work_ids or ())
 
-        effective_target_dynasty = target_dynasty
-        dynasty_source = "request" if target_dynasty else "unknown"
-
-        if not effective_target_dynasty and aliases:
-            alias_works = self.metadata.read_works(aliases)
-            alias_counts: dict[str, int] = {}
-            for work in alias_works.values():
-                if work.dynasty:
-                    alias_counts[work.dynasty] = (
-                        alias_counts.get(work.dynasty, 0) + 1
-                    )
-            effective_target_dynasty = _dominant_known_dynasty(
-                alias_counts
-            )
-            if effective_target_dynasty:
-                dynasty_source = "current_alias"
-
-        if not effective_target_dynasty and current_author:
-            effective_target_dynasty = _dominant_known_dynasty(
-                self.metadata.author_dynasty_counts(current_author)
-            )
-            if effective_target_dynasty:
-                dynasty_source = "author_corpus"
+        effective_target_dynasty, dynasty_source = _resolve_target_dynasty(
+            self.metadata,
+            aliases=aliases,
+            target_dynasty=target_dynasty,
+            current_author=current_author,
+        )
 
         alias_ms = (time.perf_counter() - aliases_started) * 1000
 
