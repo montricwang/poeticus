@@ -635,12 +635,36 @@ def comparison_bucket(
         return "both_gap"
     return "partial_run"
 
+@with_config(ConfigDict(extra="allow"))
+class MarkdownCase(TypedDict):
+    case_id: str
+    tier: str
+    relation: str
+    retrieval_query: str
+    target: dict[str, object]
+    comparison_bucket: str
+    standalone_llm: NotRequired[StandaloneResult | None]
+    standalone_llm_error: NotRequired[str]
+    tool_augmented_llm: NotRequired[ToolLLMResult | None]
+    tool_augmented_llm_error: NotRequired[str]
+    retrieval: NotRequired[RetrievalSummary | None]
+    retrieval_error: NotRequired[str]
+
+
+class MarkdownRun(TypedDict):
+    cases: list[MarkdownCase]
+
+
+_MARKDOWN_ADAPTER = TypeAdapter(MarkdownRun)
+
+
 def _md_escape(value: object) -> str:
     text = "" if value is None else str(value)
     return text.replace("|", "\\|").replace("\n", " ")
 
 
-def render_markdown(run: dict) -> str:
+def render_markdown(run: Mapping[str, object]) -> str:
+    cases = _MARKDOWN_ADAPTER.validate_python(run)["cases"]
     lines = [
         "# Retrieval Increment Eval",
         "",
@@ -653,7 +677,7 @@ def render_markdown(run: dict) -> str:
         "| --- | --- | --- | --- | --- | --- | ---: | ---: | --- |",
     ]
 
-    for item in run["cases"]:
+    for item in cases:
         standalone = item.get("standalone_llm")
         tool = item.get("tool_augmented_llm")
         retrieval = item.get("retrieval")
@@ -692,7 +716,7 @@ def render_markdown(run: dict) -> str:
         ]
     )
 
-    for item in run["cases"]:
+    for item in cases:
         lines.extend(
             [
                 f"## {item['case_id']}",
@@ -737,9 +761,10 @@ def render_markdown(run: dict) -> str:
                     "",
                 ]
             )
-            if tool.get("tool_result"):
+            tool_result = tool.get("tool_result")
+            if tool_result:
                 lines.extend(["#### Tool candidates", ""])
-                for candidate in tool["tool_result"].get("candidates") or []:
+                for candidate in tool_result["candidates"]:
                     lines.append(
                         f"- #{candidate.get('rank')} "
                         f"{candidate.get('author')}《{candidate.get('title')}》："
