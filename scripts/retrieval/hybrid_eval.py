@@ -195,7 +195,9 @@ def _dense_results(
     load_started = time.perf_counter()
     index = faiss.read_index(str(index_path))
     load_seconds = time.perf_counter() - load_started
-    index.nprobe = index_manifest["nprobe"]
+    faiss.ParameterSpace().set_index_parameter(
+        index, "nprobe", index_manifest["nprobe"]
+    )
 
     if index.ntotal != embedding_manifest["completed_chunks"]:
         raise ValueError(
