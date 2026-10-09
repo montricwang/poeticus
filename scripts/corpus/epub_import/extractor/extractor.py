@@ -5,10 +5,10 @@ DOM 解释规则来自全册版式审计；非作品性的编校材料有意不�
 
 import warnings
 
-from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
 
 from .schema import Poem, PoemContent
-from .blocks import iter_source_blocks
+from .blocks import _class_list, _string_attribute, iter_source_blocks
 from .inline_notes import inspect_inline_font1
 from .rules import (
     INLINE_EDITORIAL_GAP,
@@ -34,12 +34,14 @@ def raw_xhtml(item):
     return raw.decode("utf-8-sig") if isinstance(raw, bytes) else raw
 
 
-def paragraph_text(element, html_name, category):
+def paragraph_text(element: Tag, html_name: str, category: str):
     """保留 <br> 边界与图片占位符，同时不修改原 DOM。"""
     node = BeautifulSoup(str(element), "lxml").find(element.name)
+    if not isinstance(node, Tag):
+        raise ValueError("无法定位 EPUB 段落节点")
     image_warnings = []
     for img in list(node.find_all("img")):
-        src = img.get("src")
+        src = _string_attribute(img, "src")
         img.replace_with("{{glyph:" + (src or "missing-src") + "}}")
         image_warnings.append(
             {
@@ -156,7 +158,7 @@ def extract_sections(book, html_name, collection=""):
                 continue
             tune, title, yusheng, issues = interpret_heading(element, collection)
             for image in element.find_all("img"):
-                src = image.get("src")
+                src = _string_attribute(image, "src")
                 glyph = "{{glyph:" + (src or "missing-src") + "}}"
                 category = ("yusheng" if yusheng and glyph in yusheng
                             else "title" if title and glyph in title
@@ -369,7 +371,7 @@ def extract_sections(book, html_name, collection=""):
             if (note_review and current["tune"] in {"西江月", "醉落魄"}):
                 note_spans = [
                     span for span in element.find_all("span")
-                    if "font1" in span.get("class", [])
+                    if "font1" in _class_list(span)
                 ]
                 if len(note_spans) == 1:
                     note_text = note_spans[0].get_text("", strip=True)
@@ -404,7 +406,7 @@ def extract_sections(book, html_name, collection=""):
                     # 已经按来源单独核过的 font1 注记也不要再生成通用样式 warning。
                     if is_pagination_kaiti_continuation(span):
                         continue
-                    if note_recognized and "font1" in span.get("class", []):
+                    if note_recognized and "font1" in _class_list(span):
                         continue
                     if is_inline_styled_span(span):
                         current["warnings"].append({
