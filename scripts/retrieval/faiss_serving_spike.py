@@ -195,7 +195,7 @@ def benchmark_artifact(
     pq_bits: int,
     nprobes: Sequence[int],
     threads: int | None,
-) -> dict:
+) -> dict[str, object]:
     np = _require_numpy()
     faiss = _require_faiss()
 
