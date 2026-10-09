@@ -1,27 +1,44 @@
 """EPUB 导入中间结构，与前端 Poem JSON 明确分离。"""
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import TypedDict
+
+
+class InlineNoteCandidate(TypedDict):
+    """A reversible font1 span record; positions refer to the flattened verse."""
+
+    kind: str
+    origin: str
+    source_html: str
+    source_block: int
+    paragraph_index: int
+    start: int
+    end: int
+    text: str
+    span_class: str
+    boundary: str
+    punctuation_outside_span: bool
+    body_retains_note: bool
 
 
 @dataclass
 class PoemContent:
-    text: List[str] = field(default_factory=list)
-    prefaces: List[str] = field(default_factory=list)
-    annotations: List[str] = field(default_factory=list)
-    commentaries: List[str] = field(default_factory=list)
+    text: list[str] = field(default_factory=list)
+    prefaces: list[str] = field(default_factory=list)
+    annotations: list[str] = field(default_factory=list)
+    commentaries: list[str] = field(default_factory=list)
     # 仅抽取层使用：记录带来源位置的行内注记；正文仍保留原始文本。
-    inline_notes: List[Dict[str, Any]] = field(default_factory=list)
+    inline_notes: list[InlineNoteCandidate] = field(default_factory=list)
 
 
 @dataclass
 class Poem:
     id: str
     author: str
-    cipai: Optional[str]
-    title: Optional[str]
+    cipai: str | None
+    title: str | None
     content: PoemContent
     collection: str
     source: str = ""
     # 贺铸自拟的寓声题头既不是原词牌，也不是作品词题。
-    yusheng_title: Optional[str] = None
-    warnings: List[Dict[str, Any]] = field(default_factory=list)
+    yusheng_title: str | None = None
+    warnings: list[dict[str, object]] = field(default_factory=list)
