@@ -245,7 +245,7 @@ def encode_bert_ccpoem_query(
     )
     if not isinstance(model, BertModel):
         raise ValueError("BERT-CCPoem 模型配置必须对应 BertModel")
-    model = model.to(device=selected_device)
+    torch.nn.Module.to(model, device=torch.device(selected_device))
     model.eval()
 
     vectors = encode_batch(
