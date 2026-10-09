@@ -1,16 +1,15 @@
-"""Compare standalone-LLM knowledge with local full-corpus Retrieval.
+"""对比 LLM 自身知识与本地全量 Retrieval 带来的增量价值。
 
-This is the first small increment-value eval, not a final RAG benchmark.
+这是用于固定样本的早期增量评估，并非最终 RAG Benchmark。
+每个 Case 分别记录：
+1. standalone_llm：无 Agent 提示词、无 Tool Schema；
+2. tool_augmented_llm：同一输入，加一个本地 Retrieval 工具；
+3. hybrid_retrieval：固定 Query 的检索诊断；
+4. 轻量导航启发式结果，不充当 Ground Truth。
 
-For each fixed case it records:
-1. standalone_llm: no Agent prompt, no Tool Schema;
-2. tool_augmented_llm: same plain input plus one local Retrieval function tool;
-3. hybrid_retrieval diagnostics for the canonical fixed query;
-4. a lightweight navigation heuristic, never a Ground Truth score.
-
-The script writes detailed JSON plus a readable Markdown report so large
-results can be uploaded directly instead of copied through chat.
+同时写出结构化 JSON 与易读 Markdown 报告，便于复核和分享实验结果。
 """
+
 from __future__ import annotations
 
 import argparse
