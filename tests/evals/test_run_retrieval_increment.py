@@ -10,6 +10,7 @@ from scripts.evals.run_retrieval_increment import (
     choose_current_work_id,
     choose_current_work_ids,
     compact_tool_result,
+    render_markdown,
     comparison_bucket,
     scan_work_matches,
     tool_target_support,
@@ -258,3 +259,69 @@ def test_hybrid_diagnostics_retain_extra_evidence_fields() -> None:
     probes = validated.get("probes") or []
     assert probes
     assert dict(probes[0]).get("list_supports") == [{"source": "synthetic"}]
+
+
+def test_markdown_report_validates_optional_case_sections() -> None:
+    """The typed report boundary must preserve the generated navigation text."""
+    report = {
+        "schema_version": "2",
+        "dataset_id": "synthetic",
+        "cases": [{
+            "case_id": "synthetic_case",
+            "tier": "known_control",
+            "relation": "adapted_quote",
+            "retrieval_query": "当前句",
+            "target": {"author": "前人", "text": "前代句", "answer_anchors": ["前代句"]},
+            "comparison_bucket": "tool_only_signal",
+            "standalone_llm": {
+                "model": "synthetic",
+                "answer": "独立回答",
+                "target_author_mentioned": False,
+                "target_anchor_hits": [],
+                "target_signal": False,
+            },
+            "tool_augmented_llm": {
+                "model": "synthetic",
+                "answer": "工具回答",
+                "tool_used": True,
+                "tool_query": "当前句",
+                "target_author_mentioned": True,
+                "target_anchor_hits": ["前代句"],
+                "target_signal": True,
+                "tool_result": {
+                    "status": "ok",
+                    "note": "synthetic",
+                    "candidates": [{
+                        "rank": 1, "author": "前人", "title": "前代作",
+                        "text": "前代句", "dynasty": "唐", "query": "当前句",
+                        "channel": "bm25", "support_count": 1,
+                        "chronology_status": "clearly_earlier",
+                    }],
+                },
+            },
+            "retrieval": {
+                "best_fused_rank": 1,
+                "best_eligible_rank": 1,
+                "target_in_top5": True,
+                "target_in_top20": True,
+                "candidate_pool": {"fused_works": 1},
+                "channels": [],
+                "query_plan": [],
+                "probes": [],
+                "top_candidates": [{
+                    "rank": 1, "author": "前人", "title": "前代作",
+                    "support_count": 1, "best_evidence": {
+                        "channel": "bm25", "rank": 1, "text": "前代句",
+                    },
+                }],
+            },
+        }],
+    }
+
+    markdown = render_markdown(report)
+    assert "synthetic_case" in markdown
+    assert "独立回答" in markdown
+    assert "工具回答" in markdown
+    assert "前人《前代作》" in markdown
+    assert "bm25 #1: 前代句" in markdown
+    assert "tool_only_signal" in markdown
