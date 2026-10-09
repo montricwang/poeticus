@@ -1,9 +1,8 @@
-"""把本地 glyph_review_backup.json 直接导入各分册图片字映射。
+"""将本地 glyph_review_backup.json 直接导入各分册图片字映射。
 
-The backup is a private user's editorial work, never a repository fixture.
-Verify the filename/volume for every 001-049 ID against the preflight report
-so that even identical-looking glyphs cannot accidentally be misassigned.
-"""
+备份属于用户私人的人工校订成果，不能用作公开仓库的测试夹具。
+每个 001–049 图片 ID 都要依据预检报告核对文件名与分册，
+不能因为两个字形看起来相同就把映射错误地分配给其他图片。"""
 import json
 from pathlib import Path
 from typing import TypedDict

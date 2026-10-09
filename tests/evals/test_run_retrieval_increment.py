@@ -221,7 +221,7 @@ def test_best_rank_ignores_non_integer_probe_values() -> None:
 
 
 def test_hybrid_diagnostics_retain_extra_evidence_fields() -> None:
-    """Projection must not discard provenance for later manual review."""
+    """候选投影不能丢失来源信息，以便后续人工复核。"""
     raw = {
         "ranking": [{
             "rank": 1,
@@ -262,7 +262,7 @@ def test_hybrid_diagnostics_retain_extra_evidence_fields() -> None:
 
 
 def test_markdown_report_validates_optional_case_sections() -> None:
-    """The typed report boundary must preserve the generated navigation text."""
+    """结构化报告的类型边界必须保留生成的导航说明文本。"""
     report = {
         "schema_version": "2",
         "dataset_id": "synthetic",

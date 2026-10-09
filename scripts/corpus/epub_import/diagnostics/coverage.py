@@ -1,9 +1,8 @@
 """核对已解析 XHTML 中的来源块与其他未识别文本。
 
-This report answers a structural question: where did a source block go?
-It does not assert that a field assignment is semantically correct.
-It intentionally exposes only locations, markup and character counts.
-"""
+报告回答结构问题：某个来源块去了哪里？
+它不证明字段归类在文学意义上正确，并且只输出来源位置、
+标记信息和字符数量。"""
 from collections import Counter
 from typing import TypedDict
 
@@ -55,14 +54,14 @@ def source_block_coverage(
 ) -> CoverageReport:
     """只审计实际处理过的 XHTML，不把它冒充为整本 EPUB 的完整覆盖。
 
-    handled: source block appears in the extractor's intermediate evidence.
-    excluded: a structural h1 or known editorial region/non-poem heading.
-    internal_chronology_not_exported: metadata inferred from a dated p, but
-        not represented in the final Poem schema; never count as exported.
-    untracked: paragraph/heading neither handled nor explicitly excluded.
+    handled：来源块已进入抽取器的中间证据。
+    excluded：结构性 h1 或已知的编校区域/非作品标题。
+    internal_chronology_not_exported：从纪年段落推断了内部元数据，
+        但最终 Poem Schema 没有承载，不能计入已导出。
+    untracked：既未处理，也未明确排除的段落或标题。
 
-    Positions use (XHTML filename, ordinal). A source paragraph contributes
-    exactly one status, and no source text is included in the report.
+    位置由 XHTML 文件名和顺序块号组成。每个来源段落仅对应一种状态，
+    报告不包含原文。
     """
     evidence = {
         (section["html"], block["block"])

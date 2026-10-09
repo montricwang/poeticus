@@ -1,4 +1,4 @@
-"""Manifest boundary checks without importing FAISS or loading a model."""
+"""不导入 FAISS 或加载模型，单独测试 Manifest 边界。"""
 
 import json
 

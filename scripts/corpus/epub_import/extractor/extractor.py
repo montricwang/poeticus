@@ -28,7 +28,7 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
 class CandidateSection(TypedDict):
-    """Temporary EPUB extraction state; no editorial attribution is inferred here."""
+    """EPUB 抽取阶段的临时状态；不在这里推断编者或作者归属。"""
 
     heading: str
     tune: str | None

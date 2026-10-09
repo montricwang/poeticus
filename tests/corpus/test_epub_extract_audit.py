@@ -37,7 +37,7 @@ _REPORT_ADAPTER = TypeAdapter(AuditReport)
 
 
 def checked_summary(result: object) -> AuditSummary:
-    """Validate the report fields inspected by the synthetic fixtures."""
+    """校验合成测试数据将要检查的报告字段。"""
     return _SUMMARY_ADAPTER.validate_python(result)
 
 

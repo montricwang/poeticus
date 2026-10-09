@@ -124,7 +124,7 @@ class _TransferCursor(Protocol):
 
 
 class TransferFixtureConnection(Protocol):
-    """Minimal transaction/COPY interface used by offline synthetic DB tests."""
+    """离线合成数据库测试所需的最小事务和 COPY 接口。"""
 
     def transaction(self) -> AbstractContextManager[None]: ...
     def execute(self, sql: str) -> _TransferRows: ...

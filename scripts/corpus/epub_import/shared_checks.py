@@ -1,8 +1,7 @@
-"""Source-preserving checks shared by single and batch EPUB importers.
+"""供单册与批量 EPUB 导入工具共用的来源保全检查。
 
-Importing this module must not import either entrypoint. In particular the
-metadata-only batch preflight should never load an importing CLI recursively.
-"""
+本模块不能导入任何导入命令入口；特别是只输出元数据的
+批量预检，不应递归加载 CLI。"""
 import json
 from collections import defaultdict
 from pathlib import Path
@@ -25,7 +24,7 @@ def load_map(path: Path):
 
 
 def collect_missing_glyphs(poems, glyph_map):
-    """Find unresolved source images without discarding source positions."""
+    """找出尚未识别的来源图片，同时保留它们的原始位置。"""
     missing = defaultdict(set)
     for poem in poems:
         for warning in poem.get("warnings", []):

@@ -1,4 +1,4 @@
-"""The consolidated Serving benchmark preserves its cold-query diagnostics."""
+"""整合后的 Serving Benchmark 必须保留冷 Query 的诊断信息。"""
 import json
 
 from backend.retrieval.serving import ServingCandidate, ServingSearchResult

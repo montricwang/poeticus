@@ -33,7 +33,7 @@ def test_build_corpus_preserves_text_and_provenance(tmp_path):
             {"题目": "", "朝代": "宋", "作者": "", "内容": "缺字?"},
         ],
     )
-    # Werneror's own merge script may create this headerless file; ignore it.
+    # Werneror 自带的合并脚本可能生成这个无表头文件；测试时忽略它。
     (source / "poetry.csv").write_text("not,a,source,file\n", encoding="utf-8")
 
     output = tmp_path / "works.jsonl"

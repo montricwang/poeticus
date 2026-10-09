@@ -1,8 +1,7 @@
-"""审计 15 个作者分册的版式，不执行 normalize，也不发布正文。
+"""审计 15 个作者分册的版式，不执行 Normalize，也不发布正文。
 
-This script writes *private local reports* in poeticus-data/reports/epub-import/. It does not
-resolve glyphs, write curated Poem data, or make quality-accuracy claims.
-"""
+报告只保存在 poeticus-data/reports/epub-import/ 的私人目录下；
+本脚本不辨认图片字、不写已校订 Poem 数据，也不宣称文学分类准确。"""
 import argparse
 import json
 from collections import Counter
@@ -30,7 +29,7 @@ PRIORITY_WARNINGS = {
 
 
 def block_text_length(block: dict[str, object]) -> int:
-    """Check the extractor evidence shape before computing audit lengths."""
+    """计算审计文本长度前，先检查抽取器证据的结构。"""
     text = block["text"]
     if not isinstance(text, str):
         raise TypeError("EPUB block evidence must contain string text")

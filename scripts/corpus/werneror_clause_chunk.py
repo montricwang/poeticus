@@ -1,9 +1,8 @@
-"""Build clause-level Werneror Retrieval chunks.
+"""构建 Werneror clause 级 Retrieval Chunk。
 
-Run from the Poeticus repository root:
+在 Poeticus 仓库根目录运行：
 
-    python -m scripts.corpus.werneror_clause_chunk
-"""
+    python -m scripts.corpus.werneror_clause_chunk"""
 from __future__ import annotations
 
 import argparse

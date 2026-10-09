@@ -1,10 +1,10 @@
 """批量预检并导出私人、尽量无损的 EPUB 中间 JSON。
 
-All 15 collections are checked before writing any source-bearing outputs.
-No interactive glyph prompt during a batch run; missing glyphs are reported
-by source location and filename so the original images can be reviewed first.
+先完成全部 15 册预检，才允许写入带有来源文字的输出。
+批处理期间不交互式询问图片字；未识别字形按来源位置和文件名报告，
+以便先核对原图。
 
-This produces importer Poem JSON, NOT the frontend poem-library schema.
+本工具产出的是导入阶段的 Poem JSON，不是前端 poem-library 的 Schema。
 """
 import json
 from collections import Counter
@@ -75,8 +75,8 @@ def _write_json_atomic(path, data):
 def prepare_batch(book, toc, *, specs=COLLECTIONS, map_dir=DEFAULT_MAP_DIR):
     """每册只在内存中抽取一次，并保留所有独立阻塞项。
 
-    The public-shareable report is free of original verses, prefaces and notes.
-    The private in-memory 'records' field must never be serialized into it.
+    可公开分享的报告不得包含原诗词、题序或注释。
+    私人内存字段 records 绝不能被序列化到报告中。
     """
     planned = []
     for collection, author, slug in specs:
@@ -182,8 +182,8 @@ def run_batch(book, toc, *, specs=COLLECTIONS,
               report_path=DEFAULT_REPORT, check_only=False) -> tuple[BatchPreflight, list[str]]:
     """返回可分享摘要与输出；若真实导出被阻塞则直接报错。
 
-    --check always writes the *metadata-only* report but never corpus text.
-    A blocked --all export also writes only the metadata-only report.
+    --check 始终只输出元数据报告，不输出语料正文。
+    被阻断的 --all 导出也只允许写出元数据报告。
     """
     planned = prepare_batch(book, toc, specs=specs, map_dir=map_dir)
     report = preflight_report(planned)

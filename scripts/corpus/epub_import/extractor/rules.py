@@ -1,8 +1,7 @@
-"""仅适用于这套 EPUB 诗词选本的语义规则。
+"""仅适用于这套 EPUB 诗词选本的语义判定规则。
 
-This module intentionally does not encode suite relationships, tune history or
-textual scholarship. Source markup remains available in the private EPUB.
-"""
+本模块不推断组诗关系、词调沿革或版本校勘结论；
+来源标记仍保留在私人 EPUB 中。"""
 import re
 from bs4 import Tag
 from bs4.element import NavigableString
@@ -62,9 +61,8 @@ INLINE_AUTHOR_NOTE_REVIEWS = {
 def is_pagination_kaiti_continuation(span: Tag) -> bool:
     """识别因 EPUB 分页标记而拆开的正文楷体 span。
 
-    Requires an immediately preceding empty page anchor and no meaningful
-    content after the span apart from layout <br> nodes. This does not classify
-    generic kaiti text or other styled spans as verse.
+    要求 span 前紧邻空的分页锚点，且其后除排版用 <br> 外没有实质正文。
+    不能据此把普通 kaiti 文本或其他带样式的 span 一律判为词正文。
     """
     if span.name != "span" or "kaiti" not in _class_list(span):
         return False
@@ -166,11 +164,10 @@ def heading_components(tag: Tag) -> list[str]:
 def interpret_heading(
     tag: Tag, collection: str,
 ) -> tuple[str | None, str | None, str | None, list[dict[str, object]]]:
-    """Return (tune, title, yusheng, warnings); '又' resolved later.
+    """返回 (tune, title, yusheng, warnings)；“又”的继承稍后处理。
 
-    For He Zhu, the outer heading names an author-coined tune (寓声).
-    The small-print run identifies the original tune, optionally followed
-    by a separate work title after an explicit layout delimiter.
+    贺铸词中，外层标题可能是作者自创的寓声名；小字样式标明原调，
+    如果排版有明确分隔符，后面还可能有独立的作品题目。
     """
     parts = heading_components(tag)
     issues: list[dict[str, object]] = []
@@ -194,7 +191,7 @@ def interpret_heading(
         title = "\n".join(titles) if titles else None
         if len(titles) > 1:
             issues.append({"type": "ambiguous_heading_parts", "parts": parts})
-        # Treat '亦名' as a note about the old tune, not a work title.
+        # “亦名”是对旧调的说明，不是作品题目。
         # 当前导入器不因此引入通用 cipai_alias 字段。
         alias_note = HE_ZHU_ALIAS_NOTE.fullmatch(tune_text)
         tune = alias_note.group("tune").strip() if alias_note else tune_text

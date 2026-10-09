@@ -191,8 +191,8 @@ def test_rrf_rejects_conflicting_work_metadata():
 
 def test_rrf_uses_best_rank_then_work_id_as_stable_tiebreakers():
     query = build_query_plan("甲。")[0]
-    # QueryChannelResult normally receives a valid ranking from fan-out.
-    # This test constructs equal RRF values directly to verify final stability.
+    # QueryChannelResult 通常接收 Fan-out 生成的有效排名。
+    # 本测试直接构造相同的 RRF 分数，以验证最终排序的稳定性。
     fused = fuse_candidates_rrf(
         [
             _result(query, "one", "dense", "sentence", [_hit(1, work_id="b")]),

@@ -1,8 +1,7 @@
-"""Minimal local smoke test for Qwen3 Embedding.
+"""Qwen3 Embedding 的最小本地冒烟测试。
 
-This validates only model loading, embedding shape and a tiny cosine ranking.
-It is not the Poeticus Retrieval quality evaluation.
-"""
+只验证模型能否加载、向量维度是否正确及小样本余弦排名，
+不代表 Poeticus Retrieval 的整体质量评估。"""
 from __future__ import annotations
 
 import argparse

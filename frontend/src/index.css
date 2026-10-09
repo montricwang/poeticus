@@ -40,10 +40,10 @@
   --radius: 0.625rem;
 
   /*
-   * Shared UI contracts. These values describe product behavior, not incidental spacing:
-   * - 1024px+ reader/companion columns share a 60dvh visual stage;
-   * - desktop chat and analysis deliberately share the same height cap;
-   * - catalog/discussion durations are named by interaction so later tuning has one owner.
+   * 共用 UI 布局契约：这些值决定交互表现，不是随意选取的间距。
+   * - 1024px 起阅读区与伴读区共用 60dvh 的视觉舞台；
+   * - 桌面端聊天与赏析刻意共用相同的高度上限；
+   * - 目录与讨论区的动效时长按交互命名，便于集中调整。
    */
   --motion-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-catalog-phone-fade: 720ms;

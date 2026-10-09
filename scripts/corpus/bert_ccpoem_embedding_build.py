@@ -1,12 +1,11 @@
-"""Build resumable BERT-CCPoem embeddings for Werneror clause chunks.
+"""为 Werneror 的 clause Chunk 构建可断点续跑的 BERT-CCPoem Embedding。
 
-This is an experimental domain-model challenger for Retrieval Eval. It follows
-the official BERT-CCPoem pooling behavior: mean pooling over content-token
-hidden states, excluding [CLS], [SEP], and padding.
+这是 Retrieval Eval 的实验性专用领域模型对照方案，遵循官方
+BERT-CCPoem 池化方式：对正文 Token 的隐藏状态做均值池化，
+排除 [CLS]、[SEP] 和 Padding。
 
-The model is not bundled with Poeticus. Download BERT-CCPoem v1.0 from the
-official THUNLP-AIPoet project and pass its local directory with --model-path.
-"""
+Poeticus 不内置该模型。需从 THUNLP-AIPoet 官方项目
+下载 BERT-CCPoem v1.0，再通过 --model-path 指向本地模型目录。"""
 from __future__ import annotations
 
 import argparse

@@ -34,8 +34,8 @@ cd "$repo_root"
 
 echo "Deploying Retrieval code to $HOST"
 
-# Refuse to replace a running service if its artifacts have not been migrated.
-# This checks the *new* layout before the remote install/restart.
+# 运行期资产尚未迁移时，不允许替换正在运行的服务。
+# 远程安装和重启前，先检查新目录布局是否齐备。
 ssh "${SSH_OPTS[@]}" "$HOST" "
     set -euo pipefail
     test -f '$REMOTE_DATA_ROOT/retrieval/embeddings/qwen3_0.6b_sentence_1024/manifest.json' || {

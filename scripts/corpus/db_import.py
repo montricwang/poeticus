@@ -1,8 +1,8 @@
 """仅用于本地的 PostgreSQL 迁移与作品导入。
 
-python -m scripts.corpus.db_import --check     # no database needed
-python -m scripts.corpus.db_import --migrate   # PostgreSQL required
-python -m scripts.corpus.db_import --import    # PostgreSQL required
+python -m scripts.corpus.db_import --check     # 无需连接数据库
+python -m scripts.corpus.db_import --migrate   # 需要 PostgreSQL
+python -m scripts.corpus.db_import --import    # 需要 PostgreSQL
 """
 from __future__ import annotations
 

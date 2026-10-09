@@ -1,4 +1,4 @@
-"""Contracts shared by offline BM25 and online Retrieval Serving."""
+"""离线 BM25 与在线 Retrieval Serving 共用的契约。"""
 from __future__ import annotations
 
 import hashlib

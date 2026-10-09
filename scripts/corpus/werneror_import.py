@@ -1,23 +1,22 @@
-"""Normalize Werneror/Poetry CSV files into a traceable Work JSONL corpus.
+"""将 Werneror/Poetry 的 CSV 规范化为可追踪来源的 Work JSONL。
 
-This is an experiment-stage importer only:
-- reads the upstream dynasty CSV files;
-- preserves the four upstream fields without literary normalization;
-- adds stable local provenance based on source file + record position;
-- writes JSONL plus a local summary report.
+这是实验阶段的语料导入工具：
+- 读取上游按朝代划分的 CSV；
+- 原样保留上游四个字段，不进行文学文本规范化；
+- 根据来源文件和记录位置增加稳定的本地来源标识；
+- 输出 JSONL 及本地摘要报告。
 
-It does NOT write PostgreSQL, create chunks, compute embeddings, or build indexes.
+本脚本不写 PostgreSQL、不切分 Chunk、不计算 Embedding、不构建索引。
 
-Run from the Poeticus repository root with Werneror/Poetry cloned next to it:
+将 Werneror/Poetry 放在 Poeticus 同级目录后，于仓库根目录运行：
 
     python -m scripts.corpus.werneror_import
 
-Override paths when needed:
+必要时可以覆盖路径：
 
     python -m scripts.corpus.werneror_import \
         --source-dir ../Poetry \
-        --output ../poeticus-data/retrieval/corpus/werneror_works.jsonl
-"""
+        --output ../poeticus-data/retrieval/corpus/werneror_works.jsonl"""
 from __future__ import annotations
 
 import argparse
@@ -59,11 +58,10 @@ def _row_digest(row: dict[str, str]) -> bytes:
 
 
 def iter_works(path: Path) -> Iterator[tuple[dict[str, str], bytes]]:
-    """Yield normalized Work records and exact-record digests from one CSV.
+    """依次返回单份 CSV 的规范化 Work 记录及每条记录的摘要指纹。
 
-    source_record_id uses the logical data-record position, starting at 1 after
-    the header. It intentionally does not use physical line numbers because a
-    valid CSV field may contain embedded newlines.
+    source_record_id 使用跳过表头后从 1 开始的逻辑数据记录序号，
+    不使用物理行号，因为合法的 CSV 字段可能包含换行。
     """
     with path.open("r", encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream)

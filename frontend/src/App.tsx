@@ -40,8 +40,8 @@ function App() {
     updateCatalogFilters,
   } = usePoemCatalog(setPoemId)
 
-  // These are interaction-mode boundaries, not merely cosmetic breakpoints:
-  // 1024px+ keeps reader and companion side by side; 1536px+ keeps the catalog persistent.
+  // 这些宽度是交互模式切换边界，不只是视觉断点：
+  // 1024px 起阅读器与伴读区并排；1536px 起目录保持常驻。
   const [catalogOpen, setCatalogOpen] = useState(
     () => window.matchMedia(PERSISTENT_CATALOG_MEDIA).matches,
   )
@@ -340,7 +340,7 @@ function App() {
               (mobileDiscussionOpen ? 'md:-translate-x-full' : 'md:translate-x-0')
             }
           >
-            {/* Keep the last lines clear of the floating discussion button. */}
+            {/* 给底部正文留出空间，避免被悬浮的讨论按钮遮挡。 */}
             <div className="h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8">
               {switchError && (
                 <div role="alert" className="mb-3 text-sm text-destructive">

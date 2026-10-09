@@ -1,8 +1,7 @@
-"""Shared EPUB glyph source ordering and image loading.
+"""共用的 EPUB 图片字来源顺序和图像加载规则。
 
-This module must not import review entrypoints; both the review sheet and
-the private context renderer use it to avoid a circular import.
-"""
+不能在此模块导入人工复核入口；复核图版和私人上下文渲染器
+共用这里的函数，以避免循环依赖。"""
 import posixpath
 from typing import TypedDict
 
@@ -15,7 +14,7 @@ class GlyphSite(TypedDict):
 
 
 def glyph_sites(report) -> list[GlyphSite]:
-    """Keep a single review row per (collection slug, image source)."""
+    """每组（分册 slug、图片来源）只保留一条复核记录。"""
     cases: dict[tuple[str, str], GlyphSite] = {}
     for collection in report["collections"]:
         for site in collection["missing_glyphs"]:
@@ -34,7 +33,7 @@ def glyph_sites(report) -> list[GlyphSite]:
 
 
 def _epub_image(book, page: str, src: str) -> bytes | None:
-    """Resolve only images inside the EPUB's relative source tree."""
+    """只定位 EPUB 相对来源目录内的图片，拒绝越界引用。"""
     if "://" in src or src.startswith("/"):
         raise ValueError(f"EPUB 图片路径异常：{src}")
     href = posixpath.normpath(posixpath.join(posixpath.dirname(page), src))

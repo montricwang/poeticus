@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """只读审计各分册 Poeticus 中间 JSON 的 content.text 结构。
 
-Default input: poeticus-data/reading-corpus/normalized/all_normalized.json (private, not present in GitHub).
-Produces a metadata-only report and a SEPARATE, private literary-text review file
-under poeticus-data/reports/epub-import/ (gitignored by Poeticus). Does not change source JSON.
+默认输入：poeticus-data/reading-corpus/normalized/all_normalized.json，
+属于不提交 GitHub 的私人文件。报告分为不含原文的元数据报告，
+以及单独的私人文学正文复核文件，均写在被 Git 忽略的
+poeticus-data/reports/epub-import/ 下，不修改原 JSON。
 
-This tool describes structures, NOT literary correctness. In particular, an array
-entry is not necessarily a ci stanza (片), or a sentence (句).
-"""
+本工具只描述文本结构，不判断文学分类是否正确。
+列表中的单个元素不一定是一阕词的“片”，也不一定是一句。"""
 from __future__ import annotations
 
 import argparse
@@ -29,7 +29,7 @@ MARKERS = {
 }
 END_PUNCTUATION = re.compile(r"[，,。.!！?？；;：:、…）】」』]+[\s\u3000]*$")
 class AuditInfo(TypedDict):
-    """One work's structural evidence, not a literary classification."""
+    """单首作品的结构证据，不代表文学意义上的分类结论。"""
 
     parts: list[str]
     number: int

@@ -1,9 +1,7 @@
-"""把 font1 行内 span 保留为候选注记，绝不直接丢弃词正文。
+"""将 font1 行内 span 保留为候选注记，不直接丢弃词正文。
 
-A CSS class identifies a visual run, not its historical authorship. Store the
-exact source extent and attribution evidence separately from the original
-paragraph, which stays byte-for-byte the parser's flattened text.
-"""
+CSS 类名只说明视觉样式，不足以判定历史作者归属。
+原段落保持解析器扁平化后的原文，来源区间与归属证据单独保存。"""
 from bs4 import Tag
 
 from .blocks import SourceBlock, _class_list
@@ -20,9 +18,9 @@ def inspect_inline_font1(
 ) -> tuple[list[InlineNoteCandidate], list[dict[str, object]]]:
     """返回已分类正文块内 span 的记录与 warning。
 
-    A span may cover only the lead-in to a quotation or omit its punctuation.
-    Offsets refer to paragraph_text's flattened output, never to DOM offsets.
-    If the text is not uniquely locatable, fail closed to a warning.
+    span 可能只包住引文的开头，或不包含引文标点。
+    偏移量相对于 paragraph_text() 输出的扁平文本，不是 DOM 位置。
+    如果无法唯一定位片段，应保守地产生 warning，而不是猜测。
     """
     records: list[InlineNoteCandidate] = []
     warnings: list[dict[str, object]] = []
