@@ -261,7 +261,7 @@ class FaissDenseChannel:
             method="dense",
             chunk_policy=policy,
         )
-        self._policy = policy
+        self._policy: ChunkPolicy = policy
         self._encoder = encoder
         self._metadata = metadata
         self._local = threading.local()
@@ -316,7 +316,7 @@ class FaissDenseChannel:
         self.index_manifest = index_manifest
         self.embedding_manifest = embedding_manifest
 
-    def profile(self) -> dict:
+    def profile(self) -> dict[str, int | float]:
         return dict(getattr(self._local, "profile", {}))
 
     def search_many(
@@ -427,7 +427,7 @@ class SentenceBm25Channel:
         self._max_n = int(manifest["max_n"])
         self.manifest = manifest
 
-    def profile(self) -> dict:
+    def profile(self) -> dict[str, int | float]:
         return dict(getattr(self._local, "profile", {}))
 
     def search_many(
@@ -760,7 +760,7 @@ class RetrievalServingRuntime:
                 )
             )
 
-        timings = {
+        timings: dict[str, object] = {
             "current_alias_lookup_ms": alias_ms,
             "target_dynasty": effective_target_dynasty,
             "target_dynasty_source": dynasty_source,
