@@ -1,5 +1,7 @@
 """来源块覆盖测试只使用合成数据，不包含受版权保护的 EPUB 段落。"""
-from scripts.corpus.epub_import.diagnostics.coverage import source_block_coverage
+from pydantic import TypeAdapter
+
+from scripts.corpus.epub_import.diagnostics.coverage import CoverageReport, source_block_coverage
 from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection, render_md
 from scripts.corpus.epub_import.extractor.extractor import extract_sections
 
@@ -73,7 +75,8 @@ def test_report_surfaces_untracked_source_without_leaking_source_text():
     toc = [{"title": "秦观词集", "children": [
         {"title": "清平乐", "href": "x.html"}]}]
     one = audit_collection(book, toc, "秦观词集", "秦观", "qin")
-    assert one["source_coverage"]["untracked_blocks"] == 1
+    covered = TypeAdapter(CoverageReport).validate_python(one["source_coverage"])
+    assert covered["untracked_blocks"] == 1
     md = render_md({"results": [one]})
     assert "未追踪源块" in md
     assert "`x.html` 块 1" in md
