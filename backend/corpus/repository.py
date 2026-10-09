@@ -6,6 +6,7 @@ annotations/commentaries or source-only material to an HTTP response.
 from uuid import UUID
 
 from psycopg import Connection
+from psycopg.rows import DictRow
 
 
 def _filters(author: str | None, cipai: str | None, q: str | None):
@@ -37,19 +38,22 @@ def _filters(author: str | None, cipai: str | None, q: str | None):
 
 
 def list_poems(
-    conn: Connection,
+    conn: Connection[DictRow],
     *,
     author: str | None,
     cipai: str | None,
     q: str | None,
     limit: int,
     offset: int,
-) -> tuple[list[dict], int]:
+) -> tuple[list[DictRow], int]:
     """输入可选筛选和分页参数，返回题录行与总数。"""
     where_sql, params = _filters(author, cipai, q)
-    total = conn.execute(
+    count_row = conn.execute(
         "SELECT COUNT(*) AS total FROM poems" + where_sql, tuple(params)
-    ).fetchone()["total"]
+    ).fetchone()
+    if count_row is None:
+        raise RuntimeError("COUNT 查询未返回结果")
+    total = int(count_row["total"])
     rows = conn.execute(
         """SELECT id, source_order, collection, author, cipai, title, yusheng_title,
                   COALESCE(LEFT(body_segments->>0, 60), '') AS incipit,
@@ -62,7 +66,7 @@ def list_poems(
     return rows, total
 
 
-def get_poem(conn: Connection, poem_id: UUID) -> dict | None:
+def get_poem(conn: Connection[DictRow], poem_id: UUID) -> DictRow | None:
     """输入作品永久 UUID，返回一条阅读记录；不存在时返回 None。"""
     return conn.execute(
         """SELECT id, source_order, collection, author, cipai, title, yusheng_title,
