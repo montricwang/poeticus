@@ -12,7 +12,6 @@ Request-time lookup never scans the corpus JSONL files.
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 import threading
 import time
@@ -20,6 +19,8 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Sequence
+
+from pydantic import TypeAdapter, ValidationError
 
 from backend.retrieval.chronology import DYNASTY_PERIODS
 from backend.retrieval.fanout import (
@@ -35,16 +36,32 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 
-def _load_json(path: Path) -> dict:
+_MANIFEST_ADAPTER = TypeAdapter(dict[str, object])
+
+
+def _load_json(path: Path) -> dict[str, object]:
+    """Read one Manifest whose JSON root must be an object."""
     if not path.is_file():
         raise ValueError(f"manifest 不存在：{path}")
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        return _MANIFEST_ADAPTER.validate_json(
+            path.read_text(encoding="utf-8")
+        )
+    except ValidationError as exc:
         raise ValueError(f"manifest 无法解析：{path}") from exc
 
 
-def _embedding_source_signature(manifest: dict) -> dict:
+def _required_positive_int(manifest: dict[str, object], field: str) -> int:
+    """Validate an integer artifact parameter before passing it downstream."""
+    value = manifest.get(field)
+    if type(value) is not int or value <= 0:
+        raise ValueError(f"manifest 缺少有效 {field}：{value!r}")
+    return value
+
+
+def _embedding_source_signature(
+    manifest: dict[str, object],
+) -> dict[str, object]:
     keys = (
         "model",
         "model_fingerprint",
@@ -307,12 +324,12 @@ class FaissDenseChannel:
 
         faiss = _require_faiss()
         self._index = faiss.read_index(str(index_dir / index_file))
-        expected = embedding_manifest["completed_chunks"]
+        expected = _required_positive_int(embedding_manifest, "completed_chunks")
         if self._index.ntotal != expected:
             raise ValueError(
                 f"{policy} FAISS ntotal={self._index.ntotal}，预期 {expected}"
             )
-        self._index.nprobe = index_manifest["nprobe"]
+        self._index.nprobe = _required_positive_int(index_manifest, "nprobe")
         self.index_manifest = index_manifest
         self.embedding_manifest = embedding_manifest
 
@@ -423,8 +440,8 @@ class SentenceBm25Channel:
             raise ValueError(
                 f"BM25 database 不存在：{self._database}"
             )
-        self._min_n = int(manifest["min_n"])
-        self._max_n = int(manifest["max_n"])
+        self._min_n = _required_positive_int(manifest, "min_n")
+        self._max_n = _required_positive_int(manifest, "max_n")
         self.manifest = manifest
 
     def profile(self) -> dict[str, int | float]:
@@ -550,7 +567,9 @@ class RetrievalServingRuntime:
         started = time.perf_counter()
         self.encoder = QwenQueryEncoder(
             model_path=paths.model_path,
-            dimension=sentence_manifest["embedding_dimension"],
+            dimension=_required_positive_int(
+                sentence_manifest, "embedding_dimension"
+            ),
             device=device,
         )
         self.startup_profile["model_load_ms"] = (
@@ -563,14 +582,14 @@ class RetrievalServingRuntime:
         started = time.perf_counter()
         self.metadata = MetadataStore(paths.metadata_db)
         metadata_stats = self.metadata.stats()
-        if int(metadata_stats.get("sentence_chunks", "-1")) != int(
-            sentence_manifest["completed_chunks"]
+        if int(metadata_stats.get("sentence_chunks", "-1")) != (
+            _required_positive_int(sentence_manifest, "completed_chunks")
         ):
             raise ValueError(
                 "Metadata sentence row count 与 Embedding Artifact 不一致"
             )
-        if int(metadata_stats.get("clause_chunks", "-1")) != int(
-            clause_manifest["completed_chunks"]
+        if int(metadata_stats.get("clause_chunks", "-1")) != (
+            _required_positive_int(clause_manifest, "completed_chunks")
         ):
             raise ValueError(
                 "Metadata clause row count 与 Embedding Artifact 不一致"
