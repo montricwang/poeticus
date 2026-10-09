@@ -67,9 +67,9 @@ class FakeConnection:
         self.calls = []
 
     def execute(
-        self, query: sql.Composable, params: tuple[object, ...] = ()
+        self, query: sql.Composable | str, params: tuple[object, ...] = ()
     ) -> FakeRows:
-        query_text = query.as_string()
+        query_text = query.as_string() if isinstance(query, sql.Composable) else query
         self.calls.append((query_text, params))
         if "COUNT(*)" in query_text:
             return FakeRows(row={"total": self.count})
