@@ -1,4 +1,4 @@
--- Migration 0001: reader records + immutable private source evidence.
+-- 迁移 0001：建立公开阅读记录与不可变的私人来源证据。
 CREATE TABLE poems (
  id UUID PRIMARY KEY,
  source_record_id TEXT NOT NULL UNIQUE,
