@@ -1,32 +1,32 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react'
 
-import { poemText } from "@/data/poem-library";
-import type { Poem } from "@/data/poem-library";
+import { poemText } from '@/data/poem-library'
+import type { Poem } from '@/data/poem-library'
 
 export type SelectedText = {
-  text: string;
-  start: number;
-  end: number;
-};
+  text: string
+  start: number
+  end: number
+}
 
 type PoemReaderProps = {
-  work: Poem;
-  onSelect: (selection: SelectedText) => void;
-};
+  work: Poem
+  onSelect: (selection: SelectedText) => void
+}
 
 export function PoemReader({ work, onSelect }: PoemReaderProps) {
-  const poem = poemText(work);
-  const readerRef = useRef<HTMLDivElement>(null);
-  const poemRef = useRef<HTMLParagraphElement>(null);
+  const poem = poemText(work)
+  const readerRef = useRef<HTMLDivElement>(null)
+  const poemRef = useRef<HTMLParagraphElement>(null)
 
   useEffect(() => {
-    let pointerDown = false;
-    let pointerStartedInReader = false;
+    let pointerDown = false
+    let pointerStartedInReader = false
 
     function handleSelection(allowOutsideAnchor = false) {
-      const reader = readerRef.current;
-      const element = poemRef.current;
-      const selection = window.getSelection();
+      const reader = readerRef.current
+      const element = poemRef.current
+      const selection = window.getSelection()
 
       if (
         !reader ||
@@ -35,7 +35,7 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
         selection.isCollapsed ||
         selection.rangeCount === 0
       ) {
-        return;
+        return
       }
 
       // 键盘选择等情况，仍要求从左侧阅读区域开始。
@@ -44,95 +44,88 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
         !allowOutsideAnchor &&
         (!selection.anchorNode || !reader.contains(selection.anchorNode))
       ) {
-        return;
+        return
       }
 
       // 正文保留为一个文本节点，标题与词序不参与 offset 计算。
-      const textNode = element.firstChild;
+      const textNode = element.firstChild
       if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
-        return;
+        return
       }
 
-      const range = selection.getRangeAt(0);
-      const poemRange = document.createRange();
-      poemRange.selectNodeContents(textNode);
+      const range = selection.getRangeAt(0)
+      const poemRange = document.createRange()
+      poemRange.selectNodeContents(textNode)
 
-      const endsBeforePoem =
-        range.compareBoundaryPoints(Range.START_TO_END, poemRange) <= 0;
-      const startsAfterPoem =
-        range.compareBoundaryPoints(Range.END_TO_START, poemRange) >= 0;
+      const endsBeforePoem = range.compareBoundaryPoints(Range.START_TO_END, poemRange) <= 0
+      const startsAfterPoem = range.compareBoundaryPoints(Range.END_TO_START, poemRange) >= 0
       if (endsBeforePoem || startsAfterPoem) {
-        return;
+        return
       }
 
-      const clippedRange = range.cloneRange();
-      if (
-        clippedRange.compareBoundaryPoints(Range.START_TO_START, poemRange) < 0
-      ) {
-        clippedRange.setStart(textNode, 0);
+      const clippedRange = range.cloneRange()
+      if (clippedRange.compareBoundaryPoints(Range.START_TO_START, poemRange) < 0) {
+        clippedRange.setStart(textNode, 0)
       }
-      if (
-        clippedRange.compareBoundaryPoints(Range.END_TO_END, poemRange) > 0
-      ) {
-        clippedRange.setEnd(textNode, textNode.textContent?.length ?? 0);
+      if (clippedRange.compareBoundaryPoints(Range.END_TO_END, poemRange) > 0) {
+        clippedRange.setEnd(textNode, textNode.textContent?.length ?? 0)
       }
 
-      const text = clippedRange.toString();
+      const text = clippedRange.toString()
       if (!text.trim()) {
-        return;
+        return
       }
 
-      const prefixRange = document.createRange();
-      prefixRange.selectNodeContents(textNode);
-      prefixRange.setEnd(clippedRange.startContainer, clippedRange.startOffset);
+      const prefixRange = document.createRange()
+      prefixRange.selectNodeContents(textNode)
+      prefixRange.setEnd(clippedRange.startContainer, clippedRange.startOffset)
 
-      const start = prefixRange.toString().length;
-      const end = start + text.length;
+      const start = prefixRange.toString().length
+      const end = start + text.length
       if (poem.slice(start, end) !== text) {
-        return;
+        return
       }
-      onSelect({ text, start, end });
+      onSelect({ text, start, end })
     }
 
     function handlePointerDown(event: PointerEvent) {
-      pointerDown = true;
+      pointerDown = true
       pointerStartedInReader =
-        event.target instanceof Node &&
-        !!readerRef.current?.contains(event.target);
+        event.target instanceof Node && !!readerRef.current?.contains(event.target)
     }
 
     function handlePointerUp() {
-      const startedInReader = pointerStartedInReader;
-      pointerDown = false;
-      pointerStartedInReader = false;
+      const startedInReader = pointerStartedInReader
+      pointerDown = false
+      pointerStartedInReader = false
       if (startedInReader) {
-        handleSelection(true);
+        handleSelection(true)
       }
     }
 
     function handlePointerCancel() {
-      pointerDown = false;
-      pointerStartedInReader = false;
+      pointerDown = false
+      pointerStartedInReader = false
     }
 
     function handleSelectionChange() {
       if (!pointerDown) {
-        handleSelection();
+        handleSelection()
       }
     }
 
-    document.addEventListener("pointerdown", handlePointerDown, true);
-    window.addEventListener("pointerup", handlePointerUp);
-    window.addEventListener("pointercancel", handlePointerCancel);
-    document.addEventListener("selectionchange", handleSelectionChange);
+    document.addEventListener('pointerdown', handlePointerDown, true)
+    window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('pointercancel', handlePointerCancel)
+    document.addEventListener('selectionchange', handleSelectionChange)
 
     return () => {
-      document.removeEventListener("pointerdown", handlePointerDown, true);
-      window.removeEventListener("pointerup", handlePointerUp);
-      window.removeEventListener("pointercancel", handlePointerCancel);
-      document.removeEventListener("selectionchange", handleSelectionChange);
-    };
-  }, [onSelect, poem]);
+      document.removeEventListener('pointerdown', handlePointerDown, true)
+      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('pointercancel', handlePointerCancel)
+      document.removeEventListener('selectionchange', handleSelectionChange)
+    }
+  }, [onSelect, poem])
 
   return (
     <div className="poem-reader min-w-0">
@@ -142,7 +135,7 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
             {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
             <div className="poem-reader-heading-row flex flex-wrap items-baseline justify-center">
               <h1 className="poem-reader-heading font-serif">
-                {work.yusheng_title ?? work.cipai ?? "词牌未核实"}
+                {work.yusheng_title ?? work.cipai ?? '词牌未核实'}
               </h1>
               {work.yusheng_title && work.cipai && (
                 <span className="poem-reader-secondary-heading font-serif text-muted-foreground">
@@ -156,17 +149,18 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
               </p>
             )}
             <p className="poem-reader-author text-muted-foreground">
-              {work.author ?? "作者未核实"}
+              {work.author ?? '作者未核实'}
             </p>
-            {work.review_status !== "reviewed" && (
-              <p className="poem-reader-status text-muted-foreground/75">
-                正文待校勘
-              </p>
+            {work.review_status !== 'reviewed' && (
+              <p className="poem-reader-status text-muted-foreground/75">正文待校勘</p>
             )}
           </header>
 
           {work.prefaces.map((preface, index) => (
-            <p key={index} className="poem-reader-preface whitespace-pre-line font-serif text-muted-foreground">
+            <p
+              key={index}
+              className="poem-reader-preface whitespace-pre-line font-serif text-muted-foreground"
+            >
               {preface}
             </p>
           ))}
@@ -180,9 +174,7 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
         </article>
       </div>
 
-      <p className="mt-3 text-center text-xs text-muted-foreground">
-        划选诗句，即可引用提问
-      </p>
+      <p className="mt-3 text-center text-xs text-muted-foreground">划选诗句，即可引用提问</p>
     </div>
-  );
+  )
 }
