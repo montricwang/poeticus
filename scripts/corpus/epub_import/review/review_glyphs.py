@@ -236,44 +236,44 @@ def main():
             print("每张图片与 glyph_review.html/TSV 使用相同编号；"
                   "不会覆盖已有填写结果。")
         else:
-            result = prepare_review(
+            prepared = prepare_review(
                 report, book, sheet_path=args.html, tsv_path=args.tsv,
             )
             print(
-                f"已准备 {result['unique_images']} 张不同图片字，"
-                f"来自 {result['references']} 个 XHTML 引用"
+                f"已准备 {prepared['unique_images']} 张不同图片字，"
+                f"来自 {prepared['references']} 个 XHTML 引用"
             )
-            print(f"字形图版：{result['sheet']}")
-            print(f"人工填写表：{result['tsv']}")
-            if result["missing_assets"]:
+            print(f"字形图版：{prepared['sheet']}")
+            print(f"人工填写表：{prepared['tsv']}")
+            if prepared["missing_assets"]:
                 print("以下图片未在 EPUB 找到，请检查其路径：")
-                for slug, src in result["missing_assets"]:
+                for slug, src in prepared["missing_assets"]:
                     print(f"  {slug} / {src}")
     elif args.import_backup:
         from .import_glyph_backup import import_review_backup
-        result = import_review_backup(
+        imported = import_review_backup(
             args.backup, args.report, args.map_dir, partial=args.partial
         )
         print(
-            f"已导入 {result['mapped']} 个编号；"
-            f"更新分册 glyph 映射文件 {result['map_files']} 个；"
-            f"未填写 {len(result['unfilled'])} 个"
+            f"已导入 {imported['mapped']} 个编号；"
+            f"更新分册 glyph 映射文件 {imported['map_files']} 个；"
+            f"未填写 {imported['unfilled']} 个"
         )
-        if result["ids_only"]:
+        if imported["ids_only"]:
             print(
                 "仅有 IDS、无 Unicode 替代字的编号："
-                + ", ".join(result["ids_only"])
+                + ", ".join(imported["ids_only"])
                 + "。中间 JSON 将保留 IDS 文本和原图来源，"
                   "不会凭空指定现代通行字。"
             )
     else:
-        result = apply_review(
+        applied = apply_review(
             args.tsv, map_dir=args.map_dir, partial=args.partial,
         )
         print(
-            f"已保存 {result['mapped']} 个映射，"
-            f"尚有 {result['unfilled']} 个未填写；"
-            f"更新 {result['files_written']} 个分册映射文件"
+            f"已保存 {applied['mapped']} 个映射，"
+            f"尚有 {applied['unfilled']} 个未填写；"
+            f"更新 {applied['files_written']} 个分册映射文件"
         )
 
 
