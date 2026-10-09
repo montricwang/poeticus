@@ -25,7 +25,7 @@ from typing import Sequence, TypedDict
 
 from pydantic import TypeAdapter
 
-from scripts.retrieval.artifact_search import load_artifact_manifest
+from backend.retrieval.embedding_artifact import load_artifact_manifest
 from scripts.retrieval.vector_sampling import (
     load_sampled_vectors,
     sample_global_rows,

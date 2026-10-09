@@ -18,20 +18,26 @@ import argparse
 import json
 from pathlib import Path
 from collections.abc import Mapping
-from typing import Literal, TypedDict
+from typing import TypedDict
 
-from pydantic import ConfigDict, TypeAdapter, with_config
+from pydantic import TypeAdapter
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT
 
 from backend.retrieval.artifact_files import sha256_file
+from backend.retrieval.embedding_artifact import (
+    ArtifactManifest as ArtifactManifest,
+    BERT_CCPOEM_MODEL as BERT_CCPOEM_MODEL,
+    QWEN_MODEL as QWEN_MODEL,
+    SUPPORTED_MODELS as SUPPORTED_MODELS,
+    load_artifact_manifest as load_artifact_manifest,
+)
 from backend.retrieval.chronology import candidate_prior_dynasties
 
 from scripts.retrieval.exact_search import (
     DEFAULT_DATA_ROOT,
     DEFAULT_MODEL_ROOT,
     DEFAULT_TOP_K,
-    ExactManifest,
     build_dynasty_row_mask,
     build_result_rows,
     ensure_model_snapshot,
@@ -41,14 +47,7 @@ from scripts.retrieval.exact_search import (
     read_selected_works,
 )
 
-QWEN_MODEL = "Qwen/Qwen3-Embedding-0.6B"
-BERT_CCPOEM_MODEL = "THUNLP-AIPoet/BERT-CCPoem-v1.0"
-SUPPORTED_MODELS = frozenset({QWEN_MODEL, BERT_CCPOEM_MODEL})
-
 DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
-@with_config(ConfigDict(extra="allow"))
-class ArtifactManifest(ExactManifest):
-    chunk_policy: Literal["sentence", "clause"]
 
 
 class SummaryProbeChunk(TypedDict):
@@ -61,7 +60,6 @@ class SummaryProbe(TypedDict):
     chunk: SummaryProbeChunk
 
 
-_ARTIFACT_MANIFEST_ADAPTER = TypeAdapter(ArtifactManifest)
 _SUMMARY_PROBES_ADAPTER = TypeAdapter(list[SummaryProbe])
 
 
@@ -69,64 +67,6 @@ CHUNK_PATHS = {
     "sentence": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl",
     "clause": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl",
 }
-
-
-def load_artifact_manifest(artifact_dir: Path) -> ArtifactManifest:
-    manifest_path = artifact_dir / "manifest.json"
-    if not manifest_path.is_file():
-        raise ValueError(f"Embedding manifest 不存在：{manifest_path}")
-
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    if not isinstance(manifest, dict):
-        raise ValueError("Embedding manifest 必须是对象")
-    if manifest.get("status") != "complete":
-        raise ValueError(
-            f"Embedding Artifact 尚未完成：status={manifest.get('status')!r}"
-        )
-
-    model = manifest.get("model")
-    if model not in SUPPORTED_MODELS:
-        raise ValueError(f"尚不支持该 Embedding model：{model!r}")
-
-    policy = manifest.get("chunk_policy")
-    if policy not in CHUNK_PATHS:
-        raise ValueError(f"尚不支持该 chunk_policy：{policy!r}")
-
-    dimension = manifest.get("embedding_dimension")
-    completed_chunks = manifest.get("completed_chunks")
-    shards = manifest.get("completed_shards")
-    fingerprint = manifest.get("model_fingerprint")
-
-    if not isinstance(dimension, int) or dimension <= 0:
-        raise ValueError("manifest 缺少有效 embedding_dimension")
-    if not isinstance(completed_chunks, int) or completed_chunks <= 0:
-        raise ValueError("manifest 缺少有效 completed_chunks")
-    if not isinstance(fingerprint, str) or not fingerprint:
-        raise ValueError("manifest 缺少有效 model_fingerprint")
-    if not isinstance(shards, list) or not shards:
-        raise ValueError("manifest 缺少 completed_shards")
-
-    expected_start = 0
-    for item in shards:
-        if not isinstance(item, dict):
-            raise ValueError("Embedding shard 必须是对象")
-        start = item.get("start")
-        end = item.get("end")
-        filename = item.get("file")
-        if not isinstance(start, int) or start != expected_start or not isinstance(end, int) or end <= start:
-            raise ValueError("manifest 中 completed_shards 不是连续区间")
-        if not isinstance(filename, str) or not filename:
-            raise ValueError("manifest shard 缺少文件名")
-        if not (artifact_dir / filename).is_file():
-            raise ValueError(f"Embedding shard 不存在：{artifact_dir / filename}")
-        expected_start = end
-
-    if expected_start != completed_chunks:
-        raise ValueError(
-            "manifest 的 completed_chunks 与 completed_shards 范围不一致"
-        )
-
-    return _ARTIFACT_MANIFEST_ADAPTER.validate_python(manifest)
 
 
 def resolve_chunk_path(manifest: Mapping[str, object], requested_path: Path | None) -> Path:

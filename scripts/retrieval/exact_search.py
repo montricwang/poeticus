@@ -25,6 +25,10 @@ from typing import Iterable, Mapping, NotRequired, TypedDict
 from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.retrieval.artifact_files import sha256_file
+from backend.retrieval.embedding_artifact import (
+    ExactManifest as ExactManifest,
+    ExactShard as ExactShard,
+)
 from backend.retrieval.chronology import (
     DYNASTY_PERIODS,
     candidate_prior_dynasties,
@@ -41,24 +45,6 @@ DEFAULT_ARTIFACT_DIR = (
 DEFAULT_TOP_K = 20
 
 
-class ExactShard(TypedDict):
-    start: int
-    end: int
-    file: str
-
-
-@with_config(ConfigDict(extra="allow"))
-class ExactManifest(TypedDict):
-    status: str
-    model: str
-    model_fingerprint: str
-    embedding_dimension: int
-    completed_chunks: int
-    completed_shards: list[ExactShard]
-    input_sha256: NotRequired[str]
-
-
-@with_config(ConfigDict(extra="allow"))
 class ChunkRecord(TypedDict):
     chunk_id: str
     work_id: str

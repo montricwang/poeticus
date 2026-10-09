@@ -31,9 +31,8 @@ from backend.retrieval.fanout import (
 )
 from backend.retrieval.fusion import DEFAULT_RRF_K, fuse_candidates_rrf
 from backend.retrieval.query_strategy import build_query_plan
+from backend.retrieval.embedding_artifact import QWEN_MODEL, load_artifact_manifest
 from scripts.retrieval.artifact_search import (
-    QWEN_MODEL,
-    load_artifact_manifest,
     resolve_chunk_path,
     resolve_query_model_path,
 )
