@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import json
+from dataclasses import dataclass
 from typing import Literal, NotRequired, TypedDict, cast
 from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, START, END
@@ -191,6 +192,51 @@ class ToolCall(TypedDict):
 class ToolResult(TypedDict):
     id: str
     content: str
+
+
+@dataclass(frozen=True)
+class _ToolQuery:
+    """已经通过边界校验的工具查询；执行阶段不再解析模型原始参数。"""
+
+    text: str
+    evidence_type: Literal["allusion", "reference", "text_retrieval"]
+    max_items: int
+
+
+def _parse_tool_query(call: ToolCall) -> _ToolQuery:
+    """把模型提供的 JSON 参数转换成已校验的内部查询。"""
+    raw: object = json.loads(call["arguments"])
+    if not isinstance(raw, dict):
+        raise ValueError("工具参数必须是对象")
+    # JSON 对象的 key 均为字符串，字段值仍在下方按工具契约校验。
+    arguments = cast(dict[str, object], raw)
+
+    if call["name"] == "lookup_allusion":
+        query = arguments.get("term")
+        evidence_type = "allusion"
+        max_items = 3
+        invalid_message = "无效的典故查询词"
+    elif call["name"] == "lookup_reference":
+        query = arguments.get("text")
+        evidence_type = "reference"
+        max_items = 5
+        invalid_message = "无效的出处查询文本"
+    elif call["name"] == "search_predecessor_texts":
+        query = arguments.get("text")
+        evidence_type = "text_retrieval"
+        max_items = 8
+        invalid_message = "无效的 Text Retrieval 查询文本"
+    else:
+        raise ValueError(f"未知工具：{call['name']}")
+
+    if not isinstance(query, str) or not query.strip() or len(query) > 120:
+        raise ValueError(invalid_message)
+
+    return _ToolQuery(
+        text=query.strip(),
+        evidence_type=evidence_type,
+        max_items=max_items,
+    )
 
 
 class RouterState(TypedDict):
@@ -521,41 +567,12 @@ def execute_tools(state: RouterState) -> RouterUpdate:
                 count += 1
 
                 try:
-                    parsed_arguments: object = json.loads(call["arguments"])
+                    validated = _parse_tool_query(call)
+                    query = validated.text
+                    evidence_type = validated.evidence_type
+                    max_items = validated.max_items
 
-                    if not isinstance(parsed_arguments, dict):
-                        raise ValueError("工具参数必须是对象")
-                    # JSON object keys are strings; values still require checks below.
-                    arguments = cast(dict[str, object], parsed_arguments)
-
-                    if call["name"] == "lookup_allusion":
-                        query = arguments.get("term")
-                        evidence_type = "allusion"
-                        max_items = 3
-                        invalid_message = "无效的典故查询词"
-                    elif call["name"] == "lookup_reference":
-                        query = arguments.get("text")
-                        evidence_type = "reference"
-                        max_items = 5
-                        invalid_message = "无效的出处查询文本"
-                    elif call["name"] == "search_predecessor_texts":
-                        query = arguments.get("text")
-                        evidence_type = "text_retrieval"
-                        max_items = 8
-                        invalid_message = "无效的 Text Retrieval 查询文本"
-                    else:
-                        raise ValueError(f"未知工具：{call['name']}")
-
-                    if (
-                        not isinstance(query, str)
-                        or not query.strip()
-                        or len(query) > 120
-                    ):
-                        raise ValueError(invalid_message)
-
-                    query = query.strip()
-
-                    if call["name"] == "search_predecessor_texts":
+                    if evidence_type == "text_retrieval":
                         context = state.get("context")
                         retrieval = await text_retrieval_client.search(
                             text=query,
