@@ -78,7 +78,10 @@ def run_control_no_tools(case: EvalCase) -> ControlResult:
         {"role": "system", "content": system_prompt}
     ]
     for history in state.get("history", []):
-        messages.append({"role": history["role"], "content": history["content"]})
+        if history["role"] == "user":
+            messages.append({"role": "user", "content": history["content"]})
+        else:
+            messages.append({"role": "assistant", "content": history["content"]})
     messages.append({"role": "user", "content": _agent_user_message(state)})
 
     response = client.chat.completions.create(
