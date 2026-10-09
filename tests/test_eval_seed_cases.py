@@ -94,6 +94,11 @@ def test_seed_tool_trace_keeps_synthetic_evidence_preview():
     assert len(trace["results"]) == 1
     result = trace["results"][0]
     assert result["evidence_count"] == 1
-    preview = result["evidences"][0]
-    assert len(preview["text_preview"]) == 240
+    evidences = result["evidences"]
+    assert isinstance(evidences, list)
+    preview = evidences[0]
+    assert isinstance(preview, dict)
+    preview_text = preview["text_preview"]
+    assert isinstance(preview_text, str)
+    assert len(preview_text) == 240
     assert preview["source"] == {"title": "合成作品"}
