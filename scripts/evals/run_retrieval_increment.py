@@ -470,11 +470,11 @@ def tool_target_support(
     return False, None
 
 
-def _best_rank(probes: list[dict], field: str) -> int | None:
+def _best_rank(probes: list[dict[str, object]], field: str) -> int | None:
     ranks = [
-        probe.get(field)
+        value
         for probe in probes
-        if isinstance(probe.get(field), int)
+        if isinstance((value := probe.get(field)), int)
     ]
     return min(ranks) if ranks else None
 
