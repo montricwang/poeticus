@@ -16,7 +16,6 @@ in the sibling poeticus-data directory and are never committed to this repo.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 
@@ -25,6 +24,7 @@ from typing import Iterable, Mapping, NotRequired, TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
+from backend.retrieval.artifact_files import sha256_file
 from backend.retrieval.chronology import (
     DYNASTY_PERIODS,
     candidate_prior_dynasties,
@@ -107,14 +107,6 @@ class ExactResultRow(TypedDict):
 _MANIFEST_ADAPTER = TypeAdapter(ExactManifest)
 _CHUNK_ADAPTER = TypeAdapter(ChunkRecord)
 _WORK_ADAPTER = TypeAdapter(WorkRecord)
-
-def sha256_file(path: Path, block_size: int = 8 * 1024 * 1024) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        while block := stream.read(block_size):
-            digest.update(block)
-    return digest.hexdigest()
-
 
 def load_manifest(artifact_dir: Path) -> ExactManifest:
     manifest_path = artifact_dir / "manifest.json"

@@ -157,6 +157,64 @@ chronology_status=clearly_earlier
 
 当前 Retrieval 继续遵循一个停止线：真实产品 Case 出现新的稳定失败，再决定是否增加 reranker、clause BM25、pq512、multi-span 或更细 chronology。
 
+### 从源码学习 Retrieval：先认清构建、运行和诊断
+
+这一节是 **v0.3.0 代码地图**，不是服务器在线状态报告。旧腾讯云节点已销毁；本地恢复和 Railway 降级验收另见 [#180](https://github.com/montricwang/poeticus/issues/180)。下列流程描述模块职责，不表示所有资产在任何机器上都已就绪。
+
+**第一条：离线构建（不会在每次用户请求时运行）**
+
+```text
+外部 Werneror CSV
+  → scripts/corpus/werneror_import.py               Work JSONL
+  → scripts/corpus/werneror_chunk.py                 sentence Chunk JSONL
+    / scripts/corpus/werneror_clause_chunk.py       clause Chunk JSONL
+  ├→ scripts/corpus/qwen_embedding_build.py
+  │  / scripts/corpus/qwen_clause_embedding_build.py
+  │        → Embedding shards + manifest
+  │        → scripts/retrieval/faiss_full_index.py   两套 FAISS IVFPQ
+  ├→ scripts/retrieval/lexical_bm25.py               sentence FTS5/BM25
+  └→ scripts/retrieval/build_metadata_store.py      compact metadata SQLite
+```
+
+Embedding/Index/SQLite 是**可重建资产**，Work/Chunk 是它们的数据来源。Manifest、SHA256 和 row-id 对应关系是必要的数据契约；不要为缩短代码而删除校验。关键关系：**FAISS vector global row == Chunk JSONL logical row**；检索命中后依据 Metadata Store 回查它属于哪段文字、哪首作品。生产检索本身不扫描原始 JSONL。
+
+**第二条：运行期查询（先从这里开始读源码）**
+
+```text
+Agent (backend/ai/graph.py)
+  → backend/retrieval/client.py          HTTP 请求 / 失败转换
+  → backend/retrieval/server.py          API Schema、认证、/health
+  → backend/retrieval/serving.py         Runtime：常驻模型、索引、SQLite
+      ├─ QwenQueryEncoder               将查询文本编码为向量
+      ├─ FaissDenseChannel × 2           sentence / clause ANN
+      ├─ SentenceBm25Channel            sentence 字符 n-gram + FTS5
+      └─ MetadataStore                  将命中行映射回 Work / Chunk
+  → backend/retrieval/service.py         组织检索主流程
+      ├─ query_strategy.py              passage/sentence/clause Query Plan
+      ├─ fanout.py                       同一批 Query 发给各 Channel
+      ├─ fusion.py                       Work-level RRF 组合排名
+      └─ eligibility.py                  剔除自身/明确晚出的候选
+  → server.py → client.py → Agent        Top-K 候选供模型比较，非已证实引文
+```
+
+`scripts/retrieval/run_serving.py` 是**服务启动入口**：创建 `RetrievalServingRuntime` 并传给 `server.create_app()`，然后启动 Uvicorn。用户请求由 `server.py` 调用已存在的 Runtime，而不是每次重新执行 CLI / 加载模型。
+
+`TextRetrievalService` 只负责规划、分发、融合、筛选；具体 FAISS / SQLite 读写位于各 Channel。HTTP 错误由 Client / Agent 处理，不把检索缺失视为已找到来源。
+
+**第三条：哪些脚本不是线上主路径**
+
+| 类别 | 入口 | 保留意义 |
+| --- | --- | --- |
+| 正式启动 | `run_serving.py` | 配置、加载并启动 HTTP 服务 |
+| 离线构建 | `faiss_full_index.py`、`lexical_bm25.py`、`build_metadata_store.py` | 重新生成可检索资产 |
+| 基线/实验 | `exact_search.py`、`artifact_search.py`、`faiss_search.py` | 精确向量、不同 Embedding、单通道 ANN 诊断 |
+| 评估/诊断 | `hybrid_eval.py`、`benchmark_serving.py`、`smoke_agent_retrieval.py`、`inspect_serving_bundle.py` | 候选质量、性能、端到端行为、资产检查 |
+| 辅助 | `vector_sampling.py`、`deploy_vps.sh` | FAISS 训练采样、特定环境的历史部署工具 |
+
+**抽象边界（#182 P1）**：`backend/retrieval/lexical_terms.py` 负责共同字符切分与 FTS5 表达式；离线诊断对不可检索 Query 抛错，在线 Serving 将其视为无结果。`backend/retrieval/artifact_files.py` 提供不依赖模型的 SHA256 文件哈希。长期构建工具不再从 `exact_search.py` 借用路径常量与哈希函数。历史实验仍可复用 Exact Search 的诊断算法。
+
+**推荐学习顺序**：先读 `server.create_app` → `serving.RetrievalServingRuntime.search` → `service.TextRetrievalService.search`；再读 `query_strategy`、`fanout`、`fusion`、`eligibility`；最后打开 Dense / FAISS、BM25 和离线构建。不要先从历史实验脚本开始，也不必先理解 IVFPQ 的内部数学。
+
 ## 1. 目标与非目标
 
 Text Retrieval 只解决一个问题：

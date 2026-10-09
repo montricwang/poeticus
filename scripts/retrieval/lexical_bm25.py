@@ -17,19 +17,22 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from backend.data_paths import RETRIEVAL_CORPUS_ROOT
-from typing import Iterable, Iterator, TypedDict
+from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
+from typing import Iterator, TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
+from backend.retrieval.artifact_files import sha256_file
 from backend.retrieval.chronology import candidate_prior_dynasties
-
-from scripts.retrieval.exact_search import (
-    DEFAULT_DATA_ROOT,
-    DEFAULT_TOP_K,
-    sha256_file,
+from backend.retrieval.lexical_terms import (
+    character_ngrams as character_ngrams,
+    iter_character_runs as iter_character_runs,
+    match_query_or_none,
+    unique_in_order as unique_in_order,
 )
 
+DEFAULT_DATA_ROOT = RETRIEVAL_ROOT
+DEFAULT_TOP_K = 20
 DEFAULT_INDEX_ROOT = DEFAULT_DATA_ROOT / "lexical"
 DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 CHUNK_PATHS = {
@@ -110,55 +113,19 @@ EXPECTED_CHUNKS = {
 }
 
 
-def iter_character_runs(text: str) -> Iterator[str]:
-    """Yield alphanumeric Unicode runs; punctuation acts as a boundary."""
-    current: list[str] = []
-    for char in text:
-        if char.isalnum():
-            current.append(char)
-            continue
-        if current:
-            yield "".join(current)
-            current = []
-    if current:
-        yield "".join(current)
-
-
-def character_ngrams(
-    text: str,
-    *,
-    min_n: int = DEFAULT_MIN_N,
-    max_n: int = DEFAULT_MAX_N,
-) -> list[str]:
-    if min_n <= 0 or max_n < min_n:
-        raise ValueError("n-gram 范围必须满足 0 < min_n <= max_n")
-
-    grams: list[str] = []
-    for run in iter_character_runs(text):
-        for n in range(min_n, max_n + 1):
-            if len(run) < n:
-                continue
-            grams.extend(run[index:index + n] for index in range(len(run) - n + 1))
-    return grams
-
-
-def unique_in_order(values: Iterable[str]) -> list[str]:
-    return list(dict.fromkeys(values))
-
-
 def build_match_query(
     query: str,
     *,
     min_n: int = DEFAULT_MIN_N,
     max_n: int = DEFAULT_MAX_N,
 ) -> str:
-    grams = unique_in_order(character_ngrams(query, min_n=min_n, max_n=max_n))
-    if not grams:
+    """Diagnostic CLI rejects unsearchable queries; Serving returns no hits."""
+    match_query = match_query_or_none(query, min_n=min_n, max_n=max_n)
+    if match_query is None:
         raise ValueError(
             f"Query 在 {min_n}-{max_n} gram 规则下没有可检索词项"
         )
-    escaped = [gram.replace('"', '""') for gram in grams]
-    return " OR ".join(f'"{gram}"' for gram in escaped)
+    return match_query
 
 
 def default_output_dir(

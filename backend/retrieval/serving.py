@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Callable, Sequence
 from pydantic import TypeAdapter, ValidationError
 
 from backend.retrieval.chronology import DYNASTY_PERIODS
+from backend.retrieval.lexical_terms import match_query_or_none
 from backend.retrieval.fanout import (
     ChannelDescriptor,
     ChunkPolicy,
@@ -99,37 +100,6 @@ def _require_faiss():
             "Retrieval Serving 需要 faiss-cpu；请安装 requirements-retrieval.txt"
         ) from exc
     return faiss
-
-
-def _character_ngrams(text: str, *, min_n: int, max_n: int) -> list[str]:
-    runs: list[str] = []
-    current: list[str] = []
-    for char in text:
-        if char.isalnum():
-            current.append(char)
-        elif current:
-            runs.append("".join(current))
-            current = []
-    if current:
-        runs.append("".join(current))
-
-    grams: list[str] = []
-    for run in runs:
-        for n in range(min_n, max_n + 1):
-            if len(run) >= n:
-                grams.extend(
-                    run[index:index + n]
-                    for index in range(len(run) - n + 1)
-                )
-    return list(dict.fromkeys(grams))
-
-
-def _build_match_query(text: str, *, min_n: int, max_n: int) -> str | None:
-    grams = _character_ngrams(text, min_n=min_n, max_n=max_n)
-    if not grams:
-        return None
-    escaped = [gram.replace('"', '""') for gram in grams]
-    return " OR ".join(f'"{gram}"' for gram in escaped)
 
 
 @dataclass(frozen=True)
@@ -468,7 +438,7 @@ class SentenceBm25Channel:
         output: list[list[RetrievalHit]] = []
         try:
             for query in queries:
-                match_query = _build_match_query(
+                match_query = match_query_or_none(
                     query,
                     min_n=self._min_n,
                     max_n=self._max_n,

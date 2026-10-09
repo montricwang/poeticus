@@ -24,6 +24,7 @@ from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT
 
+from backend.retrieval.artifact_files import sha256_file
 from backend.retrieval.chronology import candidate_prior_dynasties
 
 from scripts.retrieval.exact_search import (
@@ -38,7 +39,6 @@ from scripts.retrieval.exact_search import (
     find_probe_rows,
     read_selected_chunks,
     read_selected_works,
-    sha256_file,
 )
 
 QWEN_MODEL = "Qwen/Qwen3-Embedding-0.6B"
