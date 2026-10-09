@@ -1,11 +1,39 @@
 """使用无版权风险的合成数据测试中间记录到阅读记录的 adapter。"""
 from copy import deepcopy
+from typing import NotRequired, TypedDict
+
 import pytest
+from pydantic import TypeAdapter
 from scripts.corpus.adapter import convert_record, convert_corpus
 
 
-def example(**kw):
-    r = {"id": "mock-001", "collection": "合成词集", "author": "词人甲",
+class ExampleContent(TypedDict):
+    text: list[str]
+    prefaces: list[str]
+    inline_notes: list[dict[str, object]]
+    annotations: list[str]
+    commentaries: list[str]
+
+
+class ExampleRecord(TypedDict):
+    id: str
+    collection: str
+    author: str
+    title: str | None
+    source: str
+    content: ExampleContent
+    tune: NotRequired[str | None]
+    yusheng: NotRequired[str | None]
+    cipai: NotRequired[str | None]
+    yusheng_title: NotRequired[str | None]
+
+
+_RECORD_ADAPTER = TypeAdapter(ExampleRecord)
+
+
+def example(**kw: object) -> ExampleRecord:
+    """Validate synthetic source records before using them in adapter tests."""
+    r: dict[str, object] = {"id": "mock-001", "collection": "合成词集", "author": "词人甲",
          "tune": "某调", "title": None, "source": "合成版", "yusheng": None,
          "content": {
              "text": ["甲乙，丙丁。", "戊己，庚辛。"],
@@ -13,7 +41,7 @@ def example(**kw):
              "annotations": ["私有注释不可发布"], "commentaries": ["私有评论不可发布"],
          }}
     r.update(kw)
-    return r
+    return _RECORD_ADAPTER.validate_python(r)
 
 
 def test_preserve_default_and_order_without_modifying_input():
