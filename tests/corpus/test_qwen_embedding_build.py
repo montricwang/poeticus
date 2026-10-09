@@ -123,7 +123,7 @@ def test_resumable_manifest_preserves_extra_metadata() -> None:
         "future_metadata": {"retain": True},
     }
     validated = _MANIFEST_ADAPTER.validate_python(raw)
-    assert validated["future_metadata"] == {"retain": True}
+    assert dict(validated).get("future_metadata") == {"retain": True}
 
 
 def test_resumable_manifest_rejects_malformed_shard_bounds() -> None:
