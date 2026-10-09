@@ -18,7 +18,7 @@ from backend.data_paths import EPUB_REPORTS_ROOT, READING_NORMALIZED_ROOT, READI
 from .config import COLLECTIONS
 from .extractor.extractor import extract_collection
 from .pipeline.normalize import normalize_poem, unresolved_glyphs
-from .import_poems import (
+from .shared_checks import (
     NON_EXPORTABLE_WARNING_TYPES,
     collect_missing_glyphs,
     load_map,
