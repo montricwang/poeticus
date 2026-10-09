@@ -18,15 +18,19 @@ from typing import NotRequired, Protocol, TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
-from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
+from backend.data_paths import (
+    MODELS_ROOT,
+    RETRIEVAL_CORPUS_ROOT,
+    RETRIEVAL_REPORTS_ROOT,
+    RETRIEVAL_ROOT,
+)
 
 
 from backend.retrieval.serving import RetrievalServingRuntime, ServingSearchResult
-from scripts.retrieval.run_serving import (
-    DEFAULT_DATA_ROOT,
-    DEFAULT_MODEL_ROOT,
-    default_paths,
-)
+from backend.retrieval.serving_paths import default_paths
+
+DEFAULT_DATA_ROOT = RETRIEVAL_ROOT
+DEFAULT_MODEL_ROOT = MODELS_ROOT
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CASES = ROOT / "evals/retrieval_increment_cases.json"

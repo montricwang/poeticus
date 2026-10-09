@@ -191,28 +191,32 @@ backend/retrieval/embedding_artifact.py
 
 这项检查发生在构建之前，确保行号与源 Embedding 的对应关系可用；但它并不验证来源文学文本的正确性，也不代替 `serving.py` 启动时对 FAISS、Embedding、BM25 与 Metadata 之间的交叉校验。只抽取稳定的 Manifest 契约，实验专属 Query 模型选择和 Corpus 路径规则仍留在对应诊断脚本中。
 
+
+
 **第二条：运行期查询（先从这里开始读源码）**
 
 ```text
 Agent (backend/ai/graph.py)
-  → backend/retrieval/client.py          HTTP 请求 / 失败转换
-  → backend/retrieval/server.py          API Schema、认证、/health
-  → backend/retrieval/serving.py         Runtime：常驻模型、索引、SQLite
-      ├─ QwenQueryEncoder               将查询文本编码为向量
-      ├─ FaissDenseChannel × 2           sentence / clause ANN
-      ├─ SentenceBm25Channel            sentence 字符 n-gram + FTS5
-      └─ MetadataStore                  将命中行映射回 Work / Chunk
-  → backend/retrieval/service.py         组织检索主流程
-      ├─ query_strategy.py              passage/sentence/clause Query Plan
-      ├─ fanout.py                       同一批 Query 发给各 Channel
-      ├─ fusion.py                       Work-level RRF 组合排名
-      └─ eligibility.py                  剔除自身/明确晚出的候选
-  → server.py → client.py → Agent        Top-K 候选供模型比较，非已证实引文
+  → backend/retrieval/client.py            HTTP 请求 / 失败转换
+  → backend/retrieval/server.py            API Schema、认证、/health
+  → backend/retrieval/serving.py           Runtime：校验资产、装配通道、整理响应
+      ├─ serving_manifest.py              Manifest 读取与必要字段校验
+      ├─ metadata_store.py                Work / Chunk 行号与正文回查
+      └─ service.py                        TextRetrievalService：纯检索编排
+          ├─ query_strategy.py            passage/sentence/clause Query Plan
+          ├─ fanout.py                     把去重后的 Query 发给各 Channel
+          │    └─ serving_channels.py      真正访问模型 / FAISS / SQLite
+          │         ├─ QwenQueryEncoder    Qwen Query Embedding + 缓存
+          │         ├─ FaissDenseChannel   sentence / clause ANN
+          │         └─ SentenceBm25Channel sentence 字符 n-gram + FTS5
+          ├─ fusion.py                     Work-level RRF 聚合排名
+          └─ eligibility.py                排除自身/明确晚出的候选
+  → server.py → client.py → Agent           Top-K 候选供模型比较
 ```
 
-`scripts/retrieval/run_serving.py` 是**服务启动入口**：创建 `RetrievalServingRuntime` 并传给 `server.create_app()`，然后启动 Uvicorn。用户请求由 `server.py` 调用已存在的 Runtime，而不是每次重新执行 CLI / 加载模型。
+`scripts/retrieval/run_serving.py` 是**进程启动入口**：创建 `RetrievalServingRuntime`、交给 `server.create_app()`，再启动 Uvicorn。一次用户请求由 `server.py` 调用**已装载的** Runtime；Runtime 使用 `TextRetrievalService`，后者通过 Channel 协议查询常驻索引，不会每次重新加载 Qwen / FAISS。
 
-`TextRetrievalService` 只负责规划、分发、融合、筛选；具体 FAISS / SQLite 读写位于各 Channel。HTTP 错误由 Client / Agent 处理，不把检索缺失视为已找到来源。
+**职责与信任边界**：`serving_manifest.py` 在启动与通道装载时检查 Manifest；`serving_channels.py` 只知道怎样把查询变成 `RetrievalHit`；`service.py` 不依赖 FAISS、SQLite 或 Qwen 的细节，只关心 Query Plan、Fan-out、RRF、Eligibility。HTTP 错误由 Client / Agent 处理，空候选不意味着已证实出处。
 
 **第三条：哪些脚本不是线上主路径**
 
@@ -224,9 +228,12 @@ Agent (backend/ai/graph.py)
 | 评估/诊断 | `hybrid_eval.py`、`benchmark_serving.py`、`smoke_agent_retrieval.py`、`inspect_serving_bundle.py` | 候选质量、性能、端到端行为、资产检查 |
 | 辅助 | `vector_sampling.py`、`deploy_vps.sh` | FAISS 训练采样、特定环境的历史部署工具 |
 
+
+**Hybrid Eval 与生产 Runtime 的取舍（#182 P2 审计）**：保留 `scripts/retrieval/hybrid_eval.py` 作为**离线诊断基线**，它通过 JSONL 回查原始 Chunk/Work，并报告每个 Query × Channel 的 probe rank、缺失列表及融合前后候选情况。正式 `RetrievalServingRuntime` 使用预构建 Metadata SQLite、常驻模型与索引，只返回产品需要的候选和性能摘要。两者共享 Query Plan、RRF、Eligibility 的确定性算法，但**不同的资产读取和诊断语义有意保留**；不能为了减少重复直接将 Eval 入口替换为生产 Runtime。此处是源码职责判断，不代表已完成同一真实 Artifact 下的输出对照验收。
+
 **抽象边界（#182 P1）**：`backend/retrieval/lexical_terms.py` 负责共同字符切分与 FTS5 表达式；离线诊断对不可检索 Query 抛错，在线 Serving 将其视为无结果。`backend/retrieval/artifact_files.py` 提供不依赖模型的 SHA256 文件哈希。长期构建工具不再从 `exact_search.py` 借用路径常量与哈希函数。历史实验仍可复用 Exact Search 的诊断算法。
 
-**推荐学习顺序**：先读 `server.create_app` → `serving.RetrievalServingRuntime.search` → `service.TextRetrievalService.search`；再读 `query_strategy`、`fanout`、`fusion`、`eligibility`；最后打开 Dense / FAISS、BM25 和离线构建。不要先从历史实验脚本开始，也不必先理解 IVFPQ 的内部数学。
+**推荐学习顺序**：先读 `server.create_app` → `serving.RetrievalServingRuntime.search` → `service.TextRetrievalService.search`，明确「入口、运行时、编排」各自负责什么；再读 `query_strategy`、`fanout`、`fusion`、`eligibility`；最后才进入 `serving_channels.FaissDenseChannel / SentenceBm25Channel`、`serving_manifest` 与离线构建。遇到 Manifest/行号不一致时先查资产版本契约；不要先从历史实验脚本开始，也不必先理解 IVFPQ 的内部数学。
 
 ## 1. 目标与非目标
 
