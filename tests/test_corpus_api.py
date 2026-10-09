@@ -24,7 +24,7 @@ def client(monkeypatch):
     api.app.dependency_overrides.clear()
 
 
-def summary(identity=ONE, order=1, cipai="念奴娇"):
+def summary(identity: UUID = ONE, order: int = 1, cipai: str = "念奴娇") -> dict[str, object]:
     return {
         "id": identity, "source_order": order,
         "collection": "合成词集", "author": "词人甲", "cipai": cipai,
@@ -33,7 +33,7 @@ def summary(identity=ONE, order=1, cipai="念奴娇"):
     }
 
 
-def full_record():
+def full_record() -> dict[str, object]:
     return {
         **{key: val for key, val in summary().items() if key != "incipit"},
         "body_segments": ["合成上段。", "合成下段。"],
@@ -60,7 +60,11 @@ class FakeRows:
 
 class FakeConnection:
     """最小游标替身，只用于核对 SQL 与绑定参数。"""
-    def __init__(self, *, pages=None, details=None, count=2):
+    def __init__(
+        self, *, pages: list[dict[str, object]] | None = None,
+        details: dict[UUID, dict[str, object]] | None = None,
+        count: int = 2,
+    ):
         self.pages = pages if pages is not None else [summary(), summary(TWO, 2)]
         self.details = details or {}
         self.count = count
