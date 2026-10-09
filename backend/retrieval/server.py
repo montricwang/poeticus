@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import hmac
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -40,7 +40,7 @@ class RetrievalCandidateResponse(BaseModel):
 
 
 class RetrievalSearchResponse(BaseModel):
-    status: str
+    status: Literal["ok", "no_hit"]
     query: str
     candidates: list[RetrievalCandidateResponse]
 
@@ -68,7 +68,7 @@ def create_app(
             raise HTTPException(status_code=401, detail="Unauthorized")
 
     @app.get("/health")
-    def health():
+    def health() -> dict[str, str | object]:
         return {
             "status": "ok",
             "device": runtime.startup_profile.get("device"),
@@ -77,7 +77,7 @@ def create_app(
     @app.get("/v1/retrieval/profile")
     def startup_profile(
         _: None = Depends(require_token),
-    ):
+    ) -> dict[str, object]:
         """Local/ops diagnostic; Agent client never needs this endpoint."""
         return runtime.startup_profile
 
