@@ -1,6 +1,6 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-08  
+> 更新日期：2026-10-09  
 > 当前状态：v0.3.0 发布基线已经形成。公开阅读、Agent、AI Eval、Hybrid Text Retrieval 和独立 Retrieval Serving 均已跑通真实线上链路。
 
 Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog 和 ADR；具体任务继续进入 GitHub Issues。
@@ -121,6 +121,8 @@ Retrieval 已经可以作为一个完成度较高的求职能力面。下一阶�
 ```
 
 Document Corpus 与实时业务数据继续分开。订单、库存、余额一类实时状态应走 API / DB Tool。
+
+接入新语料或工具前，先查看 [数字人文资源地图](digital-humanities-resources.md)，用 [#184](https://github.com/montricwang/poeticus/issues/184) 验证已有开放数据 / API / 方法是否能替代自行采集、整理或新建系统的工作；未核查权限与增量价值的来源不直接进入生产。
 
 ### Search / Web fallback
 
