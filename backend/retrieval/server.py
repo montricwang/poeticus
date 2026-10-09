@@ -77,7 +77,7 @@ def create_app(
     @app.get("/v1/retrieval/profile")
     def startup_profile(
         _: None = Depends(require_token),
-    ) -> dict[str, object]:
+    ) -> dict[str, float | str]:
         """Local/ops diagnostic; Agent client never needs this endpoint."""
         return runtime.startup_profile
 
@@ -88,7 +88,7 @@ def create_app(
     def search(
         request: RetrievalSearchRequest,
         _: None = Depends(require_token),
-    ):
+    ) -> RetrievalSearchResponse:
         try:
             result = runtime.search(
                 request.text,
