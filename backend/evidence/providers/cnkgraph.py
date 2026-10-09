@@ -1,3 +1,8 @@
+"""CNKGraph 的外部 HTTP 适配器。
+
+本模块将第三方典故/出处响应整理为内部 EvidenceItem；
+HTTP 404 表示该查询没有命中，其他 HTTP/网络/JSON 错误会显式报错。
+"""
 import os
 import httpx
 from langsmith import traceable

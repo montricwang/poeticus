@@ -1,3 +1,9 @@
+"""Poeticus 的 LangGraph 对话循环与工具执行入口。
+
+Agent 基于当前作品、用户选区、对话历史作答，必要时调用证据或检索工具；
+工具执行后将结果追加到本次消息，再交还 Agent 决定下一步。
+普通回答和 SSE 流式回答共用这套图，不在这里处理 HTTP 请求校验。
+"""
 import asyncio
 import logging
 import json

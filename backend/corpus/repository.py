@@ -1,7 +1,7 @@
 """阅读作品库的只读 SQL，与 FastAPI 解耦。
 
-Only query poems. Do NOT expose poem_source_texts, source offsets, private
-annotations/commentaries or source-only material to an HTTP response.
+只查询公开阅读需要的 poems 字段。不得将 poem_source_texts、源位置、
+私人注评或只供来源核对的内容暴露给 HTTP 响应。
 """
 from collections.abc import Mapping
 from typing import Protocol
@@ -17,7 +17,7 @@ class _PoemRows(Protocol):
 
 
 class PoemReader(Protocol):
-    """Minimal query boundary also implemented by the offline SQL fixture."""
+    """作品只读查询的最小接口；离线 SQL 测试夹具也实现这一契约。"""
 
     def execute(
         self, query: sql.Composable, params: tuple[object, ...]
