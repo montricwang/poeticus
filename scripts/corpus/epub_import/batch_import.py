@@ -11,6 +11,7 @@ from collections import Counter
 from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
+from typing import TypedDict
 
 from backend.data_paths import EPUB_REPORTS_ROOT, READING_NORMALIZED_ROOT, READING_RAW_ROOT
 
@@ -22,6 +23,39 @@ from .import_poems import (
     collect_missing_glyphs,
     load_map,
 )
+
+
+class MissingGlyphSite(TypedDict):
+    html: str
+    src: str
+
+
+class BlockingIssue(TypedDict):
+    poem_id: str
+    type: str
+
+
+class CollectionPreflight(TypedDict):
+    collection: str
+    slug: str
+    xhtml_count: int
+    candidate_poems: int
+    glyph_map: str
+    missing_glyphs: list[MissingGlyphSite]
+    unexportable: list[BlockingIssue]
+    warnings_by_type: dict[str, int]
+    inline_note_candidates: int
+
+
+class BatchPreflight(TypedDict):
+    kind: str
+    format: str
+    collections: list[CollectionPreflight]
+    total_collections: int
+    total_candidate_poems: int
+    total_missing_glyph_sites: int
+    total_unexportable_issues: int
+    ready_to_export: bool
 
 
 DEFAULT_MAP_DIR = READING_RAW_ROOT / "glyph_maps"
@@ -76,9 +110,9 @@ def prepare_batch(book, toc, *, specs=COLLECTIONS, map_dir=DEFAULT_MAP_DIR):
     return planned
 
 
-def preflight_report(plan):
+def preflight_report(plan) -> BatchPreflight:
     """只输出来源坐标与计数，不输出用户授权文本。"""
-    collections = []
+    collections: list[CollectionPreflight] = []
     for item in plan:
         glyph_sites = [
             {"html": html, "src": src}
@@ -144,7 +178,7 @@ def normalize_batch(plan):
 
 def run_batch(book, toc, *, specs=COLLECTIONS,
               map_dir=DEFAULT_MAP_DIR, output_dir=DEFAULT_OUTPUT_DIR,
-              report_path=DEFAULT_REPORT, check_only=False):
+              report_path=DEFAULT_REPORT, check_only=False) -> tuple[BatchPreflight, list[str]]:
     """返回可分享摘要与输出；若真实导出被阻塞则直接报错。
 
     --check always writes the *metadata-only* report but never corpus text.
