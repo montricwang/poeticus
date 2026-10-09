@@ -21,7 +21,7 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, Literal, Sequence
+from typing import Iterable, Iterator, Literal, Sequence, cast
 
 ChunkPolicy = Literal["sentence", "clause"]
 METADATA_SCHEMA_VERSION = "2"
@@ -56,17 +56,22 @@ def content_fingerprint(text: str) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
 
-def _iter_jsonl(path: Path) -> Iterator[dict]:
+def _iter_jsonl(path: Path) -> Iterator[dict[str, object]]:
     with path.open(encoding="utf-8") as stream:
         for line_no, line in enumerate(stream, 1):
             if not line.strip():
                 continue
             try:
-                yield json.loads(line)
+                parsed: object = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise ValueError(
                     f"{path} 第 {line_no} 行无法解析"
                 ) from exc
+            if not isinstance(parsed, dict):
+                raise ValueError(f"{path} 第 {line_no} 行必须是 JSON 对象")
+            # A JSON object only has string keys. Values are validated by
+            # the caller before use or passed through to SQLite.
+            yield cast(dict[str, object], parsed)
 
 
 def _create_schema(connection: sqlite3.Connection) -> None:
@@ -137,7 +142,7 @@ def _insert_works(
             content_fingerprint
         ) VALUES (?, ?, ?, ?, ?, ?)
     """
-    rows: list[tuple] = []
+    rows: list[tuple[object, ...]] = []
     count = 0
 
     for work in _iter_jsonl(work_path):
@@ -188,7 +193,7 @@ def _insert_chunks(
             end
         ) VALUES (?, ?, ?, ?, ?, ?)
     """
-    rows: list[tuple] = []
+    rows: list[tuple[object, ...]] = []
     count = 0
 
     for global_row, chunk in enumerate(_iter_jsonl(chunk_path)):
@@ -238,7 +243,7 @@ def build_metadata_store(
     output_path: Path,
     batch_size: int = 50_000,
     force: bool = False,
-) -> dict:
+) -> dict[str, str | int | float]:
     """Build one atomic SQLite serving artifact."""
     if batch_size <= 0:
         raise ValueError("batch_size 必须为正整数")
