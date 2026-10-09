@@ -4,11 +4,12 @@ DOM 解释规则来自全册版式审计；非作品性的编校材料有意不�
 """
 
 import warnings
+from typing import Literal, NotRequired, TypedDict
 
 from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
 
-from .schema import Poem, PoemContent
-from .blocks import _class_list, _string_attribute, iter_source_blocks
+from .schema import InlineNoteCandidate, Poem, PoemContent
+from .blocks import SourceBlock, _class_list, _string_attribute, iter_source_blocks
 from .inline_notes import inspect_inline_font1
 from .rules import (
     INLINE_EDITORIAL_GAP,
@@ -26,6 +27,31 @@ from .rules import (
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 
+class CandidateSection(TypedDict):
+    """Temporary EPUB extraction state; no editorial attribution is inferred here."""
+
+    heading: str
+    tune: str | None
+    title: str | None
+    yusheng: str | None
+    text: list[str]
+    prefaces: list[str]
+    annotations: list[str]
+    commentaries: list[str]
+    inline_notes: list[InlineNoteCandidate]
+    unknown: list[dict[str, object]]
+    blocks: list[dict[str, object]]
+    warnings: list[dict[str, object]]
+    html: str
+    anchor: str | None
+    ordinal: int
+    chronology: str | None
+    inserted: bool
+    author_override: str | None
+    zone_override: str | None
+    zone: NotRequired[str]
+
+
 def raw_xhtml(item):
     """保留原始 XHTML，并直接按 UTF-8 解码，不猜测字符集。"""
     raw = getattr(item, "content", None)
@@ -34,12 +60,14 @@ def raw_xhtml(item):
     return raw.decode("utf-8-sig") if isinstance(raw, bytes) else raw
 
 
-def paragraph_text(element: Tag, html_name: str, category: str):
+def paragraph_text(
+    element: Tag, html_name: str, category: str,
+) -> tuple[str, list[dict[str, object]]]:
     """保留 <br> 边界与图片占位符，同时不修改原 DOM。"""
     node = BeautifulSoup(str(element), "lxml").find(element.name)
     if not isinstance(node, Tag):
         raise ValueError("无法定位 EPUB 段落节点")
-    image_warnings = []
+    image_warnings: list[dict[str, object]] = []
     for img in list(node.find_all("img")):
         src = _string_attribute(img, "src")
         img.replace_with("{{glyph:" + (src or "missing-src") + "}}")
@@ -58,7 +86,9 @@ def paragraph_text(element: Tag, html_name: str, category: str):
     return result, image_warnings
 
 
-def extract_sections(book, html_name, collection=""):
+def extract_sections(
+    book, html_name: str, collection: str = "",
+) -> list[CandidateSection]:
     """把一个 XHTML 转换为带可追踪块证据的候选作品。
 
     注释之后的未知段落不能静默归入正文；证据与未解决文本继续保留在
@@ -68,12 +98,13 @@ def extract_sections(book, html_name, collection=""):
     if item is None:
         raise ValueError(f"Not found: {html_name}")
     soup = BeautifulSoup(raw_xhtml(item), "lxml")
-    sections = []
-    current = None
+    sections: list[CandidateSection] = []
+    current: CandidateSection | None = None
     discarded = False
     skip_region = False
     has_verse = False
-    note_category = None
+    note_category: Literal["annotations", "commentaries"] | None = None
+    category: Literal["text", "prefaces", "annotations", "commentaries"]
     note_classes = None
     note_style = None
     awaiting_supplement = False
@@ -81,7 +112,10 @@ def extract_sections(book, html_name, collection=""):
     local_author = None
     local_zone = None
 
-    def add_evidence(section, block, role, text=""):
+    def add_evidence(
+        section: CandidateSection, block: SourceBlock,
+        role: str, text: str = "",
+    ) -> None:
         section["blocks"].append({**block.location(), "role": role, "text": text})
 
     source_blocks = list(iter_source_blocks(soup, html_name))
@@ -424,8 +458,9 @@ def extract_sections(book, html_name, collection=""):
 
 
 def convert_to_poem(
-    section, index, author_slug, author_name, collection, previous_tune=None
-):
+    section: CandidateSection, index: int, author_slug: str,
+    author_name: str, collection: str, previous_tune: str | None = None,
+) -> Poem:
     tune = section["tune"]
     issues = list(section["warnings"])
     if tune == "又":
