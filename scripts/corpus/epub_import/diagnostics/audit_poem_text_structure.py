@@ -305,7 +305,11 @@ def make_private_samples(sample: list[SampleEntry]) -> str:
 
 
 def self_test() -> None:
-    def rec(parts, *, notes=None, warnings=None):
+    def rec(
+        parts: list[str], *,
+        notes: list[dict[str, object]] | None = None,
+        warnings: list[dict[str, object]] | None = None,
+    ) -> dict[str, object]:
         return {"id": "synthetic", "collection": "测试分册", "author": "测试人",
                 "content": {"text": parts, "inline_notes": notes or []}, "warnings": warnings or []}
     a = examine(rec(["甲，", "乙。", "", "丙，", "丁。", "戊。"]))
