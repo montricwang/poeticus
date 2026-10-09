@@ -257,7 +257,7 @@ def main():
         print(
             f"已导入 {imported['mapped']} 个编号；"
             f"更新分册 glyph 映射文件 {imported['map_files']} 个；"
-            f"未填写 {imported['unfilled']} 个"
+            f"未填写 {len(imported['unfilled'])} 个"
         )
         if imported["ids_only"]:
             print(
