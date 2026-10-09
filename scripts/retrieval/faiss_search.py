@@ -17,8 +17,13 @@ import argparse
 import json
 import time
 from pathlib import Path
+from collections.abc import Mapping
+from typing import TypedDict
+
+from pydantic import ConfigDict, TypeAdapter, with_config
 
 from scripts.retrieval.artifact_search import (
+    ArtifactManifest,
     encode_query_for_artifact,
     load_artifact_manifest,
     resolve_chunk_path,
@@ -31,16 +36,37 @@ from scripts.retrieval.exact_search import (
     find_probe_rows,
     read_selected_chunks,
     read_selected_works,
+    ChunkRecord,
+    WorkRecord,
     sha256_file,
 )
 from scripts.retrieval.faiss_full_index import (
     INDEX_FILENAME,
     MANIFEST_FILENAME,
+    FaissBuildSignature,
     source_signature,
 )
 
 DEFAULT_TOP_K = 20
 DEFAULT_SEARCH_K = 100
+
+
+@with_config(ConfigDict(extra="allow"))
+class FaissIndexManifest(FaissBuildSignature):
+    status: str
+    index_file: str
+    index_bytes: int
+    index_gib: float
+    corpus_vectors: int
+
+
+class ProbeRank(TypedDict):
+    global_row: int
+    retrieved_rank: int | None
+
+
+_FAISS_INDEX_ADAPTER = TypeAdapter(FaissIndexManifest)
+
 
 
 def _require_numpy():
@@ -66,13 +92,15 @@ def _require_faiss():
 def load_index_manifest(
     index_dir: Path,
     *,
-    embedding_manifest: dict,
-) -> dict:
+    embedding_manifest: Mapping[str, object],
+) -> FaissIndexManifest:
     manifest_path = index_dir / MANIFEST_FILENAME
     if not manifest_path.is_file():
         raise ValueError(f"FAISS manifest 不存在：{manifest_path}")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise ValueError("FAISS manifest 必须是对象")
     if manifest.get("status") != "complete":
         raise ValueError(
             f"FAISS index 尚未完成：status={manifest.get('status')!r}"
@@ -113,13 +141,13 @@ def load_index_manifest(
     if isinstance(expected_bytes, int) and index_path.stat().st_size != expected_bytes:
         raise ValueError("FAISS index 文件大小与 manifest 不一致")
 
-    return manifest
+    return _FAISS_INDEX_ADAPTER.validate_python(manifest)
 
 
 def probe_ranks(
     ranking_rows: list[int],
     probe_rows: set[int],
-) -> list[dict]:
+) -> list[ProbeRank]:
     rank_by_row = {
         int(row_id): rank
         for rank, row_id in enumerate(ranking_rows, 1)
@@ -135,12 +163,12 @@ def probe_ranks(
 
 def build_eligible_work_rows(
     ranking_pairs: list[tuple[float, int]],
-    chunks: dict[int, dict],
-    works: dict[str, dict],
+    chunks: Mapping[int, ChunkRecord],
+    works: Mapping[str, WorkRecord],
     *,
     current_work_id: str | None,
     target_dynasty: str | None,
-) -> tuple[list[dict], dict[int, int]]:
+) -> tuple[list[dict[str, object]], dict[int, int]]:
     """Apply the product's current work-level eligibility policy to ANN hits.
 
     A single retrieval list contributes at most one row per work, matching the
@@ -149,7 +177,7 @@ def build_eligible_work_rows(
     rejected.
     """
     seen_work_ids: set[str] = set()
-    eligible: list[dict] = []
+    eligible: list[dict[str, object]] = []
     eligible_rank_by_row: dict[int, int] = {}
 
     for raw_rank, (score, row_id) in enumerate(ranking_pairs, 1):
@@ -211,7 +239,7 @@ def run_faiss_search(
     probe_author: str | None = None,
     device: str | None = None,
     verify_input_hash: bool = False,
-) -> dict:
+) -> dict[str, object]:
     if not query.strip():
         raise ValueError("query 不能为空")
     if top_k <= 0:
