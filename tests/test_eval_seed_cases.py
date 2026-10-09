@@ -52,7 +52,7 @@ def test_seed_graph_state_preserves_history_roles():
 
     assert state["poem"] == case.input.poem
     assert state["question"] == case.input.question
-    assert state["history"] == [
+    assert state.get("history") == [
         {"role": "user", "content": "之前的问题"},
         {"role": "assistant", "content": "之前的回答"},
     ]
