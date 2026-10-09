@@ -21,7 +21,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_REPORTS_ROOT
-from typing import Callable, Literal
+from typing import Callable, Literal, TypedDict
+
+from openai.types.chat import ChatCompletionFunctionToolParam, ChatCompletionMessageParam
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -51,7 +53,7 @@ DEFAULT_CLAUSE_FAISS = (
 )
 DEFAULT_SENTENCE_BM25 = DEFAULT_INDEX_ROOT / "bm25_sentence_2_3"
 
-LOCAL_RETRIEVAL_TOOLS = [
+LOCAL_RETRIEVAL_TOOLS: list[ChatCompletionFunctionToolParam] = [
     {
         "type": "function",
         "function": {
@@ -268,17 +270,14 @@ def _answer_signal(
     }
 
 
-def _plain_messages(case: RetrievalIncrementCase) -> list[dict]:
-    messages = [
-        message.model_dump()
-        for message in case.input.history
-    ]
-    messages.append(
-        {
-            "role": "user",
-            "content": _plain_user_message(case),
-        }
-    )
+def _plain_messages(case: RetrievalIncrementCase) -> list[ChatCompletionMessageParam]:
+    messages: list[ChatCompletionMessageParam] = []
+    for history in case.input.history:
+        if history.role == "user":
+            messages.append({"role": "user", "content": history.content})
+        else:
+            messages.append({"role": "assistant", "content": history.content})
+    messages.append({"role": "user", "content": _plain_user_message(case)})
     return messages
 
 
@@ -379,7 +378,9 @@ def run_tool_augmented_llm(
         }
 
     call = calls[0]
-    if call.type != "function" or call.function.name != "search_predecessor_texts":
+    if call.type != "function":
+        raise RuntimeError(f"tool_augmented_llm 返回了不支持的调用类型：{call.type}")
+    if call.function.name != "search_predecessor_texts":
         raise RuntimeError(f"tool_augmented_llm 调用了未知工具：{call.function.name}")
 
     try:
@@ -392,7 +393,7 @@ def run_tool_augmented_llm(
     query = query.strip()
 
     tool_result = search_tool(query)
-    assistant_tool_call = {
+    assistant_tool_call: ChatCompletionMessageParam = {
         "role": "assistant",
         "content": message.content or "",
         "tool_calls": [
