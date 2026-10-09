@@ -248,7 +248,13 @@ def test_hybrid_diagnostics_retain_extra_evidence_fields() -> None:
         "extra_diagnostic": {"keep": True},
     }
     validated = _HYBRID_ADAPTER.validate_python(raw)
-    assert validated["extra_diagnostic"] == {"keep": True}
-    assert validated["ranking"][0]["future_candidate_field"] == "keep"
-    assert validated["ranking"][0]["best_evidence"]["source_provenance"] == "synthetic"
-    assert validated["probes"][0]["list_supports"] == [{"source": "synthetic"}]
+    assert dict(validated).get("extra_diagnostic") == {"keep": True}
+    ranks = validated.get("ranking") or []
+    assert ranks
+    assert dict(ranks[0]).get("future_candidate_field") == "keep"
+    evidence = ranks[0].get("best_evidence")
+    assert evidence is not None
+    assert dict(evidence).get("source_provenance") == "synthetic"
+    probes = validated.get("probes") or []
+    assert probes
+    assert dict(probes[0]).get("list_supports") == [{"source": "synthetic"}]
