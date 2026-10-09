@@ -1,7 +1,6 @@
 import argparse
 import json
 import sys
-from collections import defaultdict
 from pathlib import Path, PurePosixPath
 
 from backend.data_paths import EPUB_REPORTS_ROOT, READING_NORMALIZED_ROOT, READING_RAW_ROOT

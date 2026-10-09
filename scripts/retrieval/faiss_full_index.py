@@ -21,7 +21,7 @@ from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_ROOT
 from collections.abc import Mapping
-from typing import Sequence, TypedDict
+from typing import TypedDict
 
 from pydantic import TypeAdapter
 

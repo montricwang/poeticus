@@ -6,7 +6,6 @@ import argparse
 import csv
 import html
 import json
-import posixpath
 from collections import defaultdict
 from pathlib import Path
 from typing import TypedDict

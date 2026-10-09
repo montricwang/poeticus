@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import psycopg
-from psycopg import sql
+from psycopg import sql as psycopg_sql
 import pytest
 from fastapi.testclient import TestClient
 
@@ -71,9 +71,9 @@ class FakeConnection:
         self.calls = []
 
     def execute(
-        self, query: sql.Composable | str, params: tuple[object, ...] = ()
+        self, query: psycopg_sql.Composable | str, params: tuple[object, ...] = ()
     ) -> FakeRows:
-        query_text = query.as_string() if isinstance(query, sql.Composable) else query
+        query_text = query.as_string() if isinstance(query, psycopg_sql.Composable) else query
         self.calls.append((query_text, params))
         if "COUNT(*)" in query_text:
             return FakeRows(row={"total": self.count})

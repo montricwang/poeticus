@@ -237,7 +237,7 @@ def test_sse_no_duplicate_full_reply_when_tokens_sent(monkeypatch, agent):
         ],
     ]
 
-    calls = _fake_streaming_client(agent, chunks, monkeypatch)
+    _fake_streaming_client(agent, chunks, monkeypatch)
 
     # 直接模拟 backend.api.chat 的 stream_graph_reply 逻辑
     received_tokens = []

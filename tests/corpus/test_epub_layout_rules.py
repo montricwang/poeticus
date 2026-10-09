@@ -1,7 +1,4 @@
 """只使用合成 EPUB fixture，Git 历史中不包含商业来源正文。"""
-import sys
-from pathlib import Path
-
 from bs4 import BeautifulSoup
 from scripts.corpus.epub_import.extractor.blocks import iter_source_blocks
 from scripts.corpus.epub_import.extractor.extractor import extract_collection, extract_sections

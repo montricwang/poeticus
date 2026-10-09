@@ -1,7 +1,6 @@
 """只使用合成内容；不得提交商业选本正文。"""
 
 import sys
-from pathlib import Path
 from types import ModuleType
 
 try:

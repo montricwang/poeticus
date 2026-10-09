@@ -30,7 +30,7 @@ from backend.retrieval.embedding_artifact import (
     ExactShard as ExactShard,
 )
 from backend.retrieval.chronology import (
-    DYNASTY_PERIODS,
+    DYNASTY_PERIODS as DYNASTY_PERIODS,
     candidate_prior_dynasties,
 )
 

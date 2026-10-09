@@ -1,6 +1,4 @@
 """A Git checkout must not depend on any developer-specific drive or CWD."""
-from pathlib import Path
-
 import pytest
 
 from backend import data_paths
