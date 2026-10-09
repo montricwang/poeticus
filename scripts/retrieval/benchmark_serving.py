@@ -14,11 +14,14 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TypedDict
+
+from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
 
 
-from backend.retrieval.serving import RetrievalServingRuntime
+from backend.retrieval.serving import RetrievalServingRuntime, ServingSearchResult
 from scripts.retrieval.run_serving import (
     DEFAULT_DATA_ROOT,
     DEFAULT_MODEL_ROOT,
@@ -28,6 +31,119 @@ from scripts.retrieval.run_serving import (
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CASES = ROOT / "evals/retrieval_increment_cases.json"
 DEFAULT_REPORT_ROOT = RETRIEVAL_REPORTS_ROOT
+class BenchmarkContext(TypedDict):
+    author: str | None
+    dynasty: str | None
+
+
+class BenchmarkInput(TypedDict):
+    poem: str
+    context: BenchmarkContext
+
+
+class BenchmarkTarget(TypedDict):
+    author: str
+    text: str
+
+
+@with_config(ConfigDict(extra="allow"))
+class BenchmarkCase(TypedDict):
+    id: str
+    input: BenchmarkInput
+    target: BenchmarkTarget
+    retrieval_query: str
+    current_match_text: str
+
+
+class DenseTiming(TypedDict):
+    encode_ms: float
+    ann_ms: float
+    metadata_ms: float
+    total_ms: float
+    queries: int
+
+
+class LexicalTiming(TypedDict):
+    total_ms: float
+
+
+class ChannelTimings(TypedDict):
+    dense_sentence: DenseTiming
+    dense_clause: DenseTiming
+    bm25_sentence: LexicalTiming
+
+
+class ServingTimings(TypedDict):
+    current_alias_lookup_ms: float
+    orchestration_ms: float
+    total_ms: float
+    channels: ChannelTimings
+
+
+class SampleStats(TypedDict):
+    p50: float
+    p95: float
+    min: float
+    max: float
+
+
+class MemorySample(TypedDict):
+    stage: str
+    rss_mib: float
+
+
+class BenchCaseSummary(TypedDict):
+    case_id: str
+    query: str
+    query_count: int
+    target: BenchmarkTarget
+    target_visible: bool
+    timings: dict[str, SampleStats]
+    candidate_preview: list[dict[str, object]]
+
+
+class UncachedCaseSummary(TypedDict):
+    case_id: str
+    query: str
+    resolved_current_work_ids: list[str]
+    target_visible: bool
+    timings: dict[str, float]
+    candidates: list[dict[str, object]]
+
+
+class ConcurrencySummary(TypedDict):
+    requests: int
+    wall_ms: float
+    individual_p50_ms: float
+    individual_p95_ms: float
+    throughput_rps: float | None
+
+
+class MetadataBuild(TypedDict):
+    build_seconds: float
+    database_gib: float
+
+
+class BenchmarkReport(TypedDict):
+    schema_version: str
+    created_at: str
+    system: dict[str, object]
+    config: dict[str, object]
+    startup_profile: dict[str, object]
+    memory: dict[str, object]
+    disk: dict[str, int]
+    metadata_build: MetadataBuild | None
+    cases: list[BenchCaseSummary]
+    uncached_cases: list[UncachedCaseSummary] | None
+    concurrency: ConcurrencySummary
+    note: str
+
+
+_CASES_ADAPTER = TypeAdapter(list[BenchmarkCase])
+_TIMINGS_ADAPTER = TypeAdapter(ServingTimings)
+_METADATA_ADAPTER = TypeAdapter(MetadataBuild)
+
+
 DEFAULT_CASE_IDS = (
     "longtail_luyou_dufu_gull",
     "transformed_liqingzhao_fanzhongyan",
@@ -91,9 +207,12 @@ def percentile(values: list[float], q: float) -> float:
     return ordered[index]
 
 
-def load_cases(path: Path, case_ids: tuple[str, ...]) -> list[dict]:
+def load_cases(path: Path, case_ids: tuple[str, ...]) -> list[BenchmarkCase]:
     data = json.loads(path.read_text(encoding="utf-8"))
-    by_id = {item["id"]: item for item in data["cases"]}
+    if not isinstance(data, dict):
+        raise ValueError("Benchmark cases 必须是 JSON 对象")
+    parsed_cases = _CASES_ADAPTER.validate_python(data.get("cases"))
+    by_id = {item["id"]: item for item in parsed_cases}
     missing = [case_id for case_id in case_ids if case_id not in by_id]
     if missing:
         raise ValueError(
@@ -103,7 +222,7 @@ def load_cases(path: Path, case_ids: tuple[str, ...]) -> list[dict]:
     return [by_id[case_id] for case_id in case_ids]
 
 
-def target_visible(result, case: dict) -> bool:
+def target_visible(result: ServingSearchResult, case: BenchmarkCase) -> bool:
     target = case["target"]
     return any(
         item.author == target["author"]
@@ -112,8 +231,8 @@ def target_visible(result, case: dict) -> bool:
     )
 
 
-def flatten_timings(result) -> dict[str, float]:
-    timings = result.timings_ms
+def flatten_timings(result: ServingSearchResult) -> dict[str, float]:
+    timings = _TIMINGS_ADAPTER.validate_python(result.timings_ms)
     dense_sentence = timings["channels"]["dense_sentence"]
     dense_clause = timings["channels"]["dense_clause"]
     bm25 = timings["channels"]["bm25_sentence"]
@@ -131,7 +250,7 @@ def flatten_timings(result) -> dict[str, float]:
     }
 
 
-def summarize_samples(samples: list[dict[str, float]]) -> dict:
+def summarize_samples(samples: list[dict[str, float]]) -> dict[str, SampleStats]:
     keys = samples[0].keys()
     return {
         key: {
@@ -149,7 +268,7 @@ def summarize_samples(samples: list[dict[str, float]]) -> dict:
     }
 
 
-def run_case(runtime, case: dict, top_k: int):
+def run_case(runtime: RetrievalServingRuntime, case: BenchmarkCase, top_k: int) -> ServingSearchResult:
     return runtime.search(
         case["retrieval_query"],
         current_text=case["input"]["poem"],
@@ -161,10 +280,10 @@ def run_case(runtime, case: dict, top_k: int):
 
 def resolve_current_work_ids(
     work_path: Path,
-    cases: list[dict],
+    cases: list[BenchmarkCase],
 ) -> dict[str, set[str]]:
     """Resolve excerpt fixtures to corpus Works outside measured latency."""
-    resolved = {case["id"]: set() for case in cases}
+    resolved: dict[str, set[str]] = {case["id"]: set() for case in cases}
     with work_path.open(encoding="utf-8") as stream:
         for line in stream:
             if not line.strip():
@@ -182,14 +301,14 @@ def resolve_current_work_ids(
     return resolved
 
 
-def run_uncached_cases(runtime, cases: list[dict], work_path: Path, top_k: int) -> list[dict]:
+def run_uncached_cases(runtime: RetrievalServingRuntime, cases: list[BenchmarkCase], work_path: Path, top_k: int) -> list[UncachedCaseSummary]:
     """Measure actual uncached query encoding while excluding fixture self-hits.
 
     Resolving full Work IDs and scanning the corpus happen outside measured
     request timings. Cache is cleared before each case, never the warm runs.
     """
     current_ids = resolve_current_work_ids(work_path, cases)
-    results = []
+    results: list[UncachedCaseSummary] = []
     for case in cases:
         runtime.encoder.clear_cache()
         result = runtime.search(
@@ -215,7 +334,7 @@ def run_uncached_cases(runtime, cases: list[dict], work_path: Path, top_k: int) 
     return results
 
 
-def render_markdown(report: dict) -> str:
+def render_markdown(report: BenchmarkReport) -> str:
     lines = [
         "# Retrieval Serving Benchmark",
         "",
@@ -405,7 +524,7 @@ def main() -> None:
         args.model_root,
     )
 
-    memory_samples = [
+    memory_samples: list[MemorySample] = [
         {
             "stage": "baseline",
             "rss_mib": rss_mib(),
@@ -444,15 +563,15 @@ def main() -> None:
     metadata_manifest_path = paths.metadata_db.with_suffix(
         ".manifest.json"
     )
-    metadata_build = (
-        json.loads(
+    metadata_build: MetadataBuild | None = (
+        _METADATA_ADAPTER.validate_python(json.loads(
             metadata_manifest_path.read_text(encoding="utf-8")
-        )
+        ))
         if metadata_manifest_path.is_file()
         else None
     )
 
-    case_reports = []
+    case_reports: list[BenchCaseSummary] = []
     for case in cases:
         warm = run_case(runtime, case, args.top_k)
 
@@ -476,10 +595,7 @@ def main() -> None:
             {
                 "case_id": case["id"],
                 "query": case["retrieval_query"],
-                "query_count": (
-                    warm.timings_ms["channels"]
-                    ["dense_sentence"]["queries"]
-                ),
+                "query_count": _TIMINGS_ADAPTER.validate_python(warm.timings_ms)["channels"]["dense_sentence"]["queries"],
                 "target": case["target"],
                 "target_visible": visible,
                 "timings": summarize_samples(samples),
@@ -528,8 +644,8 @@ def main() -> None:
 
     virtual_memory = psutil.virtual_memory()
     swap_memory = psutil.swap_memory()
-    disk_usage = psutil.disk_usage(paths.metadata_db.parent)
-    report = {
+    disk_usage = psutil.disk_usage(str(paths.metadata_db.parent))
+    report: BenchmarkReport = {
         "schema_version": "1",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "system": {
