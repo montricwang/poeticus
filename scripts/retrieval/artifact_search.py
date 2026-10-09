@@ -180,11 +180,9 @@ def encode_qwen_query(
         manifest["model_fingerprint"],
     )
 
-    kwargs: dict[str, bool | str] = {"local_files_only": True}
-    if device:
-        kwargs["device"] = device
-
-    model = SentenceTransformer(str(model_path), **kwargs)
+    model = SentenceTransformer(
+        str(model_path), local_files_only=True, device=device
+    )
     dimension = manifest["embedding_dimension"]
     vectors = model.encode(
         [query],
