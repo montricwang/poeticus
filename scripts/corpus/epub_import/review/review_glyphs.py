@@ -18,6 +18,7 @@ from ebooklib import epub
 
 from ..pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
 from ..pipeline.normalize import is_ids_form
+from .glyph_sources import _epub_image, glyph_sites
 
 
 class PreparedGlyphReview(TypedDict):
@@ -37,32 +38,6 @@ class AppliedGlyphReview(TypedDict):
 FIELDS = ("index", "slug", "collection", "src", "source_form",
           "display_form", "occurrences")
 
-
-def glyph_sites(report):
-    """每个（分册，来源图片）只生成一条核对记录，不按 XHTML 引用次数重复。"""
-    cases = {}
-    for collection in report["collections"]:
-        for site in collection["missing_glyphs"]:
-            slug, src, page = collection["slug"], site["src"], site["html"]
-            key = (slug, src)
-            if key not in cases:
-                cases[key] = {"slug": slug, "src": src,
-                              "collection": collection["collection"], "pages": []}
-            if page not in cases[key]["pages"]:
-                cases[key]["pages"].append(page)
-    return list(cases.values())
-
-
-def _epub_image(book, page, src):
-    if "://" in src or src.startswith("/"):
-        raise ValueError(f"EPUB 图片路径异常：{src}")
-    href = posixpath.normpath(posixpath.join(posixpath.dirname(page), src))
-    if href.startswith("../"):
-        raise ValueError(f"EPUB 图片路径越界：{page} / {src}")
-    item = book.get_item_with_href(href)
-    if item is None:
-        return None
-    return item.get_content() if hasattr(item, "get_content") else item.content
 
 
 def prepare_review(report, book, *, sheet_path, tsv_path) -> PreparedGlyphReview:
