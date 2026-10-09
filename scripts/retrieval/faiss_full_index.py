@@ -20,7 +20,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_ROOT
-from typing import Sequence
+from collections.abc import Mapping
+from typing import Sequence, TypedDict
+
+from pydantic import TypeAdapter
 
 from scripts.retrieval.artifact_search import load_artifact_manifest
 from scripts.retrieval.vector_sampling import (
@@ -37,6 +40,33 @@ DEFAULT_TRAINING_VECTORS = 50_000
 INDEX_FILENAME = "index.faiss"
 MANIFEST_FILENAME = "manifest.json"
 INDEX_MANIFEST_VERSION = 1
+
+
+class SourceEmbeddingSignature(TypedDict):
+    model: str
+    model_fingerprint: str
+    input_sha256: str
+    chunk_policy: str
+    embedding_dimension: int
+    dtype: str
+    normalized: bool
+    completed_chunks: int
+
+
+class FaissBuildSignature(TypedDict):
+    manifest_version: int
+    engine: str
+    source_embedding: SourceEmbeddingSignature
+    nlist: int
+    pq_m: int
+    pq_bits: int
+    nprobe: int
+    training_vectors: int
+    row_id_contract: str
+
+
+_SOURCE_ADAPTER = TypeAdapter(SourceEmbeddingSignature)
+
 
 
 def _require_numpy():
@@ -77,7 +107,7 @@ def index_dir_name(
     )
 
 
-def source_signature(embedding_manifest: dict) -> dict:
+def source_signature(embedding_manifest: Mapping[str, object]) -> SourceEmbeddingSignature:
     keys = (
         "model",
         "model_fingerprint",
@@ -94,19 +124,22 @@ def source_signature(embedding_manifest: dict) -> dict:
             "Embedding manifest 缺少 serving index 所需字段："
             + ", ".join(missing)
         )
-    return {key: embedding_manifest[key] for key in keys}
+    return _SOURCE_ADAPTER.validate_python(
+        {key: embedding_manifest[key] for key in keys}
+    )
 
 
 def build_signature(
-    embedding_manifest: dict,
+    embedding_manifest: Mapping[str, object],
     *,
     nlist: int,
     pq_m: int,
     pq_bits: int,
     nprobe: int,
     training_vectors: int,
-) -> dict:
-    dimension = embedding_manifest["embedding_dimension"]
+) -> FaissBuildSignature:
+    source = source_signature(embedding_manifest)
+    dimension = source["embedding_dimension"]
     if nlist <= 0 or pq_m <= 0 or pq_bits <= 0 or nprobe <= 0:
         raise ValueError("FAISS 参数必须为正整数")
     if training_vectors <= 0:
@@ -115,20 +148,20 @@ def build_signature(
         raise ValueError(
             f"dimension={dimension} 不能被 pq_m={pq_m} 整除"
         )
-    if not embedding_manifest.get("normalized"):
+    if not source["normalized"]:
         raise ValueError("当前 Inner Product serving index 要求 normalized Embedding")
 
     return {
         "manifest_version": INDEX_MANIFEST_VERSION,
         "engine": "faiss_IndexIVFPQ",
-        "source_embedding": source_signature(embedding_manifest),
+        "source_embedding": source,
         "nlist": nlist,
         "pq_m": pq_m,
         "pq_bits": pq_bits,
         "nprobe": min(nprobe, nlist),
         "training_vectors": min(
             training_vectors,
-            embedding_manifest["completed_chunks"],
+            source["completed_chunks"],
         ),
         "row_id_contract": (
             "faiss_id == embedding_global_row == chunk_jsonl_logical_row"
@@ -136,7 +169,7 @@ def build_signature(
     }
 
 
-def assert_compatible_manifest(manifest: dict, signature: dict) -> None:
+def assert_compatible_manifest(manifest: Mapping[str, object], signature: Mapping[str, object]) -> None:
     mismatches = []
     for key, expected in signature.items():
         actual = manifest.get(key)
@@ -150,7 +183,7 @@ def assert_compatible_manifest(manifest: dict, signature: dict) -> None:
         )
 
 
-def write_json_atomic(path: Path, payload: dict) -> None:
+def write_json_atomic(path: Path, payload: object) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
@@ -181,7 +214,7 @@ def build_full_index(
     nprobe: int = DEFAULT_NPROBE,
     training_vectors: int = DEFAULT_TRAINING_VECTORS,
     threads: int | None = None,
-) -> dict:
+) -> dict[str, object]:
     np = _require_numpy()
     faiss = _require_faiss()
 
