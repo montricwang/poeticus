@@ -114,12 +114,12 @@ def preflight_report(plan) -> BatchPreflight:
     """只输出来源坐标与计数，不输出用户授权文本。"""
     collections: list[CollectionPreflight] = []
     for item in plan:
-        glyph_sites = [
+        glyph_sites: list[MissingGlyphSite] = [
             {"html": html, "src": src}
             for html, srcs in sorted(item["missing"].items())
             for src in sorted(srcs)
         ]
-        collections.append({
+        collection_report: CollectionPreflight = {
             "collection": item["collection"],
             "slug": item["slug"],
             "xhtml_count": len(item["files"]),
@@ -132,7 +132,8 @@ def preflight_report(plan) -> BatchPreflight:
                 len(record["content"].get("inline_notes", []))
                 for record in item["records"]
             ),
-        })
+        }
+        collections.append(collection_report)
     return {
         "kind": "private-epub-import-preflight",
         "format": "intermediate_poem_not_frontend",
