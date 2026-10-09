@@ -120,6 +120,7 @@ def main() -> None:
     modes.add_argument("--import", dest="do_import", action="store_true", help="事务导入词库")
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
     args = parser.parse_args()
+    records: list[ConvertedPoem] = []
     if args.check or args.do_import:
         records = read_corpus(args.input)
         actions = Counter(a for record in records for a in record.actions)
