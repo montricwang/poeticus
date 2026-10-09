@@ -33,3 +33,72 @@ def test_seed_eval_selection_is_part_of_poem_snapshot():
     for case in dataset.cases:
         if case.input.selection:
             assert case.input.selection in case.input.poem
+
+
+def test_seed_graph_state_preserves_history_roles():
+    from evals.schema import EvalHistoryMessage
+    from scripts.evals.run_seed import graph_state
+
+    dataset = EvalDataset.model_validate_json(
+        SEED_DATASET.read_text(encoding="utf-8")
+    )
+    case = dataset.cases[0]
+    case.input.history = [
+        EvalHistoryMessage(role="user", content="之前的问题"),
+        EvalHistoryMessage(role="assistant", content="之前的回答"),
+    ]
+
+    state = graph_state(case)
+
+    assert state["poem"] == case.input.poem
+    assert state["question"] == case.input.question
+    assert state.get("history") == [
+        {"role": "user", "content": "之前的问题"},
+        {"role": "assistant", "content": "之前的回答"},
+    ]
+
+
+def test_seed_tool_trace_keeps_synthetic_evidence_preview():
+    from scripts.evals.run_seed import _tool_names, _tool_trace
+
+    messages: list[dict[str, object]] = [
+        {
+            "role": "assistant",
+            "tool_calls": [{
+                "id": "call-1",
+                "function": {
+                    "name": "search_predecessor_texts",
+                    "arguments": '{"text": "合成句"}',
+                },
+            }],
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call-1",
+            "content": json.dumps({
+                "status": "ok",
+                "query": "合成句",
+                "evidences": [{
+                    "anchor": "synthetic",
+                    "text": "甲" * 250,
+                    "source": {"title": "合成作品"},
+                }],
+            }, ensure_ascii=False),
+        },
+    ]
+
+    assert _tool_names(messages) == ["search_predecessor_texts"]
+    trace = _tool_trace(messages)
+    assert len(trace["calls"]) == 1
+    assert trace["calls"][0]["name"] == "search_predecessor_texts"
+    assert len(trace["results"]) == 1
+    result = trace["results"][0]
+    assert result["evidence_count"] == 1
+    evidences = result["evidences"]
+    assert isinstance(evidences, list)
+    preview = evidences[0]
+    assert isinstance(preview, dict)
+    preview_text = preview["text_preview"]
+    assert isinstance(preview_text, str)
+    assert len(preview_text) == 240
+    assert preview["source"] == {"title": "合成作品"}

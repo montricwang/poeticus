@@ -8,7 +8,16 @@ from backend.retrieval.metadata_store import (
     MetadataStore,
     build_metadata_store,
     content_fingerprint,
+    _iter_jsonl,
 )
+
+
+@pytest.mark.parametrize("payload", ["[]", "null", '"text"'])
+def test_metadata_jsonl_rejects_non_object_rows(tmp_path, payload):
+    path = tmp_path / "bad.jsonl"
+    path.write_text(payload + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="第 1 行必须是 JSON 对象"):
+        list(_iter_jsonl(path))
 
 
 def write_jsonl(path, rows):

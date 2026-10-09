@@ -105,7 +105,7 @@ def _source_digest(record):
     return hashlib.sha256(packed.encode("utf-8")).hexdigest()
 
 
-def convert_record(record: dict, order: int) -> ConvertedPoem:
+def convert_record(record: dict[str, Any], order: int) -> ConvertedPoem:
     if not isinstance(record, dict) or not isinstance(record.get("id"), str) or not record["id"]:
         raise ValueError("来源作品缺少有效 ID")
     content = record.get("content")
@@ -131,6 +131,8 @@ def convert_record(record: dict, order: int) -> ConvertedPoem:
         segment, left, right, quote = _map_range(
             originals, rendered, mapping, idx, begin, finish
         )
+        if not isinstance(idx, int) or not isinstance(begin, int) or not isinstance(finish, int):
+            raise ValueError(f"{record['id']}: 行内注记坐标必须是整数")
         if originals[idx][begin:finish] != note.get("text"):
             raise ValueError(f"{record['id']}: 原始注记文字不匹配")
         notes.append({

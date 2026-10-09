@@ -11,13 +11,36 @@ import json
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TypedDict
+
+from openai.types.chat import ChatCompletionMessageParam
 
 from backend.ai.context import PoemContext
-from backend.ai.graph import TOOLS, _agent_user_message, graph
+from backend.ai.graph import HistoryMessage, RouterState, TOOLS, _agent_user_message, graph
 from backend.ai.model import client
 from backend.ai.prompt_loader import compose_prompt
 from backend.config import LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
 from evals.schema import EvalCase, EvalDataset
+
+
+class ControlResult(TypedDict):
+    answer: str
+    tool_count: int
+    evidence_count: int
+
+
+class AgentTrace(TypedDict):
+    calls: list[dict[str, object]]
+    results: list[dict[str, object]]
+
+
+class AgentResult(TypedDict):
+    answer: str
+    tool_count: int
+    tool_names: list[str]
+    evidence_count: int
+    tool_calls: list[dict[str, object]]
+    tool_results: list[dict[str, object]]
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -28,28 +51,37 @@ def load_dataset(path: Path) -> EvalDataset:
     return EvalDataset.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def graph_state(case: EvalCase) -> dict:
+def graph_state(case: EvalCase) -> RouterState:
     context = PoemContext(
         id=f"eval:{case.id}",
         title=case.input.context.title,
         author=case.input.context.author,
         dynasty=case.input.context.dynasty,
     )
+    history: list[HistoryMessage] = [
+        {"role": message.role, "content": message.content}
+        for message in case.input.history
+    ]
     return {
         "poem": case.input.poem,
         "question": case.input.question,
         "selection": case.input.selection,
         "context": context,
-        "history": [message.model_dump() for message in case.input.history],
+        "history": history,
     }
 
 
-def run_control_no_tools(case: EvalCase) -> dict:
+def run_control_no_tools(case: EvalCase) -> ControlResult:
     state = graph_state(case)
     system_prompt = compose_prompt("agent_decide", "output_style")
-    messages = [{"role": "system", "content": system_prompt}]
-
-    messages.extend(state["history"])
+    messages: list[ChatCompletionMessageParam] = [
+        {"role": "system", "content": system_prompt}
+    ]
+    for history in state.get("history", []):
+        if history["role"] == "user":
+            messages.append({"role": "user", "content": history["content"]})
+        else:
+            messages.append({"role": "assistant", "content": history["content"]})
     messages.append({"role": "user", "content": _agent_user_message(state)})
 
     response = client.chat.completions.create(
@@ -72,11 +104,18 @@ def run_control_no_tools(case: EvalCase) -> dict:
     }
 
 
-def _tool_names(messages: list[dict]) -> list[str]:
+def _tool_names(messages: list[dict[str, object]]) -> list[str]:
     names: list[str] = []
     for message in messages:
-        for call in message.get("tool_calls") or []:
-            function = call.get("function") or {}
+        calls = message.get("tool_calls")
+        if not isinstance(calls, list):
+            continue
+        for call in calls:
+            if not isinstance(call, dict):
+                continue
+            function = call.get("function")
+            if not isinstance(function, dict):
+                continue
             name = function.get("name")
             if isinstance(name, str):
                 names.append(name)
@@ -93,7 +132,7 @@ def _parse_json_object(value):
     return parsed
 
 
-def _evidence_preview(item: dict) -> dict:
+def _evidence_preview(item: dict[str, object]) -> dict[str, object]:
     source = item.get("source")
     source_preview = None
     if isinstance(source, dict):
@@ -107,7 +146,7 @@ def _evidence_preview(item: dict) -> dict:
     if isinstance(text, str):
         text = text[:240]
 
-    preview = {
+    preview: dict[str, object] = {
         "anchor": item.get("anchor"),
         "provider": item.get("provider"),
         "status": item.get("status"),
@@ -118,14 +157,19 @@ def _evidence_preview(item: dict) -> dict:
     return preview
 
 
-def _tool_trace(messages: list[dict]) -> dict:
-    calls = []
-    results = []
+def _tool_trace(messages: list[dict[str, object]]) -> AgentTrace:
+    calls: list[dict[str, object]] = []
+    results: list[dict[str, object]] = []
 
     for message in messages:
         if message.get("role") == "assistant":
-            for call in message.get("tool_calls") or []:
-                function = call.get("function") or {}
+            tool_calls = message.get("tool_calls")
+            for call in tool_calls if isinstance(tool_calls, list) else []:
+                if not isinstance(call, dict):
+                    continue
+                function = call.get("function")
+                if not isinstance(function, dict):
+                    continue
                 calls.append(
                     {
                         "id": call.get("id"),
@@ -138,7 +182,7 @@ def _tool_trace(messages: list[dict]) -> dict:
 
         if message.get("role") == "tool":
             payload = _parse_json_object(message.get("content"))
-            result = {
+            result: dict[str, object] = {
                 "tool_call_id": message.get("tool_call_id"),
             }
 
@@ -173,13 +217,15 @@ def _tool_trace(messages: list[dict]) -> dict:
     }
 
 
-def run_current_agent(case: EvalCase) -> dict:
+def run_current_agent(case: EvalCase) -> AgentResult:
     result = graph.invoke(graph_state(case))
     answer = result.get("reply")
     if not isinstance(answer, str) or not answer.strip():
         raise RuntimeError("current_agent 没有返回有效回答")
 
-    messages = result.get("messages") or []
+    messages: list[dict[str, object]] = [
+        dict(message) for message in (result.get("messages") or [])
+    ]
     trace = _tool_trace(messages)
 
     return {
@@ -232,6 +278,7 @@ def main() -> None:
         if missing:
             raise SystemExit(f"未知 case id: {', '.join(sorted(missing))}")
 
+    case_results: list[dict[str, object]] = []
     run = {
         "dataset_id": dataset.dataset_id,
         "dataset_version": dataset.dataset_version,
@@ -239,7 +286,7 @@ def main() -> None:
         "model": LLM_MODEL,
         "prompt_sha256": prompt_sha256(),
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "cases": [],
+        "cases": case_results,
     }
 
     for case in selected:
@@ -266,7 +313,7 @@ def main() -> None:
             f"tool_results={result_summary}"
         )
 
-        run["cases"].append(
+        case_results.append(
             {
                 "case_id": case.id,
                 "expected": case.expected.model_dump(),

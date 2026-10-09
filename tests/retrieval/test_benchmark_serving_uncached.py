@@ -1,16 +1,17 @@
 """The consolidated Serving benchmark preserves its cold-query diagnostics."""
 import json
 from pathlib import Path
-from types import SimpleNamespace
 
+from backend.retrieval.serving import ServingCandidate, ServingSearchResult
 from scripts.retrieval.benchmark_serving import (
+    BenchmarkCase,
     render_markdown,
     resolve_current_work_ids,
     run_uncached_cases,
 )
 
 
-def cases():
+def cases() -> list[BenchmarkCase]:
     return [{
         "id": "case-one",
         "retrieval_query": "轻鸥落晚沙",
@@ -23,7 +24,7 @@ def cases():
     }]
 
 
-def fake_timing():
+def fake_timing() -> dict[str, object]:
     return {
         "current_alias_lookup_ms": 0.0,
         "orchestration_ms": 1.0,
@@ -53,14 +54,19 @@ class StubRuntime:
         self.encoder = StubEncoder()
         self.calls = []
 
-    def search(self, query, **kwargs):
-        self.calls.append((query, kwargs))
-        return SimpleNamespace(
+    def search(self, text: str, **kwargs: object) -> ServingSearchResult:
+        self.calls.append((text, kwargs))
+        return ServingSearchResult(
+            status="ok",
+            query=text,
             timings_ms=fake_timing(),
-            candidates=[SimpleNamespace(
-                rank=1, author="杜甫", title="小寒食舟中作",
-                text="片片轻鸥下急湍",
-            )],
+            current_work_aliases=(),
+            candidates=(ServingCandidate(
+                rank=1, work_id="synthetic-dufu", author="杜甫",
+                title="小寒食舟中作", text="片片轻鸥下急湍",
+                dynasty="唐", source_record_id="synthetic-source",
+                chronology_status="clearly_earlier", support_count=1,
+            ),),
         )
 
 

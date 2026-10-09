@@ -363,7 +363,7 @@ def classify_annotation_structure(item: dict[str, Any]) -> dict[str, Any]:
     else:
         structure = "other"
 
-    result = {"structure": structure}
+    result: dict[str, str | bool] = {"structure": structure}
     if headword is not None:
         result["headword"] = headword
         result["headword_in_body"] = headword in item.get("_body_text", "")

@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 
 from ..extractor.blocks import iter_source_blocks
 from ..extractor.extractor import extract_sections, raw_xhtml
-from .review_glyphs import _epub_image, glyph_sites
+from .glyph_sources import _epub_image, glyph_sites
 
 
 GLYPH_TOKEN = re.compile(r"\[\[GLYPH_(\d{3})\]\]")
@@ -23,6 +23,8 @@ GLYPH_TOKEN = re.compile(r"\[\[GLYPH_(\d{3})\]\]")
 def _marked_paragraph(block, source_indexes, target):
     """按与 paragraph_text() 相近的方式扁平化来源，同时保留图片位置。"""
     root = BeautifulSoup(str(block.element), "lxml").find(block.tag)
+    if root is None:
+        raise ValueError(f"来源段落缺少预期 {block.tag} 节点")
     for image in root.find_all("img"):
         src = image.get("src", "")
         index = source_indexes.get(src)

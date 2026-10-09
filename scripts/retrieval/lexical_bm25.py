@@ -18,7 +18,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, TypedDict
+
+from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.retrieval.chronology import candidate_prior_dynasties
 
@@ -37,6 +39,71 @@ CHUNK_PATHS = {
 DEFAULT_MIN_N = 2
 DEFAULT_MAX_N = 3
 DEFAULT_BATCH_SIZE = 10_000
+
+
+@with_config(ConfigDict(extra="allow"))
+class BM25Manifest(TypedDict):
+    status: str
+    engine: str
+    ranking: str
+    term_representation: str
+    chunk_policy: str
+    min_n: int
+    max_n: int
+    works: int
+    chunks: int
+    max_chunks: int | None
+    sampled_chunks_seen: int | None
+    database_bytes: int
+    database_mib: float
+    build_elapsed_seconds: float
+    chunks_per_second: float | None
+    work_path: str
+    work_sha256: str
+    chunk_path: str
+    chunk_sha256: str
+    database: str
+    created_at: str
+
+
+class BM25Chunk(TypedDict):
+    chunk_id: str
+    text: str
+    start: int | None
+    end: int | None
+
+
+class BM25Work(TypedDict):
+    work_id: str
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    source_record_id: str | None
+
+
+class BM25RankedHit(TypedDict):
+    rank: int
+    bm25_score: float
+    global_row: int
+    chunk: BM25Chunk
+    work: BM25Work
+
+
+class BM25SearchResult(TypedDict):
+    query: str
+    engine: str
+    ranking_method: str
+    term_representation: str
+    chunk_policy: str
+    ngram_range: list[int]
+    top_k: int
+    chronology_filter: dict[str, object] | None
+    ranking: list[BM25RankedHit]
+    probes: list[BM25RankedHit]
+    note: str
+
+
+_MANIFEST_ADAPTER = TypeAdapter(BM25Manifest)
 EXPECTED_CHUNKS = {
     "sentence": 4_822_054,
     "clause": 9_425_173,
@@ -146,13 +213,16 @@ def _create_schema(connection: sqlite3.Connection) -> None:
     )
 
 
-def _read_jsonl(path: Path) -> Iterator[dict]:
+def _read_jsonl(path: Path) -> Iterator[dict[str, object]]:
     with path.open(encoding="utf-8") as stream:
         for line_no, line in enumerate(stream, 1):
             if not line.strip():
                 continue
             try:
-                yield json.loads(line)
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    raise ValueError(f"{path} 第 {line_no} 行必须是 JSON 对象")
+                yield record
             except json.JSONDecodeError as exc:
                 raise ValueError(f"{path} 第 {line_no} 行无法解析") from exc
 
@@ -185,7 +255,7 @@ def _insert_works(
     batch_size: int,
     allowed_work_ids: set[str] | None = None,
 ) -> int:
-    rows: list[tuple] = []
+    rows: list[tuple[object, ...]] = []
     count = 0
     sql = (
         "INSERT INTO works "
@@ -228,8 +298,8 @@ def _insert_chunks(
     max_n: int,
     max_chunks: int | None = None,
 ) -> int:
-    chunk_rows: list[tuple] = []
-    fts_rows: list[tuple] = []
+    chunk_rows: list[tuple[object, ...]] = []
+    fts_rows: list[tuple[int, str]] = []
     count = 0
     chunk_sql = (
         "INSERT INTO chunks "
@@ -286,7 +356,7 @@ def build_bm25_index(
     expected_chunks: int | None = None,
     max_chunks: int | None = None,
     force: bool = False,
-) -> dict:
+) -> BM25Manifest:
     if chunk_policy not in CHUNK_PATHS:
         raise ValueError(f"未知 chunk policy：{chunk_policy!r}")
     if batch_size <= 0:
@@ -366,7 +436,7 @@ def build_bm25_index(
     temp_db_path.replace(db_path)
     build_elapsed = time.perf_counter() - build_started
     database_bytes = db_path.stat().st_size
-    manifest = {
+    manifest: BM25Manifest = {
         "status": "complete",
         "engine": "sqlite_fts5",
         "ranking": "bm25",
@@ -398,18 +468,20 @@ def build_bm25_index(
     return manifest
 
 
-def load_manifest(index_dir: Path) -> dict:
+def load_manifest(index_dir: Path) -> BM25Manifest:
     manifest_path = index_dir / "manifest.json"
     if not manifest_path.is_file():
         raise ValueError(f"BM25 manifest 不存在：{manifest_path}")
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise ValueError("BM25 manifest 必须是 JSON 对象")
     if manifest.get("status") != "complete":
         raise ValueError(
             f"BM25 Artifact 尚未完成：status={manifest.get('status')!r}"
         )
     if manifest.get("engine") != "sqlite_fts5":
         raise ValueError(f"未知 lexical engine：{manifest.get('engine')!r}")
-    return manifest
+    return _MANIFEST_ADAPTER.validate_python(manifest)
 
 
 def search_bm25(
@@ -420,7 +492,7 @@ def search_bm25(
     before_dynasty: str | None = None,
     probe_text: str | None = None,
     probe_author: str | None = None,
-) -> dict:
+) -> BM25SearchResult:
     if top_k <= 0:
         raise ValueError("top_k 必须为正整数")
     if probe_author and not probe_text:
@@ -437,7 +509,7 @@ def search_bm25(
         min_n=manifest["min_n"],
         max_n=manifest["max_n"],
     )
-    chronology = None
+    chronology: dict[str, object] | None = None
     allowed_dynasties: list[str] | None = None
     if before_dynasty:
         allowed_dynasties = sorted(candidate_prior_dynasties(before_dynasty))
@@ -481,10 +553,10 @@ def search_bm25(
     finally:
         connection.close()
 
-    ranking = []
-    probe_matches = []
+    ranking: list[BM25RankedHit] = []
+    probe_matches: list[BM25RankedHit] = []
     for rank, row in enumerate(rows, 1):
-        result = {
+        result: BM25RankedHit = {
             "rank": rank,
             "bm25_score": -float(row["raw_score"]),
             "global_row": int(row["rowid"]) - 1,

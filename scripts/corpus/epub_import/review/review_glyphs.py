@@ -9,6 +9,7 @@ import json
 import posixpath
 from collections import defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT, READING_REVIEW_ROOT
 from urllib.parse import quote
@@ -17,40 +18,29 @@ from ebooklib import epub
 
 from ..pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
 from ..pipeline.normalize import is_ids_form
+from .glyph_sources import _epub_image, glyph_sites
+
+
+class PreparedGlyphReview(TypedDict):
+    unique_images: int
+    references: int
+    missing_assets: list[tuple[str, str]]
+    sheet: str
+    tsv: str
+
+
+class AppliedGlyphReview(TypedDict):
+    mapped: int
+    unfilled: int
+    files_written: int
 
 
 FIELDS = ("index", "slug", "collection", "src", "source_form",
           "display_form", "occurrences")
 
 
-def glyph_sites(report):
-    """每个（分册，来源图片）只生成一条核对记录，不按 XHTML 引用次数重复。"""
-    cases = {}
-    for collection in report["collections"]:
-        for site in collection["missing_glyphs"]:
-            slug, src, page = collection["slug"], site["src"], site["html"]
-            key = (slug, src)
-            if key not in cases:
-                cases[key] = {"slug": slug, "src": src,
-                              "collection": collection["collection"], "pages": []}
-            if page not in cases[key]["pages"]:
-                cases[key]["pages"].append(page)
-    return list(cases.values())
 
-
-def _epub_image(book, page, src):
-    if "://" in src or src.startswith("/"):
-        raise ValueError(f"EPUB 图片路径异常：{src}")
-    href = posixpath.normpath(posixpath.join(posixpath.dirname(page), src))
-    if href.startswith("../"):
-        raise ValueError(f"EPUB 图片路径越界：{page} / {src}")
-    item = book.get_item_with_href(href)
-    if item is None:
-        return None
-    return item.get_content() if hasattr(item, "get_content") else item.content
-
-
-def prepare_review(report, book, *, sheet_path, tsv_path):
+def prepare_review(report, book, *, sheet_path, tsv_path) -> PreparedGlyphReview:
     """生成私人图片字图版与可编辑 TSV，不在过程中要求交互输入。"""
     sheet_path, tsv_path = Path(sheet_path), Path(tsv_path)
     if sheet_path.resolve() == tsv_path.resolve():
@@ -149,7 +139,7 @@ def prepare_review(report, book, *, sheet_path, tsv_path):
     }
 
 
-def apply_review(tsv_path, *, map_dir, partial=False):
+def apply_review(tsv_path, *, map_dir, partial=False) -> AppliedGlyphReview:
     """修改任何分册映射文件前，先完整校验所有 TSV 行。"""
     with Path(tsv_path).open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream, delimiter="\t")
@@ -236,44 +226,44 @@ def main():
             print("每张图片与 glyph_review.html/TSV 使用相同编号；"
                   "不会覆盖已有填写结果。")
         else:
-            result = prepare_review(
+            prepared = prepare_review(
                 report, book, sheet_path=args.html, tsv_path=args.tsv,
             )
             print(
-                f"已准备 {result['unique_images']} 张不同图片字，"
-                f"来自 {result['references']} 个 XHTML 引用"
+                f"已准备 {prepared['unique_images']} 张不同图片字，"
+                f"来自 {prepared['references']} 个 XHTML 引用"
             )
-            print(f"字形图版：{result['sheet']}")
-            print(f"人工填写表：{result['tsv']}")
-            if result["missing_assets"]:
+            print(f"字形图版：{prepared['sheet']}")
+            print(f"人工填写表：{prepared['tsv']}")
+            if prepared["missing_assets"]:
                 print("以下图片未在 EPUB 找到，请检查其路径：")
-                for slug, src in result["missing_assets"]:
+                for slug, src in prepared["missing_assets"]:
                     print(f"  {slug} / {src}")
     elif args.import_backup:
         from .import_glyph_backup import import_review_backup
-        result = import_review_backup(
+        imported = import_review_backup(
             args.backup, args.report, args.map_dir, partial=args.partial
         )
         print(
-            f"已导入 {result['mapped']} 个编号；"
-            f"更新分册 glyph 映射文件 {result['map_files']} 个；"
-            f"未填写 {len(result['unfilled'])} 个"
+            f"已导入 {imported['mapped']} 个编号；"
+            f"更新分册 glyph 映射文件 {imported['map_files']} 个；"
+            f"未填写 {len(imported['unfilled'])} 个"
         )
-        if result["ids_only"]:
+        if imported["ids_only"]:
             print(
                 "仅有 IDS、无 Unicode 替代字的编号："
-                + ", ".join(result["ids_only"])
+                + ", ".join(imported["ids_only"])
                 + "。中间 JSON 将保留 IDS 文本和原图来源，"
                   "不会凭空指定现代通行字。"
             )
     else:
-        result = apply_review(
+        applied = apply_review(
             args.tsv, map_dir=args.map_dir, partial=args.partial,
         )
         print(
-            f"已保存 {result['mapped']} 个映射，"
-            f"尚有 {result['unfilled']} 个未填写；"
-            f"更新 {result['files_written']} 个分册映射文件"
+            f"已保存 {applied['mapped']} 个映射，"
+            f"尚有 {applied['unfilled']} 个未填写；"
+            f"更新 {applied['files_written']} 个分册映射文件"
         )
 
 

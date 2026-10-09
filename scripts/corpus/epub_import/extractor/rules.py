@@ -6,6 +6,8 @@ textual scholarship. Source markup remains available in the private EPUB.
 import re
 from bs4 import NavigableString, Tag
 
+from .blocks import _class_list, _string_attribute
+
 CHRONOLOGY = re.compile(r"[（(]\d{4}[）)]$")
 # 这是选本明确使用的编校缺文标记，不属于作者正文。
 # 当前保留原文字样，后续 schema 如何表达是另一层决策。
@@ -24,7 +26,10 @@ VERIFIED_ZHOU_COMMENTARY_RUNS = {
 }
 
 
-def is_verified_zhou_commentary(collection, html_name, work_block, block, classes):
+def is_verified_zhou_commentary(
+    collection: str, html_name: str, work_block: int, block: int,
+    classes: set[str],
+) -> bool:
     if collection != "周邦彦词集":
         return False
     run = VERIFIED_ZHOU_COMMENTARY_RUNS.get((html_name, work_block))
@@ -35,12 +40,12 @@ def is_verified_zhou_commentary(collection, html_name, work_block, block, classe
 
 
 
-def is_inline_styled_span(span):
+def is_inline_styled_span(span: Tag) -> bool:
     """判断 EPUB 标记是否把某个 span 排成与普通正文不同的样式。"""
     return bool(
-        span.get("style")
+        _string_attribute(span, "style")
         or any(cls in {"kindle-cn-kai", "kaiti", "small"}
-               or cls.startswith("font") for cls in span.get("class", []))
+               or cls.startswith("font") for cls in _class_list(span))
     )
 
 
@@ -53,21 +58,21 @@ INLINE_AUTHOR_NOTE_REVIEWS = {
 }
 
 
-def is_pagination_kaiti_continuation(span):
+def is_pagination_kaiti_continuation(span: Tag) -> bool:
     """识别因 EPUB 分页标记而拆开的正文楷体 span。
 
     Requires an immediately preceding empty page anchor and no meaningful
     content after the span apart from layout <br> nodes. This does not classify
     generic kaiti text or other styled spans as verse.
     """
-    if span.name != "span" or "kaiti" not in span.get("class", []):
+    if span.name != "span" or "kaiti" not in _class_list(span):
         return False
     previous = span.previous_sibling
     while previous is not None and not str(previous).strip():
         previous = previous.previous_sibling
-    if (previous is None or getattr(previous, "name", None) != "a"
+    if (not isinstance(previous, Tag) or previous.name != "a"
             or not re.fullmatch(
-                r"page\d+", previous.get("id", "")
+                r"page\d+", _string_attribute(previous, "id") or ""
             ) or previous.get_text("", strip=True)):
         return False
     after = span.next_sibling
@@ -79,26 +84,26 @@ def is_pagination_kaiti_continuation(span):
     return True
 
 
-def is_non_poem(collection, heading):
+def is_non_poem(collection: str, heading: str) -> bool:
     name = heading.strip()
     return name in EDITORIAL_HEADINGS or name in NON_POEMS.get(collection, set())
 
 
-def is_chronology(tag, text):
+def is_chronology(tag: Tag, text: str) -> bool:
     """年代标签属于后续作品，不属于上一首。"""
-    return ("kindle-cn-para-no-indent1" in tag.get("class", [])
+    return ("kindle-cn-para-no-indent1" in _class_list(tag)
             and bool(CHRONOLOGY.search(text)) and len(text) < 55)
 
 
-def is_separate_title(tag, collection):
+def is_separate_title(tag: Tag, collection: str) -> bool:
     """柳永分册中有些作品题目位于 h2 后的居中楷体段落。"""
-    css = set(tag.get("class", []))
+    css = set(_class_list(tag))
     return ("柳永" in collection and
             {"kindle-cn-para-center", "kindle-cn-kai"}.issubset(css))
 
 
-def is_preface(tag, collection):
-    css = set(tag.get("class", []))
+def is_preface(tag: Tag, collection: str) -> bool:
+    css = set(_class_list(tag))
     if "kindle-cn-ref2" in css:
         return True
     if "kindle-cn-ref" in css:
@@ -110,22 +115,22 @@ def is_preface(tag, collection):
     return False
 
 
-def _heading_inline_text(node):
+def _heading_inline_text(node: Tag) -> str:
     """即使图片字嵌在副标题内部，也保留它在题头中的位置。"""
-    pieces = []
+    pieces: list[str] = []
     for child in node.descendants:
         if isinstance(child, NavigableString):
             pieces.append(str(child))
         elif isinstance(child, Tag) and child.name == "img":
-            pieces.append("{{glyph:" + (child.get("src") or "missing-src") + "}}")
+            pieces.append("{{glyph:" + (_string_attribute(child, "src") or "missing-src") + "}}")
         elif isinstance(child, Tag) and child.name == "br":
             pieces.append("\n")
     return "".join(pieces).strip()
 
 
-def heading_components(tag):
+def heading_components(tag: Tag) -> list[str]:
     """按来源顺序读取题头片段，并保留行内图片字位置。"""
-    pieces = []
+    pieces: list[str] = []
     pending = ""
 
     for child in tag.children:
@@ -136,7 +141,7 @@ def heading_components(tag):
                 pieces.append(pending.strip())
             pending = ""
         elif isinstance(child, Tag) and child.name == "img":
-            glyph = "{{glyph:" + (child.get("src") or "missing-src") + "}}"
+            glyph = "{{glyph:" + (_string_attribute(child, "src") or "missing-src") + "}}"
             if pending.strip() or not pieces:
                 pending += glyph
             else:
@@ -157,7 +162,9 @@ def heading_components(tag):
     return pieces
 
 
-def interpret_heading(tag, collection):
+def interpret_heading(
+    tag: Tag, collection: str,
+) -> tuple[str | None, str | None, str | None, list[dict[str, object]]]:
     """Return (tune, title, yusheng, warnings); '又' resolved later.
 
     For He Zhu, the outer heading names an author-coined tune (寓声).
@@ -165,7 +172,7 @@ def interpret_heading(tag, collection):
     by a separate work title after an explicit layout delimiter.
     """
     parts = heading_components(tag)
-    issues = []
+    issues: list[dict[str, object]] = []
     if not parts:
         return None, None, None, [{"type": "empty_heading"}]
     first = parts[0]

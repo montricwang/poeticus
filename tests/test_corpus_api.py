@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import psycopg
+from psycopg import sql
 import pytest
 from fastapi.testclient import TestClient
 
@@ -23,7 +24,7 @@ def client(monkeypatch):
     api.app.dependency_overrides.clear()
 
 
-def summary(identity=ONE, order=1, cipai="念奴娇"):
+def summary(identity: UUID = ONE, order: int = 1, cipai: str = "念奴娇") -> dict[str, object]:
     return {
         "id": identity, "source_order": order,
         "collection": "合成词集", "author": "词人甲", "cipai": cipai,
@@ -32,7 +33,7 @@ def summary(identity=ONE, order=1, cipai="念奴娇"):
     }
 
 
-def full_record():
+def full_record() -> dict[str, object]:
     return {
         **{key: val for key, val in summary().items() if key != "incipit"},
         "body_segments": ["合成上段。", "合成下段。"],
@@ -40,22 +41,48 @@ def full_record():
     }
 
 
+class FakeRows:
+    def __init__(
+        self,
+        *,
+        row: dict[str, object] | None = None,
+        rows: list[dict[str, object]] | None = None,
+    ):
+        self.row = row
+        self.rows = rows or []
+
+    def fetchone(self) -> dict[str, object] | None:
+        return self.row
+
+    def fetchall(self) -> list[dict[str, object]]:
+        return self.rows
+
+
 class FakeConnection:
     """最小游标替身，只用于核对 SQL 与绑定参数。"""
-    def __init__(self, *, pages=None, details=None, count=2):
+    def __init__(
+        self, *, pages: list[dict[str, object]] | None = None,
+        details: dict[UUID, dict[str, object]] | None = None,
+        count: int = 2,
+    ):
         self.pages = pages if pages is not None else [summary(), summary(TWO, 2)]
         self.details = details or {}
         self.count = count
         self.calls = []
 
-    def execute(self, sql, params=()):
-        self.calls.append((sql, params))
-        if "COUNT(*)" in sql:
-            return SimpleNamespace(fetchone=lambda: {"total": self.count})
-        if "FROM poems WHERE id =" in sql:
-            return SimpleNamespace(fetchone=lambda: self.details.get(params[0]))
-        if "ORDER BY source_order" in sql:
-            return SimpleNamespace(fetchall=lambda: self.pages)
+    def execute(
+        self, query: sql.Composable | str, params: tuple[object, ...] = ()
+    ) -> FakeRows:
+        query_text = query.as_string() if isinstance(query, sql.Composable) else query
+        self.calls.append((query_text, params))
+        if "COUNT(*)" in query_text:
+            return FakeRows(row={"total": self.count})
+        if "FROM poems WHERE id =" in query_text:
+            poem_id = params[0]
+            assert isinstance(poem_id, UUID)
+            return FakeRows(row=self.details.get(poem_id))
+        if "ORDER BY source_order" in query_text:
+            return FakeRows(rows=self.pages)
         raise AssertionError("Unexpected SQL in read-only repository")
 
 

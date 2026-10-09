@@ -19,12 +19,15 @@ import json
 import os
 import re
 from collections import Counter
+from collections.abc import Mapping, Sequence
+from contextlib import AbstractContextManager
+from typing import Protocol
 from uuid import UUID
 
 import psycopg
 from dotenv import load_dotenv
 from psycopg.conninfo import conninfo_to_dict
-from psycopg.rows import dict_row
+from psycopg.rows import DictRow, dict_row
 from psycopg.types.json import Jsonb
 
 # 明确列出允许公开的阅读字段与稳定内部键。
@@ -43,45 +46,59 @@ SUSPECT_EDITORIAL = re.compile(
 )
 
 
-def public_fingerprint(rows: list[dict]) -> str:
+def public_fingerprint(rows: Sequence[Mapping[str, object]]) -> str:
     """计算可重复的全量内容摘要；只输出哈希，不输出实际正文。"""
     payload = [{key: row[key] for key in PUBLIC_COLUMNS} for row in rows]
     packed = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.sha256(packed.encode("utf-8")).hexdigest()
 
 
-def validate_public_rows(rows: list[dict], expected: int) -> dict:
+def validate_public_rows(rows: Sequence[Mapping[str, object]], expected: int) -> dict[str, object]:
     if len(rows) != expected:
         raise ValueError(f"读取 {len(rows)} 首，预期 {expected} 首；停止操作")
-    ids, source_ids, orders = set(), set(), set()
-    review_states = Counter()
+    ids: set[UUID] = set()
+    source_ids: set[str] = set()
+    orders: set[int] = set()
+    review_states: Counter[str] = Counter()
     preface_count = 0
-    suspect_records = []
+    suspect_records: list[int] = []
     max_segment_chars = 0
     for row in rows:
         if set(row) != set(PUBLIC_COLUMNS):
             raise ValueError("读取字段不是明确允许公开的列集合")
-        if not isinstance(row["id"], UUID):
+        work_id = row["id"]
+        source_id = row["source_record_id"]
+        source_order = row["source_order"]
+        text_version = row["text_version"]
+        review_status = row["review_status"]
+        if not isinstance(work_id, UUID):
             raise ValueError("作品 UUID 字段类型异常")
-        if row["id"] in ids or row["source_record_id"] in source_ids or row["source_order"] in orders:
+        if (not isinstance(source_id, str) or
+                not isinstance(source_order, int) or isinstance(source_order, bool) or
+                not isinstance(text_version, int) or isinstance(text_version, bool) or
+                not isinstance(review_status, str)):
+            raise ValueError("公开作品的编号、版本或审核状态字段类型异常")
+        if work_id in ids or source_id in source_ids or source_order in orders:
             raise ValueError("出现重复 UUID / source_record_id / source_order")
-        ids.add(row["id"])
-        source_ids.add(row["source_record_id"])
-        orders.add(row["source_order"])
-        if row["source_order"] < 1 or row["text_version"] < 1:
+        ids.add(work_id)
+        source_ids.add(source_id)
+        orders.add(source_order)
+        if source_order < 1 or text_version < 1:
             raise ValueError("排序或文本版本无效")
         body, prefaces = row["body_segments"], row["prefaces"]
         if not isinstance(body, list) or not body or any(not isinstance(s, str) for s in body):
             raise ValueError("正文必须是非空字符串数组")
-        if not any(piece.strip() for piece in body):
-            raise ValueError("正文不能为空白")
         if not isinstance(prefaces, list) or any(not isinstance(s, str) for s in prefaces):
             raise ValueError("词序必须是字符串数组")
-        max_segment_chars = max(max_segment_chars, *(len(s) for s in body))
-        preface_count += len(prefaces)
-        review_states[row["review_status"]] += 1
-        if any(SUSPECT_EDITORIAL.search(s) for s in body + prefaces):
-            suspect_records.append(row["source_order"])
+        text_segments = [piece for piece in body if isinstance(piece, str)]
+        preface_segments = [piece for piece in prefaces if isinstance(piece, str)]
+        if not any(piece.strip() for piece in text_segments):
+            raise ValueError("正文不能为空白")
+        max_segment_chars = max(max_segment_chars, *(len(s) for s in text_segments))
+        preface_count += len(preface_segments)
+        review_states[review_status] += 1
+        if any(SUSPECT_EDITORIAL.search(s) for s in text_segments + preface_segments):
+            suspect_records.append(source_order)
     if orders != set(range(1, expected + 1)):
         raise ValueError("原书排序并非完整的 1..N；请先调查，不自动重排")
     return {
@@ -94,7 +111,30 @@ def validate_public_rows(rows: list[dict], expected: int) -> dict:
     }
 
 
-def transfer(source: list[dict], dest_conn: psycopg.Connection) -> str:
+class _TransferRows(Protocol):
+    def fetchall(self) -> list[dict[str, object]]: ...
+
+
+class _TransferWriter(Protocol):
+    def write_row(self, params: Sequence[object]) -> None: ...
+
+
+class _TransferCursor(Protocol):
+    def copy(self, sql: str) -> AbstractContextManager[_TransferWriter]: ...
+
+
+class TransferFixtureConnection(Protocol):
+    """Minimal transaction/COPY interface used by offline synthetic DB tests."""
+
+    def transaction(self) -> AbstractContextManager[None]: ...
+    def execute(self, sql: str) -> _TransferRows: ...
+    def cursor(self) -> AbstractContextManager[_TransferCursor]: ...
+
+
+def transfer(
+    source: Sequence[Mapping[str, object]],
+    dest_conn: psycopg.Connection[DictRow] | TransferFixtureConnection,
+) -> str:
     """单事务、单 COPY 流传输，并对源目标做全量一致性校验。
 
     目标库存在未知内容时拒绝覆盖；提交前中断会回滚。
@@ -170,7 +210,7 @@ def main() -> None:
             parser.error("目标必须是 Railway CLI 本地 SSH 隧道 127.0.0.1:55432，拒绝其他地址")
 
     print("读取并检查本地作品……", flush=True)
-    with psycopg.connect(source_dsn, row_factory=dict_row, connect_timeout=10) as local:
+    with psycopg.Connection[DictRow].connect(source_dsn, row_factory=dict_row, connect_timeout=10) as local:
         local.execute("SET TRANSACTION READ ONLY")
         rows = local.execute(SELECT_PUBLIC).fetchall()
         report = validate_public_rows(rows, args.expect_count)
@@ -180,7 +220,9 @@ def main() -> None:
             return
 
         print("连接 Railway（超时 10 秒，保持 SSH 隧道窗口开启）……", flush=True)
-        with psycopg.connect(target_dsn, row_factory=dict_row, autocommit=True, connect_timeout=10) as target:
+        if not target_dsn:
+            parser.error("没有输入目标连接 URL")
+        with psycopg.Connection[DictRow].connect(target_dsn, row_factory=dict_row, autocommit=True, connect_timeout=10) as target:
             print("已连接云端 PostgreSQL。", flush=True)
             outcome = transfer(rows, target)
             print(f"云端事务完成：{outcome}；作品 {len(rows)} 首；校验 SHA-256 一致。", flush=True)

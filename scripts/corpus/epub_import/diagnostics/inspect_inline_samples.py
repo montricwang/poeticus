@@ -106,8 +106,8 @@ def render_plan(picks):
     ]
     for case in picks:
         lines.append(
-            f"| {case['case_id']} | \`{case['family']}\` | "
-            f"{case['collection']} | \`{case['html']}\` | "
+            f"| {case['case_id']} | \\`{case['family']}\\` | "
+            f"{case['collection']} | \\`{case['html']}\\` | "
             f"{case['block']} | "
             f"{'有' if case['has_gap_marker'] else '无'} |"
         )
@@ -134,7 +134,7 @@ def render_private_packet(book, picks):
             f"## {case['case_id']} · {case['collection']}",
             "",
             f"**类别：** {case['family']}；**目标：** "
-            f"\`{case['html']}\` 块 {case['block']}",
+            f"\\`{case['html']}\\` 块 {case['block']}",
             "",
             inspect_source(
                 book, case["html"], [case["block"]],

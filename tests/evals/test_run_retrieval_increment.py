@@ -1,12 +1,16 @@
 import json
 
-from evals.schema import EvalInput, EvalPoemContext
+from evals.schema import EvalHistoryMessage, EvalInput, EvalPoemContext
 from scripts.evals.run_retrieval_increment import (
     RetrievalIncrementCase,
     RetrievalTarget,
+    _HYBRID_ADAPTER,
+    _best_rank,
+    _plain_messages,
     choose_current_work_id,
     choose_current_work_ids,
     compact_tool_result,
+    render_markdown,
     comparison_bucket,
     scan_work_matches,
     tool_target_support,
@@ -188,3 +192,136 @@ def test_tool_target_support_uses_exact_target_work_id():
         result=result,
         target_work_ids={"missing"},
     ) == (False, None)
+
+
+def test_plain_chat_messages_preserve_history_roles() -> None:
+    case = make_case()
+    case.input.history = [
+        EvalHistoryMessage(role="user", content="之前的问题"),
+        EvalHistoryMessage(role="assistant", content="之前的回答"),
+    ]
+    messages = _plain_messages(case)
+    assert messages[:2] == [
+        {"role": "user", "content": "之前的问题"},
+        {"role": "assistant", "content": "之前的回答"},
+    ]
+    assert messages[-1]["role"] == "user"
+    assert "当前句。" in str(messages[-1]["content"])
+
+
+def test_best_rank_ignores_non_integer_probe_values() -> None:
+    probes: list[dict[str, object]] = [
+        {"eligible_rank": None},
+        {"eligible_rank": "2"},
+        {"eligible_rank": 12},
+        {"eligible_rank": 4},
+    ]
+    assert _best_rank(probes, "eligible_rank") == 4
+    assert _best_rank(probes, "missing_rank") is None
+
+
+def test_hybrid_diagnostics_retain_extra_evidence_fields() -> None:
+    """Projection must not discard provenance for later manual review."""
+    raw = {
+        "ranking": [{
+            "rank": 1,
+            "work_id": "w-1",
+            "title": "测试作品",
+            "author": "测试作者",
+            "best_evidence": {
+                "text": "前代句。",
+                "channel": "dense",
+                "query": "当前句",
+                "rank": 1,
+                "source_provenance": "synthetic",
+            },
+            "future_candidate_field": "keep",
+        }],
+        "probes": [{
+            "work_id": "w-1",
+            "eligible_rank": 2,
+            "fused_rank": 3,
+            "list_supports": [{"source": "synthetic"}],
+        }],
+        "candidate_pool": {"fused_works": 1},
+        "channels": [],
+        "query_plan": [],
+        "extra_diagnostic": {"keep": True},
+    }
+    validated = _HYBRID_ADAPTER.validate_python(raw)
+    assert dict(validated).get("extra_diagnostic") == {"keep": True}
+    ranks = validated.get("ranking") or []
+    assert ranks
+    assert dict(ranks[0]).get("future_candidate_field") == "keep"
+    evidence = ranks[0].get("best_evidence")
+    assert evidence is not None
+    assert dict(evidence).get("source_provenance") == "synthetic"
+    probes = validated.get("probes") or []
+    assert probes
+    assert dict(probes[0]).get("list_supports") == [{"source": "synthetic"}]
+
+
+def test_markdown_report_validates_optional_case_sections() -> None:
+    """The typed report boundary must preserve the generated navigation text."""
+    report = {
+        "schema_version": "2",
+        "dataset_id": "synthetic",
+        "cases": [{
+            "case_id": "synthetic_case",
+            "tier": "known_control",
+            "relation": "adapted_quote",
+            "retrieval_query": "当前句",
+            "target": {"author": "前人", "text": "前代句", "answer_anchors": ["前代句"]},
+            "comparison_bucket": "tool_only_signal",
+            "standalone_llm": {
+                "model": "synthetic",
+                "answer": "独立回答",
+                "target_author_mentioned": False,
+                "target_anchor_hits": [],
+                "target_signal": False,
+            },
+            "tool_augmented_llm": {
+                "model": "synthetic",
+                "answer": "工具回答",
+                "tool_used": True,
+                "tool_query": "当前句",
+                "target_author_mentioned": True,
+                "target_anchor_hits": ["前代句"],
+                "target_signal": True,
+                "tool_result": {
+                    "status": "ok",
+                    "note": "synthetic",
+                    "candidates": [{
+                        "rank": 1, "author": "前人", "title": "前代作",
+                        "text": "前代句", "dynasty": "唐", "query": "当前句",
+                        "channel": "bm25", "support_count": 1,
+                        "chronology_status": "clearly_earlier",
+                    }],
+                },
+            },
+            "retrieval": {
+                "best_fused_rank": 1,
+                "best_eligible_rank": 1,
+                "target_in_top5": True,
+                "target_in_top20": True,
+                "candidate_pool": {"fused_works": 1},
+                "channels": [],
+                "query_plan": [],
+                "probes": [],
+                "top_candidates": [{
+                    "rank": 1, "author": "前人", "title": "前代作",
+                    "support_count": 1, "best_evidence": {
+                        "channel": "bm25", "rank": 1, "text": "前代句",
+                    },
+                }],
+            },
+        }],
+    }
+
+    markdown = render_markdown(report)
+    assert "synthetic_case" in markdown
+    assert "独立回答" in markdown
+    assert "工具回答" in markdown
+    assert "前人《前代作》" in markdown
+    assert "bm25 #1: 前代句" in markdown
+    assert "tool_only_signal" in markdown

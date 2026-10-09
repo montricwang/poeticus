@@ -14,10 +14,15 @@ import hashlib
 import json
 import math
 from pathlib import Path
+from typing import TypedDict
+
+from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
 
 from scripts.corpus.qwen_embedding_build import (
+    EmbeddingManifest,
+    RunSignature,
     assert_compatible_manifest,
     iter_chunks,
     save_shard_atomic,
@@ -37,6 +42,20 @@ DEFAULT_BATCH_SIZE = 512
 DEFAULT_SHARD_SIZE = 10_000
 DEFAULT_EXPECTED_CHUNKS = 9_425_173
 MANIFEST_VERSION = 1
+
+
+class BertRunSignature(RunSignature):
+    pooling: str
+
+
+@with_config(ConfigDict(extra="allow"))
+class BertEmbeddingManifest(EmbeddingManifest):
+    pooling: str
+    acknowledgement: str
+
+
+_BERT_MANIFEST_ADAPTER = TypeAdapter(BertEmbeddingManifest)
+
 
 
 def fingerprint_model_dir(model_dir: Path) -> str:
@@ -73,7 +92,7 @@ def run_signature(
     model_fingerprint: str,
     shard_size: int,
     expected_chunks: int,
-) -> dict:
+) -> BertRunSignature:
     return {
         "manifest_version": MANIFEST_VERSION,
         "model": MODEL_NAME,
@@ -127,7 +146,7 @@ def build_embeddings(
     batch_size: int = DEFAULT_BATCH_SIZE,
     shard_size: int = DEFAULT_SHARD_SIZE,
     device: str | None = None,
-) -> dict:
+) -> BertEmbeddingManifest:
     if not input_path.is_file():
         raise ValueError(f"Chunk JSONL 不存在：{input_path}")
     if not model_path.is_dir():
@@ -138,7 +157,7 @@ def build_embeddings(
     try:
         import numpy as np
         import torch
-        from transformers import BertModel, BertTokenizer
+        from transformers import AutoModel, BertModel, BertTokenizer
     except ImportError as exc:
         raise RuntimeError(
             "BERT-CCPoem 构建需要 torch / transformers；"
@@ -161,7 +180,9 @@ def build_embeddings(
     )
 
     if manifest_path.is_file():
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = _BERT_MANIFEST_ADAPTER.validate_python(
+            json.loads(manifest_path.read_text(encoding="utf-8"))
+        )
         assert_compatible_manifest(manifest, signature)
     else:
         leftovers = list(output_dir.iterdir())
@@ -170,7 +191,7 @@ def build_embeddings(
                 f"输出目录已有文件但没有 manifest：{output_dir}；"
                 "请换新目录，避免混入旧结果"
             )
-        manifest = {
+        manifest: BertEmbeddingManifest = {
             **signature,
             "status": "running",
             "model_source": str(model_path),
@@ -196,9 +217,12 @@ def build_embeddings(
     tokenizer = BertTokenizer.from_pretrained(
         str(model_path), local_files_only=True
     )
-    model = BertModel.from_pretrained(
+    model = AutoModel.from_pretrained(
         str(model_path), local_files_only=True
-    ).to(selected_device)
+    )
+    if not isinstance(model, BertModel):
+        raise ValueError("BERT-CCPoem 模型配置必须对应 BertModel")
+    torch.nn.Module.to(model, device=torch.device(selected_device))
     model.eval()
 
     if model.config.hidden_size != DIMENSION:
@@ -229,11 +253,11 @@ def build_embeddings(
 
     total_shards = math.ceil(expected_chunks / shard_size)
     shard_index = resume_index // shard_size
-    shard_records: list[dict] = []
+    shard_records: list[dict[str, object]] = []
     shard_start = resume_index
     seen_chunks = 0
 
-    def flush_shard(records: list[dict], start: int, index: int) -> int:
+    def flush_shard(records: list[dict[str, object]], start: int, index: int) -> int:
         end = start + len(records)
         print(
             f"[{index + 1}/{total_shards}] BERT-CCPoem "
@@ -244,9 +268,12 @@ def build_embeddings(
         parts = []
         for batch_start in range(0, len(records), batch_size):
             batch = records[batch_start:batch_start + batch_size]
+            texts = [record["text"] for record in batch]
+            if not all(isinstance(text, str) for text in texts):
+                raise ValueError("Chunk text 必须是字符串")
             parts.append(
                 encode_batch(
-                    [record["text"] for record in batch],
+                    [text for text in texts if isinstance(text, str)],
                     tokenizer,
                     model,
                     selected_device,

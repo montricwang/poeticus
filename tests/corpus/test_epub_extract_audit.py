@@ -1,28 +1,80 @@
 """审计报告测试只使用少量合成来源。"""
+from typing import TypedDict
+
+from pydantic import TypeAdapter
+
 from scripts.corpus.epub_import.diagnostics.audit_extraction import (
     audit_book, render_md, COLLECTIONS,
 )
 
 
+class AuditSource(TypedDict):
+    html: str
+    block: int
+
+
+class AuditReview(TypedDict):
+    source: AuditSource
+    preface_lengths: list[int]
+
+
+class AuditSummary(TypedDict):
+    candidate_poems: int
+    xhtml_count: int
+    warning_counts: dict[str, int]
+    unclassified_work_count: int
+    unclassified_block_count: int
+    unassigned_author: int
+    review_items: list[AuditReview]
+
+
+class AuditReport(TypedDict):
+    results: list[AuditSummary]
+
+
+_SUMMARY_ADAPTER = TypeAdapter(AuditSummary)
+_REPORT_ADAPTER = TypeAdapter(AuditReport)
+
+
+def checked_summary(result: object) -> AuditSummary:
+    """Validate the report fields inspected by the synthetic fixtures."""
+    return _SUMMARY_ADAPTER.validate_python(result)
+
+
+def checked_report(result: object) -> AuditReport:
+    return _REPORT_ADAPTER.validate_python(result)
+
+
 class Item:
-    def __init__(self, content):
+    def __init__(self, content: str) -> None:
         self.content = content.encode("utf-8")
 
 
 class Book:
-    def get_item_with_href(self, href):
+    def get_item_with_href(self, href: str) -> Item | None:
         if href == "a.html":
             return Item("<h2>蝶恋花</h2><p>甲。</p><p>◆评语</p>"
                         '<p class="other">需人工复核的另段</p>')
         return None
 
 
+
+def test_audit_length_rejects_non_string_evidence() -> None:
+    from scripts.corpus.epub_import.diagnostics.audit_extraction import block_text_length
+    import pytest
+
+    with pytest.raises(TypeError, match="string text"):
+        block_text_length({"text": 123})
+
+
+
 def test_audit_scoped_to_one_collection_with_provenance():
     toc = [{"title": "李清照词集", "children": [
         {"title": "作品", "href": "a.html#first"}]}]
     r = audit_book(Book(), toc, "李清照词集")
-    assert len(r["results"]) == 1
-    item = r["results"][0]
+    checked = checked_report(r)
+    assert len(checked["results"]) == 1
+    item = checked["results"][0]
     assert item["candidate_poems"] == 1
     assert item["xhtml_count"] == 1
     assert item["warning_counts"]["unclassified_after_notes"] == 1
@@ -45,7 +97,7 @@ def test_audit_reports_authorless_inserted_work():
     from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection
 
     class InsertedBook:
-        def get_item_with_href(self, href):
+        def get_item_with_href(self, href: str) -> Item | None:
             if href == "a.html":
                 return Item(
                     '<h4 class="kindle-cn-heading4">调名</h4><p>无署名附作</p>'
@@ -55,8 +107,9 @@ def test_audit_reports_authorless_inserted_work():
     toc = [{"title": "纳兰词集", "children": [
         {"title": "作品", "href": "a.html"}]}]
     report = audit_collection(InsertedBook(), toc, "纳兰词集", "纳兰性德", "na")
-    assert report["unassigned_author"] == 1
-    assert report["warning_counts"]["missing_inserted_author"] == 1
+    checked = checked_summary(report)
+    assert checked["unassigned_author"] == 1
+    assert checked["warning_counts"]["missing_inserted_author"] == 1
     assert "作者待定" in render_md({"results": [report]})
 
 
@@ -64,7 +117,7 @@ def test_audit_prioritizes_unknown_author_and_reports_markup_not_text():
     from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection
 
     class Volume:
-        def get_item_with_href(self, href):
+        def get_item_with_href(self, href: str) -> Item | None:
             if href == "x.html":
                 return Item(
                     "<h2>采桑子</h2><p><span class='font1'>普通正文</span></p>"
@@ -79,12 +132,12 @@ def test_audit_prioritizes_unknown_author_and_reports_markup_not_text():
     assert "附词署名未识别" in md
     assert "left" in md
     assert "模拟作品内容" not in md
-    assert result["unassigned_author"] == 1
+    assert checked_summary(result)["unassigned_author"] == 1
 
 
 def test_ambiguous_note_report_exposes_adjacent_markup_without_its_text():
     class Volume:
-        def get_item_with_href(self, href):
+        def get_item_with_href(self, href: str) -> Item | None:
             if href == "x.html":
                 return Item(
                     '<h2>少年游</h2><p>正文</p>'
@@ -101,7 +154,7 @@ def test_ambiguous_note_report_exposes_adjacent_markup_without_its_text():
     assert "commentaries/p/comment" in md
     assert "unknown/p/other" in md
     assert "合成待分类文字" not in md
-    assert one["warning_counts"]["unclassified_after_notes"] == 1
+    assert checked_summary(one)["warning_counts"]["unclassified_after_notes"] == 1
 
 
 
@@ -161,7 +214,7 @@ def test_nalan_preface_is_visible_as_lengths_without_leaking_original_words():
     from scripts.corpus.epub_import.diagnostics.audit_extraction import audit_collection
 
     class NalanBook:
-        def get_item_with_href(self, href):
+        def get_item_with_href(self, href: str) -> Item | None:
             if href != "x.html":
                 return None
             return Item(
@@ -174,8 +227,9 @@ def test_nalan_preface_is_visible_as_lengths_without_leaking_original_words():
     toc = [{"title": "纳兰词集", "children": [
         {"title": "附词", "href": "x.html"}]}]
     summary = audit_collection(NalanBook(), toc, "纳兰词集", "纳兰性德", "na")
-    assert summary["unclassified_block_count"] == 0
-    review = summary["review_items"][0]
+    checked = checked_summary(summary)
+    assert checked["unclassified_block_count"] == 0
+    review = checked["review_items"][0]
     assert review["preface_lengths"] == [len("赠故友，次前作韵。")]
     md = render_md({"results": [summary]})
     assert "附词独立题序：1 段" in md

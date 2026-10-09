@@ -21,6 +21,7 @@ import argparse
 import json
 import time
 from pathlib import Path
+from typing import NotRequired, TypedDict
 
 from backend.retrieval.eligibility import apply_candidate_eligibility
 from backend.retrieval.fanout import (
@@ -73,6 +74,70 @@ def _require_faiss():
     return faiss
 
 
+class ChannelStats(TypedDict, total=False):
+    channel: str
+    index_gib: float
+    nprobe: int
+    search_k: int
+    load_seconds: float
+    batch_search_ms: float
+    query_count: int
+
+
+class ProbeSupport(TypedDict):
+    query: str
+    query_origins: list[str]
+    channel: str
+    rank: int | None
+    text: str | None
+    score: float | None
+    score_name: str | None
+
+
+class CandidateEvidence(TypedDict):
+    query: str
+    channel: str
+    rank: int
+    text: str
+
+
+class CandidateRow(TypedDict):
+    work_id: str
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    rrf_score: float
+    best_rank: int
+    support_count: int
+    best_evidence: CandidateEvidence
+    supports: list[CandidateEvidence]
+    chronology_status: NotRequired[str]
+
+
+class RankedCandidate(CandidateRow):
+    rank: int
+
+
+class ProbeRow(TypedDict):
+    work_id: str
+    fused_rank: int | None
+    eligible_rank: int | None
+    list_supports: list[ProbeSupport]
+    missing_lists: list[dict[str, object]]
+
+
+class HybridEvaluation(TypedDict):
+    text: str
+    query_plan: list[dict[str, object]]
+    search_k_per_channel: int
+    rrf_k: int
+    channels: list[ChannelStats]
+    candidate_pool: dict[str, int]
+    ranking: list[RankedCandidate]
+    probes: list[ProbeRow]
+    note: str
+
+
 def find_probe_work_ids(
     *,
     work_path: Path,
@@ -108,7 +173,7 @@ def _dense_results(
     work_path: Path,
     query_vectors,
     search_k: int,
-) -> tuple[list[QueryChannelResult], dict]:
+) -> tuple[list[QueryChannelResult], ChannelStats]:
     np = _require_numpy()
     faiss = _require_faiss()
 
@@ -130,7 +195,9 @@ def _dense_results(
     load_started = time.perf_counter()
     index = faiss.read_index(str(index_path))
     load_seconds = time.perf_counter() - load_started
-    index.nprobe = index_manifest["nprobe"]
+    faiss.ParameterSpace().set_index_parameter(
+        index, "nprobe", index_manifest["nprobe"]
+    )
 
     if index.ntotal != embedding_manifest["completed_chunks"]:
         raise ValueError(
@@ -214,7 +281,7 @@ def _lexical_results(
     plan,
     index_dir: Path,
     search_k: int,
-) -> tuple[list[QueryChannelResult], dict]:
+) -> tuple[list[QueryChannelResult], ChannelStats]:
     descriptor = ChannelDescriptor(
         name="lexical_bm25_sentence",
         method="lexical",
@@ -266,14 +333,14 @@ def _lexical_results(
 def probe_list_supports(
     channel_results,
     probe_work_ids: set[str],
-) -> list[dict]:
+) -> list[ProbeSupport]:
     """Report where a known target appears before RRF.
 
     Each QueryVariant × RetrievalChannel is one ranked list. This diagnostic
     makes RRF behavior auditable by showing whether a target is broadly
     supported or survives only in one particular query granularity/channel.
     """
-    supports = []
+    supports: list[ProbeSupport] = []
     for result in channel_results:
         match = next(
             (
@@ -300,7 +367,7 @@ def probe_list_supports(
     return supports
 
 
-def _candidate_row(candidate, chronology_status: str | None = None) -> dict:
+def _candidate_row(candidate, chronology_status: str | None = None) -> CandidateRow:
     best = min(
         candidate.evidences,
         key=lambda evidence: (
@@ -309,7 +376,7 @@ def _candidate_row(candidate, chronology_status: str | None = None) -> dict:
             evidence.query_text,
         ),
     )
-    row = {
+    row: CandidateRow = {
         "work_id": candidate.work_id,
         "title": candidate.title,
         "author": candidate.author,
@@ -356,7 +423,7 @@ def evaluate_hybrid(
     final_top_k: int = DEFAULT_FINAL_TOP_K,
     rrf_k: int = DEFAULT_RRF_K,
     device: str | None = None,
-) -> dict:
+) -> HybridEvaluation:
     if search_k <= 0 or final_top_k <= 0:
         raise ValueError("search_k / final_top_k 必须为正整数")
     if probe_author and not probe_text:
@@ -399,10 +466,9 @@ def evaluate_hybrid(
             "请安装 requirements-retrieval.txt"
         ) from exc
 
-    kwargs = {"local_files_only": True}
-    if device:
-        kwargs["device"] = device
-    model = SentenceTransformer(str(model_path), **kwargs)
+    model = SentenceTransformer(
+        str(model_path), local_files_only=True, device=device
+    )
     dimension = sentence_manifest["embedding_dimension"]
     query_vectors = model.encode(
         queries,
@@ -477,7 +543,7 @@ def evaluate_hybrid(
         channel_results,
         probe_work_ids,
     )
-    probes = [
+    probes: list[ProbeRow] = [
         {
             "work_id": work_id,
             "fused_rank": fused_rank_by_work.get(work_id),
@@ -500,9 +566,7 @@ def evaluate_hybrid(
         for work_id in sorted(probe_work_ids)
     ]
 
-    return {
-        "text": text,
-        "query_plan": [
+    query_plan: list[dict[str, object]] = [
             {
                 "text": variant.text,
                 "origins": [
@@ -515,7 +579,11 @@ def evaluate_hybrid(
                 ],
             }
             for variant in plan
-        ],
+    ]
+
+    return {
+        "text": text,
+        "query_plan": query_plan,
         "search_k_per_channel": search_k,
         "rrf_k": rrf_k,
         "channels": [

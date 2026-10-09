@@ -170,15 +170,15 @@ def test_extract_headword_and_cross_reference_precedence():
 
 
 def test_profile_samples_are_deterministic():
-    kwargs = {
-        "source_path": Path("private.json"),
-        "sample_size": 2,
-        "excerpt_chars": 40,
-        "seed": 11,
-    }
-
-    first = build_profile(sample_records(), **kwargs)
-    second = build_profile(sample_records(), **kwargs)
+    source_path = Path("private.json")
+    first = build_profile(
+        sample_records(), source_path=source_path,
+        sample_size=2, excerpt_chars=40, seed=11,
+    )
+    second = build_profile(
+        sample_records(), source_path=source_path,
+        sample_size=2, excerpt_chars=40, seed=11,
+    )
 
     assert (
         first["categories"]["annotations"]["samples"]["random"]

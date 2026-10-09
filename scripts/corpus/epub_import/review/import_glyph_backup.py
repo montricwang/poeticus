@@ -6,16 +6,24 @@ so that even identical-looking glyphs cannot accidentally be misassigned.
 """
 import json
 from pathlib import Path
+from typing import TypedDict
 
 from ..pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
 from ..pipeline.normalize import is_ids_form
-from .review_glyphs import glyph_sites
+from .glyph_sources import glyph_sites
 
 
 SCHEMA = "poeticus-glyph-review-v1"
 
 
-def import_review_backup(backup_path, report_path, map_dir, *, partial=False):
+class GlyphBackupImportResult(TypedDict):
+    mapped: int
+    unfilled: list[str]
+    ids_only: list[str]
+    map_files: int
+
+
+def import_review_backup(backup_path, report_path, map_dir, *, partial=False) -> GlyphBackupImportResult:
     backup = json.loads(Path(backup_path).read_text(encoding="utf-8-sig"))
     report = json.loads(Path(report_path).read_text(encoding="utf-8"))
     if backup.get("schema") != SCHEMA:

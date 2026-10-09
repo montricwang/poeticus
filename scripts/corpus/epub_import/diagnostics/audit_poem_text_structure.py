@@ -15,6 +15,7 @@ import json
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 from backend.data_paths import EPUB_REPORTS_ROOT, READING_NORMALIZED_ROOT
 from statistics import median
@@ -27,6 +28,35 @@ MARKERS = {
     "ideograph_description": re.compile(r"[\u2ff0-\u2fff]"),
 }
 END_PUNCTUATION = re.compile(r"[，,。.!！?？；;：:、…）】」』]+[\s\u3000]*$")
+class AuditInfo(TypedDict):
+    """One work's structural evidence, not a literary classification."""
+
+    parts: list[str]
+    number: int
+    nonempty: int
+    lengths: list[int]
+    median_length: int | float
+    max_length: int
+    blank_positions: list[int]
+    edge_or_double_blank: bool
+    embedded_newline_elements: int
+    embedded_newline_boundaries: int
+    punct_newline_boundaries: int
+    nonpunct_newline_boundaries: int
+    empty_inner_lines: int
+    has_cr: bool
+    short_units: bool
+    marker_types: list[str]
+    inline_note_count: int
+    inline_note_issues: list[str]
+    note_warning_types: list[str]
+    warning_types: list[str]
+
+
+type AuditEntry = tuple[dict[str, object], AuditInfo]
+type SampleEntry = tuple[dict[str, object], AuditInfo, str]
+
+
 NOTE_WARNING_NAMES = {
     "inline_body_style_review", "inline_author_note",
     "inline_author_note_candidate", "inline_editorial_gap",
@@ -37,19 +67,20 @@ def md_cell(value: object) -> str:
     return str(value).replace("|", "／").replace("\n", " ")
 
 
-def segments_for(record: dict) -> list[str]:
+def segments_for(record: dict[str, object]) -> list[str]:
     content = record.get("content")
     if not isinstance(content, dict):
         raise ValueError("content 不是对象")
     parts = content.get("text")
     if not isinstance(parts, list) or not all(isinstance(x, str) for x in parts):
         raise ValueError("content.text 不是字符串数组")
-    return parts
+    return [part for part in parts if isinstance(part, str)]
 
 
-def examine(record: dict) -> dict:
+def examine(record: dict[str, object]) -> AuditInfo:
     parts = segments_for(record)
     content = record["content"]
+    assert isinstance(content, dict)
     nonempty = [s for s in parts if s.strip()]
     blanks = [i for i, s in enumerate(parts) if not s.strip()]
     lengths = [len(s.strip()) for s in nonempty]
@@ -78,7 +109,7 @@ def examine(record: dict) -> dict:
     warnings = record.get("warnings", [])
     if not isinstance(warnings, list):
         warnings = []
-    warning_types = {w.get("type") for w in warnings if isinstance(w, dict) and isinstance(w.get("type"), str)}
+    warning_types = {kind for w in warnings if isinstance(w, dict) if isinstance((kind := w.get("type")), str)}
     body = "\n".join(nonempty)
     marker_types = sorted(k for k, p in MARKERS.items() if p.search(body))
     edge_blank = bool(blanks) and (blanks[0] == 0 or blanks[-1] == len(parts)-1)
@@ -110,7 +141,7 @@ def examine(record: dict) -> dict:
     }
 
 
-def label(info: dict) -> str:
+def label(info: AuditInfo) -> str:
     n = info["nonempty"]
     if not n:
         return "0 个非空元素"
@@ -123,12 +154,12 @@ def label(info: dict) -> str:
     return "5 个以上非空元素"
 
 
-def pick_samples(entries: list[tuple[dict, dict]], limit: int) -> list[tuple[dict, dict, str]]:
+def pick_samples(entries: list[AuditEntry], limit: int) -> list[SampleEntry]:
     """优先展示有对比价值的样本，而不是连续倾倒作品。"""
     if not limit:
         return []
-    selected = []
-    seen = set()
+    selected: list[SampleEntry] = []
+    seen: set[str] = set()
     def select(predicate, reason, count=1):
         for work, info in entries:
             identity = str(work.get("id", ""))
@@ -164,7 +195,7 @@ def pick_samples(entries: list[tuple[dict, dict]], limit: int) -> list[tuple[dic
     return selected
 
 
-def aggregate(entries: list[tuple[dict, dict]]):
+def aggregate(entries: list[AuditEntry]):
     groups = defaultdict(list)
     author_groups = defaultdict(list)
     for p, info in entries:
@@ -174,7 +205,7 @@ def aggregate(entries: list[tuple[dict, dict]]):
     return groups, author_groups
 
 
-def make_report(entries: list[tuple[dict, dict]], errors: list[str], source_name: str,
+def make_report(entries: list[AuditEntry], errors: list[str], source_name: str,
                 *, example_limit: int = 12) -> str:
     groups, authors = aggregate(entries)
     out = [
@@ -248,7 +279,7 @@ def make_report(entries: list[tuple[dict, dict]], errors: list[str], source_name
     return "\n".join(out) + "\n"
 
 
-def make_private_samples(sample: list[tuple[dict, dict, str]]) -> str:
+def make_private_samples(sample: list[SampleEntry]) -> str:
     lines = ["# 正文结构抽样（含私人词文，请勿提交或公开分享）", "",
              "原样显示 `content.text` 的每个元素及内部换行；本报告仅用于人工判断是否需要调整呈现。", ""]
     for work, info, reason in sample:
@@ -264,7 +295,9 @@ def make_private_samples(sample: list[tuple[dict, dict, str]]) -> str:
             lines.extend([f"**元素 {j}**（长度 {len(part)}）", "", "```text", part if part else "〔空字符串〕", "```", ""])
         if info["inline_note_count"]:
             # 为保护隐私并提高调试效率，只记录位置，不重复注释正文。
-            for note in work.get("content", {}).get("inline_notes", []):
+            content = work.get("content")
+            notes = content.get("inline_notes", []) if isinstance(content, dict) else []
+            for note in notes if isinstance(notes, list) else []:
                 if isinstance(note, dict):
                     lines.append(f"- 自注位置：元素 {note.get('paragraph_index')}，字符区间 [{note.get('start')}, {note.get('end')})")
             lines.append("")
@@ -272,7 +305,11 @@ def make_private_samples(sample: list[tuple[dict, dict, str]]) -> str:
 
 
 def self_test() -> None:
-    def rec(parts, *, notes=None, warnings=None):
+    def rec(
+        parts: list[str], *,
+        notes: list[dict[str, object]] | None = None,
+        warnings: list[dict[str, object]] | None = None,
+    ) -> dict[str, object]:
         return {"id": "synthetic", "collection": "测试分册", "author": "测试人",
                 "content": {"text": parts, "inline_notes": notes or []}, "warnings": warnings or []}
     a = examine(rec(["甲，", "乙。", "", "丙，", "丁。", "戊。"]))
@@ -312,8 +349,8 @@ def main() -> None:
     items = json.loads(source.read_text(encoding="utf-8-sig"))
     if not isinstance(items, list):
         parser.error("JSON 顶层必须为作品数组")
-    entries = []
-    errors = []
+    entries: list[AuditEntry] = []
+    errors: list[str] = []
     for n, record in enumerate(items, 1):
         if not isinstance(record, dict):
             errors.append(f"序号 {n}: 不是作品对象")

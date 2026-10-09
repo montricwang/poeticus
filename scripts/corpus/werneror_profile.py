@@ -16,12 +16,95 @@ import json
 import re
 from collections import Counter
 from pathlib import Path
+from typing import Iterator, TypedDict
+
+from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
 
 DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 DEFAULT_JSON_REPORT = RETRIEVAL_REPORTS_ROOT / "werneror_corpus_profile.json"
 DEFAULT_MD_REPORT = RETRIEVAL_REPORTS_ROOT / "werneror_corpus_profile.md"
+
+@with_config(ConfigDict(extra="allow"))
+class WorkProfile(TypedDict):
+    work_id: str
+    title: str
+    dynasty: str
+    author: str
+    content: str
+    source: object
+    source_record_id: str
+
+
+class WorkLabel(TypedDict):
+    source_record_id: str
+    dynasty: str
+    author: str
+    title: str
+    excerpt: str
+
+
+class LengthStats(TypedDict):
+    min: int
+    median: int
+    p90: int
+    p99: int
+    max: int
+
+
+class EstimatedChunks(TypedDict):
+    clause: int
+    sentence: int
+    clause_per_work: float
+    sentence_per_work: float
+
+
+class QuestionExample(WorkLabel):
+    question_marks: int
+
+
+class QuestionMarks(TypedDict):
+    works: int
+    characters: int
+    works_by_count: dict[str, int]
+    top_examples: list[QuestionExample]
+
+
+class DuplicateSummary(TypedDict):
+    duplicate_records: int
+    groups: int
+    examples: list[list[WorkLabel]]
+
+
+class LongestExample(WorkLabel):
+    chars: int
+
+
+class CoverageProbe(TypedDict):
+    phrase: str
+    found: bool
+    hits: list[WorkLabel]
+
+
+class CorpusProfile(TypedDict):
+    input: str
+    records: int
+    dynasties: int
+    authors: int
+    by_dynasty: dict[str, int]
+    authors_by_dynasty: dict[str, int]
+    content_length_chars: LengthStats
+    works_with_newline: int
+    estimated_chunks: EstimatedChunks
+    question_marks: QuestionMarks
+    exact_duplicates: DuplicateSummary
+    longest_works: list[LongestExample]
+    coverage_probes: dict[str, CoverageProbe]
+
+
+_WORK_ADAPTER = TypeAdapter(WorkProfile)
+
 
 CLAUSE_SPLIT = re.compile(r"[，。！？；!?;]+")
 SENTENCE_SPLIT = re.compile(r"[。！？!?]+")
@@ -46,7 +129,7 @@ def _chunk_count(text: str, pattern: re.Pattern[str]) -> int:
     return sum(1 for part in pattern.split(text) if part.strip())
 
 
-def _digest(work: dict) -> bytes:
+def _digest(work: WorkProfile) -> bytes:
     payload = "\0".join(
         str(work.get(field, ""))
         for field in ("title", "dynasty", "author", "content")
@@ -59,7 +142,7 @@ def _short(text: str, limit: int = 120) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
-def _label(work: dict) -> dict:
+def _label(work: WorkProfile) -> WorkLabel:
     return {
         "source_record_id": work["source_record_id"],
         "dynasty": work["dynasty"],
@@ -69,7 +152,7 @@ def _label(work: dict) -> dict:
     }
 
 
-def _iter_jsonl(path: Path):
+def _iter_jsonl(path: Path) -> Iterator[WorkProfile]:
     with path.open(encoding="utf-8") as stream:
         for line_no, line in enumerate(stream, 1):
             if not line.strip():
@@ -84,10 +167,10 @@ def _iter_jsonl(path: Path):
             }
             if not isinstance(work, dict) or not required <= set(work):
                 raise ValueError(f"JSONL 第 {line_no} 行缺少 Work 字段")
-            yield work
+            yield _WORK_ADAPTER.validate_python(work)
 
 
-def profile_corpus(path: Path, probes: dict[str, str] | None = None) -> dict:
+def profile_corpus(path: Path, probes: dict[str, str] | None = None) -> CorpusProfile:
     if not path.is_file():
         raise ValueError(f"Work JSONL 不存在：{path}")
     probes = probes or DEFAULT_PROBES
@@ -100,7 +183,7 @@ def profile_corpus(path: Path, probes: dict[str, str] | None = None) -> dict:
 
     question_total = 0
     question_distribution = Counter()
-    question_works = []
+    question_works: list[tuple[int, int, WorkLabel]] = []
 
     clause_chunks = 0
     sentence_chunks = 0
@@ -109,8 +192,8 @@ def profile_corpus(path: Path, probes: dict[str, str] | None = None) -> dict:
     duplicate_digests = set()
     duplicate_records = 0
 
-    longest = []
-    probe_hits = {name: [] for name in probes}
+    longest: list[tuple[int, int, WorkLabel]] = []
+    probe_hits: dict[str, list[WorkLabel]] = {name: [] for name in probes}
     records = 0
 
     for work in _iter_jsonl(path):
@@ -154,7 +237,7 @@ def profile_corpus(path: Path, probes: dict[str, str] | None = None) -> dict:
             if phrase in content and len(probe_hits[name]) < 10:
                 probe_hits[name].append(_label(work))
 
-    duplicate_groups = {digest.hex(): [] for digest in duplicate_digests}
+    duplicate_groups: dict[str, list[WorkLabel]] = {digest.hex(): [] for digest in duplicate_digests}
     if duplicate_digests:
         for work in _iter_jsonl(path):
             digest = _digest(work)
@@ -216,7 +299,7 @@ def profile_corpus(path: Path, probes: dict[str, str] | None = None) -> dict:
     }
 
 
-def _markdown(report: dict) -> str:
+def _markdown(report: CorpusProfile) -> str:
     length = report["content_length_chars"]
     chunks = report["estimated_chunks"]
     q = report["question_marks"]

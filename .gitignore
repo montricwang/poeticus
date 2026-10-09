@@ -22,3 +22,6 @@ data/
 
 # Local model weights
 models/
+
+# Local static-type diagnostics (CI uploads its own artifact)
+basedpyright-report.json

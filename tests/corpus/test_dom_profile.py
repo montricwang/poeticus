@@ -1,39 +1,78 @@
 """测试只使用合成 fixture，不包含受版权保护的 EPUB 正文。"""
 
 import sys
-from pathlib import Path
 from types import ModuleType
+from typing import TypedDict
+
+from bs4 import BeautifulSoup, Tag
+from pydantic import TypeAdapter
 
 # profile_dom 的 CLI 会导入 ebooklib。
 try:
     import ebooklib  # noqa: F401
 except ImportError:
     pkg = ModuleType("ebooklib")
-    pkg.epub = ModuleType("ebooklib.epub")
+    epub_module = ModuleType("ebooklib.epub")
+    pkg.__dict__["epub"] = epub_module
     sys.modules["ebooklib"] = pkg
-    sys.modules["ebooklib.epub"] = pkg.epub
+    sys.modules["ebooklib.epub"] = epub_module
 
-MODULES = Path(__file__).resolve().parents[2] / "scripts/corpus/epub_import"
-sys.path.insert(0, str(MODULES))
+from scripts.corpus.epub_import.epub.css import StyleResolver, local_href
+from scripts.corpus.epub_import.diagnostics.profile_dom import run
 
-from bs4 import BeautifulSoup  # noqa: E402
-from epub.css import StyleResolver, local_href  # noqa: E402
-from scripts.corpus.epub_import.diagnostics.profile_dom import run  # noqa: E402
+
+class ProfileRun(TypedDict):
+    text: str
+    element: str
+    style: dict[str, str]
+
+
+class HeadingSample(TypedDict):
+    runs: list[ProfileRun]
+
+
+class HeadingTemplate(TypedDict):
+    count: int
+    samples: list[HeadingSample]
+
+
+class CountTemplate(TypedDict):
+    count: int
+
+
+class ProfileVolume(TypedDict):
+    analyzed_files: int
+    linked_css: list[str]
+    heading_templates: list[HeadingTemplate]
+    paragraph_templates: list[CountTemplate]
+    other_text_tags: dict[str, int]
+
+
+class ProfileReport(TypedDict):
+    volumes: list[ProfileVolume]
+
+
+_REPORT_ADAPTER = TypeAdapter(ProfileReport)
+
+
+def checked_report(book: "Book", toc: object) -> ProfileReport:
+    """Validate the report fields asserted by these synthetic EPUB tests."""
+    return _REPORT_ADAPTER.validate_python(run(book, toc))
 
 
 class Item:
-    def __init__(self, text):
+    def __init__(self, text: str) -> None:
         self.data = text.encode("utf-8")
 
-    def get_content(self):
+    def get_content(self) -> bytes:
         return self.data
 
 
 class Book:
-    def __init__(self, contents):
+    def __init__(self, contents: dict[str, str]) -> None:
         self.contents = contents
 
-    def get_item_with_href(self, name):
+    def get_item_with_href(self, name: str) -> Item | None:
         return Item(self.contents[name]) if name in self.contents else None
 
 
@@ -75,10 +114,14 @@ def fixture():
 
 def test_document_declaration_and_inheritance():
     book, _ = fixture()
-    soup = BeautifulSoup(book.get_item_with_href("a.html").get_content(), "lxml")
+    item = book.get_item_with_href("a.html")
+    assert item is not None
+    soup = BeautifulSoup(item.get_content(), "lxml")
     styles = StyleResolver(book).for_document(soup, "a.html")
     heading = soup.find("h2")
+    assert isinstance(heading, Tag)
     span = heading.find("span")
+    assert isinstance(span, Tag)
     assert styles.style(heading)["font-size"] == "2em"
     assert styles.style(span)["font-size"] == ".8em"
     assert styles.style(span)["font-weight"] == "bold"
@@ -88,7 +131,7 @@ def test_document_declaration_and_inheritance():
 
 def test_profile_finds_heading_templates_and_other_text():
     book, toc = fixture()
-    report = run(book, toc)
+    report = checked_report(book, toc)
     volume = report["volumes"][0]
     assert volume["analyzed_files"] == 2  # repeated TOC target is not rescanned
     assert sum(x["count"] for x in volume["heading_templates"]) == 3
@@ -128,11 +171,11 @@ def test_original_xhtml_head_is_kept_when_ebooklib_regenerates_content():
     """EpubHtml.get_content() 可能丢失原始 <head> 链接，因此这里使用 .content。"""
 
     class EpubHtmlLike(Item):
-        def __init__(self, text):
+        def __init__(self, text: str) -> None:
             super().__init__(text)
             self.content = self.data
 
-        def get_content(self):
+        def get_content(self) -> bytes:
             return b"<html><head></head><body><h2>Regenerated title</h2></body></html>"
 
     original = (
@@ -148,7 +191,7 @@ def test_original_xhtml_head_is_kept_when_ebooklib_regenerates_content():
         else None
     )
     toc = [{"title": "测试词集", "children": [{"title": "卷一", "href": "page.html"}]}]
-    report = run(book, toc)
+    report = checked_report(book, toc)
     volume = report["volumes"][0]
     assert volume["linked_css"] == ["style.css"]
     assert volume["heading_templates"][0]["samples"][0]["runs"][1]["text"] == "词题"
@@ -165,7 +208,7 @@ def test_xml_declaration_is_not_visible_stray_text():
         }
     )
     toc = [{"title": "甲词集", "children": [{"title": "卷一", "href": "page.html"}]}]
-    report = run(book, toc)
+    report = checked_report(book, toc)
     assert "[document]" not in report["volumes"][0]["other_text_tags"]
 
 
@@ -177,7 +220,7 @@ def test_raw_xhtml_utf8_bom_decodes_without_guessing():
     )
 
     class BomItem(Item):
-        def __init__(self, text):
+        def __init__(self, text: str) -> None:
             super().__init__(text)
             self.content = b"\xef\xbb\xbf" + self.data
 
@@ -185,5 +228,5 @@ def test_raw_xhtml_utf8_bom_decodes_without_guessing():
         BomItem(book.contents[name]) if name in book.contents else None
     )
     toc = [{"title": "测试词集", "children": [{"title": "卷一", "href": "bom.html"}]}]
-    record = run(book, toc)["volumes"][0]["heading_templates"][0]
+    record = checked_report(book, toc)["volumes"][0]["heading_templates"][0]
     assert [part["text"] for part in record["samples"][0]["runs"]] == ["词牌", "词题"]

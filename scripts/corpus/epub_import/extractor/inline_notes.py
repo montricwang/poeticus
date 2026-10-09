@@ -4,24 +4,31 @@ A CSS class identifies a visual run, not its historical authorship. Store the
 exact source extent and attribution evidence separately from the original
 paragraph, which stays byte-for-byte the parser's flattened text.
 """
+from bs4 import Tag
+
+from .blocks import SourceBlock, _class_list
 from .rules import INLINE_AUTHOR_NOTE_REVIEWS
+from .schema import InlineNoteCandidate
 
 
 _QUOTE_OPEN = ("“", "「", "『", "‘", '"')
 
 
-def inspect_inline_font1(element, text, block, collection, tune, paragraph_index):
+def inspect_inline_font1(
+    element: Tag, text: str, block: SourceBlock, collection: str,
+    tune: str | None, paragraph_index: int,
+) -> tuple[list[InlineNoteCandidate], list[dict[str, object]]]:
     """返回已分类正文块内 span 的记录与 warning。
 
     A span may cover only the lead-in to a quotation or omit its punctuation.
     Offsets refer to paragraph_text's flattened output, never to DOM offsets.
     If the text is not uniquely locatable, fail closed to a warning.
     """
-    records = []
-    warnings = []
+    records: list[InlineNoteCandidate] = []
+    warnings: list[dict[str, object]] = []
     candidates = [
         node for node in element.find_all("span")
-        if "font1" in node.get("class", [])
+        if "font1" in _class_list(node)
     ]
     review = INLINE_AUTHOR_NOTE_REVIEWS.get(
         (collection, block.html, block.ordinal)
@@ -48,7 +55,7 @@ def inspect_inline_font1(element, text, block, collection, tune, paragraph_index
         if review == "user_identified_author_note" and tune == "西江月":
             attribution = "confirmed_author_in_reviewed_source"
         # 黄庭坚分册中的相似标记只作为候选证据，不能据此声称是作者自注。
-        record = {
+        record: InlineNoteCandidate = {
             "kind": "inline_note_candidate",
             "origin": attribution,
             "source_html": block.html,

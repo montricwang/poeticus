@@ -9,6 +9,10 @@ from openai.types.chat import (
     ChatCompletionFunctionToolParam,
     ChatCompletionMessageParam,
 )
+from openai.types.chat.completion_create_params import (
+    CompletionCreateParamsNonStreaming,
+    CompletionCreateParamsStreaming,
+)
 
 from backend.ai.model import client
 from backend.config import AGENT_MAX_TOOL_CALLS, LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
@@ -178,6 +182,17 @@ class HistoryMessage(TypedDict):
     content: str
 
 
+class ToolCall(TypedDict):
+    id: str
+    name: str
+    arguments: str
+
+
+class ToolResult(TypedDict):
+    id: str
+    content: str
+
+
 class RouterState(TypedDict):
     poem: str
     question: str
@@ -187,10 +202,21 @@ class RouterState(TypedDict):
     messages: NotRequired[list[ChatCompletionMessageParam]]
     tool_count: NotRequired[int]
     reply: NotRequired[str]
-    evidences: NotRequired[list[dict]]
-    tool_calls: NotRequired[list[dict]]
-    tool_results: NotRequired[list[dict]]
+    evidences: NotRequired[list[dict[str, object]]]
+    tool_calls: NotRequired[list[ToolCall]]
+    tool_results: NotRequired[list[ToolResult]]
     stream_reply: NotRequired[bool]
+
+
+class RouterUpdate(TypedDict, total=False):
+    """LangGraph nodes return only the state fields they changed."""
+
+    messages: list[ChatCompletionMessageParam]
+    tool_count: int
+    reply: str
+    evidences: list[dict[str, object]]
+    tool_calls: list[ToolCall]
+    tool_results: list[ToolResult]
 
 
 def _agent_user_message(state: RouterState) -> str:
@@ -206,7 +232,7 @@ def _agent_user_message(state: RouterState) -> str:
 def _stream_agent_decision(
     messages: list[ChatCompletionMessageParam],
     tools_enabled: bool,
-) -> tuple[str, list[dict]]:
+) -> tuple[str, list[ToolCall]]:
     writer = get_stream_writer()
 
     request_messages = (
@@ -215,26 +241,28 @@ def _stream_agent_decision(
         else _final_messages_without_tools(messages)
     )
 
-    request_kwargs = {
+    request_kwargs: CompletionCreateParamsStreaming = {
         "model": LLM_MODEL,
         "max_tokens": LLM_MAX_OUTPUT_TOKENS,
         "messages": request_messages,
         "temperature": 0,
         "stream": True,
-        "extra_body": {"thinking": {"type": "disabled"}},
     }
     if tools_enabled:
         request_kwargs["tools"] = _available_tools()
         request_kwargs["tool_choice"] = "auto"
 
     parts: list[str] = []
-    pending: dict[int, dict] = {}
+    pending: dict[int, ToolCall] = {}
     finish_reason = None
     stream = None
     tool_calls_started = False
 
     try:
-        stream = client.chat.completions.create(**request_kwargs)
+        stream = client.chat.completions.create(
+            **request_kwargs,
+            extra_body={"thinking": {"type": "disabled"}},
+        )
 
         for chunk in stream:
             if not chunk.choices:
@@ -321,7 +349,7 @@ def _stream_agent_decision(
     return answer, []
 
 
-def agent_decide(state: RouterState) -> dict:
+def agent_decide(state: RouterState) -> RouterUpdate:
     # 第一次进入 Agent 时建立消息历史；
     # 再次进入时沿用已有记录。
     messages = list(state.get("messages") or [])
@@ -364,6 +392,7 @@ def agent_decide(state: RouterState) -> dict:
     tools_enabled = state.get("tool_count", 0) < AGENT_MAX_TOOL_CALLS
 
     stream_reply = state.get("stream_reply", False)
+    tool_calls: list[ToolCall]
 
     if stream_reply:
         answer, tool_calls = _stream_agent_decision(messages, tools_enabled)
@@ -373,19 +402,21 @@ def agent_decide(state: RouterState) -> dict:
             if tools_enabled
             else _final_messages_without_tools(messages)
         )
-        request_kwargs = {
+        request_kwargs: CompletionCreateParamsNonStreaming = {
             "model": LLM_MODEL,
             "max_tokens": LLM_MAX_OUTPUT_TOKENS,
             "messages": request_messages,
             "temperature": 0,
-            "extra_body": {"thinking": {"type": "disabled"}},
         }
         if tools_enabled:
             request_kwargs["tools"] = _available_tools()
             request_kwargs["tool_choice"] = "auto"
 
         try:
-            response = client.chat.completions.create(**request_kwargs)
+            response = client.chat.completions.create(
+                **request_kwargs,
+                extra_body={"thinking": {"type": "disabled"}},
+            )
         except APIError as exc:
             raise RuntimeError("Agent 决策 API 调用失败") from exc
 
@@ -459,7 +490,7 @@ def route_agent(state: RouterState) -> Literal["tools", "done"]:
     return "done"
 
 
-def execute_tools(state: RouterState) -> dict:
+def execute_tools(state: RouterState) -> RouterUpdate:
     calls = state.get("tool_calls") or []
 
     if not calls:
@@ -473,12 +504,13 @@ def execute_tools(state: RouterState) -> dict:
     if len(ids) != len(set(ids)):
         raise RuntimeError("工具调用 ID 重复")
 
-    async def run_tools():
-        results = []
-        all_evidences = []
+    async def run_tools() -> tuple[list[ToolResult], list[dict[str, object]], int]:
+        results: list[ToolResult] = []
+        all_evidences: list[dict[str, object]] = []
         count = tool_count
 
         for call in calls:
+            result: dict[str, object]
             if count >= AGENT_MAX_TOOL_CALLS:
                 result = {
                     "status": "budget_exceeded",
@@ -489,10 +521,12 @@ def execute_tools(state: RouterState) -> dict:
                 count += 1
 
                 try:
-                    arguments = json.loads(call["arguments"])
+                    parsed_arguments: object = json.loads(call["arguments"])
 
-                    if not isinstance(arguments, dict):
+                    if not isinstance(parsed_arguments, dict):
                         raise ValueError("工具参数必须是对象")
+                    # JSON object keys are strings; values still require checks below.
+                    arguments = cast(dict[str, object], parsed_arguments)
 
                     if call["name"] == "lookup_allusion":
                         query = arguments.get("term")
@@ -533,12 +567,13 @@ def execute_tools(state: RouterState) -> dict:
                             ),
                             top_k=max_items,
                         )
-                        items = []
+                        items: list[dict[str, object]] = []
                         for candidate in retrieval.candidates[:max_items]:
-                            data = candidate.model_dump()
-                            data["text"] = data["text"][:800]
-                            if isinstance(data.get("title"), str):
-                                data["title"] = data["title"][:200]
+                            data: dict[str, object] = candidate.model_dump()
+                            data["text"] = candidate.text[:800]
+                            title = data.get("title")
+                            if isinstance(title, str):
+                                data["title"] = title[:200]
                             items.append(data)
                         result = {
                             "status": retrieval.status,
@@ -559,14 +594,15 @@ def execute_tools(state: RouterState) -> dict:
 
                         # 限制回传给后续 LLM 轮次的工具材料长度，避免外部证据
                         # 带入过长文本。reference 多保留两条候选，便于跨年代比较。
-                        items = []
+                        items: list[dict[str, object]] = []
                         for item in evidences[:max_items]:
-                            data = item.model_dump()
-                            data["text"] = data["text"][:1600]
-                            if isinstance(data.get("source"), dict):
-                                title = data["source"].get("title")
+                            data: dict[str, object] = item.model_dump()
+                            data["text"] = item.text[:1600]
+                            source = data.get("source")
+                            if isinstance(source, dict):
+                                title = source.get("title")
                                 if isinstance(title, str):
-                                    data["source"]["title"] = title[:200]
+                                    source["title"] = title[:200]
                             items.append(data)
 
                         all_evidences.extend(items)

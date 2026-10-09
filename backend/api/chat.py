@@ -141,7 +141,7 @@ def chat(request: ChatRequest):
         raise HTTPException(status_code=502, detail="AI 生成暂时失败，请稍后再试") from exc
 
 
-def sse(event: str, data: dict) -> str:
+def sse(event: str, data: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 

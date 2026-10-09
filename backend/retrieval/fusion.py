@@ -12,7 +12,7 @@ normalizing cosine and BM25 score scales.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Sequence, TypedDict
 
 from backend.retrieval.fanout import (
     ChannelDescriptor,
@@ -48,6 +48,18 @@ class FusedCandidate:
     best_rank: int
     support_count: int
     evidences: tuple[FusionEvidence, ...]
+
+
+class _FusionAccumulator(TypedDict):
+    """Mutable, typed work-level RRF state used only during fusion."""
+
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    source_record_id: str | None
+    rrf_score: float
+    best_rank: int
+    evidences: list[FusionEvidence]
 
 
 def _assert_metadata_consistent(
@@ -88,7 +100,7 @@ def fuse_candidates_rrf(
     if rrf_k < 0:
         raise ValueError("rrf_k 不能为负数")
 
-    accumulators: dict[str, dict] = {}
+    accumulators: dict[str, _FusionAccumulator] = {}
 
     for result in results:
         seen_in_list: set[str] = set()
@@ -102,15 +114,15 @@ def fuse_candidates_rrf(
             accumulator = accumulators.get(hit.work_id)
 
             if accumulator is None:
-                accumulator = {
-                    "title": hit.title,
-                    "author": hit.author,
-                    "dynasty": hit.dynasty,
-                    "source_record_id": hit.source_record_id,
-                    "rrf_score": 0.0,
-                    "best_rank": hit.rank,
-                    "evidences": [],
-                }
+                accumulator = _FusionAccumulator(
+                    title=hit.title,
+                    author=hit.author,
+                    dynasty=hit.dynasty,
+                    source_record_id=hit.source_record_id,
+                    rrf_score=0.0,
+                    best_rank=hit.rank,
+                    evidences=[],
+                )
                 accumulators[hit.work_id] = accumulator
             else:
                 for field in ("title", "author", "dynasty", "source_record_id"):

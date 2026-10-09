@@ -79,11 +79,14 @@ def test_html_standalone_includes_each_source_paragraph_and_own_image(tmp_path):
     assert len(sections[0].select("mark.target")) == 4
     assert len(sections[0].select("mark.other")) == 1
     assert len(sections[1].select("mark.target")) == 1
-    assert sections[0].select_one("img")["src"].startswith(
-        "data:image/png;base64,"
-    )
+    image = sections[0].select_one("img")
+    assert image is not None
+    src = image.get("src")
+    assert isinstance(src, str)
+    assert src.startswith("data:image/png;base64,")
     assert "甲" in sections[0].get_text()
     assert "句末" in sections[0].get_text()
+    assert document.title is not None
     assert "完整段落" in document.title.get_text()
     assert "仅限本地" in document.get_text()
 
@@ -113,6 +116,9 @@ def test_heading_images_rendered_and_paragraph_text_escaped():
     result = render_contexts_html(report, book)
     soup = BeautifulSoup(result, "html.parser")
     assert len(soup.select("mark.target")) == 1
-    assert soup.select_one(".paragraph").get_text() == "标题〔图片字 001〕尾"
-    assert "标题" in soup.select_one(".meta").get_text()
+    paragraph = soup.select_one(".paragraph")
+    meta = soup.select_one(".meta")
+    assert paragraph is not None and meta is not None
+    assert paragraph.get_text() == "标题〔图片字 001〕尾"
+    assert "标题" in meta.get_text()
     assert len(re.findall(r'data:image/jpeg;base64,', result)) == 1

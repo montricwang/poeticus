@@ -1,0 +1,7 @@
+{
+  "include": ["backend", "scripts", "tests", "evals"],
+  "exclude": ["**/__pycache__", "**/.venv", "**/node_modules"],
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "recommended",
+  "failOnWarnings": false
+}

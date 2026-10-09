@@ -5,6 +5,8 @@ import pytest
 from scripts.retrieval.exact_search import (
     build_dynasty_row_mask,
     build_result_rows,
+    ChunkRecord,
+    WorkRecord,
     candidate_prior_dynasties,
     find_probe_rows,
     load_manifest,
@@ -52,6 +54,17 @@ def test_load_manifest_rejects_incomplete_artifact(tmp_path):
     artifact_dir = _write_manifest(tmp_path, status="running")
 
     with pytest.raises(ValueError, match="尚未完成"):
+        load_manifest(artifact_dir)
+
+
+def test_load_manifest_rejects_non_integer_shard_start(tmp_path):
+    artifact_dir = _write_manifest(tmp_path)
+    manifest_path = artifact_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["completed_shards"][0]["start"] = "0"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="连续区间"):
         load_manifest(artifact_dir)
 
 
@@ -103,12 +116,12 @@ def test_read_selected_works_reads_only_requested_ids(tmp_path):
     actual = read_selected_works(path, ["w2", "w0"])
 
     assert set(actual) == {"w0", "w2"}
-    assert actual["w2"]["title"] == "丙"
+    assert actual["w2"].get("title") == "丙"
 
 
 def test_build_result_rows_joins_chunk_and_work_metadata():
     ranking = [(0.91, 7)]
-    chunks = {
+    chunks: dict[int, ChunkRecord] = {
         7: {
             "chunk_id": "c7",
             "work_id": "w7",
@@ -117,7 +130,7 @@ def test_build_result_rows_joins_chunk_and_work_metadata():
             "end": 17,
         }
     }
-    works = {
+    works: dict[str, WorkRecord] = {
         "w7": {
             "work_id": "w7",
             "title": "送元二使安西",

@@ -1,5 +1,7 @@
 """用合成 XHTML 测试批量 EPUB 导入保护，不包含已出版诗词。"""
 import json
+from pathlib import Path
+from typing import TypedDict
 
 import pytest
 
@@ -10,21 +12,28 @@ from scripts.corpus.epub_import.batch_import import (
 )
 
 
+class BatchPaths(TypedDict):
+    specs: list[tuple[str, str, str]]
+    map_dir: Path
+    output_dir: Path
+    report_path: Path
+
+
 class Item:
-    def __init__(self, source):
+    def __init__(self, source: str) -> None:
         self.content = source.encode("utf-8")
 
 
 class Book:
-    def __init__(self, xhtml):
+    def __init__(self, xhtml: dict[str, str]) -> None:
         self.xhtml = xhtml
 
-    def get_item_with_href(self, filename):
+    def get_item_with_href(self, filename: str) -> Item | None:
         value = self.xhtml.get(filename)
         return Item(value) if value is not None else None
 
 
-SPECS = [
+SPECS: list[tuple[str, str, str]] = [
     ("合成词集甲", "作者甲", "a"),
     ("合成词集乙", "作者乙", "b"),
 ]
@@ -38,7 +47,7 @@ TOC = [
 ]
 
 
-def book_with_image_and_note():
+def book_with_image_and_note() -> Book:
     return Book({
         "a.html": (
             "<h2>采桑子</h2>"
@@ -53,13 +62,13 @@ def book_with_image_and_note():
     })
 
 
-def test_full_preflight_reports_missing_glyph_without_writing_licensed_json(tmp_path):
-    paths = dict(
-        specs=SPECS,
-        map_dir=tmp_path / "maps",
-        output_dir=tmp_path / "outputs",
-        report_path=tmp_path / "reports" / "preflight.json",
-    )
+def test_full_preflight_reports_missing_glyph_without_writing_licensed_json(tmp_path: Path) -> None:
+    paths: BatchPaths = {
+        "specs": SPECS,
+        "map_dir": tmp_path / "maps",
+        "output_dir": tmp_path / "outputs",
+        "report_path": tmp_path / "reports" / "preflight.json",
+    }
     report, outputs = run_batch(
         book_with_image_and_note(), TOC, check_only=True, **paths
     )
@@ -80,7 +89,7 @@ def test_full_preflight_reports_missing_glyph_without_writing_licensed_json(tmp_
     assert not paths["output_dir"].exists()
 
 
-def test_all_mode_exports_two_raw_normalized_and_one_combined_losslessly(tmp_path):
+def test_all_mode_exports_two_raw_normalized_and_one_combined_losslessly(tmp_path: Path) -> None:
     map_dir = tmp_path / "maps"
     map_dir.mkdir()
     (map_dir / "a.json").write_text(
@@ -121,7 +130,7 @@ def test_all_mode_exports_two_raw_normalized_and_one_combined_losslessly(tmp_pat
     assert manifest["kind"] == "intermediate_poem_not_frontend"
 
 
-def test_export_stops_on_unknown_content_even_if_no_glyphs(tmp_path):
+def test_export_stops_on_unknown_content_even_if_no_glyphs(tmp_path: Path) -> None:
     book = Book({
         "a.html": (
             "<h2>蝶恋花</h2><p>合成正文</p>"
@@ -146,7 +155,7 @@ def test_export_stops_on_unknown_content_even_if_no_glyphs(tmp_path):
     assert not (tmp_path / "out").exists()
 
 
-def test_missing_image_src_is_explicitly_blocking(tmp_path):
+def test_missing_image_src_is_explicitly_blocking(tmp_path: Path) -> None:
     one = [("合成词集甲", "作者甲", "a")]
     book = Book({"a.html": "<h2>调</h2><p>甲<img/>乙</p>"})
     plan = prepare_batch(book, TOC, specs=one, map_dir=tmp_path)
@@ -155,7 +164,7 @@ def test_missing_image_src_is_explicitly_blocking(tmp_path):
     assert report["collections"][0]["unexportable"][0]["type"] == "missing_image_src"
 
 
-def test_repeated_id_slugs_cannot_produce_ambiguous_combined_data(tmp_path):
+def test_repeated_id_slugs_cannot_produce_ambiguous_combined_data(tmp_path: Path) -> None:
     book = Book({
         "a.html": "<h2>词牌</h2><p>甲正文</p>",
         "b.html": "<h2>词牌</h2><p>乙正文</p>",

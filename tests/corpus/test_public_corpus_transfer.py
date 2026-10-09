@@ -12,7 +12,7 @@ from scripts.corpus.public_corpus_transfer import (
 )
 
 
-def example(order: int) -> dict:
+def example(order: int) -> dict[str, object]:
     return {
         "id": UUID(f"10000000-0000-4000-8000-{order:012d}"),
         "source_record_id": f"example-{order}",
@@ -30,7 +30,7 @@ def example(order: int) -> dict:
 
 
 class Result:
-    def __init__(self, rows=None):
+    def __init__(self, rows: list[dict[str, object]] | None = None):
         self.rows = rows or []
 
     def fetchall(self):
@@ -52,7 +52,9 @@ class FakeCopy:
             raise RuntimeError("synthetic COPY interruption")
         row = dict(zip(PUBLIC_COLUMNS, params, strict=True))
         for key in ("body_segments", "prefaces"):
-            row[key] = row[key].obj
+            wrapped = row[key]
+            assert hasattr(wrapped, "obj")
+            row[key] = wrapped.obj
         self.conn.rows.append(row)
         self.conn.writes += 1
 
@@ -73,8 +75,8 @@ class FakeCursor:
 
 
 class FakeConn:
-    def __init__(self, rows, fail_after=None):
-        self.rows = deepcopy(rows)
+    def __init__(self, rows: list[dict[str, object]], fail_after: int | None = None):
+        self.rows: list[dict[str, object]] = deepcopy(rows)
         self.writes = 0
         self.fail_after = fail_after
 
@@ -90,11 +92,16 @@ class FakeConn:
     def cursor(self):
         return FakeCursor(self)
 
-    def execute(self, sql, params=None):
+    def execute(self, sql: str, params: object = None) -> Result:
         if sql.startswith("SET LOCAL"):
             return Result()
         if sql.startswith("SELECT"):
-            return Result(sorted(self.rows, key=lambda r: r["source_order"]))
+            def source_order(row: dict[str, object]) -> int:
+                order = row["source_order"]
+                assert isinstance(order, int)
+                return order
+
+            return Result(sorted(self.rows, key=source_order))
         raise AssertionError(f"Unexpected SQL: {sql}")
 
 

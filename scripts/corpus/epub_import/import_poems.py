@@ -13,6 +13,7 @@ from .epub.reader import parse_toc
 from .extractor.extractor import extract_collection
 from .extract_images import extract_referenced_images
 from .pipeline.normalize import normalize_poems, resolve_mapping, get_output_form
+from .shared_checks import NON_EXPORTABLE_WARNING_TYPES, collect_missing_glyphs, load_map
 
 
 EPUB_PATH = READING_RAW_ROOT / "历代名家词集精华录.epub"
@@ -20,13 +21,6 @@ EPUB_PATH = READING_RAW_ROOT / "历代名家词集精华录.epub"
 # 这些 warning 类型对应的来源段落仍保存在抽取器的私人 section/审计证据中，
 # 但 PoemContent 正式结构没有承载位置。若直接写 normalized JSON 会静默丢失，
 # 因此必须先人工复核并完成分类。
-NON_EXPORTABLE_WARNING_TYPES = frozenset({
-    "unclassified_after_notes",
-    "unclassified_before_inserted_author",
-    "ambiguous_reference_after_verse",
-})
-
-
 def ensure_no_unclassified_content(poems):
     """在写出不完整的抽取/normalize 数据前主动失败。"""
     affected = []
@@ -48,32 +42,6 @@ def ensure_no_unclassified_content(poems):
         "检查原始 XHTML 并明确分类或排除规则。"
     )
 
-
-
-def load_map(path):
-    if not path.exists():
-        return {}
-
-    with path.open(encoding="utf-8") as f:
-        return json.load(f)
-
-
-def collect_missing_glyphs(poems, glyph_map):
-    """根据 Extraction 的 warnings 找出尚未解决的图片字。"""
-    missing = defaultdict(set)
-
-    for poem in poems:
-        for warning in poem.get("warnings", []):
-            if warning["type"] != "inline_image":
-                continue
-
-            src = warning["src"]
-            mapping = resolve_mapping(src, glyph_map)
-
-            if get_output_form(mapping) is None:
-                missing[warning["html"]].add(src)
-
-    return missing
 
 
 def resolve_missing_glyphs(missing, map_path, epub_path=EPUB_PATH):
@@ -142,6 +110,8 @@ def print_glyph_summary(poems, glyph_map):
 
             mapping = resolve_mapping(src, glyph_map)
 
+            if mapping is None:
+                raise ValueError(f"图片字映射不存在：{src}")
             source = mapping["source_form"]
             output = get_output_form(mapping)
 

@@ -32,4 +32,4 @@ class EvidenceItem(BaseModel):
         "error",
     ]
 
-    metadata: dict = {}
+    metadata: dict[str, object] = {}

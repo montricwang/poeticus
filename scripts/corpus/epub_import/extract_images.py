@@ -32,7 +32,7 @@ def extract_referenced_images(
     for img in soup.find_all("img"):
         src = img.get("src")
 
-        if not src:
+        if not isinstance(src, str) or not src:
             continue
 
         image_path = str(PurePosixPath(html_name).parent / PurePosixPath(src))

@@ -10,6 +10,12 @@ import json
 import math
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TypedDict
+
+class RankedCandidate(TypedDict):
+    text: str
+    cosine: float
+
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 
@@ -39,11 +45,11 @@ def rank_candidates(
     query_vector: Sequence[float],
     candidate_vectors: Sequence[Sequence[float]],
     candidate_texts: Sequence[str],
-) -> list[dict]:
+) -> list[RankedCandidate]:
     if len(candidate_vectors) != len(candidate_texts):
         raise ValueError("候选文本与候选向量数量不一致")
 
-    rows = [
+    rows: list[RankedCandidate] = [
         {"text": text, "cosine": cosine_similarity(query_vector, vector)}
         for text, vector in zip(candidate_texts, candidate_vectors)
     ]

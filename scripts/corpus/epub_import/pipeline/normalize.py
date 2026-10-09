@@ -128,7 +128,7 @@ def normalize_poem(poem, glyph_map):
 
         output = get_output_form(mapping)
 
-        if output is not None:
+        if mapping is not None and output is not None:
             source_form = mapping.get("source_form")
             warning["source_form"] = source_form
             warning["status"] = (

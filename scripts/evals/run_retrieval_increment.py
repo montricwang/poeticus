@@ -21,9 +21,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_REPORTS_ROOT
-from typing import Callable, Literal
+from collections.abc import Iterable, Mapping
+from typing import Callable, Literal, NotRequired, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field
+from openai.types.chat import ChatCompletionFunctionToolParam, ChatCompletionMessageParam
+
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, with_config
 
 from evals.schema import EvalInput
 from scripts.retrieval.exact_search import DEFAULT_DATA_ROOT, DEFAULT_WORKS
@@ -51,7 +54,7 @@ DEFAULT_CLAUSE_FAISS = (
 )
 DEFAULT_SENTENCE_BM25 = DEFAULT_INDEX_ROOT / "bm25_sentence_2_3"
 
-LOCAL_RETRIEVAL_TOOLS = [
+LOCAL_RETRIEVAL_TOOLS: list[ChatCompletionFunctionToolParam] = [
     {
         "type": "function",
         "function": {
@@ -77,6 +80,115 @@ LOCAL_RETRIEVAL_TOOLS = [
         },
     }
 ]
+
+
+class AnswerSignal(TypedDict):
+    target_author_mentioned: bool
+    target_anchor_hits: list[str]
+    target_signal: bool
+
+
+class StandaloneResult(AnswerSignal):
+    model: str
+    answer: str
+
+
+@with_config(ConfigDict(extra="allow"))
+class RetrievalEvidence(TypedDict, total=False):
+    text: str | None
+    query: str | None
+    channel: str | None
+    rank: int | None
+
+
+@with_config(ConfigDict(extra="allow"))
+class RetrievalCandidate(TypedDict, total=False):
+    rank: int
+    work_id: str
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    best_evidence: RetrievalEvidence | None
+    support_count: int
+    chronology_status: str | None
+
+
+@with_config(ConfigDict(extra="allow"))
+class RetrievalProbe(TypedDict, total=False):
+    work_id: str
+    eligible_rank: int | None
+    fused_rank: int | None
+
+
+@with_config(ConfigDict(extra="allow"))
+class RetrievalDiagnostics(TypedDict, total=False):
+    ranking: list[RetrievalCandidate]
+    probes: list[RetrievalProbe]
+    candidate_pool: dict[str, int]
+    channels: list[dict[str, object]]
+    query_plan: list[dict[str, object]]
+
+
+_HYBRID_ADAPTER = TypeAdapter(RetrievalDiagnostics)
+
+
+class CompactCandidate(TypedDict):
+    rank: int | None
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    text: str | None
+    query: str | None
+    channel: str | None
+    support_count: int | None
+    chronology_status: str | None
+
+
+class CompactToolResult(TypedDict):
+    status: Literal["ok", "no_hit"]
+    candidates: list[CompactCandidate]
+    note: str
+
+
+class RetrievalSummary(TypedDict):
+    best_fused_rank: int | None
+    best_eligible_rank: int | None
+    target_in_top5: bool
+    target_in_top20: bool
+    candidate_pool: dict[str, int] | None
+    channels: list[dict[str, object]] | None
+    query_plan: list[dict[str, object]] | None
+    probes: list[RetrievalProbe]
+    top_candidates: list[RetrievalCandidate]
+
+
+class ToolSearchAudit(TypedDict, total=False):
+    target_supported_by_tool: bool | None
+    target_rank_in_tool_candidates: int | None
+
+
+class ToolLLMResult(AnswerSignal):
+    model: str
+    answer: str
+    tool_used: bool
+    tool_query: str | None
+    tool_result: CompactToolResult | None
+    ignored_extra_tool_calls: NotRequired[int]
+    target_supported_by_tool: NotRequired[bool | None]
+    target_rank_in_tool_candidates: NotRequired[int | None]
+
+
+class WorkCandidate(TypedDict):
+    work_id: str
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    content_fingerprint: str
+
+
+class CaseWorkMatches(TypedDict):
+    current: list[WorkCandidate]
+    target: list[WorkCandidate]
 
 
 class RetrievalTarget(BaseModel):
@@ -138,9 +250,9 @@ def scan_work_matches(
     *,
     work_path: Path,
     cases: list[RetrievalIncrementCase],
-) -> dict[str, dict]:
+) -> dict[str, CaseWorkMatches]:
     """Resolve current / target works in one pass through Work JSONL."""
-    matches = {
+    matches: dict[str, CaseWorkMatches] = {
         case.id: {"current": [], "target": []}
         for case in cases
     }
@@ -195,7 +307,7 @@ def scan_work_matches(
 
 def choose_current_work_id(
     case: RetrievalIncrementCase,
-    candidates: list[dict],
+    candidates: list[WorkCandidate],
 ) -> str | None:
     if not candidates:
         return None
@@ -211,7 +323,7 @@ def choose_current_work_id(
 
 def choose_current_work_ids(
     case: RetrievalIncrementCase,
-    candidates: list[dict],
+    candidates: list[WorkCandidate],
 ) -> set[str]:
     """Return exact-content aliases of the chosen current Work.
 
@@ -254,7 +366,7 @@ def _plain_user_message(case: RetrievalIncrementCase) -> str:
 def _answer_signal(
     case: RetrievalIncrementCase,
     answer: str,
-) -> dict:
+) -> AnswerSignal:
     anchor_hits = [
         anchor
         for anchor in case.target.answer_anchors
@@ -268,21 +380,18 @@ def _answer_signal(
     }
 
 
-def _plain_messages(case: RetrievalIncrementCase) -> list[dict]:
-    messages = [
-        message.model_dump()
-        for message in case.input.history
-    ]
-    messages.append(
-        {
-            "role": "user",
-            "content": _plain_user_message(case),
-        }
-    )
+def _plain_messages(case: RetrievalIncrementCase) -> list[ChatCompletionMessageParam]:
+    messages: list[ChatCompletionMessageParam] = []
+    for history in case.input.history:
+        if history.role == "user":
+            messages.append({"role": "user", "content": history.content})
+        else:
+            messages.append({"role": "assistant", "content": history.content})
+    messages.append({"role": "user", "content": _plain_user_message(case)})
     return messages
 
 
-def run_standalone_llm(case: RetrievalIncrementCase) -> dict:
+def run_standalone_llm(case: RetrievalIncrementCase) -> StandaloneResult:
     """Run the model with no Agent prompt and no Tool Schema."""
     from backend.ai.model import client
     from backend.config import LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
@@ -305,14 +414,15 @@ def run_standalone_llm(case: RetrievalIncrementCase) -> dict:
     }
 
 
-def compact_tool_result(result: dict, *, max_items: int = 8) -> dict:
+def compact_tool_result(result: object, *, max_items: int = 8) -> CompactToolResult:
     """Expose only product-facing candidates to the tool-using model.
 
     Probe / Ground Truth metadata is intentionally excluded so the model never
     sees the evaluation target through the tool result.
     """
-    candidates = []
-    for item in (result.get("ranking") or [])[:max_items]:
+    diagnostics = _HYBRID_ADAPTER.validate_python(result)
+    candidates: list[CompactCandidate] = []
+    for item in (diagnostics.get("ranking") or [])[:max_items]:
         evidence = item.get("best_evidence") or {}
         candidates.append(
             {
@@ -340,8 +450,8 @@ def compact_tool_result(result: dict, *, max_items: int = 8) -> dict:
 def run_tool_augmented_llm(
     case: RetrievalIncrementCase,
     *,
-    search_tool: Callable[[str], dict],
-) -> dict:
+    search_tool: Callable[[str], CompactToolResult],
+) -> ToolLLMResult:
     """Run one plain model with one local Retrieval function-call round trip.
 
     No LangGraph, no Agent system prompt, no autonomous multi-step loop.
@@ -379,7 +489,9 @@ def run_tool_augmented_llm(
         }
 
     call = calls[0]
-    if call.type != "function" or call.function.name != "search_predecessor_texts":
+    if call.type != "function":
+        raise RuntimeError(f"tool_augmented_llm 返回了不支持的调用类型：{call.type}")
+    if call.function.name != "search_predecessor_texts":
         raise RuntimeError(f"tool_augmented_llm 调用了未知工具：{call.function.name}")
 
     try:
@@ -392,7 +504,7 @@ def run_tool_augmented_llm(
     query = query.strip()
 
     tool_result = search_tool(query)
-    assistant_tool_call = {
+    assistant_tool_call: ChatCompletionMessageParam = {
         "role": "assistant",
         "content": message.content or "",
         "tool_calls": [
@@ -443,30 +555,32 @@ def run_tool_augmented_llm(
 
 def tool_target_support(
     *,
-    result: dict | None,
+    result: object | None,
     target_work_ids: set[str],
     max_items: int = 8,
 ) -> tuple[bool | None, int | None]:
     """Check whether the exact target Work was actually shown to the LLM."""
     if result is None:
         return None, None
-    for rank, item in enumerate((result.get("ranking") or [])[:max_items], 1):
+    diagnostics = _HYBRID_ADAPTER.validate_python(result)
+    for rank, item in enumerate((diagnostics.get("ranking") or [])[:max_items], 1):
         if item.get("work_id") in target_work_ids:
             return True, rank
     return False, None
 
 
-def _best_rank(probes: list[dict], field: str) -> int | None:
+def _best_rank(probes: Iterable[Mapping[str, object]], field: str) -> int | None:
     ranks = [
-        probe.get(field)
+        value
         for probe in probes
-        if isinstance(probe.get(field), int)
+        if isinstance((value := probe.get(field)), int)
     ]
     return min(ranks) if ranks else None
 
 
-def summarize_retrieval(result: dict) -> dict:
-    probes = result.get("probes") or []
+def summarize_retrieval(result: object) -> RetrievalSummary:
+    diagnostics = _HYBRID_ADAPTER.validate_python(result)
+    probes = diagnostics.get("probes") or []
     best_eligible = _best_rank(probes, "eligible_rank")
     best_fused = _best_rank(probes, "fused_rank")
 
@@ -481,11 +595,11 @@ def summarize_retrieval(result: dict) -> dict:
             best_eligible is not None
             and best_eligible <= 20
         ),
-        "candidate_pool": result.get("candidate_pool"),
-        "channels": result.get("channels"),
-        "query_plan": result.get("query_plan"),
+        "candidate_pool": diagnostics.get("candidate_pool"),
+        "channels": diagnostics.get("channels"),
+        "query_plan": diagnostics.get("query_plan"),
         "probes": probes,
-        "top_candidates": result.get("ranking", [])[:10],
+        "top_candidates": diagnostics.get("ranking", [])[:10],
     }
 
 
@@ -521,12 +635,36 @@ def comparison_bucket(
         return "both_gap"
     return "partial_run"
 
+@with_config(ConfigDict(extra="allow"))
+class MarkdownCase(TypedDict):
+    case_id: str
+    tier: str
+    relation: str
+    retrieval_query: str
+    target: dict[str, object]
+    comparison_bucket: str
+    standalone_llm: NotRequired[StandaloneResult | None]
+    standalone_llm_error: NotRequired[str]
+    tool_augmented_llm: NotRequired[ToolLLMResult | None]
+    tool_augmented_llm_error: NotRequired[str]
+    retrieval: NotRequired[RetrievalSummary | None]
+    retrieval_error: NotRequired[str]
+
+
+class MarkdownRun(TypedDict):
+    cases: list[MarkdownCase]
+
+
+_MARKDOWN_ADAPTER = TypeAdapter(MarkdownRun)
+
+
 def _md_escape(value: object) -> str:
     text = "" if value is None else str(value)
     return text.replace("|", "\\|").replace("\n", " ")
 
 
-def render_markdown(run: dict) -> str:
+def render_markdown(run: Mapping[str, object]) -> str:
+    cases = _MARKDOWN_ADAPTER.validate_python(run)["cases"]
     lines = [
         "# Retrieval Increment Eval",
         "",
@@ -539,7 +677,7 @@ def render_markdown(run: dict) -> str:
         "| --- | --- | --- | --- | --- | --- | ---: | ---: | --- |",
     ]
 
-    for item in run["cases"]:
+    for item in cases:
         standalone = item.get("standalone_llm")
         tool = item.get("tool_augmented_llm")
         retrieval = item.get("retrieval")
@@ -578,7 +716,7 @@ def render_markdown(run: dict) -> str:
         ]
     )
 
-    for item in run["cases"]:
+    for item in cases:
         lines.extend(
             [
                 f"## {item['case_id']}",
@@ -623,9 +761,10 @@ def render_markdown(run: dict) -> str:
                     "",
                 ]
             )
-            if tool.get("tool_result"):
+            tool_result = tool.get("tool_result")
+            if tool_result:
                 lines.extend(["#### Tool candidates", ""])
-                for candidate in tool["tool_result"].get("candidates") or []:
+                for candidate in tool_result["candidates"]:
                     lines.append(
                         f"- #{candidate.get('rank')} "
                         f"{candidate.get('author')}《{candidate.get('title')}》："
@@ -746,6 +885,7 @@ def main() -> None:
         cases=selected,
     )
 
+    case_results: list[dict[str, object]] = []
     run = {
         "schema_version": "2",
         "dataset_id": dataset.dataset_id,
@@ -765,7 +905,7 @@ def main() -> None:
             "skip_model": args.skip_model,
             "skip_retrieval": args.skip_retrieval,
         },
-        "cases": [],
+        "cases": case_results,
         "note": (
             "comparison_bucket 只用于快速导航；"
             "最终判断必须人工阅读模型回答与 Retrieval evidence。"
@@ -784,7 +924,7 @@ def main() -> None:
             match_info["current"],
         )
 
-        item = {
+        item: dict[str, object] = {
             "case_id": case.id,
             "tier": case.tier,
             "relation": case.relation,
@@ -809,8 +949,8 @@ def main() -> None:
             text: str,
             *,
             include_probe: bool,
-        ) -> dict:
-            return evaluate_hybrid(
+        ) -> RetrievalDiagnostics:
+            return _HYBRID_ADAPTER.validate_python(evaluate_hybrid(
                 text=text,
                 sentence_artifact_dir=args.sentence_artifact_dir,
                 sentence_index_dir=args.sentence_index_dir,
@@ -827,7 +967,7 @@ def main() -> None:
                 final_top_k=args.final_top_k,
                 rrf_k=args.rrf_k,
                 device=args.device,
-            )
+            ))
 
         if not args.skip_model:
             try:
@@ -842,9 +982,9 @@ def main() -> None:
             try:
                 print("  - ④ 工具增强 LLM……")
 
-                tool_search_audit: dict = {}
+                tool_search_audit: ToolSearchAudit = {}
 
-                def search_tool(query: str) -> dict:
+                def search_tool(query: str) -> CompactToolResult:
                     result = run_retrieval(query, include_probe=False)
                     supported, target_rank = tool_target_support(
                         result=result,
@@ -861,7 +1001,14 @@ def main() -> None:
                     case,
                     search_tool=search_tool,
                 )
-                tool_augmented_llm.update(tool_search_audit)
+                if "target_supported_by_tool" in tool_search_audit:
+                    tool_augmented_llm["target_supported_by_tool"] = (
+                        tool_search_audit["target_supported_by_tool"]
+                    )
+                if "target_rank_in_tool_candidates" in tool_search_audit:
+                    tool_augmented_llm["target_rank_in_tool_candidates"] = (
+                        tool_search_audit["target_rank_in_tool_candidates"]
+                    )
                 item["tool_augmented_llm"] = tool_augmented_llm
                 tool_signal = tool_augmented_llm["target_signal"]
                 target_supported_by_tool = tool_augmented_llm.get(
@@ -907,7 +1054,7 @@ def main() -> None:
             f"eligible_rank={eligible_rank}, "
             f"bucket={item['comparison_bucket']}"
         )
-        run["cases"].append(item)
+        case_results.append(item)
 
     stamp = datetime.now().strftime("%m%d%H%M")
     prefix = (

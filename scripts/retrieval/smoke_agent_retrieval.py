@@ -17,6 +17,10 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from collections.abc import Mapping, Sequence
+from typing import Literal, NotRequired, TypedDict
+
+from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.data_paths import RETRIEVAL_REPORTS_ROOT, RETRIEVAL_ROOT
 
@@ -33,9 +37,63 @@ DEFAULT_CASE_IDS = (
 DEFAULT_METADATA_MANIFEST = RETRIEVAL_ROOT / "serving/retrieval_metadata.manifest.json"
 
 
-def load_cases(path: Path, case_ids: tuple[str, ...]) -> list[dict]:
+class SmokeContext(TypedDict):
+    title: str
+    author: str | None
+    dynasty: str | None
+
+
+class SmokeHistoryMessage(TypedDict):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class SmokeInput(TypedDict):
+    poem: str
+    question: str
+    selection: str | None
+    context: SmokeContext
+    history: NotRequired[list[SmokeHistoryMessage]]
+
+
+class SmokeTarget(TypedDict):
+    answer_anchors: list[str]
+
+
+@with_config(ConfigDict(extra="allow"))
+class SmokeCase(TypedDict):
+    id: str
+    input: SmokeInput
+    current_match_text: str
+    retrieval_query: str
+    target: SmokeTarget
+
+
+@with_config(ConfigDict(extra="allow"))
+class SmokeWork(TypedDict):
+    work_id: str
+    content: str
+    author: str | None
+
+
+class ToolEvent(TypedDict):
+    tool_call_id: str | None
+    status: str | None
+    evidence_type: str | None
+    query: str | None
+    candidates: list[dict[str, object]]
+
+
+_CASES_ADAPTER = TypeAdapter(list[SmokeCase])
+_WORK_ADAPTER = TypeAdapter(SmokeWork)
+
+
+def load_cases(path: Path, case_ids: tuple[str, ...]) -> list[SmokeCase]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    by_id = {item["id"]: item for item in payload["cases"]}
+    if not isinstance(payload, dict):
+        raise ValueError("Smoke fixtures must be a JSON object")
+    cases = _CASES_ADAPTER.validate_python(payload.get("cases"))
+    by_id = {item["id"]: item for item in cases}
     missing = [case_id for case_id in case_ids if case_id not in by_id]
     if missing:
         raise ValueError(
@@ -46,17 +104,19 @@ def load_cases(path: Path, case_ids: tuple[str, ...]) -> list[dict]:
 
 def resolve_full_current_works(
     work_path: Path,
-    cases: list[dict],
-) -> dict[str, dict]:
+    cases: list[SmokeCase],
+) -> dict[str, SmokeWork]:
     """Find one full current Work per case by author + known current text."""
     unresolved = {case["id"] for case in cases}
-    resolved: dict[str, dict] = {}
+    resolved: dict[str, SmokeWork] = {}
 
     with work_path.open(encoding="utf-8") as stream:
         for line in stream:
             if not line.strip():
                 continue
             work = json.loads(line)
+            if not isinstance(work, dict):
+                continue
             content = work.get("content")
             if not isinstance(content, str):
                 continue
@@ -71,7 +131,7 @@ def resolve_full_current_works(
                     continue
                 if case["current_match_text"] not in content:
                     continue
-                resolved[case_id] = work
+                resolved[case_id] = _WORK_ADAPTER.validate_python(work)
                 unresolved.remove(case_id)
 
             if not unresolved:
@@ -85,8 +145,8 @@ def resolve_full_current_works(
     return resolved
 
 
-def parse_tool_events(tool_results: list[dict]) -> list[dict]:
-    events = []
+def parse_tool_events(tool_results: Sequence[Mapping[str, object]]) -> list[ToolEvent]:
+    events: list[ToolEvent] = []
     for item in tool_results:
         content = item.get("content")
         if not isinstance(content, str):
@@ -96,8 +156,10 @@ def parse_tool_events(tool_results: list[dict]) -> list[dict]:
         except json.JSONDecodeError:
             payload = {"status": "invalid_json", "raw": content[:500]}
 
+        if not isinstance(payload, dict):
+            payload = {"status": "invalid_payload"}
         candidates = payload.get("candidates")
-        preview = []
+        preview: list[dict[str, object]] = []
         if isinstance(candidates, list):
             preview = [
                 {
@@ -110,12 +172,16 @@ def parse_tool_events(tool_results: list[dict]) -> list[dict]:
                 if isinstance(candidate, dict)
             ]
 
+        raw_status = payload.get("status")
+        raw_type = payload.get("evidence_type")
+        raw_query = payload.get("query")
+        raw_call_id = item.get("id")
         events.append(
             {
-                "tool_call_id": item.get("id"),
-                "status": payload.get("status"),
-                "evidence_type": payload.get("evidence_type"),
-                "query": payload.get("query"),
+                "tool_call_id": raw_call_id if isinstance(raw_call_id, str) else None,
+                "status": raw_status if isinstance(raw_status, str) else None,
+                "evidence_type": raw_type if isinstance(raw_type, str) else None,
+                "query": raw_query if isinstance(raw_query, str) else None,
                 "candidates": preview,
             }
         )

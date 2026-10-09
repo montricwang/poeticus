@@ -2,11 +2,9 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/corpus/epub_import"))
-
 from bs4 import BeautifulSoup
-from extractor.blocks import iter_source_blocks
-from extractor.extractor import extract_collection, extract_sections
+from scripts.corpus.epub_import.extractor.blocks import iter_source_blocks
+from scripts.corpus.epub_import.extractor.extractor import extract_collection, extract_sections
 
 
 class Item:
@@ -40,7 +38,7 @@ def test_blocks_keep_inline_subtitle_linebreak_and_source():
     assert block.location()["block"] == 1
     assert block.location()["anchor"] == "a"
     assert [run["tag"] for run in block.runs] == ["text", "br", "span"]
-    assert block.runs[-1]["style"] == "font-size:.8em"
+    assert block.runs[-1].get("style") == "font-size:.8em"
 
 
 def test_multi_author_toc_routes_and_resets_repeat():
@@ -614,6 +612,8 @@ def test_multiple_gap_markers_do_not_fabricate_individual_span_attribution():
     markers = [w for w in section["warnings"]
                if w["type"] == "inline_editorial_gap"]
     assert len(markers) == 2
+    assert isinstance(markers[0]["start"], int)
+    assert isinstance(markers[1]["start"], int)
     assert markers[0]["start"] < markers[1]["start"]
     assert all(w["inside_styled_span"] is None for w in markers)
     assert section["text"] == [
@@ -644,6 +644,7 @@ def test_author_self_note_preserved_with_source_offsets_not_flattened_away():
     note = notices[0]
     assert note["block"] == 135
     assert note["text"] == "作者自注示例"
+    assert isinstance(note["start"], int) and isinstance(note["end"], int)
     assert section["text"][0][note["start"]:note["end"]] == note["text"]
     assert note["origin"] == "author"
     assert note["status"] == "retained_in_body_pending_schema"
@@ -674,6 +675,7 @@ def test_huang_inline_note_is_candidate_without_claiming_author_provenance():
     assert len(notes) == 1
     assert notes[0]["block"] == 679
     assert notes[0]["origin"] == "unverified"
+    assert isinstance(notes[0]["start"], int) and isinstance(notes[0]["end"], int)
     assert section["text"][1][notes[0]["start"]:notes[0]["end"]] == notes[0]["text"]
 
 
@@ -684,7 +686,7 @@ def test_font1_outside_manually_reviewed_locations_remains_suspicious():
     section = extract_sections(
         Book({"text00278.html": html}), "text00278.html", "辛弃疾词集"
     )[0]
-    assert not any(w["type"].startswith("inline_author_note")
+    assert not any(isinstance(w["type"], str) and w["type"].startswith("inline_author_note")
                    for w in section["warnings"])
     assert any(w["type"] == "inline_body_style_review"
                for w in section["warnings"])

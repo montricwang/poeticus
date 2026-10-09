@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from psycopg import Connection
+from psycopg.rows import DictRow
 
 from .connection import get_connection
 from .repository import get_poem, list_poems
@@ -58,7 +59,7 @@ def catalog(
     q: str | None = Query(default=None, max_length=100),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    conn: Connection = Depends(get_connection),
+    conn: Connection[DictRow] = Depends(get_connection),
 ):
     """按查询参数筛选，并按原书顺序返回分页结果。"""
     records, total = list_poems(
@@ -68,11 +69,16 @@ def catalog(
         q=_clean_filter(q),
         limit=limit, offset=offset,
     )
-    return PoemPage(items=records, total=total, limit=limit, offset=offset)
+    return PoemPage(
+        items=[PoemSummary.model_validate(record) for record in records],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/{poem_id}", response_model=PoemDetail)
-def detail(poem_id: UUID, conn: Connection = Depends(get_connection)):
+def detail(poem_id: UUID, conn: Connection[DictRow] = Depends(get_connection)):
     """按 UUID 返回阅读端正文，绝不返回私人来源证据。"""
     record = get_poem(conn, poem_id)
     if record is None:

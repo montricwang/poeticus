@@ -42,6 +42,7 @@ def test_reference_response_maps_to_evidence_items(monkeypatch):
     assert item.type == "reference"
     assert item.anchor == "片片轻鸥落晚沙"
     assert item.text == "片片輕鷗下急湍"
+    assert item.source is not None
     assert item.source.title == "小寒食舟中作"
     assert item.source.author == "杜甫"
     assert item.metadata == {

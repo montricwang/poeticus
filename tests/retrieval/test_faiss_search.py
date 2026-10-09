@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from scripts.retrieval.exact_search import ChunkRecord, WorkRecord
 from scripts.retrieval.faiss_search import (
     build_eligible_work_rows,
     load_index_manifest,
@@ -62,7 +63,9 @@ def test_load_index_manifest_accepts_matching_artifact(tmp_path):
 def test_load_index_manifest_rejects_embedding_mismatch(tmp_path):
     (tmp_path / "index.faiss").write_bytes(b"FAKE")
     manifest = index_manifest()
-    manifest["source_embedding"]["input_sha256"] = "other"
+    source = manifest["source_embedding"]
+    assert isinstance(source, dict)
+    source["input_sha256"] = "other"
     (tmp_path / "manifest.json").write_text(
         json.dumps(manifest),
         encoding="utf-8",
@@ -91,14 +94,14 @@ def test_build_eligible_work_rows_overfetches_then_filters():
         (0.6, 3),   # duplicate chunk from same work, collapse
         (0.5, 4),   # clearly earlier, keep
     ]
-    chunks = {
+    chunks: dict[int, ChunkRecord] = {
         0: {"chunk_id": "c0", "text": "self", "work_id": "w-self"},
         1: {"chunk_id": "c1", "text": "later", "work_id": "w-later"},
         2: {"chunk_id": "c2", "text": "same-1", "work_id": "w-same"},
         3: {"chunk_id": "c3", "text": "same-2", "work_id": "w-same"},
         4: {"chunk_id": "c4", "text": "earlier", "work_id": "w-earlier"},
     }
-    works = {
+    works: dict[str, WorkRecord] = {
         "w-self": {
             "work_id": "w-self",
             "title": "self",

@@ -98,7 +98,7 @@ def build_corpus(
     output_path: Path,
     report_path: Path,
     expected_count: int | None = DEFAULT_EXPECTED_COUNT,
-) -> dict:
+) -> dict[str, object]:
     files = source_files(source_dir)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)
@@ -152,7 +152,7 @@ def build_corpus(
         tmp_output.unlink(missing_ok=True)
         raise
 
-    report = {
+    report: dict[str, object] = {
         "source": SOURCE_NAME,
         "source_dir": str(source_dir),
         "output": str(output_path),

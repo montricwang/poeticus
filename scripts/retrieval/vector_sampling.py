@@ -4,6 +4,25 @@ These functions belong to the FAISS build pipeline, not to a one-time
 compression experiment. Importing them does not load a model or FAISS.
 """
 from pathlib import Path
+from collections.abc import Mapping
+from typing import TypedDict
+
+from pydantic import TypeAdapter
+
+
+
+class VectorShard(TypedDict):
+    start: int
+    end: int
+    file: str
+
+
+class VectorShardManifest(TypedDict):
+    embedding_dimension: int
+    completed_shards: list[VectorShard]
+
+
+_VECTOR_MANIFEST_ADAPTER = TypeAdapter(VectorShardManifest)
 
 
 def _require_numpy():
@@ -34,18 +53,19 @@ def sample_global_rows(total: int, sample_size: int):
 
 def load_sampled_vectors(
     artifact_dir: Path,
-    manifest: dict,
+    manifest: Mapping[str, object],
     rows,
 ):
     """Load only requested global rows from sharded .npy embeddings."""
     np = _require_numpy()
 
     rows = np.asarray(rows, dtype=np.int64)
-    dimension = manifest["embedding_dimension"]
+    shard_manifest = _VECTOR_MANIFEST_ADAPTER.validate_python(manifest)
+    dimension = shard_manifest["embedding_dimension"]
     vectors = np.empty((len(rows), dimension), dtype=np.float32)
     filled = np.zeros(len(rows), dtype=bool)
 
-    for shard in manifest["completed_shards"]:
+    for shard in shard_manifest["completed_shards"]:
         start = shard["start"]
         end = shard["end"]
 

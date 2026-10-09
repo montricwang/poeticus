@@ -17,6 +17,10 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from collections.abc import Mapping
+from typing import Literal, TypedDict
+
+from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT
 
@@ -26,6 +30,7 @@ from scripts.retrieval.exact_search import (
     DEFAULT_DATA_ROOT,
     DEFAULT_MODEL_ROOT,
     DEFAULT_TOP_K,
+    ExactManifest,
     build_dynasty_row_mask,
     build_result_rows,
     ensure_model_snapshot,
@@ -41,18 +46,39 @@ BERT_CCPOEM_MODEL = "THUNLP-AIPoet/BERT-CCPoem-v1.0"
 SUPPORTED_MODELS = frozenset({QWEN_MODEL, BERT_CCPOEM_MODEL})
 
 DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
+@with_config(ConfigDict(extra="allow"))
+class ArtifactManifest(ExactManifest):
+    chunk_policy: Literal["sentence", "clause"]
+
+
+class SummaryProbeChunk(TypedDict):
+    text: str
+
+
+class SummaryProbe(TypedDict):
+    rank: int
+    cosine: float
+    chunk: SummaryProbeChunk
+
+
+_ARTIFACT_MANIFEST_ADAPTER = TypeAdapter(ArtifactManifest)
+_SUMMARY_PROBES_ADAPTER = TypeAdapter(list[SummaryProbe])
+
+
 CHUNK_PATHS = {
     "sentence": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl",
     "clause": RETRIEVAL_CORPUS_ROOT / "werneror_chunks_clause.jsonl",
 }
 
 
-def load_artifact_manifest(artifact_dir: Path) -> dict:
+def load_artifact_manifest(artifact_dir: Path) -> ArtifactManifest:
     manifest_path = artifact_dir / "manifest.json"
     if not manifest_path.is_file():
         raise ValueError(f"Embedding manifest 不存在：{manifest_path}")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise ValueError("Embedding manifest 必须是对象")
     if manifest.get("status") != "complete":
         raise ValueError(
             f"Embedding Artifact 尚未完成：status={manifest.get('status')!r}"
@@ -82,10 +108,12 @@ def load_artifact_manifest(artifact_dir: Path) -> dict:
 
     expected_start = 0
     for item in shards:
+        if not isinstance(item, dict):
+            raise ValueError("Embedding shard 必须是对象")
         start = item.get("start")
         end = item.get("end")
         filename = item.get("file")
-        if start != expected_start or not isinstance(end, int) or end <= start:
+        if not isinstance(start, int) or start != expected_start or not isinstance(end, int) or end <= start:
             raise ValueError("manifest 中 completed_shards 不是连续区间")
         if not isinstance(filename, str) or not filename:
             raise ValueError("manifest shard 缺少文件名")
@@ -98,17 +126,20 @@ def load_artifact_manifest(artifact_dir: Path) -> dict:
             "manifest 的 completed_chunks 与 completed_shards 范围不一致"
         )
 
-    return manifest
+    return _ARTIFACT_MANIFEST_ADAPTER.validate_python(manifest)
 
 
-def resolve_chunk_path(manifest: dict, requested_path: Path | None) -> Path:
+def resolve_chunk_path(manifest: Mapping[str, object], requested_path: Path | None) -> Path:
     if requested_path is not None:
         return requested_path.expanduser().resolve()
-    return CHUNK_PATHS[manifest["chunk_policy"]].resolve()
+    policy = manifest["chunk_policy"]
+    if not isinstance(policy, str) or policy not in CHUNK_PATHS:
+        raise ValueError(f"尚不支持该 chunk_policy：{policy!r}")
+    return CHUNK_PATHS[policy].resolve()
 
 
 def resolve_query_model_path(
-    manifest: dict,
+    manifest: Mapping[str, object],
     requested_path: Path | None,
 ) -> Path:
     if requested_path is not None:
@@ -116,6 +147,8 @@ def resolve_query_model_path(
 
     if manifest["model"] == QWEN_MODEL:
         fingerprint = manifest["model_fingerprint"]
+        if not isinstance(fingerprint, str):
+            raise ValueError("manifest model_fingerprint 必须是字符串")
         return (
             DEFAULT_MODEL_ROOT
             / f"Qwen3-Embedding-0.6B-{fingerprint[:12]}"
@@ -131,7 +164,7 @@ def encode_qwen_query(
     *,
     query: str,
     model_path: Path,
-    manifest: dict,
+    manifest: ArtifactManifest,
     device: str | None,
 ):
     try:
@@ -147,11 +180,9 @@ def encode_qwen_query(
         manifest["model_fingerprint"],
     )
 
-    kwargs = {"local_files_only": True}
-    if device:
-        kwargs["device"] = device
-
-    model = SentenceTransformer(str(model_path), **kwargs)
+    model = SentenceTransformer(
+        str(model_path), local_files_only=True, device=device
+    )
     dimension = manifest["embedding_dimension"]
     vectors = model.encode(
         [query],
@@ -171,12 +202,12 @@ def encode_bert_ccpoem_query(
     *,
     query: str,
     model_path: Path,
-    manifest: dict,
+    manifest: ArtifactManifest,
     device: str | None,
 ):
     try:
         import torch
-        from transformers import BertModel, BertTokenizer
+        from transformers import AutoModel, BertModel, BertTokenizer
     except ImportError as exc:
         raise RuntimeError(
             "BERT-CCPoem Retrieval 需要 torch / transformers；"
@@ -209,10 +240,12 @@ def encode_bert_ccpoem_query(
         str(model_path),
         local_files_only=True,
     )
-    model = BertModel.from_pretrained(
-        str(model_path),
-        local_files_only=True,
-    ).to(selected_device)
+    model = AutoModel.from_pretrained(
+        str(model_path), local_files_only=True
+    )
+    if not isinstance(model, BertModel):
+        raise ValueError("BERT-CCPoem 模型配置必须对应 BertModel")
+    torch.nn.Module.to(model, device=torch.device(selected_device))
     model.eval()
 
     vectors = encode_batch(
@@ -234,7 +267,7 @@ def encode_query_for_artifact(
     *,
     query: str,
     model_path: Path,
-    manifest: dict,
+    manifest: ArtifactManifest,
     device: str | None,
 ):
     if manifest["model"] == QWEN_MODEL:
@@ -267,7 +300,7 @@ def run_artifact_search(
     probe_author: str | None = None,
     device: str | None = None,
     verify_input_hash: bool = False,
-) -> dict:
+) -> dict[str, object]:
     if top_k <= 0:
         raise ValueError("top_k 必须为正整数")
     if probe_author and not probe_text:
@@ -394,9 +427,9 @@ def run_artifact_search(
     }
 
 
-def summarize_result(label: str, result: dict) -> dict:
+def summarize_result(label: str, result: Mapping[str, object]) -> dict[str, object]:
     """Compact an Artifact search into an interpretable target-rank summary."""
-    probes = result.get("probes") or []
+    probes = _SUMMARY_PROBES_ADAPTER.validate_python(result.get("probes") or [])
     best = min(probes, key=lambda item: item["rank"]) if probes else None
     return {
         "label": label,

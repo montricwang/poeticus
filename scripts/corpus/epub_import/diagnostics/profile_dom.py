@@ -10,6 +10,7 @@ import re
 import warnings
 from collections import Counter, defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
 from urllib.parse import unquote
@@ -43,6 +44,19 @@ WINDOW_SAMPLE_LIMIT = 18  # 每分册最多展示的连续片段总数
 BLOCK_SAMPLE_LIMIT = 10  # 每段连续窗口展示的块数
 TRANSITION_SAMPLE_LIMIT = 4  # 每分册抽取的“符号→无符号”相邻案例
 STYLE_KEYS = ("font-family", "font-size", "font-weight", "font-style", "color")
+class ScanCoverage(TypedDict):
+    """Mutable aggregate state while scanning one EPUB volume."""
+
+    files: int
+    missing: list[str]
+    linked_css: set[str]
+    heading_tags: Counter[str]
+    unhandled_tags: Counter[str]
+    unhandled_samples: dict[str, dict[str, str]]
+    transition_candidates: list[tuple[str, int]]
+    transition_files: set[str]
+
+
 INLINE_TAGS = {
     "span",
     "small",
@@ -218,13 +232,18 @@ def unhandled_text(soup):
             or not text.strip()
         ):
             continue
-        if text.parent.find_parent(["p", *sorted(HEADINGS)]):
+        parent = text.parent
+        if parent is None:
             continue
-        if text.parent.name in HEADINGS | {"p", "script", "style", "title"}:
+        if parent.find_parent(["p", *sorted(HEADINGS)]):
             continue
-        if text.parent.find_parent(["script", "style", "head"]):
+        if parent.name in HEADINGS | {"p", "script", "style", "title"}:
             continue
-        name = text.parent.name
+        if parent.find_parent(["script", "style", "head"]):
+            continue
+        name = parent.name
+        if name is None:
+            continue
         grouped[name] += 1
         samples.setdefault(name, compact(str(text)))
     return grouped, samples
@@ -453,7 +472,7 @@ def finish(records):
 
 def profile_volume(book, volume, resolver):
     templates, paragraphs = {}, {}
-    coverage = {
+    coverage: ScanCoverage = {
         "files": 0,
         "missing": [],
         "linked_css": set(),
@@ -857,13 +876,19 @@ def main():
         print(f"报告：{path}")
 
     args.details_dir.mkdir(parents=True, exist_ok=True)
-    for index, volume in enumerate(report["volumes"], 1):
+    volumes = report["volumes"]
+    css_warnings = report["css_warnings"]
+    if not isinstance(volumes, list) or not isinstance(css_warnings, list):
+        raise ValueError("DOM 画像结果中的分册或 CSS 提醒结构异常")
+    for index, volume in enumerate(volumes, 1):
+        if not isinstance(volume, dict) or not isinstance(volume.get("volume"), str):
+            raise ValueError("DOM 画像分册缺少有效名称")
         # 每本详细报告保留低频模板全例、样式 run 和连续结构证据。
         one = {"volumes": [volume], "css_warnings": []}
         path = args.details_dir / volume_report_filename(index, volume["volume"])
         path.write_text(render_md(one), encoding="utf-8")
-    print(f"分册详细报告：{args.details_dir}（{len(report['volumes'])} 份）")
-    print(f"分册：{len(report['volumes'])}；CSS 提醒：{len(report['css_warnings'])}")
+    print(f"分册详细报告：{args.details_dir}（{len(volumes)} 份）")
+    print(f"分册：{len(volumes)}；CSS 提醒：{len(css_warnings)}")
 
 
 if __name__ == "__main__":

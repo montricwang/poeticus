@@ -1,0 +1,77 @@
+name: Python types
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  basedpyright:
+    name: BasedPyright
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+            requirements-retrieval.txt
+
+      # CPU wheels keep type checking independent of CUDA and model weights.
+      - name: Install CPU-only PyTorch
+        run: python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+
+      - name: Install retrieval and development dependencies
+        run: python -m pip install -r requirements-retrieval.txt
+
+      - name: Check types and summarize diagnostics
+        shell: bash
+        run: |
+          set +e
+          basedpyright --outputjson > basedpyright-report.json
+          status=$?
+          set -e
+
+          python - <<'PY'
+          import json
+          import os
+          from collections import Counter
+          from pathlib import Path
+
+          report = json.loads(Path("basedpyright-report.json").read_text(encoding="utf-8"))
+          summary = report["summary"]
+          diagnostics = report["generalDiagnostics"]
+          by_rule = Counter(d.get("rule", "unknown") for d in diagnostics)
+          print(f"Analyzed {summary['filesAnalyzed']} files: "
+                f"{summary['errorCount']} errors, {summary['warningCount']} warnings")
+          print("Top diagnostic rules:")
+          for rule, count in by_rule.most_common(10):
+              print(f"  {count:>5}  {rule}")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as output:
+              output.write("### BasedPyright\n\n")
+              output.write(
+                  f"Files: {summary['filesAnalyzed']} · "
+                  f"Errors: {summary['errorCount']} · "
+                  f"Warnings: {summary['warningCount']}\n\n"
+              )
+              output.write("Full diagnostics are in the uploaded JSON artifact.\n")
+          PY
+
+          exit "$status"
+
+      - name: Upload BasedPyright JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: basedpyright-report
+          path: basedpyright-report.json
+          if-no-files-found: warn
+          retention-days: 14

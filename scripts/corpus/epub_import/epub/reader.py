@@ -1,8 +1,23 @@
 from pathlib import Path
 import argparse
 import json
+from typing import NotRequired, TypedDict
 
 from ebooklib import epub
+
+
+class TocEntry(TypedDict):
+    title: str
+    href: NotRequired[str]
+    children: NotRequired[list["TocEntry"]]
+
+
+class EpubInspection(TypedDict):
+    file: str
+    metadata: dict[str, str]
+    summary: dict[str, int]
+    documents: list[str]
+    toc: list[TocEntry]
 
 
 def inspect_toc(book):
@@ -22,8 +37,8 @@ def inspect_toc(book):
     walk(book.toc)
 
 
-def parse_toc(items):
-    result = []
+def parse_toc(items) -> list[TocEntry]:
+    result: list[TocEntry] = []
 
     for item in items:
         if isinstance(item, tuple):
@@ -37,10 +52,10 @@ def parse_toc(items):
     return result
 
 
-def inspect_epub(epub_path: Path):
+def inspect_epub(epub_path: Path) -> EpubInspection:
     book = epub.read_epub(str(epub_path))
 
-    result = {
+    result: EpubInspection = {
         "file": epub_path.name,
         "metadata": {},
         "summary": {},
@@ -55,7 +70,7 @@ def inspect_epub(epub_path: Path):
     if title:
         result["metadata"]["title"] = title[0][0]
 
-    counters = {}
+    counters: dict[str, int] = {}
 
     for item in book.get_items():
         item_type = str(item.get_type())

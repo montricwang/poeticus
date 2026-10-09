@@ -8,15 +8,13 @@ try:
     import ebooklib  # noqa
 except ImportError:
     lib = ModuleType("ebooklib")
-    lib.epub = ModuleType("ebooklib.epub")
+    epub_module = ModuleType("ebooklib.epub")
+    setattr(lib, "epub", epub_module)
     sys.modules["ebooklib"] = lib
-    sys.modules["ebooklib.epub"] = lib.epub
+    sys.modules["ebooklib.epub"] = epub_module
 
-sys.path.insert(
-    0, str(Path(__file__).resolve().parents[2] / "scripts/corpus/epub_import")
-)
-from extractor.extractor import extract_sections, extract_collection  # noqa
-from pipeline.normalize import normalize_poem, unresolved_glyphs  # noqa
+from scripts.corpus.epub_import.extractor.extractor import extract_sections, extract_collection
+from scripts.corpus.epub_import.pipeline.normalize import normalize_poem, unresolved_glyphs
 
 
 class Item:
@@ -192,7 +190,7 @@ def test_flatten_nested_volume_and_skip_front_matter():
 
 
 def test_source_only_unicode_glyph_map_resolves():
-    from pipeline.normalize import normalize_text
+    from scripts.corpus.epub_import.pipeline.normalize import normalize_text
 
     assert (
         normalize_text("甲{{glyph:uni.png}}乙", {"uni.png": {"source_form": "龢"}})

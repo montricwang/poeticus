@@ -12,34 +12,56 @@ Request-time lookup never scans the corpus JSONL files.
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Sequence
+
+from pydantic import TypeAdapter, ValidationError
 
 from backend.retrieval.chronology import DYNASTY_PERIODS
 from backend.retrieval.fanout import (
     ChannelDescriptor,
+    ChunkPolicy,
     RetrievalHit,
 )
 from backend.retrieval.metadata_store import MetadataStore
-from backend.retrieval.service import TextRetrievalService
+from backend.retrieval.service import RetrievalStatus, TextRetrievalService
+
+if TYPE_CHECKING:
+    import numpy as np
+    from numpy.typing import NDArray
 
 
-def _load_json(path: Path) -> dict:
+_MANIFEST_ADAPTER = TypeAdapter(dict[str, object])
+
+
+def _load_json(path: Path) -> dict[str, object]:
+    """Read one Manifest whose JSON root must be an object."""
     if not path.is_file():
         raise ValueError(f"manifest 不存在：{path}")
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        return _MANIFEST_ADAPTER.validate_json(
+            path.read_text(encoding="utf-8")
+        )
+    except ValidationError as exc:
         raise ValueError(f"manifest 无法解析：{path}") from exc
 
 
-def _embedding_source_signature(manifest: dict) -> dict:
+def _required_positive_int(manifest: dict[str, object], field: str) -> int:
+    """Validate an integer artifact parameter before passing it downstream."""
+    value = manifest.get(field)
+    if type(value) is not int or value <= 0:
+        raise ValueError(f"manifest 缺少有效 {field}：{value!r}")
+    return value
+
+
+def _embedding_source_signature(
+    manifest: dict[str, object],
+) -> dict[str, object]:
     keys = (
         "model",
         "model_fingerprint",
@@ -136,11 +158,11 @@ class ServingCandidate:
 
 @dataclass(frozen=True)
 class ServingSearchResult:
-    status: str
+    status: RetrievalStatus
     query: str
     candidates: tuple[ServingCandidate, ...]
     current_work_aliases: tuple[str, ...]
-    timings_ms: dict
+    timings_ms: dict[str, object]
 
 
 def _dominant_known_dynasty(counts: dict[str, int]) -> str | None:
@@ -183,15 +205,13 @@ class QwenQueryEncoder:
                 "请安装 requirements-retrieval.txt"
             ) from exc
 
-        kwargs = {"local_files_only": True}
-        if device:
-            kwargs["device"] = device
-
-        self._model = SentenceTransformer(str(model_path), **kwargs)
+        self._model = SentenceTransformer(
+            str(model_path), local_files_only=True, device=device
+        )
         self.dimension = dimension
         self.device = str(self._model.device)
         self._cache_size = cache_size
-        self._cache: OrderedDict[str, object] = OrderedDict()
+        self._cache: OrderedDict[str, NDArray[np.float32]] = OrderedDict()
         self._lock = threading.Lock()
 
     def clear_cache(self) -> None:
@@ -242,7 +262,7 @@ class FaissDenseChannel:
         self,
         *,
         name: str,
-        policy: str,
+        policy: ChunkPolicy,
         embedding_dir: Path,
         index_dir: Path,
         encoder: QwenQueryEncoder,
@@ -256,7 +276,7 @@ class FaissDenseChannel:
             method="dense",
             chunk_policy=policy,
         )
-        self._policy = policy
+        self._policy: ChunkPolicy = policy
         self._encoder = encoder
         self._metadata = metadata
         self._local = threading.local()
@@ -302,16 +322,18 @@ class FaissDenseChannel:
 
         faiss = _require_faiss()
         self._index = faiss.read_index(str(index_dir / index_file))
-        expected = embedding_manifest["completed_chunks"]
+        expected = _required_positive_int(embedding_manifest, "completed_chunks")
         if self._index.ntotal != expected:
             raise ValueError(
                 f"{policy} FAISS ntotal={self._index.ntotal}，预期 {expected}"
             )
-        self._index.nprobe = index_manifest["nprobe"]
+        faiss.ParameterSpace().set_index_parameter(
+            self._index, "nprobe", _required_positive_int(index_manifest, "nprobe")
+        )
         self.index_manifest = index_manifest
         self.embedding_manifest = embedding_manifest
 
-    def profile(self) -> dict:
+    def profile(self) -> dict[str, int | float]:
         return dict(getattr(self._local, "profile", {}))
 
     def search_many(
@@ -418,11 +440,11 @@ class SentenceBm25Channel:
             raise ValueError(
                 f"BM25 database 不存在：{self._database}"
             )
-        self._min_n = int(manifest["min_n"])
-        self._max_n = int(manifest["max_n"])
+        self._min_n = _required_positive_int(manifest, "min_n")
+        self._max_n = _required_positive_int(manifest, "max_n")
         self.manifest = manifest
 
-    def profile(self) -> dict:
+    def profile(self) -> dict[str, int | float]:
         return dict(getattr(self._local, "profile", {}))
 
     def search_many(
@@ -545,7 +567,9 @@ class RetrievalServingRuntime:
         started = time.perf_counter()
         self.encoder = QwenQueryEncoder(
             model_path=paths.model_path,
-            dimension=sentence_manifest["embedding_dimension"],
+            dimension=_required_positive_int(
+                sentence_manifest, "embedding_dimension"
+            ),
             device=device,
         )
         self.startup_profile["model_load_ms"] = (
@@ -558,14 +582,14 @@ class RetrievalServingRuntime:
         started = time.perf_counter()
         self.metadata = MetadataStore(paths.metadata_db)
         metadata_stats = self.metadata.stats()
-        if int(metadata_stats.get("sentence_chunks", "-1")) != int(
-            sentence_manifest["completed_chunks"]
+        if int(metadata_stats.get("sentence_chunks", "-1")) != (
+            _required_positive_int(sentence_manifest, "completed_chunks")
         ):
             raise ValueError(
                 "Metadata sentence row count 与 Embedding Artifact 不一致"
             )
-        if int(metadata_stats.get("clause_chunks", "-1")) != int(
-            clause_manifest["completed_chunks"]
+        if int(metadata_stats.get("clause_chunks", "-1")) != (
+            _required_positive_int(clause_manifest, "completed_chunks")
         ):
             raise ValueError(
                 "Metadata clause row count 与 Embedding Artifact 不一致"
@@ -755,7 +779,7 @@ class RetrievalServingRuntime:
                 )
             )
 
-        timings = {
+        timings: dict[str, object] = {
             "current_alias_lookup_ms": alias_ms,
             "target_dynasty": effective_target_dynasty,
             "target_dynasty_source": dynasty_source,

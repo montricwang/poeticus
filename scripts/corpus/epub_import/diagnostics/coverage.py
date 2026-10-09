@@ -5,18 +5,53 @@ It does not assert that a field assignment is semantically correct.
 It intentionally exposes only locations, markup and character counts.
 """
 from collections import Counter
+from typing import TypedDict
 
 from bs4 import BeautifulSoup, Comment, NavigableString
 
-from ..extractor.blocks import iter_source_blocks
+from ..extractor.blocks import _class_list, _string_attribute, iter_source_blocks
+from ..extractor.extractor import CandidateSection
 from ..extractor.extractor import raw_xhtml
 from ..extractor.rules import is_chronology, is_non_poem
+
+
+class BlockSite(TypedDict):
+    html: str
+    block: int
+    tag: str
+    classes: list[str]
+    anchor: str | None
+    text_length: int
+
+
+class UnsupportedTextSite(TypedDict):
+    html: str
+    parent_tag: str
+    parent_classes: list[str]
+    parent_id: str | None
+    text_length: int
+
+
+class CoverageReport(TypedDict):
+    total_blocks: int
+    handled_blocks: int
+    excluded_blocks: int
+    untracked_blocks: int
+    internal_chronology_not_exported: int
+    chronology_sites: list[BlockSite]
+    exclusion_types: dict[str, int]
+    untracked_sites: list[BlockSite]
+    unsupported_text_nodes: int
+    unsupported_text_sites: list[UnsupportedTextSite]
+    scope: str
 
 
 EDITORIAL_REGION_PREFIXES = ("导读", "导　读", "总评", "词论")
 
 
-def source_block_coverage(book, files, sections, collection):
+def source_block_coverage(
+    book, files: list[str], sections: list[CandidateSection], collection: str,
+) -> CoverageReport:
     """只审计实际处理过的 XHTML，不把它冒充为整本 EPUB 的完整覆盖。
 
     handled: source block appears in the extractor's intermediate evidence.
@@ -34,9 +69,9 @@ def source_block_coverage(book, files, sections, collection):
         for block in section["blocks"]
     }
     counters = Counter()
-    untracked = []
-    chronology_sites = []
-    unsupported_text = []
+    untracked: list[BlockSite] = []
+    chronology_sites: list[BlockSite] = []
+    unsupported_text: list[UnsupportedTextSite] = []
 
     for filename in files:
         item = book.get_item_with_href(filename)
@@ -100,15 +135,15 @@ def source_block_coverage(book, files, sections, collection):
             unsupported_text.append({
                 "html": filename,
                 "parent_tag": parent.name if parent else "unknown",
-                "parent_classes": list(parent.get("class", [])) if parent else [],
-                "parent_id": parent.get("id") if parent else None,
+                "parent_classes": _class_list(parent) if parent else [],
+                "parent_id": _string_attribute(parent, "id") if parent else None,
                 "text_length": len(str(text_node).strip()),
             })
 
     total = sum(counters.values())
     excluded = sum(n for label, n in counters.items()
                    if label.startswith("excluded_"))
-    return {
+    report: CoverageReport = {
         "total_blocks": total,
         "handled_blocks": counters["handled"],
         "excluded_blocks": excluded,
@@ -128,3 +163,4 @@ def source_block_coverage(book, files, sections, collection):
             "not every XHTML file in EPUB"
         ),
     }
+    return report
