@@ -31,6 +31,14 @@ PRIORITY_WARNINGS = {
 from ..config import COLLECTIONS
 
 
+def block_text_length(block: dict[str, object]) -> int:
+    """Check the extractor evidence shape before computing audit lengths."""
+    text = block["text"]
+    if not isinstance(text, str):
+        raise TypeError("EPUB block evidence must contain string text")
+    return len(text)
+
+
 def audit_collection(book, toc, name, author, slug):
     """按来源顺序收集摘要统计与全部 warning 位置。"""
     poems, files = extract_collection(book, toc, name, slug, author)
@@ -69,7 +77,7 @@ def audit_collection(book, toc, name, author, slug):
                 }
             unknown_shapes.append({
                 "block": unknown["block"],
-                "length": len(unknown["text"]),
+                "length": block_text_length(unknown),
                 "previous": shape(structural_blocks[idx - 1] if idx else None),
                 "current": shape(structural_blocks[idx]),
                 "following": shape(structural_blocks[idx + 1]
@@ -94,7 +102,7 @@ def audit_collection(book, toc, name, author, slug):
                 # 这里只记录结构，不复制商业出版注释正文。
                 "unsigned_work_structure": [
                     {"role": b["role"], "tag": b["tag"],
-                     "classes": b["classes"], "text_length": len(b["text"])}
+                     "classes": b["classes"], "text_length": block_text_length(b)}
                     for b in section["blocks"][:8]
                 ] if not poem.author else [],
             })
