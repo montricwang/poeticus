@@ -194,13 +194,13 @@ def extract_sections(
             for image in element.find_all("img"):
                 src = _string_attribute(image, "src")
                 glyph = "{{glyph:" + (src or "missing-src") + "}}"
-                category = ("yusheng" if yusheng and glyph in yusheng
-                            else "title" if title and glyph in title
-                            else "tune")
+                image_category = ("yusheng" if yusheng and glyph in yusheng
+                                  else "title" if title and glyph in title
+                                  else "tune")
                 issues.append({
                     "type": "inline_image" if src else "missing_image_src",
                     "html": html_name, "src": src,
-                    "category": category, "status": "unresolved"
+                    "category": image_category, "status": "unresolved"
                 })
             if is_supplement_heading:
                 issues.append({
