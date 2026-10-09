@@ -21,11 +21,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_REPORTS_ROOT
-from typing import Callable, Literal, TypedDict
+from collections.abc import Mapping
+from typing import Callable, Literal, NotRequired, TypedDict
 
 from openai.types.chat import ChatCompletionFunctionToolParam, ChatCompletionMessageParam
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, with_config
 
 from evals.schema import EvalInput
 from scripts.retrieval.exact_search import DEFAULT_DATA_ROOT, DEFAULT_WORKS
@@ -90,6 +91,86 @@ class AnswerSignal(TypedDict):
 class StandaloneResult(AnswerSignal):
     model: str
     answer: str
+
+
+@with_config(ConfigDict(extra="allow"))
+class RetrievalEvidence(TypedDict, total=False):
+    text: str | None
+    query: str | None
+    channel: str | None
+    rank: int | None
+
+
+@with_config(ConfigDict(extra="allow"))
+class RetrievalCandidate(TypedDict, total=False):
+    rank: int
+    work_id: str
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    best_evidence: RetrievalEvidence | None
+    support_count: int
+    chronology_status: str | None
+
+
+@with_config(ConfigDict(extra="allow"))
+class RetrievalProbe(TypedDict, total=False):
+    work_id: str
+    eligible_rank: int | None
+    fused_rank: int | None
+
+
+@with_config(ConfigDict(extra="allow"))
+class RetrievalDiagnostics(TypedDict, total=False):
+    ranking: list[RetrievalCandidate]
+    probes: list[RetrievalProbe]
+    candidate_pool: dict[str, int]
+    channels: list[dict[str, object]]
+    query_plan: list[dict[str, object]]
+
+
+_HYBRID_ADAPTER = TypeAdapter(RetrievalDiagnostics)
+
+
+class CompactCandidate(TypedDict):
+    rank: int | None
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    text: str | None
+    query: str | None
+    channel: str | None
+    support_count: int | None
+    chronology_status: str | None
+
+
+class CompactToolResult(TypedDict):
+    status: Literal["ok", "no_hit"]
+    candidates: list[CompactCandidate]
+    note: str
+
+
+class RetrievalSummary(TypedDict):
+    best_fused_rank: int | None
+    best_eligible_rank: int | None
+    target_in_top5: bool
+    target_in_top20: bool
+    candidate_pool: dict[str, int] | None
+    channels: list[dict[str, object]] | None
+    query_plan: list[dict[str, object]] | None
+    probes: list[RetrievalProbe]
+    top_candidates: list[RetrievalCandidate]
+
+
+class ToolLLMResult(AnswerSignal):
+    model: str
+    answer: str
+    tool_used: bool
+    tool_query: str | None
+    tool_result: CompactToolResult | None
+    ignored_extra_tool_calls: NotRequired[int]
+    target_supported_by_tool: NotRequired[bool | None]
+    target_rank_in_tool_candidates: NotRequired[int | None]
 
 
 class WorkCandidate(TypedDict):
@@ -328,14 +409,15 @@ def run_standalone_llm(case: RetrievalIncrementCase) -> StandaloneResult:
     }
 
 
-def compact_tool_result(result: dict, *, max_items: int = 8) -> dict:
+def compact_tool_result(result: object, *, max_items: int = 8) -> CompactToolResult:
     """Expose only product-facing candidates to the tool-using model.
 
     Probe / Ground Truth metadata is intentionally excluded so the model never
     sees the evaluation target through the tool result.
     """
-    candidates = []
-    for item in (result.get("ranking") or [])[:max_items]:
+    diagnostics = _HYBRID_ADAPTER.validate_python(result)
+    candidates: list[CompactCandidate] = []
+    for item in (diagnostics.get("ranking") or [])[:max_items]:
         evidence = item.get("best_evidence") or {}
         candidates.append(
             {
@@ -363,8 +445,8 @@ def compact_tool_result(result: dict, *, max_items: int = 8) -> dict:
 def run_tool_augmented_llm(
     case: RetrievalIncrementCase,
     *,
-    search_tool: Callable[[str], dict],
-) -> dict:
+    search_tool: Callable[[str], CompactToolResult],
+) -> ToolLLMResult:
     """Run one plain model with one local Retrieval function-call round trip.
 
     No LangGraph, no Agent system prompt, no autonomous multi-step loop.
@@ -468,20 +550,21 @@ def run_tool_augmented_llm(
 
 def tool_target_support(
     *,
-    result: dict | None,
+    result: object | None,
     target_work_ids: set[str],
     max_items: int = 8,
 ) -> tuple[bool | None, int | None]:
     """Check whether the exact target Work was actually shown to the LLM."""
     if result is None:
         return None, None
-    for rank, item in enumerate((result.get("ranking") or [])[:max_items], 1):
+    diagnostics = _HYBRID_ADAPTER.validate_python(result)
+    for rank, item in enumerate((diagnostics.get("ranking") or [])[:max_items], 1):
         if item.get("work_id") in target_work_ids:
             return True, rank
     return False, None
 
 
-def _best_rank(probes: list[dict[str, object]], field: str) -> int | None:
+def _best_rank(probes: list[RetrievalProbe], field: str) -> int | None:
     ranks = [
         value
         for probe in probes
@@ -490,8 +573,9 @@ def _best_rank(probes: list[dict[str, object]], field: str) -> int | None:
     return min(ranks) if ranks else None
 
 
-def summarize_retrieval(result: dict) -> dict:
-    probes = result.get("probes") or []
+def summarize_retrieval(result: object) -> RetrievalSummary:
+    diagnostics = _HYBRID_ADAPTER.validate_python(result)
+    probes = diagnostics.get("probes") or []
     best_eligible = _best_rank(probes, "eligible_rank")
     best_fused = _best_rank(probes, "fused_rank")
 
@@ -506,11 +590,11 @@ def summarize_retrieval(result: dict) -> dict:
             best_eligible is not None
             and best_eligible <= 20
         ),
-        "candidate_pool": result.get("candidate_pool"),
-        "channels": result.get("channels"),
-        "query_plan": result.get("query_plan"),
+        "candidate_pool": diagnostics.get("candidate_pool"),
+        "channels": diagnostics.get("channels"),
+        "query_plan": diagnostics.get("query_plan"),
         "probes": probes,
-        "top_candidates": result.get("ranking", [])[:10],
+        "top_candidates": diagnostics.get("ranking", [])[:10],
     }
 
 
@@ -835,8 +919,8 @@ def main() -> None:
             text: str,
             *,
             include_probe: bool,
-        ) -> dict:
-            return evaluate_hybrid(
+        ) -> RetrievalDiagnostics:
+            return _HYBRID_ADAPTER.validate_python(evaluate_hybrid(
                 text=text,
                 sentence_artifact_dir=args.sentence_artifact_dir,
                 sentence_index_dir=args.sentence_index_dir,
@@ -853,7 +937,7 @@ def main() -> None:
                 final_top_k=args.final_top_k,
                 rrf_k=args.rrf_k,
                 device=args.device,
-            )
+            ))
 
         if not args.skip_model:
             try:
@@ -868,9 +952,9 @@ def main() -> None:
             try:
                 print("  - ④ 工具增强 LLM……")
 
-                tool_search_audit: dict = {}
+                tool_search_audit: dict[str, bool | int | None] = {}
 
-                def search_tool(query: str) -> dict:
+                def search_tool(query: str) -> CompactToolResult:
                     result = run_retrieval(query, include_probe=False)
                     supported, target_rank = tool_target_support(
                         result=result,
