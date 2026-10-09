@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import hmac
-from typing import Annotated, Literal
+from collections.abc import Mapping
+from typing import Annotated, Literal, Protocol
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.retrieval.serving import RetrievalServingRuntime
+from backend.retrieval.serving import ServingSearchResult
 
 
 class CurrentPoemRequest(BaseModel):
@@ -45,8 +46,25 @@ class RetrievalSearchResponse(BaseModel):
     candidates: list[RetrievalCandidateResponse]
 
 
+class SearchRuntime(Protocol):
+    """Only the runtime capabilities exercised by the HTTP boundary."""
+
+    @property
+    def startup_profile(self) -> Mapping[str, float | str]: ...
+
+    def search(
+        self,
+        text: str,
+        *,
+        current_text: str,
+        current_author: str | None,
+        target_dynasty: str | None,
+        final_top_k: int = 8,
+    ) -> ServingSearchResult: ...
+
+
 def create_app(
-    runtime: RetrievalServingRuntime,
+    runtime: SearchRuntime,
     *,
     api_token: str = "",
 ) -> FastAPI:
@@ -79,7 +97,7 @@ def create_app(
         _: None = Depends(require_token),
     ) -> dict[str, float | str]:
         """Local/ops diagnostic; Agent client never needs this endpoint."""
-        return runtime.startup_profile
+        return dict(runtime.startup_profile)
 
     @app.post(
         "/v1/retrieval/search",
