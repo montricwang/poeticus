@@ -142,6 +142,8 @@ def print_glyph_summary(poems, glyph_map):
 
             mapping = resolve_mapping(src, glyph_map)
 
+            if mapping is None:
+                raise ValueError(f"图片字映射不存在：{src}")
             source = mapping["source_form"]
             output = get_output_form(mapping)
 
