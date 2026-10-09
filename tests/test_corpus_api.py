@@ -78,7 +78,9 @@ class FakeConnection:
         if "COUNT(*)" in query_text:
             return FakeRows(row={"total": self.count})
         if "FROM poems WHERE id =" in query_text:
-            return FakeRows(row=self.details.get(params[0]))
+            poem_id = params[0]
+            assert isinstance(poem_id, UUID)
+            return FakeRows(row=self.details.get(poem_id))
         if "ORDER BY source_order" in query_text:
             return FakeRows(rows=self.pages)
         raise AssertionError("Unexpected SQL in read-only repository")
