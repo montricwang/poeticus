@@ -876,13 +876,19 @@ def main():
         print(f"报告：{path}")
 
     args.details_dir.mkdir(parents=True, exist_ok=True)
-    for index, volume in enumerate(report["volumes"], 1):
+    volumes = report["volumes"]
+    css_warnings = report["css_warnings"]
+    if not isinstance(volumes, list) or not isinstance(css_warnings, list):
+        raise ValueError("DOM 画像结果中的分册或 CSS 提醒结构异常")
+    for index, volume in enumerate(volumes, 1):
+        if not isinstance(volume, dict) or not isinstance(volume.get("volume"), str):
+            raise ValueError("DOM 画像分册缺少有效名称")
         # 每本详细报告保留低频模板全例、样式 run 和连续结构证据。
         one = {"volumes": [volume], "css_warnings": []}
         path = args.details_dir / volume_report_filename(index, volume["volume"])
         path.write_text(render_md(one), encoding="utf-8")
-    print(f"分册详细报告：{args.details_dir}（{len(report['volumes'])} 份）")
-    print(f"分册：{len(report['volumes'])}；CSS 提醒：{len(report['css_warnings'])}")
+    print(f"分册详细报告：{args.details_dir}（{len(volumes)} 份）")
+    print(f"分册：{len(volumes)}；CSS 提醒：{len(css_warnings)}")
 
 
 if __name__ == "__main__":
