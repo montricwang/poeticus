@@ -6,6 +6,7 @@ from scripts.corpus.epub_import.extractor.blocks import (
     inline_runs,
     iter_source_blocks,
 )
+from scripts.corpus.epub_import.extractor.extractor import paragraph_text
 
 
 def test_source_blocks_keep_locations_and_inline_evidence():
@@ -52,3 +53,22 @@ def test_inline_runs_preserve_missing_image_source_as_empty_string():
         {"tag": "img", "src": ""},
         {"tag": "text", "text": "末尾"},
     ]
+
+
+def test_paragraph_text_preserves_missing_glyph_and_linebreak():
+    soup = BeautifulSoup("<p>前<img/>后<br/>末</p>", "lxml")
+    paragraph = soup.find("p")
+    assert isinstance(paragraph, Tag)
+
+    text, warnings = paragraph_text(paragraph, "part.xhtml", "text")
+    assert text == "前{{glyph:missing-src}}后\\n末".replace("\\n", "\n")
+    assert warnings == [
+        {
+            "type": "missing_image_src",
+            "html": "part.xhtml",
+            "src": None,
+            "category": "text",
+            "status": "unresolved",
+        }
+    ]
+    assert paragraph.find("img") is not None
