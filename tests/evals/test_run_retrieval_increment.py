@@ -4,6 +4,7 @@ from evals.schema import EvalHistoryMessage, EvalInput, EvalPoemContext
 from scripts.evals.run_retrieval_increment import (
     RetrievalIncrementCase,
     RetrievalTarget,
+    _HYBRID_ADAPTER,
     _best_rank,
     _plain_messages,
     choose_current_work_id,
@@ -216,3 +217,38 @@ def test_best_rank_ignores_non_integer_probe_values() -> None:
     ]
     assert _best_rank(probes, "eligible_rank") == 4
     assert _best_rank(probes, "missing_rank") is None
+
+
+def test_hybrid_diagnostics_retain_extra_evidence_fields() -> None:
+    """Projection must not discard provenance for later manual review."""
+    raw = {
+        "ranking": [{
+            "rank": 1,
+            "work_id": "w-1",
+            "title": "测试作品",
+            "author": "测试作者",
+            "best_evidence": {
+                "text": "前代句。",
+                "channel": "dense",
+                "query": "当前句",
+                "rank": 1,
+                "source_provenance": "synthetic",
+            },
+            "future_candidate_field": "keep",
+        }],
+        "probes": [{
+            "work_id": "w-1",
+            "eligible_rank": 2,
+            "fused_rank": 3,
+            "list_supports": [{"source": "synthetic"}],
+        }],
+        "candidate_pool": {"fused_works": 1},
+        "channels": [],
+        "query_plan": [],
+        "extra_diagnostic": {"keep": True},
+    }
+    validated = _HYBRID_ADAPTER.validate_python(raw)
+    assert validated["extra_diagnostic"] == {"keep": True}
+    assert validated["ranking"][0]["future_candidate_field"] == "keep"
+    assert validated["ranking"][0]["best_evidence"]["source_provenance"] == "synthetic"
+    assert validated["probes"][0]["list_supports"] == [{"source": "synthetic"}]
