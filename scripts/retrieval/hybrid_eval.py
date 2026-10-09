@@ -11,9 +11,12 @@ This is a product-level diagnostic, not a new retrieval implementation:
     -> Candidate Eligibility
     -> final candidate ranking
 
-It deliberately reuses backend query/fusion/eligibility logic. The local
-artifact adapters exist only to feed real indexes into that pipeline before a
-production RetrievalChannel implementation is committed.
+This remains a separate offline diagnostic baseline now that the production
+RetrievalServingRuntime exists. It reads raw Chunk/Work JSONL for probe-level
+traceability and reports per-query/per-channel ranks before and after fusion.
+Serving instead uses resident indexes plus compact Metadata SQLite; do not
+replace this eval with Serving without preserving its diagnostic contract.
+Both paths reuse the same Query Plan, RRF and Eligibility implementations.
 """
 from __future__ import annotations
 
@@ -31,9 +34,8 @@ from backend.retrieval.fanout import (
 )
 from backend.retrieval.fusion import DEFAULT_RRF_K, fuse_candidates_rrf
 from backend.retrieval.query_strategy import build_query_plan
+from backend.retrieval.embedding_artifact import QWEN_MODEL, load_artifact_manifest
 from scripts.retrieval.artifact_search import (
-    QWEN_MODEL,
-    load_artifact_manifest,
     resolve_chunk_path,
     resolve_query_model_path,
 )

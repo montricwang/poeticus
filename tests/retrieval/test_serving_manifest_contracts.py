@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from backend.retrieval.serving import (
+from backend.retrieval.serving_manifest import (
     _embedding_source_signature,
     _load_json,
     _required_positive_int,

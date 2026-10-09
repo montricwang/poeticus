@@ -5,11 +5,11 @@ import argparse
 import json
 from pathlib import Path
 
-from scripts.retrieval.run_serving import (
-    DEFAULT_DATA_ROOT,
-    DEFAULT_MODEL_ROOT,
-    default_paths,
-)
+from backend.data_paths import MODELS_ROOT, RETRIEVAL_ROOT
+from backend.retrieval.serving_paths import default_paths
+
+DEFAULT_DATA_ROOT = RETRIEVAL_ROOT
+DEFAULT_MODEL_ROOT = MODELS_ROOT
 
 
 def path_size(path: Path) -> int:

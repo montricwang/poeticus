@@ -3,6 +3,7 @@ import sqlite3
 
 import pytest
 
+from backend.retrieval.artifact_files import sha256_file
 from backend.retrieval.metadata_store import (
     METADATA_SCHEMA_VERSION,
     MetadataStore,
@@ -129,7 +130,11 @@ def test_metadata_store_builds_and_reads_rows(tmp_path):
         connection.close()
 
     store = MetadataStore(output)
-    assert store.stats()["schema_version"] == METADATA_SCHEMA_VERSION
+    stats = store.stats()
+    assert stats["schema_version"] == METADATA_SCHEMA_VERSION
+    assert stats["work_sha256"] == sha256_file(works)
+    assert stats["sentence_sha256"] == sha256_file(sentence)
+    assert stats["clause_sha256"] == sha256_file(clause)
     chunks = store.read_chunks("sentence", [1, 0])
     assert chunks[0].chunk_id == "s-0"
     assert chunks[1].work_id == "w2"
