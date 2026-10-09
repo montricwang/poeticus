@@ -1,8 +1,8 @@
 """The consolidated Serving benchmark preserves its cold-query diagnostics."""
 import json
 from pathlib import Path
-from types import SimpleNamespace
 
+from backend.retrieval.serving import ServingCandidate, ServingSearchResult
 from scripts.retrieval.benchmark_serving import (
     BenchmarkCase,
     render_markdown,
@@ -54,14 +54,19 @@ class StubRuntime:
         self.encoder = StubEncoder()
         self.calls = []
 
-    def search(self, query, **kwargs):
+    def search(self, query: str, **kwargs: object) -> ServingSearchResult:
         self.calls.append((query, kwargs))
-        return SimpleNamespace(
+        return ServingSearchResult(
+            status="ok",
+            query=query,
             timings_ms=fake_timing(),
-            candidates=[SimpleNamespace(
-                rank=1, author="杜甫", title="小寒食舟中作",
-                text="片片轻鸥下急湍",
-            )],
+            current_work_aliases=(),
+            candidates=(ServingCandidate(
+                rank=1, work_id="synthetic-dufu", author="杜甫",
+                title="小寒食舟中作", text="片片轻鸥下急湍",
+                dynasty="唐", source_record_id="synthetic-source",
+                chronology_status="clearly_earlier", support_count=1,
+            ),),
         )
 
 
