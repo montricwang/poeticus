@@ -216,17 +216,18 @@ def test_atomic_quota_transaction_rolls_back_global_on_ip_limit(monkeypatch):
 def test_two_clients_share_total_but_have_separate_daily_quotas(monkeypatch):
     monkeypatch.setenv("POETICUS_TRUST_RAILWAY_REAL_IP", "true")
     cli, _spent = make_app(monkeypatch, minute=100, daily=200)
-    counters = {"total": 0, "per_ip": defaultdict(int)}
+    total = {"used": 0}
+    per_ip: defaultdict[str, int] = defaultdict(int)
 
     def fake_reserve(_dsn, total_limit, per_ip_limit, _day, client_hash):
         assert total_limit == 200
         assert per_ip_limit == 20
-        if counters["total"] >= total_limit:
+        if total["used"] >= total_limit:
             return "global"
-        if counters["per_ip"][client_hash] >= per_ip_limit:
+        if per_ip[client_hash] >= per_ip_limit:
             return "ip"
-        counters["total"] += 1
-        counters["per_ip"][client_hash] += 1
+        total["used"] += 1
+        per_ip[client_hash] += 1
         return "ok"
 
     monkeypatch.setattr(public_ai_guard, "_reserve_daily_slot", fake_reserve)
