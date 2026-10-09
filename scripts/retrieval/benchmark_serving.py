@@ -14,7 +14,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
@@ -59,8 +59,8 @@ class DenseTiming(TypedDict):
     encode_ms: float
     ann_ms: float
     metadata_ms: float
-    total_ms: float
-    queries: int
+    total_ms: NotRequired[float]
+    queries: NotRequired[int]
 
 
 class LexicalTiming(TypedDict):
@@ -604,7 +604,7 @@ def main() -> None:
             {
                 "case_id": case["id"],
                 "query": case["retrieval_query"],
-                "query_count": _TIMINGS_ADAPTER.validate_python(warm.timings_ms)["channels"]["dense_sentence"]["queries"],
+                "query_count": _TIMINGS_ADAPTER.validate_python(warm.timings_ms)["channels"]["dense_sentence"].get("queries", 0),
                 "target": case["target"],
                 "target_visible": visible,
                 "timings": summarize_samples(samples),
