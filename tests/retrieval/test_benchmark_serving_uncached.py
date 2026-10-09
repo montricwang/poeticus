@@ -24,7 +24,7 @@ def cases() -> list[BenchmarkCase]:
     }]
 
 
-def fake_timing():
+def fake_timing() -> dict[str, object]:
     return {
         "current_alias_lookup_ms": 0.0,
         "orchestration_ms": 1.0,
@@ -54,11 +54,11 @@ class StubRuntime:
         self.encoder = StubEncoder()
         self.calls = []
 
-    def search(self, query: str, **kwargs: object) -> ServingSearchResult:
-        self.calls.append((query, kwargs))
+    def search(self, text: str, **kwargs: object) -> ServingSearchResult:
+        self.calls.append((text, kwargs))
         return ServingSearchResult(
             status="ok",
-            query=query,
+            query=text,
             timings_ms=fake_timing(),
             current_work_aliases=(),
             candidates=(ServingCandidate(
