@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from scripts.retrieval.exact_search import ChunkRecord, WorkRecord
 from scripts.retrieval.faiss_search import (
     build_eligible_work_rows,
     load_index_manifest,
@@ -91,14 +92,14 @@ def test_build_eligible_work_rows_overfetches_then_filters():
         (0.6, 3),   # duplicate chunk from same work, collapse
         (0.5, 4),   # clearly earlier, keep
     ]
-    chunks = {
+    chunks: dict[int, ChunkRecord] = {
         0: {"chunk_id": "c0", "text": "self", "work_id": "w-self"},
         1: {"chunk_id": "c1", "text": "later", "work_id": "w-later"},
         2: {"chunk_id": "c2", "text": "same-1", "work_id": "w-same"},
         3: {"chunk_id": "c3", "text": "same-2", "work_id": "w-same"},
         4: {"chunk_id": "c4", "text": "earlier", "work_id": "w-earlier"},
     }
-    works = {
+    works: dict[str, WorkRecord] = {
         "w-self": {
             "work_id": "w-self",
             "title": "self",
