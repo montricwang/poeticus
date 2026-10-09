@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_REPORTS_ROOT
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import Callable, Literal, NotRequired, TypedDict
 
 from openai.types.chat import ChatCompletionFunctionToolParam, ChatCompletionMessageParam
@@ -564,7 +564,7 @@ def tool_target_support(
     return False, None
 
 
-def _best_rank(probes: list[RetrievalProbe], field: str) -> int | None:
+def _best_rank(probes: Iterable[Mapping[str, object]], field: str) -> int | None:
     ranks = [
         value
         for probe in probes
