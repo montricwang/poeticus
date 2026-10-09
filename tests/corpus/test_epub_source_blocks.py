@@ -1,6 +1,6 @@
 """Source block type contracts preserve the synthetic DOM evidence format."""
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from scripts.corpus.epub_import.extractor.blocks import (
     inline_runs,
@@ -45,7 +45,9 @@ def test_source_blocks_keep_locations_and_inline_evidence():
 
 def test_inline_runs_preserve_missing_image_source_as_empty_string():
     soup = BeautifulSoup("<p>开头<img/>末尾</p>", "lxml")
-    assert inline_runs(soup.p) == [
+    paragraph = soup.find("p")
+    assert isinstance(paragraph, Tag)
+    assert inline_runs(paragraph) == [
         {"tag": "text", "text": "开头"},
         {"tag": "img", "src": ""},
         {"tag": "text", "text": "末尾"},
