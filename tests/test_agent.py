@@ -555,3 +555,40 @@ def test_agent_prompt_prioritizes_corpus_retrieval_for_textual_provenance(agent)
     assert "即使目标短语同时带有典故色彩" in prompt
     assert "不要仅因为首轮 miss 就改用典故工具" in prompt
     assert "不要先用 `lookup_reference`" in prompt
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "arguments", "query", "evidence_type", "max_items"),
+    [
+        ("lookup_allusion", '{"term":"  青鸟  "}', "青鸟", "allusion", 3),
+        ("lookup_reference", '{"text":"  片片轻鸥  "}', "片片轻鸥", "reference", 5),
+        ("search_predecessor_texts", '{"text":"  片片轻鸥  "}', "片片轻鸥", "text_retrieval", 8),
+    ],
+)
+def test_tool_query_normalizes_valid_model_arguments(
+    agent, tool_name, arguments, query, evidence_type, max_items,
+):
+    parsed = agent._parse_tool_query(
+        {"id": "call-1", "name": tool_name, "arguments": arguments}
+    )
+    assert parsed.text == query
+    assert parsed.evidence_type == evidence_type
+    assert parsed.max_items == max_items
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "arguments", "message"),
+    [
+        ("lookup_allusion", "[]", "工具参数必须是对象"),
+        ("lookup_allusion", '{"term":1}', "无效的典故查询词"),
+        ("lookup_reference", '{"text":"   "}', "无效的出处查询文本"),
+        ("search_predecessor_texts", '{"text":120}', "无效的 Text Retrieval 查询文本"),
+        ("unknown_tool", '{"text":"一片冰心"}', "未知工具"),
+    ],
+)
+def test_tool_query_rejects_invalid_model_arguments(agent, tool_name, arguments, message):
+    # 解析错误归原有 execute_tools 的错误返回路径处理。
+    with pytest.raises(ValueError, match=message):
+        agent._parse_tool_query(
+            {"id": "call-1", "name": tool_name, "arguments": arguments}
+        )
