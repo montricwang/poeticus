@@ -25,7 +25,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
-from typing import Iterator
+from typing import Iterator, Mapping, NotRequired, TypedDict
+
+from pydantic import ConfigDict, TypeAdapter
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl"
@@ -37,6 +39,47 @@ DEFAULT_EXPECTED_CHUNKS = 4_822_054
 DTYPE = "float16"
 CHUNK_POLICY = "sentence"
 MANIFEST_VERSION = 1
+
+
+class RunSignature(TypedDict):
+    manifest_version: int
+    model: str
+    model_fingerprint: str
+    input_sha256: str
+    chunk_policy: str
+    embedding_dimension: int
+    dtype: str
+    normalized: bool
+    shard_size: int
+    expected_chunks: int
+
+
+class CompletedShard(TypedDict):
+    index: int
+    start: int
+    end: int
+    file: str
+    sha256: str
+    bytes: int
+
+
+class EmbeddingManifest(RunSignature):
+    # Preserve future metadata if an existing manifest is resumed.
+    __pydantic_config__ = ConfigDict(extra="allow")
+
+    status: str
+    model_source: str
+    input: str
+    created_at: str
+    updated_at: str
+    completed_chunks: int
+    completed_shards: list[CompletedShard]
+    completed_at: NotRequired[str]
+    total_shards: NotRequired[int]
+    total_bytes: NotRequired[int]
+
+
+_MANIFEST_ADAPTER = TypeAdapter(EmbeddingManifest)
 
 
 def utc_now() -> str:
@@ -79,7 +122,7 @@ def fingerprint_model_dir(model_dir: Path) -> str:
 def iter_chunks(
     path: Path,
     chunk_policy: str = CHUNK_POLICY,
-) -> Iterator[tuple[int, dict]]:
+) -> Iterator[tuple[int, dict[str, object]]]:
     """Yield zero-based corpus row index plus validated Chunk record."""
     index = 0
     with path.open(encoding="utf-8") as stream:
@@ -114,7 +157,7 @@ def run_signature(
     shard_size: int,
     expected_chunks: int,
     chunk_policy: str = CHUNK_POLICY,
-) -> dict:
+) -> RunSignature:
     return {
         "manifest_version": MANIFEST_VERSION,
         "model": MODEL_NAME,
@@ -129,7 +172,9 @@ def run_signature(
     }
 
 
-def assert_compatible_manifest(manifest: dict, signature: dict) -> None:
+def assert_compatible_manifest(
+    manifest: Mapping[str, object], signature: Mapping[str, object]
+) -> None:
     mismatches = []
     for key, expected in signature.items():
         actual = manifest.get(key)
@@ -143,7 +188,7 @@ def assert_compatible_manifest(manifest: dict, signature: dict) -> None:
         )
 
 
-def write_json_atomic(path: Path, payload: dict) -> None:
+def write_json_atomic(path: Path, payload: object) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
@@ -152,7 +197,7 @@ def write_json_atomic(path: Path, payload: dict) -> None:
     os.replace(tmp, path)
 
 
-def validate_completed_shards(manifest: dict, output_dir: Path, np) -> int:
+def validate_completed_shards(manifest: EmbeddingManifest, output_dir: Path, np) -> int:
     completed = manifest.get("completed_shards", [])
     expected_start = 0
     dimension = manifest["embedding_dimension"]
@@ -205,7 +250,7 @@ def build_embeddings(
     expected_chunks: int,
     device: str | None = None,
     chunk_policy: str = CHUNK_POLICY,
-) -> dict:
+) -> EmbeddingManifest:
     if not input_path.is_file():
         raise ValueError(f"Chunk JSONL 不存在：{input_path}")
     if not model_path.is_dir():
@@ -242,7 +287,9 @@ def build_embeddings(
     )
 
     if manifest_path.is_file():
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest = _MANIFEST_ADAPTER.validate_python(
+            json.loads(manifest_path.read_text(encoding="utf-8"))
+        )
         assert_compatible_manifest(manifest, signature)
     else:
         leftovers = [
@@ -255,7 +302,7 @@ def build_embeddings(
                 f"输出目录已有文件但没有 manifest：{output_dir}；"
                 "请换新目录，避免混入旧结果"
             )
-        manifest = {
+        manifest: EmbeddingManifest = {
             **signature,
             "status": "running",
             "model_source": str(model_path),
@@ -298,7 +345,7 @@ def build_embeddings(
         flush=True,
     )
 
-    kwargs = {"local_files_only": True}
+    kwargs: dict[str, bool | str] = {"local_files_only": True}
     if device:
         kwargs["device"] = device
     print("加载本地 Qwen Embedding 模型……", flush=True)
@@ -307,11 +354,11 @@ def build_embeddings(
 
     total_shards = math.ceil(expected_chunks / shard_size)
     shard_index = resume_index // shard_size
-    batch_records: list[dict] = []
+    batch_records: list[dict[str, object]] = []
     batch_start = resume_index
     seen_chunks = 0
 
-    def flush_shard(records: list[dict], start: int, index: int) -> int:
+    def flush_shard(records: list[dict[str, object]], start: int, index: int) -> int:
         texts = [record["text"] for record in records]
         end = start + len(texts)
         print(
