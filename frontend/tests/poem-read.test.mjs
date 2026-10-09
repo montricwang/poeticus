@@ -122,5 +122,8 @@ test('标点识别涵盖内部顿号，且分组不吞字', async () => {
   const source = '风、雨，花。'
   const runs = buildPoemTextRuns(source)
   assert.equal(runs.map((run) => run.text).join(''), source)
-  assert.deepEqual(runs.filter((run) => run.punctuation).map((run) => run.text), ['、', '，', '。'])
+  assert.deepEqual(
+    runs.filter((run) => run.punctuation).map((run) => run.text),
+    ['、', '，', '。'],
+  )
 })
