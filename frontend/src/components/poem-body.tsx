@@ -47,6 +47,26 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
       if (selected) onSelect(selected)
     }
 
+    function handleCopy(event: ClipboardEvent) {
+      const element = poemRef.current
+      const selection = window.getSelection()
+      if (!element || !selection || selection.isCollapsed || selection.rangeCount === 0) {
+        return
+      }
+
+      const range = selection.getRangeAt(0)
+      // Do not change native copy when the selection also includes a heading or preface.
+      if (!element.contains(range.startContainer) || !element.contains(range.endContainer)) {
+        return
+      }
+
+      const selected = selectionFromPoemRange(element, range, poem)
+      if (!selected || !event.clipboardData) return
+      // Visual block lines can insert synthetic newlines in the browser's clipboard.
+      event.clipboardData.setData('text/plain', selected.text)
+      event.preventDefault()
+    }
+
     function handlePointerDown(event: PointerEvent) {
       pointerDown = true
       pointerStartedInReader =
@@ -77,12 +97,14 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
     window.addEventListener('pointerup', handlePointerUp)
     window.addEventListener('pointercancel', handlePointerCancel)
     document.addEventListener('selectionchange', handleSelectionChange)
+    document.addEventListener('copy', handleCopy)
 
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown, true)
       window.removeEventListener('pointerup', handlePointerUp)
       window.removeEventListener('pointercancel', handlePointerCancel)
       document.removeEventListener('selectionchange', handleSelectionChange)
+      document.removeEventListener('copy', handleCopy)
     }
   }, [onSelect, poem, selectionScopeRef])
 
