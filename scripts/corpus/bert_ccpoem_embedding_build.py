@@ -16,12 +16,13 @@ import math
 from pathlib import Path
 from typing import TypedDict
 
+from pydantic import ConfigDict, TypeAdapter, with_config
+
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
 
 from scripts.corpus.qwen_embedding_build import (
     EmbeddingManifest,
     RunSignature,
-    _MANIFEST_ADAPTER,
     assert_compatible_manifest,
     iter_chunks,
     save_shard_atomic,
@@ -45,6 +46,15 @@ MANIFEST_VERSION = 1
 
 class BertRunSignature(RunSignature):
     pooling: str
+
+
+@with_config(ConfigDict(extra="allow"))
+class BertEmbeddingManifest(EmbeddingManifest):
+    pooling: str
+    acknowledgement: str
+
+
+_BERT_MANIFEST_ADAPTER = TypeAdapter(BertEmbeddingManifest)
 
 
 
@@ -136,7 +146,7 @@ def build_embeddings(
     batch_size: int = DEFAULT_BATCH_SIZE,
     shard_size: int = DEFAULT_SHARD_SIZE,
     device: str | None = None,
-) -> EmbeddingManifest:
+) -> BertEmbeddingManifest:
     if not input_path.is_file():
         raise ValueError(f"Chunk JSONL 不存在：{input_path}")
     if not model_path.is_dir():
@@ -170,7 +180,7 @@ def build_embeddings(
     )
 
     if manifest_path.is_file():
-        manifest = _MANIFEST_ADAPTER.validate_python(
+        manifest = _BERT_MANIFEST_ADAPTER.validate_python(
             json.loads(manifest_path.read_text(encoding="utf-8"))
         )
         assert_compatible_manifest(manifest, signature)
@@ -181,7 +191,7 @@ def build_embeddings(
                 f"输出目录已有文件但没有 manifest：{output_dir}；"
                 "请换新目录，避免混入旧结果"
             )
-        manifest: EmbeddingManifest = {
+        manifest: BertEmbeddingManifest = {
             **signature,
             "status": "running",
             "model_source": str(model_path),
