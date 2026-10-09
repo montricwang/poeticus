@@ -553,11 +553,9 @@ def encode_query(
 
     ensure_model_snapshot(model_path, expected_model_fingerprint)
 
-    kwargs: dict[str, bool | str] = {"local_files_only": True}
-    if device:
-        kwargs["device"] = device
-
-    model = SentenceTransformer(str(model_path), **kwargs)
+    model = SentenceTransformer(
+        str(model_path), local_files_only=True, device=device
+    )
     vectors = model.encode(
         [query],
         normalize_embeddings=True,
