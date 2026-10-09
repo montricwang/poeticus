@@ -2,7 +2,7 @@ import { Check, Copy, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { AssistantMarkdown } from '@/components/assistant-markdown'
-import type { ChatTurn } from '@/components/chat-types'
+import type { ChatTurn } from '@/types/chat'
 
 type CopyStatus = {
   key: string

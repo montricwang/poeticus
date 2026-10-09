@@ -1,4 +1,4 @@
-import type { SelectedText } from '@/components/poem-reader'
+import type { SelectedText } from '@/types/poem'
 
 export type HistoryMessage = {
   role: 'user' | 'assistant'

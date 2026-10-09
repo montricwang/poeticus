@@ -4,15 +4,7 @@ import { LoaderCircle } from 'lucide-react'
 import { AnalysisReveal, AnalysisTextEntrance } from '@/components/analysis-text-entrance'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-
-export type PoemAnalysis = {
-  translation: string
-  glosses: {
-    term: string
-    explanation: string
-  }[]
-  commentary: string
-}
+import type { PoemAnalysis } from '@/types/poem'
 
 type AnalysisPanelProps = {
   analysis: PoemAnalysis | null

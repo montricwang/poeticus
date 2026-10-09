@@ -9,8 +9,8 @@ import {
 
 import { poemContext, poemText } from '@/data/poem-library'
 import type { Poem } from '@/data/poem-library'
-import type { ChatTurn, ChatViewport } from '@/components/chat-types'
-import type { SelectedText } from '@/components/poem-reader'
+import type { ChatTurn, ChatViewport } from '@/types/chat'
+import type { SelectedText } from '@/types/poem'
 import type { InitialChatState } from '@/lib/chat-initial-state'
 import { buildHistory } from '@/lib/chat-history'
 import { loadServiceCapabilities } from '@/lib/service-capabilities'

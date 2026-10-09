@@ -2,7 +2,7 @@ import { ArrowUp, LoaderCircle, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import type { SelectedText } from '@/components/poem-reader'
+import type { SelectedText } from '@/types/poem'
 
 type ChatComposerProps = {
   selected: SelectedText | null

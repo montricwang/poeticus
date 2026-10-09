@@ -2,7 +2,7 @@ import { useState, type RefObject } from 'react'
 
 import { poemContext, poemText } from '@/data/poem-library'
 import type { Poem } from '@/data/poem-library'
-import type { PoemAnalysis } from '@/components/analysis-panel'
+import type { PoemAnalysis } from '@/types/poem'
 import { UsageLimitNotice } from '@/lib/chat-stream'
 
 type AnalysisOptions = {

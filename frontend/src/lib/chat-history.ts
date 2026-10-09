@@ -1,4 +1,4 @@
-import type { ChatTurn, HistoryMessage } from '@/components/chat-types'
+import type { ChatTurn, HistoryMessage } from '@/types/chat'
 
 function historyUserContent(turn: ChatTurn) {
   if (!turn.selection) {

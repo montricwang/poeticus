@@ -4,7 +4,7 @@ import { fetchPoem, poemText } from '@/data/poem-library'
 import type { Poem } from '@/data/poem-library'
 import { loadPoemConversation } from '@/lib/chat-storage'
 import { validSelectionForPoem } from '@/lib/selection-offset'
-import type { SelectedText } from '@/components/poem-reader'
+import type { SelectedText } from '@/types/poem'
 
 export function usePoemDetail(
   poemId: string | null,
