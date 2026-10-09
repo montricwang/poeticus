@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from backend.evidence.schema import EvidenceItem
+from backend.evidence.schema import EvidenceItem, EvidenceSource
 from backend.retrieval.client import (
     RetrievalCandidate,
     RetrievalSearchResponse,
@@ -396,11 +396,11 @@ def test_reference_tool_queries_target_clause_and_returns_candidates(
                 anchor=query,
                 type="reference",
                 text="片片輕鷗下急湍",
-                source={
-                    "title": "小寒食舟中作",
-                    "author": "杜甫",
-                    "work": "小寒食舟中作",
-                },
+                source=EvidenceSource(
+                    title="小寒食舟中作",
+                    author="杜甫",
+                    work="小寒食舟中作",
+                ),
                 provider="cnkgraph",
                 status="candidate",
                 metadata={"dynasty": "唐"},
