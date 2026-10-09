@@ -81,6 +81,17 @@ LOCAL_RETRIEVAL_TOOLS: list[ChatCompletionFunctionToolParam] = [
 ]
 
 
+class AnswerSignal(TypedDict):
+    target_author_mentioned: bool
+    target_anchor_hits: list[str]
+    target_signal: bool
+
+
+class StandaloneResult(AnswerSignal):
+    model: str
+    answer: str
+
+
 class WorkCandidate(TypedDict):
     work_id: str
     title: str | None
@@ -269,7 +280,7 @@ def _plain_user_message(case: RetrievalIncrementCase) -> str:
 def _answer_signal(
     case: RetrievalIncrementCase,
     answer: str,
-) -> dict:
+) -> AnswerSignal:
     anchor_hits = [
         anchor
         for anchor in case.target.answer_anchors
@@ -294,7 +305,7 @@ def _plain_messages(case: RetrievalIncrementCase) -> list[ChatCompletionMessageP
     return messages
 
 
-def run_standalone_llm(case: RetrievalIncrementCase) -> dict:
+def run_standalone_llm(case: RetrievalIncrementCase) -> StandaloneResult:
     """Run the model with no Agent prompt and no Tool Schema."""
     from backend.ai.model import client
     from backend.config import LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
@@ -799,7 +810,7 @@ def main() -> None:
             match_info["current"],
         )
 
-        item = {
+        item: dict[str, object] = {
             "case_id": case.id,
             "tier": case.tier,
             "relation": case.relation,
