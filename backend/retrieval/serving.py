@@ -29,7 +29,7 @@ from backend.retrieval.fanout import (
     RetrievalHit,
 )
 from backend.retrieval.metadata_store import MetadataStore
-from backend.retrieval.service import TextRetrievalService
+from backend.retrieval.service import RetrievalStatus, TextRetrievalService
 
 if TYPE_CHECKING:
     import numpy as np
@@ -158,7 +158,7 @@ class ServingCandidate:
 
 @dataclass(frozen=True)
 class ServingSearchResult:
-    status: str
+    status: RetrievalStatus
     query: str
     candidates: tuple[ServingCandidate, ...]
     current_work_aliases: tuple[str, ...]
