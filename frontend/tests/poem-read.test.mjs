@@ -89,4 +89,3 @@ test('不正确或过期的引用不得发送给 Python', () => {
   assert.equal(selectionForPython({ text: '月', start: 0, end: 1 }, '春月'), null)
   assert.equal(selectionForPython({ text: '月', start: 1, end: 7 }, '春月'), null)
 })
-
