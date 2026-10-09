@@ -145,6 +145,24 @@ python -m pip install -r requirements-retrieval.txt
 
 完整架构见 [Text Retrieval 架构](architecture/text-retrieval.md)。
 
+### 本地 Serving 资产定位与工具边界
+
+本地的三个命令使用相同的路径契约，但工作职责不同：
+
+- `python -m scripts.retrieval.inspect_serving_bundle`：只检查现有 Serving Bundle 的路径和大小，不启动 HTTP 进程；
+- `python -m scripts.retrieval.run_serving`：加载现有模型、FAISS、BM25 和 Metadata，启动本地 HTTP 服务；
+- `python -m scripts.retrieval.benchmark_serving`：按评测 Case 检查常驻 Runtime 的资源和检索延迟。
+
+这些入口**共同导入** `backend/retrieval/serving_paths.py::default_paths`，由该函数从 sentence Embedding Manifest 的模型指纹推导 Serving 资产位置。`backend/data_paths.py` 只定义整个私有数据工作区的根目录；`serving_paths.py` 则定义本套 Retrieval 运行资产的具体布局。检查或评测工具不依赖 `run_serving.py`，以免把启动 Uvicorn 的入口误当公共底座。
+
+Manifest 中记录的 Work/Chunk 文件 SHA256 由 `backend/retrieval/artifact_files.py` 统一计算。**路径定位是「去哪里找」，指纹校验是「找到的东西是不是同一套」**；两者不可混为一谈，也不可因为只是重构而删除指纹校验。轻量合成回归可以运行：
+
+```powershell
+python -m pytest tests/retrieval/test_serving_paths.py tests/retrieval/test_metadata_store.py -q
+```
+
+这不代替已有全量 Artifact、真实 FAISS 模型及 Agent Canary 验收。
+
 本地只做 Web / Agent 开发时，可以不配置 Retrieval URL；此时 `search_predecessor_texts` 不注册给 Agent。
 
 ## 9. Retrieval VPS 更新
