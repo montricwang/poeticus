@@ -542,7 +542,7 @@ def evaluate_hybrid(
         channel_results,
         probe_work_ids,
     )
-    probes = [
+    probes: list[ProbeRow] = [
         {
             "work_id": work_id,
             "fused_rank": fused_rank_by_work.get(work_id),
@@ -565,9 +565,7 @@ def evaluate_hybrid(
         for work_id in sorted(probe_work_ids)
     ]
 
-    return {
-        "text": text,
-        "query_plan": [
+    query_plan: list[dict[str, object]] = [
             {
                 "text": variant.text,
                 "origins": [
@@ -580,7 +578,11 @@ def evaluate_hybrid(
                 ],
             }
             for variant in plan
-        ],
+    ]
+
+    return {
+        "text": text,
+        "query_plan": query_plan,
         "search_k_per_channel": search_k,
         "rrf_k": rrf_k,
         "channels": [
