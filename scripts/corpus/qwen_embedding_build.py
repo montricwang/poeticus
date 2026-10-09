@@ -345,11 +345,10 @@ def build_embeddings(
         flush=True,
     )
 
-    kwargs: dict[str, bool | str] = {"local_files_only": True}
-    if device:
-        kwargs["device"] = device
     print("加载本地 Qwen Embedding 模型……", flush=True)
-    model = SentenceTransformer(str(model_path), **kwargs)
+    model = SentenceTransformer(
+        str(model_path), local_files_only=True, device=device
+    )
     print(f"device={model.device}", flush=True)
 
     total_shards = math.ceil(expected_chunks / shard_size)
