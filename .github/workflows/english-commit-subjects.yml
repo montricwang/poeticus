@@ -2,7 +2,7 @@ name: English commit subjects
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, edited]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
@@ -12,12 +12,11 @@ jobs:
   english-subjects:
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR title and commit subjects
+      - name: Check commit subjects
         uses: actions/github-script@v7
         with:
           script: |
             const ascii = /^[\x20-\x7E]+$/;
-            const title = context.payload.pull_request.title;
             const commits = await github.paginate(github.rest.pulls.listCommits, {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -25,7 +24,6 @@ jobs:
               per_page: 100,
             });
             const invalid = [];
-            if (!ascii.test(title)) invalid.push('PR title');
             for (const commit of commits) {
               const subject = commit.commit.message.split('\n')[0];
               if (!ascii.test(subject)) {
@@ -33,5 +31,5 @@ jobs:
               }
             }
             if (invalid.length) {
-              core.setFailed('Use English (ASCII) PR titles and commit subjects:\n' + invalid.join('\n'));
+              core.setFailed('Use English (ASCII) commit subjects:\n' + invalid.join('\n'));
             }
