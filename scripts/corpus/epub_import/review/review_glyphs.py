@@ -9,6 +9,7 @@ import json
 import posixpath
 from collections import defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT, READING_REVIEW_ROOT
 from urllib.parse import quote
@@ -17,6 +18,20 @@ from ebooklib import epub
 
 from ..pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
 from ..pipeline.normalize import is_ids_form
+
+
+class PreparedGlyphReview(TypedDict):
+    unique_images: int
+    references: int
+    missing_assets: list[tuple[str, str]]
+    sheet: str
+    tsv: str
+
+
+class AppliedGlyphReview(TypedDict):
+    mapped: int
+    unfilled: int
+    files_written: int
 
 
 FIELDS = ("index", "slug", "collection", "src", "source_form",
@@ -50,7 +65,7 @@ def _epub_image(book, page, src):
     return item.get_content() if hasattr(item, "get_content") else item.content
 
 
-def prepare_review(report, book, *, sheet_path, tsv_path):
+def prepare_review(report, book, *, sheet_path, tsv_path) -> PreparedGlyphReview:
     """生成私人图片字图版与可编辑 TSV，不在过程中要求交互输入。"""
     sheet_path, tsv_path = Path(sheet_path), Path(tsv_path)
     if sheet_path.resolve() == tsv_path.resolve():
@@ -149,7 +164,7 @@ def prepare_review(report, book, *, sheet_path, tsv_path):
     }
 
 
-def apply_review(tsv_path, *, map_dir, partial=False):
+def apply_review(tsv_path, *, map_dir, partial=False) -> AppliedGlyphReview:
     """修改任何分册映射文件前，先完整校验所有 TSV 行。"""
     with Path(tsv_path).open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream, delimiter="\t")
