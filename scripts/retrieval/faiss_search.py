@@ -22,10 +22,12 @@ from typing import TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
-from scripts.retrieval.artifact_search import (
+from backend.retrieval.embedding_artifact import (
     ArtifactManifest,
-    encode_query_for_artifact,
     load_artifact_manifest,
+)
+from scripts.retrieval.artifact_search import (
+    encode_query_for_artifact,
     resolve_chunk_path,
     resolve_query_model_path,
 )

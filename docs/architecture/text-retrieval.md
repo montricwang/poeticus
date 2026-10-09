@@ -178,6 +178,21 @@ chronology_status=clearly_earlier
 
 Embedding/Index/SQLite 是**可重建资产**，Work/Chunk 是它们的数据来源。Manifest、SHA256 和 row-id 对应关系是必要的数据契约；不要为缩短代码而删除校验。关键关系：**FAISS vector global row == Chunk JSONL logical row**；检索命中后依据 Metadata Store 回查它属于哪段文字、哪首作品。生产检索本身不扫描原始 JSONL。
 
+**Embedding Artifact 的代码归属（#182 后续审计）**：`backend/retrieval/embedding_artifact.py` 定义已完成 Embedding 的 Manifest 结构及校验规则，包括模型、chunk_policy、分片文件存在性、连续行号和总 Chunk 数。`scripts/retrieval/faiss_full_index.py` 是索引**构建入口**，直接引用这个稳定模块；`scripts/retrieval/artifact_search.py` 和 `exact_search.py` 是**诊断入口**，继续保留各自的检索行为。正式构建不再为校验 Manifest 导入实验入口。
+
+```text
+Embedding shards + manifest.json
+       │
+       ▼
+backend/retrieval/embedding_artifact.py
+       ├→ FAISS index builder（faiss_full_index.py）
+       └→ 单通道/Exact/Hybrid 实验诊断
+```
+
+这项检查发生在构建之前，确保行号与源 Embedding 的对应关系可用；但它并不验证来源文学文本的正确性，也不代替 `serving.py` 启动时对 FAISS、Embedding、BM25 与 Metadata 之间的交叉校验。只抽取稳定的 Manifest 契约，实验专属 Query 模型选择和 Corpus 路径规则仍留在对应诊断脚本中。
+
+
+
 **第二条：运行期查询（先从这里开始读源码）**
 
 ```text
