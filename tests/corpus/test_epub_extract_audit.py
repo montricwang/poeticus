@@ -58,6 +58,16 @@ class Book:
         return None
 
 
+
+def test_audit_length_rejects_non_string_evidence() -> None:
+    from scripts.corpus.epub_import.diagnostics.audit_extraction import block_text_length
+    import pytest
+
+    with pytest.raises(TypeError, match="string text"):
+        block_text_length({"text": 123})
+
+
+
 def test_audit_scoped_to_one_collection_with_provenance():
     toc = [{"title": "李清照词集", "children": [
         {"title": "作品", "href": "a.html#first"}]}]
