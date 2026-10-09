@@ -10,6 +10,7 @@ import re
 import warnings
 from collections import Counter, defaultdict
 from pathlib import Path
+from typing import TypedDict
 
 from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
 from urllib.parse import unquote
@@ -43,6 +44,19 @@ WINDOW_SAMPLE_LIMIT = 18  # 每分册最多展示的连续片段总数
 BLOCK_SAMPLE_LIMIT = 10  # 每段连续窗口展示的块数
 TRANSITION_SAMPLE_LIMIT = 4  # 每分册抽取的“符号→无符号”相邻案例
 STYLE_KEYS = ("font-family", "font-size", "font-weight", "font-style", "color")
+class ScanCoverage(TypedDict):
+    """Mutable aggregate state while scanning one EPUB volume."""
+
+    files: int
+    missing: list[str]
+    linked_css: set[str]
+    heading_tags: Counter[str]
+    unhandled_tags: Counter[str]
+    unhandled_samples: dict[str, dict[str, str]]
+    transition_candidates: list[tuple[str, int]]
+    transition_files: set[str]
+
+
 INLINE_TAGS = {
     "span",
     "small",
@@ -218,13 +232,18 @@ def unhandled_text(soup):
             or not text.strip()
         ):
             continue
-        if text.parent.find_parent(["p", *sorted(HEADINGS)]):
+        parent = text.parent
+        if parent is None:
             continue
-        if text.parent.name in HEADINGS | {"p", "script", "style", "title"}:
+        if parent.find_parent(["p", *sorted(HEADINGS)]):
             continue
-        if text.parent.find_parent(["script", "style", "head"]):
+        if parent.name in HEADINGS | {"p", "script", "style", "title"}:
             continue
-        name = text.parent.name
+        if parent.find_parent(["script", "style", "head"]):
+            continue
+        name = parent.name
+        if name is None:
+            continue
         grouped[name] += 1
         samples.setdefault(name, compact(str(text)))
     return grouped, samples
@@ -453,7 +472,7 @@ def finish(records):
 
 def profile_volume(book, volume, resolver):
     templates, paragraphs = {}, {}
-    coverage = {
+    coverage: ScanCoverage = {
         "files": 0,
         "missing": [],
         "linked_css": set(),
