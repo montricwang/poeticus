@@ -10,7 +10,7 @@ from typing import TypedDict
 
 from ..pipeline.glyph_mapping import codepoint, load_map, parse_form, save_map
 from ..pipeline.normalize import is_ids_form
-from .review_glyphs import glyph_sites
+from .glyph_sources import glyph_sites
 
 
 SCHEMA = "poeticus-glyph-review-v1"
