@@ -9,7 +9,7 @@ from typing import TypedDict
 
 from bs4 import BeautifulSoup, Comment, NavigableString
 
-from ..extractor.blocks import iter_source_blocks
+from ..extractor.blocks import _class_list, _string_attribute, iter_source_blocks
 from ..extractor.extractor import CandidateSection
 from ..extractor.extractor import raw_xhtml
 from ..extractor.rules import is_chronology, is_non_poem
@@ -28,7 +28,7 @@ class UnsupportedTextSite(TypedDict):
     html: str
     parent_tag: str
     parent_classes: list[str]
-    parent_id: str | list[str] | None
+    parent_id: str | None
     text_length: int
 
 
@@ -135,8 +135,8 @@ def source_block_coverage(
             unsupported_text.append({
                 "html": filename,
                 "parent_tag": parent.name if parent else "unknown",
-                "parent_classes": list(parent.get("class", [])) if parent else [],
-                "parent_id": parent.get("id") if parent else None,
+                "parent_classes": _class_list(parent) if parent else [],
+                "parent_id": _string_attribute(parent, "id") if parent else None,
                 "text_length": len(str(text_node).strip()),
             })
 
