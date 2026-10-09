@@ -358,7 +358,12 @@ def build_embeddings(
     seen_chunks = 0
 
     def flush_shard(records: list[dict[str, object]], start: int, index: int) -> int:
-        texts = [record["text"] for record in records]
+        texts: list[str] = []
+        for record in records:
+            value = record["text"]
+            if not isinstance(value, str):
+                raise ValueError("Embedding Chunk 文本必须是字符串")
+            texts.append(value)
         end = start + len(texts)
         print(
             f"[{index + 1}/{total_shards}] Embedding "
