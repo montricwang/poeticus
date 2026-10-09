@@ -14,7 +14,7 @@ class CNKGraphProvider:
         self.base_url = os.getenv("CNKGRAPH_BASE_URL", "https://api.cnkgraph.com")
         self.timeout = 10.0
 
-    async def _request_json(self, path: str, payload: dict):
+    async def _request_json(self, path: str, payload: dict[str, object]):
         try:
             async with httpx.AsyncClient(
                 base_url=self.base_url,
