@@ -16,6 +16,7 @@
 | 怎样重建、审计和人工核对 EPUB | [EPUB SOP](corpus/epub-import-sop.md) | 当前可以执行的工作流程与命令 |
 | 尚未确认的 `font1` / `kaiti` 源书样本 | [EPUB 分类复核记录](corpus/epub-classifier-design.md) | 研究与未决问题，不是权威解析 Schema |
 | 产品/工程的下一阶段方向 | [Roadmap](roadmap.md) / [GitHub Issues](https://github.com/montricwang/poeticus/issues) | Roadmap 按阶段，Issue 按单个可验收工作 |
+| **已有数字人文资源**：古籍、典故、词话、API、论文与授权 | [数字人文资源地图](digital-humanities-resources.md) / [复用验证 #184](https://github.com/montricwang/poeticus/issues/184) | 资源地图保存现有外部成果与核实状态；Issue 记录实际实验 |
 | 某天怎么做、哪些假设被推翻 | [开发日志](devlog/) | 按日期冻结，不追着现行代码改 |
 | 某个版本发布时包含什么 | [Releases](releases/) | 按版本冻结，不追着现行代码改 |
 
