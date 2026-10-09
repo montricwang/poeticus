@@ -131,6 +131,8 @@ def convert_record(record: dict, order: int) -> ConvertedPoem:
         segment, left, right, quote = _map_range(
             originals, rendered, mapping, idx, begin, finish
         )
+        if not isinstance(idx, int) or not isinstance(begin, int) or not isinstance(finish, int):
+            raise ValueError(f"{record['id']}: 行内注记坐标必须是整数")
         if originals[idx][begin:finish] != note.get("text"):
             raise ValueError(f"{record['id']}: 原始注记文字不匹配")
         notes.append({
