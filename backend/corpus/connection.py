@@ -5,7 +5,8 @@ Each request gets a short-lived connection; at this scale a pool is unnecessary.
 """
 import logging
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from typing import cast
 
 import psycopg
 from dotenv import load_dotenv
@@ -26,7 +27,14 @@ def get_connection() -> Iterator[psycopg.Connection[DictRow]]:
     if not dsn:
         raise HTTPException(status_code=503, detail="作品数据库尚未配置")
     try:
-        with psycopg.connect(dsn, row_factory=dict_row, connect_timeout=5) as conn:
+        # Psycopg's connect() uses dict_row correctly at runtime, but Pyright
+        # may infer Connection[TupleRow] (psycopg/psycopg#1257). Adapt the
+        # third-party callable type once at this boundary.
+        connect_dict_rows = cast(
+            Callable[..., psycopg.Connection[DictRow]],
+            psycopg.connect,
+        )
+        with connect_dict_rows(dsn, row_factory=dict_row, connect_timeout=5) as conn:
             conn.execute("SET TRANSACTION READ ONLY")
             yield conn
     except psycopg.Error as exc:
