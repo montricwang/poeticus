@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from uuid import UUID
 
 import psycopg
+from psycopg import sql
 import pytest
 from fastapi.testclient import TestClient
 
@@ -40,6 +41,23 @@ def full_record():
     }
 
 
+class FakeRows:
+    def __init__(
+        self,
+        *,
+        row: dict[str, object] | None = None,
+        rows: list[dict[str, object]] | None = None,
+    ):
+        self.row = row
+        self.rows = rows or []
+
+    def fetchone(self) -> dict[str, object] | None:
+        return self.row
+
+    def fetchall(self) -> list[dict[str, object]]:
+        return self.rows
+
+
 class FakeConnection:
     """最小游标替身，只用于核对 SQL 与绑定参数。"""
     def __init__(self, *, pages=None, details=None, count=2):
@@ -48,14 +66,17 @@ class FakeConnection:
         self.count = count
         self.calls = []
 
-    def execute(self, sql, params=()):
-        self.calls.append((sql, params))
-        if "COUNT(*)" in sql:
-            return SimpleNamespace(fetchone=lambda: {"total": self.count})
-        if "FROM poems WHERE id =" in sql:
-            return SimpleNamespace(fetchone=lambda: self.details.get(params[0]))
-        if "ORDER BY source_order" in sql:
-            return SimpleNamespace(fetchall=lambda: self.pages)
+    def execute(
+        self, query: sql.Composable, params: tuple[object, ...] = ()
+    ) -> FakeRows:
+        query_text = query.as_string()
+        self.calls.append((query_text, params))
+        if "COUNT(*)" in query_text:
+            return FakeRows(row={"total": self.count})
+        if "FROM poems WHERE id =" in query_text:
+            return FakeRows(row=self.details.get(params[0]))
+        if "ORDER BY source_order" in query_text:
+            return FakeRows(rows=self.pages)
         raise AssertionError("Unexpected SQL in read-only repository")
 
 
