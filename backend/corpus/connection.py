@@ -10,12 +10,12 @@ from collections.abc import Iterator
 import psycopg
 from dotenv import load_dotenv
 from fastapi import HTTPException
-from psycopg.rows import dict_row
+from psycopg.rows import DictRow, dict_row
 
 logger = logging.getLogger(__name__)
 
 
-def get_connection() -> Iterator[psycopg.Connection]:
+def get_connection() -> Iterator[psycopg.Connection[DictRow]]:
     """提供一个只读数据库连接；异常中不得暴露凭据。
 
     Input: POETICUS_DATABASE_URL in process env or private .env.
