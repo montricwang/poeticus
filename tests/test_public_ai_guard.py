@@ -242,7 +242,7 @@ def test_two_clients_share_total_but_have_separate_daily_quotas(monkeypatch):
     other = cli.post("/api/analyze", json={"poem": "text"},
                      headers={"x-real-ip": "203.0.113.12"})
     assert other.status_code == 200
-    assert counters["total"] == 21
+    assert total["used"] == 21
 
 
 def test_busy_is_distinct_from_minute_limit(monkeypatch):
