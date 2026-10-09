@@ -1,4 +1,4 @@
-import type { SelectedText } from '@/components/poem-reader'
+import type { SelectedText } from '@/types/poem'
 
 /** 浏览器的字符串位置以 UTF-16 单位计；Python 用 Unicode code point。 */
 export function selectionForPython(

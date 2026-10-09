@@ -2,7 +2,7 @@ import { Check, Copy, LoaderCircle, RotateCcw } from 'lucide-react'
 
 import { AssistantMarkdown } from '@/components/assistant-markdown'
 import { Button } from '@/components/ui/button'
-import type { ChatTurn } from '@/components/chat-types'
+import type { ChatTurn } from '@/types/chat'
 
 type CopyStatus = {
   key: string

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
-import type { ChatTurn } from '@/components/chat-types'
-import type { SelectedText } from '@/components/poem-reader'
+import type { ChatTurn } from '@/types/chat'
+import type { SelectedText } from '@/types/poem'
 import { saveLastActivePoemId, savePoemConversation } from '@/lib/chat-storage'
 
 type PersistenceOptions = {

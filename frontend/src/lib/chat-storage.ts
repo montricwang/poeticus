@@ -1,5 +1,5 @@
-import type { ChatTurn } from '@/components/chat-types'
-import type { SelectedText } from '@/components/poem-reader'
+import type { ChatTurn } from '@/types/chat'
+import type { SelectedText } from '@/types/poem'
 
 const STORAGE_KEY = 'poeticus:chat-state'
 const SCHEMA_VERSION = 1

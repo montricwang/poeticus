@@ -24,7 +24,7 @@ import {
 } from '@/lib/responsive-layout'
 import { useChatSession } from '@/hooks/use-chat-session'
 
-import type { SelectedText } from '@/components/poem-reader'
+import type { SelectedText } from '@/types/poem'
 
 function App() {
   const [initialChatState] = useState(loadInitialChatState)

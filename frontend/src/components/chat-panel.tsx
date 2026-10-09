@@ -7,8 +7,8 @@ import { UserMessage } from '@/components/user-message'
 import { AssistantMessage } from '@/components/assistant-message'
 import { ChatComposer } from '@/components/chat-composer'
 import { cn } from '@/lib/utils'
-import type { SelectedText } from '@/components/poem-reader'
-import type { ChatTurn, ChatViewport } from '@/components/chat-types'
+import type { SelectedText } from '@/types/poem'
+import type { ChatTurn, ChatViewport } from '@/types/chat'
 
 type ChatPanelProps = {
   selected: SelectedText | null

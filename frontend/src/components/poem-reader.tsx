@@ -2,12 +2,7 @@ import { useEffect, useRef } from 'react'
 
 import { poemText } from '@/data/poem-library'
 import type { Poem } from '@/data/poem-library'
-
-export type SelectedText = {
-  text: string
-  start: number
-  end: number
-}
+import type { SelectedText } from '@/types/poem'
 
 type PoemReaderProps = {
   work: Poem
