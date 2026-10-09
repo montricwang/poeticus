@@ -1,14 +1,13 @@
-"""Work-level Reciprocal Rank Fusion for Text Retrieval.
+"""将 Text Retrieval 的多路结果按 Work 进行 RRF 融合。
 
-Each QueryVariant × RetrievalChannel result is one ranked list. The fusion
-layer collapses repeated chunks from the same Work inside a single list, then
-adds one RRF contribution per list:
+每个 QueryVariant × RetrievalChannel 对应一条排名列表。
+同一列表中属于同一 Work 的多个 Chunk 先去重，
+每个 Work 在该列表中只贡献一次 RRF 分数：
 
     contribution = 1 / (rrf_k + rank)
 
-This lets Dense / Lexical and sentence / clause paths vote together without
-normalizing cosine and BM25 score scales.
-"""
+这样 Dense、Lexical、sentence、clause 等路径可以共同投票，
+不需要强行统一余弦相似度与 BM25 的分数尺度。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,7 +25,7 @@ DEFAULT_RRF_K = 60
 
 @dataclass(frozen=True)
 class FusionEvidence:
-    """One list-level vote supporting a fused Work candidate."""
+    """一条排名列表为融合后 Work 候选提供的一次支持。"""
 
     query_text: str
     query_origins: tuple[QueryOrigin, ...]
@@ -37,7 +36,7 @@ class FusionEvidence:
 
 @dataclass(frozen=True)
 class FusedCandidate:
-    """One Work-level candidate after multi-query / multi-channel fusion."""
+    """多 Query、多通道融合后的一个 Work 级候选。"""
 
     work_id: str
     title: str | None
@@ -51,7 +50,7 @@ class FusedCandidate:
 
 
 class _FusionAccumulator(TypedDict):
-    """Mutable, typed work-level RRF state used only during fusion."""
+    """仅在融合计算期间使用的可变 Work 级 RRF 状态。"""
 
     title: str | None
     author: str | None
@@ -85,15 +84,13 @@ def fuse_candidates_rrf(
     top_k: int | None,
     rrf_k: int = DEFAULT_RRF_K,
 ) -> list[FusedCandidate]:
-    """Fuse ranked chunk results into Work-level candidates with RRF.
+    """使用 RRF 将各 Chunk 排名结果融合为 Work 级候选。
 
-    A Work contributes at most once per ranked list. If several chunks from
-    the same Work appear in one list, only the best-ranked chunk contributes
-    to RRF. This prevents long works from gaining extra score merely because
-    they produced more chunks.
+    同一 Work 在每条排名列表中最多贡献一次分数。如果它的多个
+    Chunk 同时命中，只采用排名最高的 Chunk，避免长篇作品因为
+    切分出更多 Chunk 而获得不合理的额外分数。
 
-    All contributing list-level evidences are retained for later explanation
-    or LLM adjudication.
+    保留所有参与融合的列表级证据，供后续解释或 LLM 判断。
     """
     if top_k is not None and top_k <= 0:
         raise ValueError("top_k 必须为正整数")

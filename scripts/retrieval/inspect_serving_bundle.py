@@ -1,4 +1,4 @@
-"""Inspect the exact runtime artifacts required by Retrieval Serving."""
+"""盘点 Retrieval Serving 实际需要加载的运行期资产。"""
 from __future__ import annotations
 
 import argparse

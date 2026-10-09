@@ -1,8 +1,7 @@
-"""Run the local Poeticus Text Retrieval Service.
+"""启动本地 Poeticus Text Retrieval Service。
 
-One process intentionally owns one resident copy of the model and FAISS indexes.
-Do not increase uvicorn workers before measuring the memory multiplication.
-"""
+一个进程只保留一份常驻模型和 FAISS 索引。
+在实测各 Worker 的内存占用之前，不要随意增加 Uvicorn Worker 数量。"""
 from __future__ import annotations
 
 import argparse

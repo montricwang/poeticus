@@ -1,10 +1,8 @@
-"""Shared coarse chronology helpers for Text Retrieval.
+"""Text Retrieval 共用的粗粒度年代判断。
 
-Dynasty metadata is deliberately treated as a coarse interval, not as a
-substitute for author/work dates. Product candidate filtering should only
-remove candidates that are clearly later than the current work's dynasty;
-same-dynasty and overlapping periods remain uncertain.
-"""
+朝代元数据只提供大致时间区间，不能代替作者或作品的确切年代。
+产品筛选仅剔除明确晚于当前作品所属朝代的候选；
+同朝代及年代重叠的候选保留为待判断项。"""
 from __future__ import annotations
 
 from typing import Literal
@@ -17,7 +15,7 @@ ChronologyStatus = Literal[
     "unknown",
 ]
 
-# Coarse chronology for the current Werneror labels.
+# 根据当前 Werneror 语料的朝代标签建立粗粒度年代区间。
 DYNASTY_PERIODS = {
     "先秦": (-3000, -221),
     "秦": (-221, -206),
@@ -53,7 +51,7 @@ def classify_dynasty_relation(
     candidate_dynasty: str | None,
     target_dynasty: str | None,
 ) -> ChronologyStatus:
-    """Classify only what dynasty-level intervals can safely tell us."""
+    """只判断朝代区间足以明确支持的年代关系。"""
     if (
         not candidate_dynasty
         or not target_dynasty
@@ -76,12 +74,11 @@ def classify_dynasty_relation(
 
 
 def candidate_prior_dynasties(target_dynasty: str) -> set[str]:
-    """Legacy strict coarse filter used by current diagnostic search scripts.
+    """保留给诊断脚本使用的旧版严格前代筛选。
 
-    This preserves the existing Exact/BM25 diagnostic semantics: fully earlier
-    periods plus transition labels that begin before the target dynasty and
-    overlap its start. Product candidate eligibility is intentionally more
-    conservative and uses classify_dynasty_relation() instead.
+    包含完全早于目标朝代的时期，也包含起始于目标朝代之前、
+    与其早期重叠的过渡朝代标签，以维持 Exact/BM25 的诊断语义。
+    产品候选筛选更谨慎，改用 classify_dynasty_relation()。
     """
     if target_dynasty not in DYNASTY_PERIODS:
         raise ValueError(

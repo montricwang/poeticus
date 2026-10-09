@@ -1,18 +1,15 @@
-"""Benchmark a compressed FAISS serving index against exact vector search.
+"""对比压缩 FAISS Serving 索引与精确向量检索。
 
-The expensive Qwen embedding shards remain the canonical offline build asset.
-This spike asks a narrower deployment question:
+昂贵的 Qwen Embedding 分片仍是权威离线资产。
+本实验只回答部署问题：ANN 索引能缩小多少，
+为了压缩会损失多少精确近邻召回率？
 
-    How much can a serving ANN index shrink, and what exact-neighbor recall
-    do we lose for that compression?
+从全量 Artifact 确定性抽样，分别构建：
+- IndexFlatIP：同一份样本上的精确检索基线
+- IndexIVFPQ：压缩后的 ANN 索引
 
-It samples vectors deterministically across the full Artifact, builds:
-- IndexFlatIP as the exact reference on the same sample;
-- IndexIVFPQ as the compressed ANN candidate.
-
-The script reports measured sample index bytes plus a linear full-corpus size
-projection. It does not modify the canonical Embedding Artifact.
-"""
+报告样本索引的实际字节数及全量规模的线性估算，
+不修改原始 Embedding Artifact。"""
 from __future__ import annotations
 
 import argparse
@@ -74,7 +71,7 @@ def strip_self_neighbors(
     *,
     top_k: int,
 ) -> list[list[int]]:
-    """Remove each sampled query's own row and return the next top-k ids."""
+    """排除样本 Query 自身对应的行，返回之后的 top-k 行号。"""
     if top_k <= 0:
         raise ValueError("top_k 必须为正整数")
 
@@ -112,7 +109,7 @@ def project_full_index_bytes(
     sample_vectors: int,
     full_vectors: int,
 ) -> int:
-    """Project full index bytes from measured fixed + per-vector sample cost."""
+    """根据实测固定开销和单向量开销，估算全量索引大小。"""
     if sample_vectors <= 0 or full_vectors <= 0:
         raise ValueError("vector count 必须为正整数")
     if populated_sample_bytes < trained_empty_bytes:
@@ -133,7 +130,7 @@ def _gib(value: int | float) -> float:
 
 
 def _search_latency_ms_per_query(index, queries, search_k: int) -> float:
-    # Warm one batch to avoid counting first-call setup.
+    # 先预热一个 Batch，避免计入首次调用的初始化开销。
     index.search(queries[: min(len(queries), 4)], search_k)
     started = time.perf_counter()
     index.search(queries, search_k)
@@ -146,7 +143,7 @@ def normalize_nprobes(
     *,
     nlist: int,
 ) -> list[int]:
-    """Clamp nprobe values to nlist and keep first-seen order."""
+    """将 nprobe 限制在 nlist 范围内，并保留首次出现顺序。"""
     if nlist <= 0:
         raise ValueError("nlist 必须为正整数")
     if not nprobes:
@@ -167,7 +164,7 @@ def normalize_pq_ms(
     *,
     dimension: int,
 ) -> list[int]:
-    """Validate PQ subquantizer counts and keep first-seen order."""
+    """校验 PQ 子量化器数量，并保留首次出现顺序。"""
     if not pq_ms:
         raise ValueError("至少需要一个 pq_m")
 

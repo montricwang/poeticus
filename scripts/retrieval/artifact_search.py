@@ -1,17 +1,13 @@
-"""Run exact Retrieval against any supported embedding Artifact.
+"""对受支持的 Embedding Artifact 执行精确检索。
 
-The Artifact manifest is the source of truth for:
-- embedding model;
-- chunk policy;
-- vector dimension;
-- corpus size.
+Artifact Manifest 是以下信息的来源：
+- Embedding 模型
+- Chunk 切分策略
+- 向量维度
+- 语料规模
 
-Supported experimental Artifacts:
-- Qwen3-Embedding-0.6B
-- BERT-CCPoem v1.0
-
-This module keeps the search path identical across model/chunk comparisons.
-"""
+支持用于对照实验的 Qwen3-Embedding-0.6B 和 BERT-CCPoem v1.0。
+比较模型或 Chunk 划分方案时，使用相同的检索流程。"""
 from __future__ import annotations
 
 import argparse
@@ -368,7 +364,7 @@ def run_artifact_search(
 
 
 def summarize_result(label: str, result: Mapping[str, object]) -> dict[str, object]:
-    """Compact an Artifact search into an interpretable target-rank summary."""
+    """将 Artifact 检索结果汇总为便于理解的目标排名信息。"""
     probes = _SUMMARY_PROBES_ADAPTER.validate_python(result.get("probes") or [])
     best = min(probes, key=lambda item: item["rank"]) if probes else None
     return {

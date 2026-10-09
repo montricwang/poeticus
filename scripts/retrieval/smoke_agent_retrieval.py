@@ -1,15 +1,13 @@
-"""Run real Agent -> HTTP Retrieval Service -> Agent smoke cases.
+"""执行真实 Agent → HTTP Retrieval Service → Agent 的冒烟测试。
 
-Prerequisites:
-
-1. Start the local Retrieval Service in another terminal:
+前提：
+1. 在另一终端启动本地服务：
        python -m scripts.retrieval.run_serving
-2. Keep a valid LLM_API_KEY in .env.
+2. 在 .env 中配置有效的 LLM_API_KEY。
 
-This script uses the real Agent and real Retrieval Service. It resolves the
-benchmark current poem to a full Corpus Work before invoking the Agent so the
-normal exact-content self-hit path is exercised.
-"""
+本脚本调用真实 Agent 和真实 Retrieval Service。
+为覆盖正常的全文重复排除逻辑，会先将测试片段定位到完整的
+Corpus Work，再交给 Agent 发起检索。"""
 from __future__ import annotations
 
 import argparse
@@ -106,7 +104,7 @@ def resolve_full_current_works(
     work_path: Path,
     cases: list[SmokeCase],
 ) -> dict[str, SmokeWork]:
-    """Find one full current Work per case by author + known current text."""
+    """根据作者和已知当前文本，为每个 Case 定位一份完整的当前 Work。"""
     unresolved = {case["id"] for case in cases}
     resolved: dict[str, SmokeWork] = {}
 
@@ -240,7 +238,7 @@ def main() -> None:
             "python -m scripts.retrieval.run_serving"
         ) from exc
 
-    # The Agent client reads these during module import.
+    # Agent 客户端在模块导入时读取这些环境变量。
     os.environ["POETICUS_TEXT_RETRIEVAL_URL"] = retrieval_url
     if args.api_token:
         os.environ["POETICUS_TEXT_RETRIEVAL_TOKEN"] = args.api_token
@@ -259,7 +257,7 @@ def main() -> None:
     cases = load_cases(args.cases, case_ids)
     current_works = resolve_full_current_works(work_path, cases)
 
-    # Import only after retrieval env vars are fixed.
+    # 必须先设置好 Retrieval 环境变量，再导入 Agent 相关模块。
     from backend.ai.context import PoemContext
     from backend.ai.graph import graph
 

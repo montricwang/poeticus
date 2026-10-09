@@ -1,14 +1,13 @@
-"""Execute a deterministic Query Plan across retrieval channels.
+"""将确定性的 Query Plan 分发给各个检索通道。
 
-This module owns orchestration only:
+本模块只负责分发与汇集：
 
     Query Plan
-    -> each configured Dense / Lexical channel
-    -> per-query, per-channel ranked results
+        → 各 Dense / Lexical 通道
+        → 每个 Query 与通道对应的排名结果
 
-It deliberately does not fuse scores or candidates. Candidate Fusion is the
-next layer and should not depend on BM25 / cosine score scales.
-"""
+这里不负责融合分数或候选。后续 Fusion 不应直接比较
+BM25 与余弦相似度的原始分数。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,7 +21,7 @@ ChunkPolicy = Literal["sentence", "clause"]
 
 @dataclass(frozen=True)
 class RetrievalHit:
-    """One ranked candidate returned by a retrieval channel."""
+    """检索通道返回的一条已排名候选。"""
 
     rank: int
     chunk_id: str
@@ -38,7 +37,7 @@ class RetrievalHit:
 
 @dataclass(frozen=True)
 class ChannelDescriptor:
-    """Stable identity of one physical retrieval path."""
+    """一条实际检索路径的稳定标识。"""
 
     name: str
     method: RetrievalMethod
@@ -47,7 +46,7 @@ class ChannelDescriptor:
 
 @dataclass(frozen=True)
 class QueryChannelResult:
-    """Ranked output for one QueryVariant against one channel."""
+    """一个 QueryVariant 在一个通道上的排名结果。"""
 
     query: QueryVariant
     channel: ChannelDescriptor
@@ -55,11 +54,10 @@ class QueryChannelResult:
 
 
 class RetrievalChannel(Protocol):
-    """Batch-oriented retrieval channel.
+    """支持批量查询的检索通道协议。
 
-    A channel receives all unique query texts in one call. This lets a future
-    Dense implementation batch query encoding / ANN requests instead of
-    reloading a model once per query.
+    一次调用接收全部去重后的查询文本，便于 Dense 通道批量编码
+    并请求 ANN 索引，而不必为每条 Query 重新加载模型。
     """
 
     descriptor: ChannelDescriptor
@@ -70,7 +68,7 @@ class RetrievalChannel(Protocol):
         *,
         top_k: int,
     ) -> Sequence[Sequence[RetrievalHit]]:
-        """Return one ranked hit list for every input query, in the same order."""
+        """按输入 Query 的顺序，为每条 Query 返回一组已排名命中。"""
         ...
 
 
@@ -80,12 +78,11 @@ def execute_query_fanout(
     *,
     top_k: int,
 ) -> list[QueryChannelResult]:
-    """Run every unique planned query through every configured channel.
+    """将 Query Plan 中去重后的查询发往所有配置的通道。
 
-    Query granularity and corpus chunk granularity are intentionally
-    independent. A passage query may therefore be searched against both
-    sentence and clause channels; later Eval / Fusion can decide which paths
-    contribute useful evidence.
+    Query 的粒度与语料 Chunk 的粒度互相独立。因此，段落级 Query
+    也可以进入 sentence 和 clause 通道，再由 Eval / Fusion 判断
+    哪些通道提供了有价值的证据。
     """
     if top_k <= 0:
         raise ValueError("top_k 必须为正整数")

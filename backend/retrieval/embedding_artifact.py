@@ -1,9 +1,8 @@
-"""Contracts for completed, sharded Retrieval Embedding artifacts.
+"""已完成、按分片存储的 Retrieval Embedding Artifact 契约。
 
-This module owns the manifest schema and its on-disk consistency checks.
-Neither FAISS builders nor diagnostic search scripts need to import one another
-just to validate an Embedding artifact. It does not load model or vector data.
-"""
+这里定义 Manifest 结构及磁盘上的一致性校验。FAISS 构建工具
+和诊断脚本均可直接使用，不必为了校验 Embedding 互相导入。
+本模块不加载模型或向量数据。"""
 from __future__ import annotations
 
 import json
@@ -45,7 +44,7 @@ _ARTIFACT_MANIFEST_ADAPTER = TypeAdapter(ArtifactManifest)
 
 
 def load_artifact_manifest(artifact_dir: Path) -> ArtifactManifest:
-    """Validate a completed Embedding artifact and contiguous shard layout."""
+    """检查 Embedding Artifact 是否构建完成，以及分片行号是否连续。"""
     manifest_path = artifact_dir / "manifest.json"
     if not manifest_path.is_file():
         raise ValueError(f"Embedding manifest 不存在：{manifest_path}")

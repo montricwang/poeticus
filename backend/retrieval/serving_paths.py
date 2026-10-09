@@ -1,8 +1,7 @@
-"""Resolve the local artifact bundle consumed by Retrieval Serving.
+"""定位 Retrieval Serving 使用的本地资产目录。
 
-The service launcher, bundle inspector and benchmark must agree on the exact
-index and model paths. This module does not start a server or load the model.
-"""
+服务启动、资产盘点和性能测试必须解析出完全一致的索引与模型路径。
+本模块只负责路径选择，不启动服务，也不加载模型。"""
 from __future__ import annotations
 
 import json

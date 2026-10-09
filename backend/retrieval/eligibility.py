@@ -1,10 +1,8 @@
-"""Candidate eligibility after multi-query retrieval and fusion.
+"""多路检索和融合后的候选资格筛选。
 
-This layer removes only candidates that current metadata can reject with high
-confidence. Coarse dynasty labels are not precise enough to decide same-dynasty
-or overlapping-period chronology, so those candidates are retained and marked
-uncertain for later Agent adjudication.
-"""
+仅剔除现有元数据足以明确排除的候选。朝代标签过于粗略，
+无法确定同朝代作品或年代重叠作品的先后关系；
+这些候选需要保留并标记不确定性，交由后续 Agent 判断。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -45,12 +43,11 @@ def apply_candidate_eligibility(
     current_work_ids: Collection[str] | None = None,
     target_dynasty: str | None,
 ) -> EligibilityResult:
-    """Filter self-hits and clearly later works without sacrificing recall.
+    """排除自身命中和明确晚出的作品，同时尽量保持召回率。
 
-    Same-dynasty, overlapping-period, and unknown chronology candidates remain
-    eligible. Their chronology_status is preserved so downstream Agent logic
-    can express uncertainty rather than pretending coarse dynasty metadata
-    proves exact precedence.
+    同朝代、年代重叠或年代未知的候选继续保留，
+    并传递 chronology_status，供后续 Agent 表达不确定性；
+    不把粗粒度朝代信息误当成精确的作品先后证据。
     """
     eligible: list[EligibleCandidate] = []
     rejected: list[RejectedCandidate] = []

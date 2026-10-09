@@ -1,18 +1,14 @@
-"""Exact full-corpus retrieval over Qwen embedding shards.
+"""扫描 Qwen Embedding 分片，在全量语料上执行精确检索。
 
-This is a diagnostic baseline, not the production ANN/index implementation.
+这是用于诊断的 Exact baseline，不是正式 ANN 索引实现。
 
-Pipeline:
+流程：
+    查询文本 → Qwen3-Embedding-0.6B 查询向量
+            → 与全部已归一化的语料向量计算精确点积
+            → 全局 Top-K → 回查 Chunk 和所属 Work 的元数据
 
-    query text
-        -> Qwen3-Embedding-0.6B query embedding
-        -> exact dot product against every normalized corpus vector
-        -> global Top-K
-        -> recover Chunk rows and parent Work metadata
-
-Run from the Poeticus repository root. By default, large local artifacts live
-in the sibling poeticus-data directory and are never committed to this repo.
-"""
+从 Poeticus 仓库根目录运行。大型本地资产默认位于相邻的
+poeticus-data 目录，不提交到代码仓库。"""
 from __future__ import annotations
 
 import argparse
@@ -313,7 +309,7 @@ def merge_top_k(
     candidates: Iterable[tuple[float, int]],
     top_k: int,
 ) -> list[tuple[float, int]]:
-    """Merge scored global rows, highest score first, stable on row id."""
+    """合并带分数的全局行，按分数降序排序，同分时按行号稳定排序。"""
     if top_k <= 0:
         raise ValueError("top_k 必须为正整数")
     rows = [*current, *candidates]
@@ -329,7 +325,7 @@ def exact_search(
     row_mask=None,
     probe_rows: set[int] | None = None,
 ) -> tuple[list[tuple[float, int]], dict[int, ProbeResult]]:
-    """Scan every shard and return Top-K plus optional exact probe ranks."""
+    """扫描所有分片，返回 Top-K 及可选的探针精确排名。"""
     try:
         import numpy as np
     except ImportError as exc:
@@ -368,10 +364,9 @@ def exact_search(
                 f"{path.name} shape={vectors.shape}，预期 {expected_shape}"
             )
 
-        # The corpus Artifact is float16 for storage. Exact baseline converts
-        # one 10k shard at a time to float32 before the dot product, keeping
-        # peak memory bounded while avoiding float16 accumulation as the
-        # reference score.
+        # Corpus Artifact 为节省存储空间采用 float16。Exact baseline
+        # 每次只把一个约 10k 向量的分片转为 float32 再计算点积，
+        # 控制峰值内存，同时避免把 float16 累加误差当作基准分数。
         matrix = np.asarray(vectors, dtype=np.float32)
 
         if shard_mask is None:
@@ -443,7 +438,7 @@ def read_selected_chunks(
     chunk_path: Path,
     row_ids: Iterable[int],
 ) -> dict[int, ChunkRecord]:
-    """Recover selected logical JSONL rows using the same nonblank-row indexing."""
+    """使用一致的非空行编号规则，回查选中的 JSONL 逻辑行。"""
     wanted = set(row_ids)
     if not wanted:
         return {}

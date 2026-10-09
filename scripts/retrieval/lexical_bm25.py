@@ -1,13 +1,11 @@
-"""Character n-gram + BM25 lexical retrieval baseline.
+"""基于字符 n-gram 和 BM25 的词项检索基线。
 
-This module builds a local SQLite FTS5 artifact over Werneror Chunk JSONL and
-searches it with BM25. The text representation and ranking layers stay
-explicit:
+本模块将 Werneror Chunk JSONL 构建为本地 SQLite FTS5 索引，
+再通过 BM25 检索。文本表示与排名流程明确分开：
 
-    text -> character n-grams -> FTS5 inverted index -> BM25 ranking
+    文本 → 字符 n-gram → FTS5 倒排索引 → BM25 排名
 
-The index is a rebuildable retrieval artifact, not the authoritative corpus.
-"""
+索引属于可重建的检索资产，并非权威 Corpus 数据。"""
 from __future__ import annotations
 
 import argparse
@@ -119,7 +117,7 @@ def build_match_query(
     min_n: int = DEFAULT_MIN_N,
     max_n: int = DEFAULT_MAX_N,
 ) -> str:
-    """Diagnostic CLI rejects unsearchable queries; Serving returns no hits."""
+    """诊断 CLI 对无法产生有效词项的 Query 报错；Serving 则返回无命中。"""
     match_query = match_query_or_none(query, min_n=min_n, max_n=max_n)
     if match_query is None:
         raise ValueError(

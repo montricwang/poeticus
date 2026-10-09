@@ -1,11 +1,10 @@
-"""HTTP client for the external Text Retrieval Service.
+"""独立 Text Retrieval Service 的 HTTP 客户端。
 
-The web / Agent process deliberately does not import FAISS, sentence-transformers,
-or local retrieval artifacts. Those live behind this small HTTP boundary.
+Web / Agent 进程不直接导入 FAISS、sentence-transformers 或本地检索资产；
+这些依赖被隔离在 HTTP 服务之后。
 
-The Agent supplies only the query text. Current-poem metadata is added by the
-host application so the model cannot fabricate self-hit filtering metadata.
-"""
+Agent 只提供查询文本。当前作品的元数据由宿主程序补充，
+避免模型自行编造用于排除自身命中的信息。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -22,7 +21,7 @@ from backend.config import (
 
 
 class RetrievalClientError(RuntimeError):
-    """The remote Retrieval Service could not return a valid result."""
+    """远端 Retrieval Service 未能返回有效结果。"""
 
 
 class RetrievalCandidate(BaseModel):

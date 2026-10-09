@@ -1,8 +1,7 @@
-"""Read deterministic representative rows from sharded Embedding artifacts.
+"""从分片 Embedding Artifact 中确定性抽取有代表性的向量行。
 
-These functions belong to the FAISS build pipeline, not to a one-time
-compression experiment. Importing them does not load a model or FAISS.
-"""
+这些函数属于正式 FAISS 构建流程，而不是一次性压缩实验。
+导入本模块不会加载模型或 FAISS。"""
 from pathlib import Path
 from collections.abc import Mapping
 from typing import TypedDict
@@ -36,7 +35,7 @@ def _require_numpy():
 
 
 def sample_global_rows(total: int, sample_size: int):
-    """Return deterministic, corpus-wide row ids for a representative sample."""
+    """返回覆盖全量语料、可重复生成的代表性抽样行号。"""
     if total <= 0:
         raise ValueError("total 必须为正整数")
     if sample_size <= 0:
@@ -56,7 +55,7 @@ def load_sampled_vectors(
     manifest: Mapping[str, object],
     rows,
 ):
-    """Load only requested global rows from sharded .npy embeddings."""
+    """只从分片 .npy Embedding 中读取指定的全局行。"""
     np = _require_numpy()
 
     rows = np.asarray(rows, dtype=np.int64)

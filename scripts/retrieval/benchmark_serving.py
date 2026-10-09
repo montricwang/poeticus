@@ -1,8 +1,7 @@
-"""Benchmark the long-lived local Retrieval Serving runtime.
+"""对本地常驻 Retrieval Serving Runtime 做性能基准测试。
 
-The report separates cold-start resource growth from warm request latency.
-It is intentionally diagnostic, not a production load test.
-"""
+报告区分冷启动时的资源增长与预热后的请求延迟。
+本工具用于诊断，不等同于生产负载测试。"""
 from __future__ import annotations
 
 import argparse
@@ -291,7 +290,7 @@ def resolve_current_work_ids(
     work_path: Path,
     cases: list[BenchmarkCase],
 ) -> dict[str, set[str]]:
-    """Resolve excerpt fixtures to corpus Works outside measured latency."""
+    """在计时区间之外将测试片段定位到完整 Corpus Work。"""
     resolved: dict[str, set[str]] = {case["id"]: set() for case in cases}
     with work_path.open(encoding="utf-8") as stream:
         for line in stream:
@@ -336,10 +335,10 @@ def run_uncached_cases(
     work_path: Path,
     top_k: int,
 ) -> list[UncachedCaseSummary]:
-    """Measure actual uncached query encoding while excluding fixture self-hits.
+    """在排除测试作品自身命中的同时，测量未命中缓存的 Query 编码开销。
 
-    Resolving full Work IDs and scanning the corpus happen outside measured
-    request timings. Cache is cleared before each case, never the warm runs.
+    解析完整 Work ID 和扫描语料不计入请求耗时。
+    每个 Case 开始前清空缓存；预热后的多次运行不再清空。
     """
     current_ids = resolve_current_work_ids(work_path, cases)
     results: list[UncachedCaseSummary] = []

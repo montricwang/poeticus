@@ -1,16 +1,13 @@
-"""Search a full FAISS IVFPQ serving index with a real text query.
+"""用真实文本 Query 检索全量 FAISS IVFPQ 索引。
 
-This is the first full-corpus ANN diagnostic after the serving index build:
+这是 Serving 索引构建后的单通道 ANN 诊断：
 
-    query text
-    -> the same Qwen query encoder used by the Embedding Artifact
-    -> full FAISS IVFPQ index
-    -> ANN Top-K global rows
-    -> recover Chunk / Work metadata
+    查询文本 → 与 Embedding Artifact 一致的 Qwen 查询编码
+            → 全量 FAISS IVFPQ 索引
+            → ANN Top-K 全局行号 → 回查 Chunk / Work 元数据
 
-FAISS scores are approximate inner-product scores from the compressed index.
-They are not exact cosine scores and not literary-relation scores.
-"""
+FAISS 分数是压缩索引返回的近似内积分数，
+既不是精确余弦分数，也不代表文学关系的可信程度。"""
 from __future__ import annotations
 
 import argparse
@@ -133,8 +130,8 @@ def load_index_manifest(
     if not index_path.is_file():
         raise ValueError(f"FAISS index 文件不存在：{index_path}")
     if index_path.name != INDEX_FILENAME:
-        # The current builder uses a stable filename. Refuse silent drift until
-        # there is a real need to support multiple index-file layouts.
+        # 当前构建器使用固定文件名。在确有多种索引布局需求之前，
+        # 不允许索引文件名静默变化。
         raise ValueError(
             f"FAISS index_file={index_path.name!r}，预期 {INDEX_FILENAME!r}"
         )
@@ -171,12 +168,11 @@ def build_eligible_work_rows(
     current_work_id: str | None,
     target_dynasty: str | None,
 ) -> tuple[list[dict[str, object]], dict[int, int]]:
-    """Apply the product's current work-level eligibility policy to ANN hits.
+    """按产品当前的 Work 级 Eligibility 规则筛选 ANN 命中。
 
-    A single retrieval list contributes at most one row per work, matching the
-    Work-level fusion rule. Same-dynasty / overlapping / unknown candidates are
-    intentionally retained; only self-hit and clearly-later candidates are
-    rejected.
+    每条排名列表对同一 Work 最多保留一条，保持与 Work 级融合规则一致。
+    同朝代、年代重叠或未知的候选有意保留；
+    只排除自身命中和明确晚出的作品。
     """
     seen_work_ids: set[str] = set()
     eligible: list[dict[str, object]] = []
@@ -318,7 +314,7 @@ def run_faiss_search(
     faiss.ParameterSpace().set_index_parameter(index, "nprobe", nprobe)
 
     actual_search_k = min(search_k, int(index.ntotal))
-    # Warm once so the measured query latency does not include first-call setup.
+    # 先预热一次，避免把首次调用的初始化开销算进 Query 延迟。
     index.search(queries, actual_search_k)
     search_started = time.perf_counter()
     scores, ids = index.search(

@@ -1,9 +1,7 @@
-"""Deterministic multi-query planning for Text Retrieval.
+"""Text Retrieval 的确定性多 Query 规划。
 
-A selected passage is expanded into passage-, sentence-, and clause-level
-queries without asking an LLM to rewrite the text. Identical query text is
-searched only once while all source spans are retained as provenance.
-"""
+无需 LLM 改写，将选中的文本分别切成 passage、sentence、clause 级 Query。
+相同查询文本只检索一次，同时保留每种粒度在原文中的位置。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -38,11 +36,10 @@ def _trim_outer_whitespace(text: str) -> tuple[int, int]:
 
 
 def build_query_plan(text: str) -> list[QueryVariant]:
-    """Return unique passage / sentence / clause queries in stable order.
+    """按稳定顺序返回去重后的 passage / sentence / clause Query。
 
-    The plan preserves the original span for every level that produced a
-    query. If passage, sentence and clause text are identical, only one search
-    query is emitted with three origins.
+    记录每种粒度对应的原文区间。如果三种粒度生成的查询文本相同，
+    只执行一次检索，但保留三个来源位置。
     """
     if not isinstance(text, str):
         raise TypeError("text 必须是字符串")

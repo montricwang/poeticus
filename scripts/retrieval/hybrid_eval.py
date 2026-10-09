@@ -1,23 +1,18 @@
-"""Evaluate the current Hybrid Retrieval pipeline on local full indexes.
+"""在本地全量索引上评估 Hybrid Retrieval 流程。
 
-This is a product-level diagnostic, not a new retrieval implementation:
+本脚本是产品级诊断工具，不是另一套检索实现：
 
-    text
-    -> deterministic passage / sentence / clause Query Plan
-    -> Dense sentence FAISS
-    -> Dense clause FAISS
-    -> Lexical sentence BM25
-    -> Work-level RRF
-    -> Candidate Eligibility
-    -> final candidate ranking
+    文本 → passage / sentence / clause Query Plan
+         → sentence Dense FAISS + clause Dense FAISS
+         → sentence Lexical BM25 → Work-level RRF
+         → Candidate Eligibility → 最终候选排名
 
-This remains a separate offline diagnostic baseline now that the production
-RetrievalServingRuntime exists. It reads raw Chunk/Work JSONL for probe-level
-traceability and reports per-query/per-channel ranks before and after fusion.
-Serving instead uses resident indexes plus compact Metadata SQLite; do not
-replace this eval with Serving without preserving its diagnostic contract.
-Both paths reuse the same Query Plan, RRF and Eligibility implementations.
-"""
+正式 RetrievalServingRuntime 已存在，但这里仍保留独立的离线诊断基线。
+本脚本直接读取原始 Chunk/Work JSONL，便于追踪 Probe 在不同
+Query 和通道中的排名，以及融合前后的变化。
+Serving 则使用常驻索引和精简 Metadata SQLite；
+若要以 Serving 替代本评估工具，必须先保留这些诊断能力。
+两条路径共用相同的 Query Plan、RRF 和 Eligibility 实现。"""
 from __future__ import annotations
 
 import argparse
@@ -336,11 +331,11 @@ def probe_list_supports(
     channel_results,
     probe_work_ids: set[str],
 ) -> list[ProbeSupport]:
-    """Report where a known target appears before RRF.
+    """报告已知目标在 RRF 融合前出现的位置。
 
-    Each QueryVariant × RetrievalChannel is one ranked list. This diagnostic
-    makes RRF behavior auditable by showing whether a target is broadly
-    supported or survives only in one particular query granularity/channel.
+    每个 QueryVariant × RetrievalChannel 都是一条排名列表。
+    这项诊断让 RRF 的效果可核查：目标究竟得到多个粒度和通道支持，
+    还是只在某一个特定通道的排名中偶然命中。
     """
     supports: list[ProbeSupport] = []
     for result in channel_results:

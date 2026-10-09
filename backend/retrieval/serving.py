@@ -1,10 +1,9 @@
-"""Long-lived orchestration for full-corpus Hybrid Retrieval.
+"""全量 Hybrid Retrieval 的常驻运行与流程编排。
 
-The runtime loads and validates serving artifacts once, then combines the
-resident channels through TextRetrievalService for each incoming search.
-Implementation of FAISS, Qwen encoding and BM25 lives in serving_channels.py.
-Request-time lookup never scans the corpus JSONL files.
-"""
+Runtime 启动时加载并验证 Serving 资产，收到查询后通过
+TextRetrievalService 组合常驻的检索通道。FAISS、Qwen 编码和
+BM25 的实现位于 serving_channels.py。
+请求处理期间不扫描原始 Corpus JSONL。"""
 from __future__ import annotations
 
 import time
@@ -57,10 +56,10 @@ class ServingSearchResult:
 
 
 def _dominant_known_dynasty(counts: dict[str, int]) -> str | None:
-    """Pick one corpus dynasty only when the evidence is unambiguous enough.
+    """只有语料证据足够明确时才选定作品的朝代标签。
 
-    Unknown labels are ignored. If two known labels tie for the highest count,
-    leave chronology unresolved rather than inventing an ordering.
+    忽略未知朝代；如果两个已知朝代标签的计数并列第一，
+    则保留年代未知，不能凭空判定先后。
     """
     ranked = sorted(
         (

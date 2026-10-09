@@ -1,9 +1,7 @@
-"""Shared text-unit splitting rules for Retrieval.
+"""Retrieval 共用的文本切分规则。
 
-The same sentence / clause boundaries are used when building the corpus and
-when planning deterministic queries. Keeping them in one place prevents the
-query side from silently drifting away from the indexed corpus policy.
-"""
+Corpus 构建与确定性 Query Plan 必须使用相同的句、分句边界，
+避免查询侧的切分策略与已构建语料逐渐偏离。"""
 from __future__ import annotations
 
 from typing import Iterator
@@ -60,10 +58,10 @@ def _split_spans(
 
 
 def split_sentence_spans(text: str) -> Iterator[tuple[int, int, str]]:
-    """Yield sentence-level spans after 。！？!?."""
+    """以 。！？!? 等句末标点划分句子区间。"""
     yield from _split_spans(text, SENTENCE_END)
 
 
 def split_clause_spans(text: str) -> Iterator[tuple[int, int, str]]:
-    """Yield clause-level spans after commas, semicolons, or sentence ends."""
+    """以逗号、分号和句末标点划分分句区间。"""
     yield from _split_spans(text, CLAUSE_END)
