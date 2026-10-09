@@ -20,6 +20,8 @@ import os
 import re
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from contextlib import AbstractContextManager
+from typing import Protocol
 from uuid import UUID
 
 import psycopg
@@ -109,7 +111,30 @@ def validate_public_rows(rows: Sequence[Mapping[str, object]], expected: int) ->
     }
 
 
-def transfer(source: Sequence[Mapping[str, object]], dest_conn: psycopg.Connection[DictRow]) -> str:
+class _TransferRows(Protocol):
+    def fetchall(self) -> list[dict[str, object]]: ...
+
+
+class _TransferWriter(Protocol):
+    def write_row(self, values: Sequence[object]) -> None: ...
+
+
+class _TransferCursor(Protocol):
+    def copy(self, query: str) -> AbstractContextManager[_TransferWriter]: ...
+
+
+class TransferFixtureConnection(Protocol):
+    """Minimal transaction/COPY interface used by offline synthetic DB tests."""
+
+    def transaction(self) -> AbstractContextManager[None]: ...
+    def execute(self, query: str) -> _TransferRows: ...
+    def cursor(self) -> AbstractContextManager[_TransferCursor]: ...
+
+
+def transfer(
+    source: Sequence[Mapping[str, object]],
+    dest_conn: psycopg.Connection[DictRow] | TransferFixtureConnection,
+) -> str:
     """单事务、单 COPY 流传输，并对源目标做全量一致性校验。
 
     目标库存在未知内容时拒绝覆盖；提交前中断会回滚。
