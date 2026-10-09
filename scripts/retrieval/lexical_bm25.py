@@ -509,7 +509,7 @@ def search_bm25(
         min_n=manifest["min_n"],
         max_n=manifest["max_n"],
     )
-    chronology = None
+    chronology: dict[str, object] | None = None
     allowed_dynasties: list[str] | None = None
     if before_dynasty:
         allowed_dynasties = sorted(candidate_prior_dynasties(before_dynasty))
