@@ -1,16 +1,11 @@
-"""Product-facing orchestration for Text Retrieval.
+"""面向产品的 Text Retrieval 检索流程编排。
 
-This module composes the backend-independent retrieval stages:
+本模块依次调用与底层存储无关的检索阶段：
 
-    text
-    -> deterministic Query Plan
-    -> configured Retrieval channels
-    -> Work-level RRF
-    -> conservative Candidate Eligibility
-    -> final Tool-ready candidate list
+    文本 → Query Plan → 检索通道 → Work-level RRF
+         → Candidate Eligibility → 提供给 Agent 的最终候选
 
-Storage / ANN choices stay behind RetrievalChannel implementations.
-"""
+FAISS、ANN 或 SQLite 的实现细节留在 RetrievalChannel 内部。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -39,11 +34,10 @@ class TextRetrievalResult:
 
 
 class TextRetrievalService:
-    """Compose query planning, fan-out, fusion, and eligibility.
+    """组合 Query Plan、Fan-out、Fusion 和 Eligibility。
 
-    The service does not know whether a channel is backed by FAISS, pgvector,
-    SQLite FTS5, or another store. It only depends on the RetrievalChannel
-    contract.
+    本服务不关心通道底层使用 FAISS、pgvector、SQLite FTS5
+    还是其他存储，只依赖 RetrievalChannel 接口契约。
     """
 
     def __init__(
@@ -87,9 +81,9 @@ class TextRetrievalService:
             top_k=self._per_channel_top_k,
         )
 
-        # Fuse the complete bounded candidate pool first. If we truncated the
-        # fused list before eligibility, self-hits / clearly-later works could
-        # consume final slots and hide valid candidates below them.
+        # 先融合全部有上限的候选池，再执行 Eligibility。
+        # 如果先截断融合结果，自身命中或明确晚出的作品会占用最终名额，
+        # 排名稍后的有效候选就可能被错误丢弃。
         fused = fuse_candidates_rrf(
             channel_results,
             top_k=None,

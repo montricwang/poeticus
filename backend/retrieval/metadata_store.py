@@ -1,19 +1,11 @@
-"""Compact serving metadata for full-corpus Text Retrieval.
+"""全量 Text Retrieval 使用的精简 Serving 元数据。
 
-FAISS returns stable logical row ids. The serving path needs to recover the
-corresponding Chunk / Work metadata without scanning multi-million-line JSONL
-files on every request.
+FAISS 返回稳定的逻辑行号。在线请求通过 SQLite 主键查找，
+将行号映射到 Chunk 和 Work，而不是每次扫描数百万行 JSONL。
 
-This module intentionally keeps the first implementation boring:
+    FAISS 全局行号 → SQLite 主键查找 → Chunk → Work 元数据
 
-    FAISS global row
-    -> SQLite primary-key lookup
-    -> Chunk
-    -> Work metadata
-
-The database is a rebuildable serving artifact. Corpus JSONL remains the source
-of truth.
-"""
+这个数据库属于可重建的 Serving 资产，Corpus JSONL 仍是数据来源。"""
 from __future__ import annotations
 
 import hashlib
@@ -53,7 +45,7 @@ class WorkMetadata:
 
 
 def content_fingerprint(text: str) -> str:
-    """High-confidence duplicate identity used by current-work exclusion."""
+    """用于排除当前作品命中的高置信度重复标识。"""
     normalized = "".join(text.split())
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
@@ -71,8 +63,8 @@ def _iter_jsonl(path: Path) -> Iterator[dict[str, object]]:
                 ) from exc
             if not isinstance(parsed, dict):
                 raise ValueError(f"{path} 第 {line_no} 行必须是 JSON 对象")
-            # A JSON object only has string keys. Values are validated by
-            # the caller before use or passed through to SQLite.
+            # JSON 对象的 key 只能是字符串；value 由调用方校验，
+            # 或直接交给 SQLite 处理。
             yield cast(dict[str, object], parsed)
 
 
@@ -235,7 +227,7 @@ def build_metadata_store(
     batch_size: int = 50_000,
     force: bool = False,
 ) -> dict[str, str | int | float]:
-    """Build one atomic SQLite serving artifact."""
+    """以原子方式构建一份 SQLite Serving 资产。"""
     if batch_size <= 0:
         raise ValueError("batch_size 必须为正整数")
 
@@ -266,9 +258,8 @@ def build_metadata_store(
     started = time.perf_counter()
     connection = sqlite3.connect(temp_path)
     try:
-        # This file is a rebuildable artifact and is not exposed until the
-        # final atomic rename, so build-time durability is intentionally traded
-        # for throughput.
+        # 数据库是可重建资产，在最后一次原子重命名前不会对外使用；
+        # 因此构建阶段有意牺牲部分持久性保证，换取写入吞吐量。
         connection.execute("PRAGMA journal_mode = OFF")
         connection.execute("PRAGMA synchronous = OFF")
         connection.execute("PRAGMA temp_store = MEMORY")
@@ -350,7 +341,7 @@ def build_metadata_store(
 
 
 class MetadataStore:
-    """Read-only random lookup over the compact serving metadata artifact."""
+    """在精简的 Serving Metadata 中执行只读随机查询。"""
 
     def __init__(self, path: Path):
         self.path = path.expanduser().resolve()
@@ -482,7 +473,7 @@ class MetadataStore:
         self,
         author: str | None,
     ) -> dict[str, int]:
-        """Count Werneror dynasty labels for an exact author string."""
+        """按精确作者名称统计 Werneror 语料中的朝代标签。"""
         if not author:
             return {}
 

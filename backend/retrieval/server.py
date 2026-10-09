@@ -1,4 +1,4 @@
-"""FastAPI surface for the long-lived Retrieval Serving runtime."""
+"""为常驻 Retrieval Serving Runtime 提供 FastAPI 接口。"""
 from __future__ import annotations
 
 import hmac
@@ -47,7 +47,7 @@ class RetrievalSearchResponse(BaseModel):
 
 
 class SearchRuntime(Protocol):
-    """Only the runtime capabilities exercised by the HTTP boundary."""
+    """仅描述 HTTP 边界实际需要的 Runtime 能力。"""
 
     @property
     def startup_profile(self) -> Mapping[str, float | str]: ...
@@ -96,7 +96,7 @@ def create_app(
     def startup_profile(
         _: None = Depends(require_token),
     ) -> dict[str, float | str]:
-        """Local/ops diagnostic; Agent client never needs this endpoint."""
+        """供本地运维查看启动状态；Agent 客户端不使用此接口。"""
         return dict(runtime.startup_profile)
 
     @app.post(

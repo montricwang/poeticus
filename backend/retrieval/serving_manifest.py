@@ -1,8 +1,7 @@
-"""Validation shared by serving startup and retrieval channels.
+"""Serving 启动流程与检索通道共用的 Manifest 校验。
 
-A manifest describes a rebuildable local artifact. It is not user input;
-the checks prevent silently mixing incompatible embeddings and indexes.
-"""
+Manifest 描述本地可重建资产，并非用户输入。校验用于防止
+不兼容的 Embedding 和索引被悄悄混用。"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,7 +13,7 @@ _MANIFEST_ADAPTER = TypeAdapter(dict[str, object])
 
 
 def _load_json(path: Path) -> dict[str, object]:
-    """Read one Manifest whose JSON root must be an object."""
+    """读取 Manifest，并要求 JSON 根节点为对象。"""
     if not path.is_file():
         raise ValueError(f"manifest 不存在：{path}")
     try:
@@ -26,7 +25,7 @@ def _load_json(path: Path) -> dict[str, object]:
 
 
 def _required_positive_int(manifest: dict[str, object], field: str) -> int:
-    """Validate an integer artifact parameter before passing it downstream."""
+    """在向下游传递前校验资产参数是否为有效整数。"""
     value = manifest.get(field)
     if type(value) is not int or value <= 0:
         raise ValueError(f"manifest 缺少有效 {field}：{value!r}")

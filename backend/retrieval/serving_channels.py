@@ -1,9 +1,9 @@
-"""Long-lived retrieval channel implementations.
+"""常驻的 Retrieval 检索通道实现。
 
-The encoder, FAISS dense channels and SQLite BM25 channel own model/index
-access and return ranked RetrievalHit records. Query planning, RRF and
-candidate eligibility belong to TextRetrievalService, not this module.
-"""
+模型编码器、FAISS Dense 通道和 SQLite BM25 通道负责访问模型、
+索引或数据库，并返回按名次排列的 RetrievalHit。
+Query Plan、RRF 和 Candidate Eligibility 由
+TextRetrievalService 负责，不属于本模块。"""
 from __future__ import annotations
 
 import sqlite3
@@ -47,7 +47,7 @@ def _require_faiss():
     return faiss
 
 class QwenQueryEncoder:
-    """Thread-safe bounded query-vector cache around one resident model."""
+    """围绕常驻模型维护线程安全、有容量上限的 Query 向量缓存。"""
 
     def __init__(
         self,

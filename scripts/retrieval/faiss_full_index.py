@@ -1,14 +1,12 @@
-"""Build a full FAISS IVFPQ serving index from an Embedding Artifact.
+"""由 Embedding Artifact 构建全量 FAISS IVFPQ Serving 索引。
 
-The raw float16 Embedding Artifact remains the canonical offline build asset.
-This script trains one IVFPQ index and then adds every embedding shard in
-global-row order. FAISS implicit ids therefore stay identical to Chunk JSONL
-logical row ids:
+原始 float16 Embedding Artifact 仍是离线构建的权威资产。
+本脚本先训练 IVFPQ，再按全局行顺序依次写入 Embedding 分片。
+因此 FAISS 默认 ID 与 Chunk JSONL 逻辑行号始终一致：
 
-    FAISS id == embedding global row == Chunk JSONL logical row
+    FAISS id == Embedding 全局行号 == Chunk JSONL 逻辑行号
 
-No second row-id mapping artifact is needed.
-"""
+无需再维护第二份行号映射资产。"""
 from __future__ import annotations
 
 import argparse

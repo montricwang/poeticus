@@ -1,4 +1,4 @@
-"""Build the compact SQLite metadata store used by Retrieval Serving."""
+"""构建 Retrieval Serving 使用的精简 SQLite Metadata Store。"""
 from __future__ import annotations
 
 import argparse
