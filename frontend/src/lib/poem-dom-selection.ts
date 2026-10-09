@@ -1,22 +1,25 @@
 import type { SelectedText } from '@/types/poem'
 
 /**
- * 将浏览器 DOM Range 转成原文里的选词结果，不再假设正文是单个文本节点。
- * root：只包含正文的 DOM 容器；range：浏览器选区（可能越过正文边缘）；
- * source：poemText() 得到的完整原文，是唯一可信的引用来源。
- * 返回 { text, start, end }，其中 start/end 是 UTF-16 [start, end)；
- * 不相交、空选区或 DOM 与原文不一致时返回 null。
+ * 将浏览器中的文本选区映射到原始诗文的字符位置。
+ *
+ * 正文分行和标点样式会产生多个 DOM 文本节点，不能再依赖单个节点
+ * 的字符偏移；映射结果始终以原文为准。
+ *
+ * @param root 诗文正文容器，不包含标题和小序
+ * @param range 浏览器选区，允许部分越过正文边界
+ * @param source poemText() 返回的完整原文
+ * @returns 选中文字及原文中的 [start, end) 位置（UTF-16）；
+ *   无有效交集或无法准确映射时返回 null
  */
 export function selectionFromPoemRange(
   root: HTMLElement,
   range: Range,
   source: string,
 ): SelectedText | null {
-  // 核心不变量：DOM 里所有可见文字节点的串接必须严格等于 source。
-  // 若排版时错误增删字符，宁可拒绝引用也不能默默给出错误偏移。
+  // 防止显示层增删字符导致引用错位：DOM 文本必须与原文完全一致。
   if (root.textContent !== source) return null
 
-  // 与正文无交集就立即退出，例如用户只选中了作品标题。
   const bodyRange = document.createRange()
   bodyRange.selectNodeContents(root)
 
@@ -27,7 +30,7 @@ export function selectionFromPoemRange(
     return null
   }
 
-  // 只裁剪 Range 副本，不改变用户在页面上的真实选中范围。
+  // 只裁剪选区的副本，不改变用户实际划选的范围。
   const clipped = range.cloneRange()
   if (clipped.compareBoundaryPoints(Range.START_TO_START, bodyRange) < 0) {
     clipped.setStart(root, 0)
@@ -36,8 +39,8 @@ export function selectionFromPoemRange(
     clipped.setEnd(root, root.childNodes.length)
   }
 
-  // 从正文开头数到选区起/止点；cloneContents().textContent 不计算
-  // CSS display:block 带来的视觉换行，得到的长度与 source 的 UTF-16 下标一致。
+  // 分别统计正文开头到选区起点、终点的字符数。
+  // 不用 range.toString()：它可能包含视觉分行产生的额外换行符。
   const prefix = document.createRange()
   prefix.selectNodeContents(root)
   prefix.setEnd(clipped.startContainer, clipped.startOffset)
@@ -47,6 +50,5 @@ export function selectionFromPoemRange(
   const end = prefix.cloneContents().textContent?.length ?? 0
   const text = source.slice(start, end)
 
-  // trim 只用来判断是否全为空白；返回的 text 不丢原始空格和换行。
   return start < end && text.trim() ? { text, start, end } : null
 }
