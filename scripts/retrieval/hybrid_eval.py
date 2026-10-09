@@ -464,10 +464,9 @@ def evaluate_hybrid(
             "请安装 requirements-retrieval.txt"
         ) from exc
 
-    kwargs: dict[str, bool | str] = {"local_files_only": True}
-    if device:
-        kwargs["device"] = device
-    model = SentenceTransformer(str(model_path), **kwargs)
+    model = SentenceTransformer(
+        str(model_path), local_files_only=True, device=device
+    )
     dimension = sentence_manifest["embedding_dimension"]
     query_vectors = model.encode(
         queries,
