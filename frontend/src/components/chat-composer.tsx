@@ -1,18 +1,18 @@
-import { ArrowUp, LoaderCircle, X } from "lucide-react";
+import { ArrowUp, LoaderCircle, X } from 'lucide-react'
 
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import type { SelectedText } from "@/components/poem-reader";
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import type { SelectedText } from '@/components/poem-reader'
 
 type ChatComposerProps = {
-  selected: SelectedText | null;
-  question: string;
-  loading: boolean;
-  onQuestionChange: (value: string) => void;
-  onClearQuote: () => void;
-  onSend: () => void;
-  showDivider?: boolean;
-};
+  selected: SelectedText | null
+  question: string
+  loading: boolean
+  onQuestionChange: (value: string) => void
+  onClearQuote: () => void
+  onSend: () => void
+  showDivider?: boolean
+}
 
 export function ChatComposer({
   selected,
@@ -25,9 +25,7 @@ export function ChatComposer({
 }: ChatComposerProps) {
   return (
     <div className="shrink-0 bg-transparent px-0 pt-3 pb-0 lg:py-4">
-      {showDivider && (
-        <div className="mx-2 mb-3 h-px bg-border/60" aria-hidden="true" />
-      )}
+      {showDivider && <div className="mx-2 mb-3 h-px bg-border/60" aria-hidden="true" />}
 
       {/* 划词引用只保留旁引竖线与关闭按钮，不再占一整行显示“引用原文”。 */}
       {selected && (
@@ -61,13 +59,13 @@ export function ChatComposer({
           onChange={(event) => onQuestionChange(event.target.value)}
           onKeyDown={(event) => {
             // Shift + Enter 换行；中文输入法选字时不误发送。
-            if (event.key !== "Enter" || event.shiftKey) return;
+            if (event.key !== 'Enter' || event.shiftKey) return
             if (event.nativeEvent.isComposing || event.keyCode === 229) {
-              return;
+              return
             }
 
-            event.preventDefault();
-            if (!loading && question.trim()) onSend();
+            event.preventDefault()
+            if (!loading && question.trim()) onSend()
           }}
           // readOnly 而非 disabled：生成中仍可滚动、选中文字，
           // 不再显示全局 Textarea 的禁止操作光标。
@@ -77,7 +75,7 @@ export function ChatComposer({
 
         <div className="flex items-center justify-between px-2">
           <span className="text-xs text-muted-foreground">
-            {loading ? "AI 正在回复" : "Enter 发送 · Shift+Enter 换行"}
+            {loading ? 'AI 正在回复' : 'Enter 发送 · Shift+Enter 换行'}
           </span>
 
           <Button
@@ -97,5 +95,5 @@ export function ChatComposer({
         </div>
       </div>
     </div>
-  );
+  )
 }

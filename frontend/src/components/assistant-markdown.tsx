@@ -1,24 +1,21 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 
 type AssistantMarkdownProps = {
-  content: string;
-  variant?: "assistant" | "user";
-};
+  content: string
+  variant?: 'assistant' | 'user'
+}
 
-export function AssistantMarkdown({
-  content,
-  variant = "assistant",
-}: AssistantMarkdownProps) {
-  const isUser = variant === "user";
+export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantMarkdownProps) {
+  const isUser = variant === 'user'
 
   return (
     <div
       className={
         isUser
-          ? "min-w-0 wrap-break-word text-sm leading-6 text-foreground/90"
-          : "min-w-0 wrap-break-word text-sm leading-7 text-foreground/90"
+          ? 'min-w-0 wrap-break-word text-sm leading-6 text-foreground/90'
+          : 'min-w-0 wrap-break-word text-sm leading-7 text-foreground/90'
       }
     >
       <ReactMarkdown
@@ -26,48 +23,30 @@ export function AssistantMarkdown({
         skipHtml
         components={{
           p: ({ children }) => (
-            <p
-              className={
-                isUser
-                  ? "my-1 first:mt-0 last:mb-0"
-                  : "my-3 first:mt-0 last:mb-0"
-              }
-            >
+            <p className={isUser ? 'my-1 first:mt-0 last:mb-0' : 'my-3 first:mt-0 last:mb-0'}>
               {children}
             </p>
           ),
 
           h1: ({ children }) => (
-            <h1 className="mb-3 mt-5 text-lg font-semibold first:mt-0">
-              {children}
-            </h1>
+            <h1 className="mb-3 mt-5 text-lg font-semibold first:mt-0">{children}</h1>
           ),
 
           h2: ({ children }) => (
-            <h2 className="mb-3 mt-5 text-base font-semibold first:mt-0">
-              {children}
-            </h2>
+            <h2 className="mb-3 mt-5 text-base font-semibold first:mt-0">{children}</h2>
           ),
 
           h3: ({ children }) => (
-            <h3 className="mb-2 mt-4 text-sm font-semibold first:mt-0">
-              {children}
-            </h3>
+            <h3 className="mb-2 mt-4 text-sm font-semibold first:mt-0">{children}</h3>
           ),
 
           strong: ({ children }) => (
-            <strong className="font-semibold text-foreground">
-              {children}
-            </strong>
+            <strong className="font-semibold text-foreground">{children}</strong>
           ),
 
           ul: ({ children }) => (
             <ul
-              className={
-                isUser
-                  ? "my-1 list-disc space-y-0 pl-5"
-                  : "my-3 list-disc space-y-1 pl-6"
-              }
+              className={isUser ? 'my-1 list-disc space-y-0 pl-5' : 'my-3 list-disc space-y-1 pl-6'}
             >
               {children}
             </ul>
@@ -76,9 +55,7 @@ export function AssistantMarkdown({
           ol: ({ children }) => (
             <ol
               className={
-                isUser
-                  ? "my-1 list-decimal space-y-0 pl-5"
-                  : "my-3 list-decimal space-y-1 pl-6"
+                isUser ? 'my-1 list-decimal space-y-0 pl-5' : 'my-3 list-decimal space-y-1 pl-6'
               }
             >
               {children}
@@ -89,8 +66,8 @@ export function AssistantMarkdown({
             <blockquote
               className={
                 isUser
-                  ? "my-2 border-l-2 border-violet-400/70 pl-3 text-muted-foreground"
-                  : "my-4 border-l-2 border-violet-400/70 pl-4 text-muted-foreground"
+                  ? 'my-2 border-l-2 border-violet-400/70 pl-3 text-muted-foreground'
+                  : 'my-4 border-l-2 border-violet-400/70 pl-4 text-muted-foreground'
               }
             >
               {children}
@@ -111,9 +88,7 @@ export function AssistantMarkdown({
           ),
 
           code: ({ children, className }) => (
-            <code
-              className={`${className ?? ""} rounded bg-muted px-1.5 py-0.5 font-mono text-xs`}
-            >
+            <code className={`${className ?? ''} rounded bg-muted px-1.5 py-0.5 font-mono text-xs`}>
               {children}
             </code>
           ),
@@ -122,8 +97,8 @@ export function AssistantMarkdown({
             <pre
               className={
                 isUser
-                  ? "my-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs leading-5 [&_code]:bg-transparent [&_code]:p-0"
-                  : "my-3 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs leading-6 [&_code]:bg-transparent [&_code]:p-0"
+                  ? 'my-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs leading-5 [&_code]:bg-transparent [&_code]:p-0'
+                  : 'my-3 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs leading-6 [&_code]:bg-transparent [&_code]:p-0'
               }
             >
               {children}
@@ -132,9 +107,7 @@ export function AssistantMarkdown({
 
           table: ({ children }) => (
             <div className="my-4 max-w-full overflow-x-auto">
-              <table className="w-full border-collapse text-left text-xs">
-                {children}
-              </table>
+              <table className="w-full border-collapse text-left text-xs">{children}</table>
             </div>
           ),
 
@@ -145,9 +118,7 @@ export function AssistantMarkdown({
           ),
 
           td: ({ children }) => (
-            <td className="border-b border-border/60 px-3 py-2 align-top">
-              {children}
-            </td>
+            <td className="border-b border-border/60 px-3 py-2 align-top">{children}</td>
           ),
 
           hr: () => <hr className="my-5 border-border/60" />,
@@ -159,5 +130,5 @@ export function AssistantMarkdown({
         {content}
       </ReactMarkdown>
     </div>
-  );
+  )
 }

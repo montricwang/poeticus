@@ -1,27 +1,27 @@
-import { Check, Copy, Pencil } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { AssistantMarkdown } from "@/components/assistant-markdown";
-import type { ChatTurn } from "@/components/chat-types";
+import { Check, Copy, Pencil } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { AssistantMarkdown } from '@/components/assistant-markdown'
+import type { ChatTurn } from '@/components/chat-types'
 
 type CopyStatus = {
-  key: string;
-  status: "success" | "error";
-} | null;
+  key: string
+  status: 'success' | 'error'
+} | null
 
 type UserMessageProps = {
-  turn: ChatTurn;
-  editing: boolean;
-  draft: string;
-  loading: boolean;
-  copyStatus: CopyStatus;
+  turn: ChatTurn
+  editing: boolean
+  draft: string
+  loading: boolean
+  copyStatus: CopyStatus
 
-  onDraftChange: (value: string) => void;
-  onStartEdit: () => void;
-  onCancelEdit: () => void;
-  onSaveEdit: () => void;
-  onCopy: (content: string) => void;
-};
+  onDraftChange: (value: string) => void
+  onStartEdit: () => void
+  onCancelEdit: () => void
+  onSaveEdit: () => void
+  onCopy: (content: string) => void
+}
 
 export function UserMessage({
   turn,
@@ -35,19 +35,17 @@ export function UserMessage({
   onSaveEdit,
   onCopy,
 }: UserMessageProps) {
-  const copyKey = `${turn.id}:user`;
+  const copyKey = `${turn.id}:user`
 
   const copyContent = turn.selection
     ? `引用原文：${turn.selection.text}
 
 问题：${turn.question}`
-    : turn.question;
+    : turn.question
 
-  const copySucceeded =
-    copyStatus?.key === copyKey && copyStatus.status === "success";
+  const copySucceeded = copyStatus?.key === copyKey && copyStatus.status === 'success'
 
-  const copyFailed =
-    copyStatus?.key === copyKey && copyStatus.status === "error";
+  const copyFailed = copyStatus?.key === copyKey && copyStatus.status === 'error'
 
   return (
     <div className="group flex min-w-0 w-full flex-col items-start gap-2" aria-label="读者提问">
@@ -71,21 +69,14 @@ export function UserMessage({
             />
 
             <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onCancelEdit}
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={onCancelEdit}>
                 取消
               </Button>
 
               <Button
                 type="button"
                 size="sm"
-                disabled={
-                  !draft.trim() || draft.trim() === turn.question || loading
-                }
+                disabled={!draft.trim() || draft.trim() === turn.question || loading}
                 onClick={onSaveEdit}
               >
                 保存并发送
@@ -115,11 +106,7 @@ export function UserMessage({
                 title="复制用户消息"
                 onClick={() => onCopy(copyContent)}
               >
-                {copySucceeded ? (
-                  <Check className="size-4" />
-                ) : (
-                  <Copy className="size-4" />
-                )}
+                {copySucceeded ? <Check className="size-4" /> : <Copy className="size-4" />}
               </Button>
 
               <Button
@@ -145,5 +132,5 @@ export function UserMessage({
         )}
       </div>
     </div>
-  );
+  )
 }
