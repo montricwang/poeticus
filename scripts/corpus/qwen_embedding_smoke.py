@@ -39,7 +39,7 @@ def rank_candidates(
     query_vector: Sequence[float],
     candidate_vectors: Sequence[Sequence[float]],
     candidate_texts: Sequence[str],
-) -> list[dict]:
+) -> list[dict[str, str | float]]:
     if len(candidate_vectors) != len(candidate_texts):
         raise ValueError("候选文本与候选向量数量不一致")
 
