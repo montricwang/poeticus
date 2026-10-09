@@ -11,7 +11,7 @@ from backend.data_paths import READING_RAW_ROOT
 from bs4 import BeautifulSoup, Tag
 from ebooklib import epub
 
-from ..extractor.blocks import iter_source_blocks
+from ..extractor.blocks import _class_list, _string_attribute, iter_source_blocks
 from ..extractor.extractor import raw_xhtml
 
 
@@ -23,8 +23,10 @@ def _signature(tag):
         isinstance(sibling, Tag) and sibling.name == tag.name
         for sibling in tag.previous_siblings
     )
-    classes = "." + ".".join(tag.get("class", [])) if tag.get("class") else ""
-    node_id = "#" + tag.get("id") if tag.get("id") else ""
+    class_names = _class_list(tag)
+    classes = "." + ".".join(class_names) if class_names else ""
+    html_id = _string_attribute(tag, "id")
+    node_id = "#" + html_id if html_id else ""
     return f"{tag.name}{node_id}{classes}:nth-of-type({index})"
 
 
