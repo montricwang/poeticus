@@ -122,7 +122,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
       window.removeEventListener('pointercancel', handlePointerCancel)
       document.removeEventListener('selectionchange', handleSelectionChange)
     }
-  }, [onSelect, poem])
+  }, [onSelect, poem, selectionScopeRef])
 
   return (
     <p
