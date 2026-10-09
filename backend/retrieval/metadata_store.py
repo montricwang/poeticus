@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Literal, Sequence, cast
 
+from backend.retrieval.artifact_files import sha256_file
+
 ChunkPolicy = Literal["sentence", "clause"]
 METADATA_SCHEMA_VERSION = "2"
 _TABLES: dict[ChunkPolicy, str] = {
@@ -113,17 +115,6 @@ def _create_schema(connection: sqlite3.Connection) -> None:
         );
         """
     )
-
-
-def _sha256_file(
-    path: Path,
-    block_size: int = 8 * 1024 * 1024,
-) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        while block := stream.read(block_size):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def _insert_works(
@@ -308,9 +299,9 @@ def build_metadata_store(
         connection.commit()
 
         source_hashes = {
-            "work_sha256": _sha256_file(work_path),
-            "sentence_sha256": _sha256_file(sentence_chunk_path),
-            "clause_sha256": _sha256_file(clause_chunk_path),
+            "work_sha256": sha256_file(work_path),
+            "sentence_sha256": sha256_file(sentence_chunk_path),
+            "clause_sha256": sha256_file(clause_chunk_path),
         }
         metadata = {
             "schema_version": METADATA_SCHEMA_VERSION,
