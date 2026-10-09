@@ -52,7 +52,7 @@ def test_loader_keeps_models_policies_and_extra_fields(tmp_path, model, policy):
     assert result["model"] == model
     assert result["chunk_policy"] == policy
     assert result["completed_chunks"] == 5
-    assert result["input_sha256"] == "corpus-sha"
+    assert result.get("input_sha256") == "corpus-sha"
     assert dict(result)["future_field"] == {"kept": True}  # extra="allow"
 
 
