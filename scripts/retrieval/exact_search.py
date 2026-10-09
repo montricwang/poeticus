@@ -21,7 +21,9 @@ import json
 from pathlib import Path
 
 from backend.data_paths import MODELS_ROOT, RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
-from typing import Iterable
+from typing import Iterable, Mapping, NotRequired, TypedDict
+
+from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.retrieval.chronology import (
     DYNASTY_PERIODS,
@@ -38,6 +40,74 @@ DEFAULT_ARTIFACT_DIR = (
 )
 DEFAULT_TOP_K = 20
 
+
+class ExactShard(TypedDict):
+    start: int
+    end: int
+    file: str
+
+
+@with_config(ConfigDict(extra="allow"))
+class ExactManifest(TypedDict):
+    status: str
+    model: str
+    model_fingerprint: str
+    embedding_dimension: int
+    completed_chunks: int
+    completed_shards: list[ExactShard]
+    input_sha256: NotRequired[str]
+
+
+@with_config(ConfigDict(extra="allow"))
+class ChunkRecord(TypedDict):
+    chunk_id: str
+    work_id: str
+    text: str
+    start: NotRequired[int]
+    end: NotRequired[int]
+
+
+@with_config(ConfigDict(extra="allow"))
+class WorkRecord(TypedDict):
+    work_id: str
+    title: NotRequired[str | None]
+    author: NotRequired[str | None]
+    dynasty: NotRequired[str | None]
+    source_record_id: NotRequired[str | None]
+
+
+class ProbeResult(TypedDict):
+    cosine: float
+    rank: int
+
+
+class ChunkResult(TypedDict):
+    chunk_id: str
+    text: str
+    start: int | None
+    end: int | None
+
+
+class WorkResult(TypedDict):
+    work_id: str
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    source_record_id: str | None
+
+
+class ExactResultRow(TypedDict):
+    rank: int
+    cosine: float
+    global_row: int
+    chunk: ChunkResult
+    work: WorkResult
+
+
+_MANIFEST_ADAPTER = TypeAdapter(ExactManifest)
+_CHUNK_ADAPTER = TypeAdapter(ChunkRecord)
+_WORK_ADAPTER = TypeAdapter(WorkRecord)
+
 def sha256_file(path: Path, block_size: int = 8 * 1024 * 1024) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -46,12 +116,14 @@ def sha256_file(path: Path, block_size: int = 8 * 1024 * 1024) -> str:
     return digest.hexdigest()
 
 
-def load_manifest(artifact_dir: Path) -> dict:
+def load_manifest(artifact_dir: Path) -> ExactManifest:
     manifest_path = artifact_dir / "manifest.json"
     if not manifest_path.is_file():
         raise ValueError(f"Embedding manifest 不存在：{manifest_path}")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict):
+        raise ValueError("Embedding manifest 必须是对象")
     if manifest.get("status") != "complete":
         raise ValueError(
             f"Embedding Artifact 尚未完成：status={manifest.get('status')!r}"
@@ -74,6 +146,8 @@ def load_manifest(artifact_dir: Path) -> dict:
 
     expected_start = 0
     for item in shards:
+        if not isinstance(item, dict):
+            raise ValueError("Embedding shard 必须是对象")
         start = item.get("start")
         end = item.get("end")
         filename = item.get("file")
@@ -90,14 +164,16 @@ def load_manifest(artifact_dir: Path) -> dict:
             "manifest 的 completed_chunks 与 completed_shards 范围不一致"
         )
 
-    return manifest
+    return _MANIFEST_ADAPTER.validate_python(manifest)
 
 
-def resolve_model_path(manifest: dict, requested_path: Path | None) -> Path:
+def resolve_model_path(manifest: Mapping[str, object], requested_path: Path | None) -> Path:
     if requested_path is not None:
         return requested_path.expanduser().resolve()
 
     fingerprint = manifest["model_fingerprint"]
+    if not isinstance(fingerprint, str):
+        raise ValueError("manifest model_fingerprint 必须是字符串")
     return (
         DEFAULT_MODEL_ROOT
         / f"Qwen3-Embedding-0.6B-{fingerprint[:12]}"
@@ -269,12 +345,12 @@ def merge_top_k(
 
 def exact_search(
     artifact_dir: Path,
-    manifest: dict,
+    manifest: ExactManifest,
     query_vector,
     top_k: int,
     row_mask=None,
     probe_rows: set[int] | None = None,
-) -> tuple[list[tuple[float, int]], dict[int, dict]]:
+) -> tuple[list[tuple[float, int]], dict[int, ProbeResult]]:
     """Scan every shard and return Top-K plus optional exact probe ranks."""
     try:
         import numpy as np
@@ -359,7 +435,7 @@ def exact_search(
 
     print(" " * 80, end="\r", flush=True)
 
-    probes: dict[int, dict] = {}
+    probes: dict[int, ProbeResult] = {}
     if probe_rows:
         missing = sorted(probe_rows - set(probe_scores))
         if missing:
@@ -388,7 +464,7 @@ def exact_search(
 def read_selected_chunks(
     chunk_path: Path,
     row_ids: Iterable[int],
-) -> dict[int, dict]:
+) -> dict[int, ChunkRecord]:
     """Recover selected logical JSONL rows using the same nonblank-row indexing."""
     wanted = set(row_ids)
     if not wanted:
@@ -398,7 +474,7 @@ def read_selected_chunks(
     if not chunk_path.is_file():
         raise ValueError(f"Chunk JSONL 不存在：{chunk_path}")
 
-    found: dict[int, dict] = {}
+    found: dict[int, ChunkRecord] = {}
     logical_row = 0
     max_wanted = max(wanted)
 
@@ -413,7 +489,7 @@ def read_selected_chunks(
                     raise ValueError(
                         f"Chunk JSONL 第 {line_no} 行无法解析"
                     ) from exc
-                found[logical_row] = record
+                found[logical_row] = _CHUNK_ADAPTER.validate_python(record)
                 if len(found) == len(wanted):
                     break
             if logical_row >= max_wanted:
@@ -429,14 +505,14 @@ def read_selected_chunks(
 def read_selected_works(
     work_path: Path,
     work_ids: Iterable[str],
-) -> dict[str, dict]:
+) -> dict[str, WorkRecord]:
     wanted = set(work_ids)
     if not wanted:
         return {}
     if not work_path.is_file():
         raise ValueError(f"Work JSONL 不存在：{work_path}")
 
-    found: dict[str, dict] = {}
+    found: dict[str, WorkRecord] = {}
     with work_path.open(encoding="utf-8") as stream:
         for line_no, line in enumerate(stream, 1):
             if not line.strip():
@@ -445,9 +521,11 @@ def read_selected_works(
                 record = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise ValueError(f"Work JSONL 第 {line_no} 行无法解析") from exc
+            if not isinstance(record, dict):
+                raise ValueError(f"Work JSONL 第 {line_no} 行不是对象")
             work_id = record.get("work_id")
-            if work_id in wanted:
-                found[work_id] = record
+            if isinstance(work_id, str) and work_id in wanted:
+                found[work_id] = _WORK_ADAPTER.validate_python(record)
                 if len(found) == len(wanted):
                     break
 
@@ -475,7 +553,7 @@ def encode_query(
 
     ensure_model_snapshot(model_path, expected_model_fingerprint)
 
-    kwargs = {"local_files_only": True}
+    kwargs: dict[str, bool | str] = {"local_files_only": True}
     if device:
         kwargs["device"] = device
 
@@ -496,10 +574,10 @@ def encode_query(
 
 def build_result_rows(
     ranking: list[tuple[float, int]],
-    chunks: dict[int, dict],
-    works: dict[str, dict],
-) -> list[dict]:
-    rows = []
+    chunks: dict[int, ChunkRecord],
+    works: dict[str, WorkRecord],
+) -> list[ExactResultRow]:
+    rows: list[ExactResultRow] = []
     for rank, (score, row_id) in enumerate(ranking, 1):
         chunk = chunks[row_id]
         work = works[chunk["work_id"]]
