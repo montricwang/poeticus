@@ -205,11 +205,9 @@ class QwenQueryEncoder:
                 "请安装 requirements-retrieval.txt"
             ) from exc
 
-        kwargs: dict[str, bool | str] = {"local_files_only": True}
-        if device:
-            kwargs["device"] = device
-
-        self._model = SentenceTransformer(str(model_path), **kwargs)
+        self._model = SentenceTransformer(
+            str(model_path), local_files_only=True, device=device
+        )
         self.dimension = dimension
         self.device = str(self._model.device)
         self._cache_size = cache_size
