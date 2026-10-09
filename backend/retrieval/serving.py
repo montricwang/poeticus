@@ -327,7 +327,9 @@ class FaissDenseChannel:
             raise ValueError(
                 f"{policy} FAISS ntotal={self._index.ntotal}，预期 {expected}"
             )
-        self._index.nprobe = _required_positive_int(index_manifest, "nprobe")
+        faiss.ParameterSpace().set_index_parameter(
+            self._index, "nprobe", _required_positive_int(index_manifest, "nprobe")
+        )
         self.index_manifest = index_manifest
         self.embedding_manifest = embedding_manifest
 
