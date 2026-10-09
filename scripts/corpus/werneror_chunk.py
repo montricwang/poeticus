@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+from typing import TypedDict
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
 DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
@@ -33,6 +34,19 @@ from backend.retrieval.text_units import (
 
 POLICY = "sentence"
 CLAUSE_POLICY = "clause"
+
+
+class ChunkCounts(TypedDict):
+    policy: str
+    input: str
+    output: str
+    works: int
+    chunks: int
+    chunks_per_work: float
+    works_without_chunks: int
+    max_chunk_chars: int
+    chunks_over_chars: dict[str, int]
+    offset_semantics: str
 
 
 def _iter_works(path: Path):
@@ -63,7 +77,7 @@ def _build_chunks(
     splitter,
     expected_works: int | None = DEFAULT_EXPECTED_WORKS,
     expected_chunks: int | None = DEFAULT_EXPECTED_CHUNKS,
-) -> dict:
+) -> ChunkCounts:
     if not input_path.is_file():
         raise ValueError(f"Work JSONL 不存在：{input_path}")
 
@@ -139,7 +153,7 @@ def _build_chunks(
         tmp_output.unlink(missing_ok=True)
         raise
 
-    report = {
+    report: ChunkCounts = {
         "policy": policy,
         "input": str(input_path),
         "output": str(output_path),
@@ -168,7 +182,7 @@ def build_sentence_chunks(
     report_path: Path,
     expected_works: int | None = DEFAULT_EXPECTED_WORKS,
     expected_chunks: int | None = DEFAULT_EXPECTED_CHUNKS,
-) -> dict:
+) -> ChunkCounts:
     return _build_chunks(
         input_path,
         output_path,
@@ -186,7 +200,7 @@ def build_clause_chunks(
     report_path: Path,
     expected_works: int | None = DEFAULT_EXPECTED_WORKS,
     expected_chunks: int | None = DEFAULT_EXPECTED_CHUNKS,
-) -> dict:
+) -> ChunkCounts:
     return _build_chunks(
         input_path,
         output_path,
