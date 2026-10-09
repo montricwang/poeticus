@@ -4,13 +4,14 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from scripts.retrieval.benchmark_serving import (
+    BenchmarkCase,
     render_markdown,
     resolve_current_work_ids,
     run_uncached_cases,
 )
 
 
-def cases():
+def cases() -> list[BenchmarkCase]:
     return [{
         "id": "case-one",
         "retrieval_query": "轻鸥落晚沙",
