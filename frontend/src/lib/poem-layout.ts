@@ -42,7 +42,10 @@ export function buildPoemLines(source: string): PoemLine[] {
     if (LINE_ENDINGS.has(character)) {
       let end = cursor + 1
       // Keep ?!, …… and closing quotes with the verse they terminate.
-      while (end < source.length && (LINE_ENDINGS.has(source[end]) || CLOSING_MARKS.has(source[end]))) {
+      while (
+        end < source.length &&
+        (LINE_ENDINGS.has(source[end]) || CLOSING_MARKS.has(source[end]))
+      ) {
         end += 1
       }
       // An explicit source line break after punctuation already marks the next line.
