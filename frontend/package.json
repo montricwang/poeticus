@@ -9,7 +9,7 @@
     "build": "npm run typecheck && vite build",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.mjs\" vite.config.ts eslint.config.js index.html",
-    "format:check": "prettier --write tests/poem-layout.test.mjs tests/poem-read.test.mjs && git diff -- tests/poem-layout.test.mjs tests/poem-read.test.mjs && exit 1",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.mjs\" vite.config.ts eslint.config.js index.html",
     "preview": "vite preview"
   },
   "dependencies": {
