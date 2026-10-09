@@ -62,6 +62,7 @@ def test_embedding_source_signature_preserves_build_contract():
         "status": "complete",
     }
 
+    manifest: dict[str, object] = manifest
     signature = _embedding_source_signature(manifest)
     assert signature == {key: value for key, value in manifest.items() if key != "status"}
 
