@@ -18,7 +18,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 from collections.abc import Mapping, Sequence
-from typing import NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
@@ -43,12 +43,17 @@ class SmokeContext(TypedDict):
     dynasty: str | None
 
 
+class SmokeHistoryMessage(TypedDict):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class SmokeInput(TypedDict):
     poem: str
     question: str
     selection: str | None
     context: SmokeContext
-    history: NotRequired[list[dict[str, str]]]
+    history: NotRequired[list[SmokeHistoryMessage]]
 
 
 class SmokeTarget(TypedDict):
