@@ -7,8 +7,8 @@ import type { SelectedText } from '@/types/poem'
 
 /**
  * 正文组件的数据接口：
- * poem：规范原文；修改显示方式时不能向它插入排版字符。
- * selectionScopeRef：整个阅读区，维持从题头拖动到正文的原有交互。
+ * poem：展示与引用共用的完整原文，字符顺序保持一致。
+ * selectionScopeRef：整个阅读区，供拖选起点判断使用。
  * onSelect：把所选原文和 UTF-16 [start, end) 偏移交给上层提问组件。
  */
 type PoemBodyProps = {
@@ -17,20 +17,20 @@ type PoemBodyProps = {
   onSelect: (selection: SelectedText) => void
 }
 
-/** 只管理正文显示、划词、复制；题目、小序和网络读取由上层负责。 */
+/** 负责诗文正文的排版、选区引用和复制交互。 */
 export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
-  // 防止标题/小序进入正文的原文偏移计算。
+  // 正文容器定义选区偏移的计算范围。
   const poemRef = useRef<HTMLParagraphElement>(null)
-  // 视觉分行从原文派生，不修改传给 AI 的 poem。
+  // 根据原文生成用于展示的诗行。
   const lines = buildPoemLines(poem)
 
   useEffect(() => {
-    // 记录是否仍在拖动，避免中途的 selectionchange 反复提交选区。
+    // 拖选期间等待鼠标松开后再提交选区，避免重复提交中间状态。
     let pointerDown = false
     let pointerStartedInReader = false
 
     /**
-     * 浏览器的选区不等于原文字符串位置；先换算并校验，再通知 onSelect。
+     * 将浏览器选区映射到原文字符位置并通知 onSelect。
      * allowOutsideAnchor=true 仅用于已经从阅读区按下的鼠标拖选；
      * 键盘等方式仍要求选区锚点在阅读区。
      */
@@ -49,8 +49,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
         return
       }
 
-      // Keep the existing reader-wide pointer anchor, allowing drags to clip
-      // at the body boundary without treating headings or prefaces as verse.
+      // 鼠标拖选以阅读区为起点范围，实际引用的文字裁剪到正文。
       if (
         !allowOutsideAnchor &&
         (!selection.anchorNode || !reader.contains(selection.anchorNode))
@@ -75,19 +74,19 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
       }
 
       const range = selection.getRangeAt(0)
-      // Do not change native copy when the selection also includes a heading or preface.
+      // 选区包含标题或小序时，使用浏览器原生复制行为。
       if (!element.contains(range.startContainer) || !element.contains(range.endContainer)) {
         return
       }
 
       const selected = selectionFromPoemRange(element, range, poem)
       if (!selected || !event.clipboardData) return
-      // Visual block lines can insert synthetic newlines in the browser's clipboard.
+      // 跨视觉诗行复制时，从原文提取连续文本，避免引入排版换行。
       event.clipboardData.setData('text/plain', selected.text)
       event.preventDefault()
     }
 
-    /** 只记录拖选起点是否在阅读区，不在按下时立即引用。 */
+    /** 记录本次拖选是否从阅读区开始。 */
     function handlePointerDown(event: PointerEvent) {
       pointerDown = true
       pointerStartedInReader =
@@ -117,7 +116,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
       }
     }
 
-    // 原来是 document 级监听；切换作品时要在清理函数中逐项注销。
+    // 全局监听器在 Effect 清理时逐项注销，避免切换作品后重复响应。
     document.addEventListener('pointerdown', handlePointerDown, true)
     window.addEventListener('pointerup', handlePointerUp)
     window.addEventListener('pointercancel', handlePointerCancel)
@@ -138,7 +137,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
       ref={poemRef}
       className="poem-reader-body mx-auto w-fit max-w-full cursor-text select-text whitespace-normal font-serif text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white"
     >
-      {/* display:block 只改变视觉行序；后代 DOM 文本依次拼接仍是完整原文。 */}
+      {/* 各诗行及标点节点的文本按 DOM 顺序拼接，应等于完整原文。 */}
       {lines.map((line) => (
         <span
           key={line.start}
