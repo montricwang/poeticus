@@ -59,7 +59,7 @@ class SearchRuntime(Protocol):
         current_text: str,
         current_author: str | None,
         target_dynasty: str | None,
-        final_top_k: int = 8,
+        final_top_k: int,
     ) -> ServingSearchResult: ...
 
 
