@@ -151,7 +151,7 @@ def load_manifest(artifact_dir: Path) -> ExactManifest:
         start = item.get("start")
         end = item.get("end")
         filename = item.get("file")
-        if start != expected_start or not isinstance(end, int) or end <= start:
+        if not isinstance(start, int) or start != expected_start or not isinstance(end, int) or end <= start:
             raise ValueError("manifest 中 completed_shards 不是连续区间")
         if not isinstance(filename, str) or not filename:
             raise ValueError("manifest shard 缺少文件名")
