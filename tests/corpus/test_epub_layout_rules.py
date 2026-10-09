@@ -2,11 +2,9 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts/corpus/epub_import"))
-
 from bs4 import BeautifulSoup
-from extractor.blocks import iter_source_blocks
-from extractor.extractor import extract_collection, extract_sections
+from scripts.corpus.epub_import.extractor.blocks import iter_source_blocks
+from scripts.corpus.epub_import.extractor.extractor import extract_collection, extract_sections
 
 
 class Item:
