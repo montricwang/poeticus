@@ -313,7 +313,7 @@ def run_faiss_search(
         )
 
     nprobe = index_manifest["nprobe"]
-    index.nprobe = nprobe
+    faiss.ParameterSpace().set_index_parameter(index, "nprobe", nprobe)
 
     actual_search_k = min(search_k, int(index.ntotal))
     # Warm once so the measured query latency does not include first-call setup.
