@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from collections.abc import Iterator
 from typing import NotRequired, TypedDict
 
-from bs4 import NavigableString, Tag
+from bs4 import Tag
+from bs4.element import NavigableString
 
 
 class InlineRun(TypedDict):

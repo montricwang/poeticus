@@ -7,7 +7,8 @@ It intentionally exposes only locations, markup and character counts.
 from collections import Counter
 from typing import TypedDict
 
-from bs4 import BeautifulSoup, Comment, NavigableString
+from bs4 import BeautifulSoup, Comment
+from bs4.element import NavigableString
 
 from ..extractor.blocks import _class_list, _string_attribute, iter_source_blocks
 from ..extractor.extractor import CandidateSection

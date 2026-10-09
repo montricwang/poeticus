@@ -594,24 +594,24 @@ def execute_tools(state: RouterState) -> RouterUpdate:
 
                         # 限制回传给后续 LLM 轮次的工具材料长度，避免外部证据
                         # 带入过长文本。reference 多保留两条候选，便于跨年代比较。
-                        items: list[dict[str, object]] = []
+                        evidence_items: list[dict[str, object]] = []
                         for item in evidences[:max_items]:
-                            data: dict[str, object] = item.model_dump()
-                            data["text"] = item.text[:1600]
-                            source = data.get("source")
+                            evidence_data: dict[str, object] = item.model_dump()
+                            evidence_data["text"] = item.text[:1600]
+                            source = evidence_data.get("source")
                             if isinstance(source, dict):
                                 title = source.get("title")
                                 if isinstance(title, str):
                                     source["title"] = title[:200]
-                            items.append(data)
+                            evidence_items.append(evidence_data)
 
-                        all_evidences.extend(items)
+                        all_evidences.extend(evidence_items)
 
                         result = {
-                            "status": ("ok" if items else "no_hit"),
+                            "status": ("ok" if evidence_items else "no_hit"),
                             "query": query,
                             "evidence_type": evidence_type,
-                            "evidences": items,
+                            "evidences": evidence_items,
                         }
 
                 except (
