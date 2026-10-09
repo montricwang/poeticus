@@ -1,0 +1,6 @@
+# 构建产物和依赖不参与格式化。
+dist/
+node_modules/
+coverage/
+public/
+package-lock.json

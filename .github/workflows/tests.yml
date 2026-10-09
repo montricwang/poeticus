@@ -33,7 +33,7 @@ jobs:
         run: python -m pytest -q
 
   frontend:
-    name: Frontend lint and build
+    name: Frontend quality and build
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -61,7 +61,10 @@ jobs:
       - name: Lint frontend
         run: npm run lint
 
-      - name: Build frontend
+      - name: Check frontend formatting
+        run: npm run format:check
+
+      - name: Type-check and build frontend
         run: npm run build
 
       - name: Test poem mapping and Unicode offsets
