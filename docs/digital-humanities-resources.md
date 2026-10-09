@@ -27,7 +27,7 @@ Poeticus 已有：3491 首公开阅读词作、约 85 万首作品的 Hybrid Tex
 | [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry) | 开放仓库中的诗词 JSON | 扩充/对照作品文本 | 数据来源已知；新来源进入阅读库前按 [#36](https://github.com/montricwang/poeticus/issues/36) 校勘、查重、核许可，不自动覆盖正文 |
 | [Song Ci Corpus（Zenodo）](https://zenodo.org/records/17798065) | 可下载 SQLite 文件（页面列 ci_curated.db） | 用于作品和字段的对照；不包含现成词学批评网络 | **已确认下载入口，未读取文件**；记录页的 License 字段未能明确读出具体条款，复用前核实 |
 | [维基文库词话专题](https://zh.wikisource.org/wiki/Portal:詞話) | 词话数字文本及目录入口 | [#133](https://github.com/montricwang/poeticus/issues/133) 小规模词话 Corpus 的起点 | 待逐部检查版本、卷/则、缺页、错字、文本及再发布许可 |
-| [古汉语典故资源库](https://github.com/KaijieMo-kj/Ancient-Chinese-Allusion-Resource-Database) | 约 2.3 万典形、3 万余条用典标注，公开典故 JSON 和测试集 | **优先小试**：可替代一部分从零整理典故、构造评测集的工作 | **官方 README 和仓库目录可查**；README 将数据集标为 MIT；尚未实测导入与歧义处理。对照现有 CNKGraph Tool |
+| [古汉语典故资源库](https://github.com/KaijieMo-kj/Ancient-Chinese-Allusion-Resource-Database) | 约 2.3 万典形、3 万余条用典标注，公开典故 JSON 和测试集 | **潜在补充 Provider / 离线评测集 / 局部替代**，不预设全量取代 CNKGraph | **2026 年 4 月末用户已调查，主观体验不佳**（具体失败记录待追溯）；README 声明数据 MIT。先复盘旧结论，只有能补真实缺口再重新实测，勿当新发现 |
 | [CNKGraph 开放资源](https://cnkgraph.com/Home/OpenResources) / [Web API](https://open.cnkgraph.com/swagger) | 古籍、诗文数据包；人物、典故、出处与化用等接口 | 已接入部分典故/出处能力；也可作外部事实资料 | **Poeticus 已使用部分 API**；官网明确 API 用于研究学习，**仅限非商业用途**。全面接入/再分发前须重新核对适用范围 |
 | [CBDB API](https://cbdb.hsites.harvard.edu/cbdb-api) | 中国历代人物 ID、姓名与 JSON 传记/关系信息；亦有独立数据库资源 | 人物别名、身份与交游关系对齐 | 官方 API 文档可查；**Poeticus 未实测**；公开应用及不同数据子集的授权需核实 |
 | [CTP API](https://ctext.org/tools/api) / [数字人文工具](https://ctext.org/digital-humanities) | 古籍检索、文本及关联的数字人文工具 | 查询古籍原文与引文出处 | 研究入口；未验证调用配额、访问权限、字段稳定性和产品使用范围 |
@@ -70,7 +70,7 @@ ACP-RAG 与 Poeticus 当前 Text Retrieval 有显著功能交集。**不因另�
 
 ## E. 先验证谁，什么时候停止
 
-1. **先试典故数据集**：可以直接查看数据与测试集；最容易判断能否少做标注、替换或补强现有 Tool。失败也可快速停止。
+1. **先完成现有 CNKGraph 的真实问题评测**：复盘四月已经调查过的典故库，只有发现与当前缺口相关的新增能力，才做少量补充测试；也允许只借它的标注作为 Eval，不接入生产。
 2. **优先调查词话资源的可获得性**：维基文库实际文本 + 香港中文大学项目现状；这可能决定 #133 需要自行整理多少。
 3. **核对现有 API 的授权与事实查询价值**：CNKGraph 已在用，CBDB / CTP 尚未接；先测 3–5 个实际问题，不默认扩大到所有接口。
 4. **最后才比较新的检索框架、语义图谱**：只有现有 #119 / #133 的真实 Case 体现明确缺口，才开展方法迁移或自建。
@@ -86,4 +86,4 @@ ACP-RAG 与 Poeticus 当前 Text Retrieval 有显著功能交集。**不因另�
 - **Persona / Skills / Notebook**：[#148](https://github.com/montricwang/poeticus/issues/148)
 - **自主出题与证据自校验**：[#150](https://github.com/montricwang/poeticus/issues/150)
 
-**先复用，再对照，最后只建设确实缺少的部分。**
+**先复盘已做工作，再按实际缺口验证替代或互补；不因发现新项目就重新选型。**
