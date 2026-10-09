@@ -162,6 +162,11 @@ class RetrievalSummary(TypedDict):
     top_candidates: list[RetrievalCandidate]
 
 
+class ToolSearchAudit(TypedDict, total=False):
+    target_supported_by_tool: bool | None
+    target_rank_in_tool_candidates: int | None
+
+
 class ToolLLMResult(AnswerSignal):
     model: str
     answer: str
@@ -952,7 +957,7 @@ def main() -> None:
             try:
                 print("  - ④ 工具增强 LLM……")
 
-                tool_search_audit: dict[str, bool | int | None] = {}
+                tool_search_audit: ToolSearchAudit = {}
 
                 def search_tool(query: str) -> CompactToolResult:
                     result = run_retrieval(query, include_probe=False)
@@ -971,7 +976,14 @@ def main() -> None:
                     case,
                     search_tool=search_tool,
                 )
-                tool_augmented_llm.update(tool_search_audit)
+                if "target_supported_by_tool" in tool_search_audit:
+                    tool_augmented_llm["target_supported_by_tool"] = (
+                        tool_search_audit["target_supported_by_tool"]
+                    )
+                if "target_rank_in_tool_candidates" in tool_search_audit:
+                    tool_augmented_llm["target_rank_in_tool_candidates"] = (
+                        tool_search_audit["target_rank_in_tool_candidates"]
+                    )
                 item["tool_augmented_llm"] = tool_augmented_llm
                 tool_signal = tool_augmented_llm["target_signal"]
                 target_supported_by_tool = tool_augmented_llm.get(
