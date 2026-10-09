@@ -92,6 +92,11 @@ class MemorySample(TypedDict):
     rss_mib: float
 
 
+class MemoryReport(TypedDict):
+    samples: list[MemorySample]
+    steady_rss_mib: float
+
+
 class BenchCaseSummary(TypedDict):
     case_id: str
     query: str
@@ -130,7 +135,7 @@ class BenchmarkReport(TypedDict):
     system: dict[str, object]
     config: dict[str, object]
     startup_profile: dict[str, object]
-    memory: dict[str, object]
+    memory: MemoryReport
     disk: dict[str, int]
     metadata_build: MetadataBuild | None
     cases: list[BenchCaseSummary]
@@ -408,7 +413,11 @@ def render_markdown(report: BenchmarkReport) -> str:
             f"- wall_ms: {concurrent['wall_ms']:.1f}",
             f"- individual p50_ms: {concurrent['individual_p50_ms']:.1f}",
             f"- individual p95_ms: {concurrent['individual_p95_ms']:.1f}",
-            f"- throughput req/s: {concurrent['throughput_rps']:.2f}",
+            (
+                f"- throughput req/s: {concurrent['throughput_rps']:.2f}"
+                if concurrent["throughput_rps"] is not None
+                else "- throughput req/s: unavailable"
+            ),
             "",
             "## Metadata build",
             "",
