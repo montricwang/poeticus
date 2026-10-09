@@ -185,7 +185,7 @@ def main() -> None:
             parser.error("目标必须是 Railway CLI 本地 SSH 隧道 127.0.0.1:55432，拒绝其他地址")
 
     print("读取并检查本地作品……", flush=True)
-    with psycopg.connect(source_dsn, row_factory=dict_row, connect_timeout=10) as local:
+    with psycopg.Connection[DictRow].connect(source_dsn, row_factory=dict_row, connect_timeout=10) as local:
         local.execute("SET TRANSACTION READ ONLY")
         rows = local.execute(SELECT_PUBLIC).fetchall()
         report = validate_public_rows(rows, args.expect_count)
@@ -197,7 +197,7 @@ def main() -> None:
         print("连接 Railway（超时 10 秒，保持 SSH 隧道窗口开启）……", flush=True)
         if not target_dsn:
             parser.error("没有输入目标连接 URL")
-        with psycopg.connect(target_dsn, row_factory=dict_row, autocommit=True, connect_timeout=10) as target:
+        with psycopg.Connection[DictRow].connect(target_dsn, row_factory=dict_row, autocommit=True, connect_timeout=10) as target:
             print("已连接云端 PostgreSQL。", flush=True)
             outcome = transfer(rows, target)
             print(f"云端事务完成：{outcome}；作品 {len(rows)} 首；校验 SHA-256 一致。", flush=True)
