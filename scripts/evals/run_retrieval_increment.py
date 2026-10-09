@@ -640,7 +640,7 @@ def _md_escape(value: object) -> str:
     return text.replace("|", "\\|").replace("\n", " ")
 
 
-def render_markdown(run: dict) -> str:
+def render_markdown(run: dict[str, object]) -> str:
     lines = [
         "# Retrieval Increment Eval",
         "",
