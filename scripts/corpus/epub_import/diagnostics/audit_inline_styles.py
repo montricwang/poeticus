@@ -1,9 +1,7 @@
 """审计本地 EPUB 词句中的行内样式与编校缺文标记。
 
-The generated report contains locations and style metadata ONLY, never any
-commercially published verse, note, or commentary text. This is a diagnostic,
-not a correction rule: do not automatically remove detected phrases.
-"""
+生成的报告只包含位置和样式元数据，绝不包含商业出版的词文、
+注释或评论。这只是诊断工具，不是纠错规则；不能自动删除检出的词句。"""
 import argparse
 from collections import Counter
 from pathlib import Path
@@ -53,11 +51,10 @@ def _style_signature(span: Tag) -> str:
 def collect_inline_evidence(book, toc, collection_specs=COLLECTIONS):
     """同时检查已 warning 的词句 span 与未标记词句中的括号缺文。
 
-    Distinguishes:
-    - a paragraph triggering inline_body_style_review;
-    - the literal (以下缺) marker occurring anywhere in a verse paragraph;
-    - the entire marker lying inside a styled span (not guaranteed to be the
-      span that triggered the extractor's warning).
+    区分以下情况：
+    - 某段落触发 inline_body_style_review；
+    - 字面标记“（以下缺）”出现在正文段落任意位置；
+    - 整个缺文标记处于带样式的 span 内（不一定是触发抽取警告的 span）。
     """
     rows: list[InlineEvidenceSite] = []
     total_text_blocks = 0

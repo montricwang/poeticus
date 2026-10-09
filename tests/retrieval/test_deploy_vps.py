@@ -1,4 +1,4 @@
-"""Guard against shipping a Retrieval service without its path configuration."""
+"""防止部署缺少路径配置的 Retrieval Service。"""
 import shutil
 import subprocess
 from pathlib import Path

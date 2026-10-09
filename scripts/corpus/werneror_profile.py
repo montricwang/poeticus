@@ -1,12 +1,10 @@
-"""Profile the normalized Werneror/Poetry Work corpus before chunking.
+"""在切分 Chunk 之前，对规范化的 Werneror/Poetry Work 语料做统计画像。
 
-Run after werneror_import:
+先运行 werneror_import，再从仓库根目录执行：
 
     python -m scripts.corpus.werneror_profile
 
-This is still corpus inspection only. It does not create chunks, embeddings,
-vector indexes, or database tables.
-"""
+这里只检查 Corpus，不创建 Chunk、Embedding、向量索引或数据库表。"""
 from __future__ import annotations
 
 import argparse

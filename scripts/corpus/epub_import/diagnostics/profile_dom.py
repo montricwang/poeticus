@@ -1,8 +1,7 @@
-"""在设计抽取规则前分析 TOC 关联的 EPUB XHTML 与排版特征。
+"""在设计抽取规则前分析 TOC 对应的 EPUB XHTML 与排版特征。
 
-Outputs aggregate templates and bounded examples; NEVER writes the full source text.
-DOM and CSS patterns are evidence, not automatic tune/title/preface labels.
-"""
+只输出聚合后的版式模板和有界示例，绝不导出完整来源正文。
+DOM / CSS 样式仅是证据，不能自动当成词牌、题目或题序的语义标签。"""
 
 import argparse
 import json
@@ -45,7 +44,7 @@ BLOCK_SAMPLE_LIMIT = 10  # 每段连续窗口展示的块数
 TRANSITION_SAMPLE_LIMIT = 4  # 每分册抽取的“符号→无符号”相邻案例
 STYLE_KEYS = ("font-family", "font-size", "font-weight", "font-style", "color")
 class ScanCoverage(TypedDict):
-    """Mutable aggregate state while scanning one EPUB volume."""
+    """扫描单册 EPUB 期间使用的可变汇总状态。"""
 
     files: int
     missing: list[str]

@@ -1,4 +1,4 @@
-"""The full FAISS builder and the standalone spike share the same sampler."""
+"""全量 FAISS 构建器与独立 Spike 共用同一抽样器。"""
 import numpy as np
 import pytest
 

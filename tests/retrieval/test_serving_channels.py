@@ -1,4 +1,4 @@
-"""Serving channel behavior with small, disposable local artifacts."""
+"""用小型、可丢弃的本地资产测试 Serving 通道行为。"""
 from __future__ import annotations
 
 import json

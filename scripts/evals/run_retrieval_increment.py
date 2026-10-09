@@ -240,7 +240,7 @@ def git_sha() -> str | None:
 
 
 def _content_fingerprint(content: str) -> str:
-    """High-confidence duplicate key: exact text after whitespace removal."""
+    """高置信度去重键：移除空白后完全相同的文本。"""
     normalized = "".join(content.split())
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
@@ -250,7 +250,7 @@ def scan_work_matches(
     work_path: Path,
     cases: list[RetrievalIncrementCase],
 ) -> dict[str, CaseWorkMatches]:
-    """Resolve current / target works in one pass through Work JSONL."""
+    """单次遍历 Work JSONL，同时定位当前作品和目标作品。"""
     matches: dict[str, CaseWorkMatches] = {
         case.id: {"current": [], "target": []}
         for case in cases
@@ -324,11 +324,10 @@ def choose_current_work_ids(
     case: RetrievalIncrementCase,
     candidates: list[WorkCandidate],
 ) -> set[str]:
-    """Return exact-content aliases of the chosen current Work.
+    """返回当前作品中正文完全一致的其他记录 ID。
 
-    We deliberately avoid fuzzy title/content dedup here. Only records with the
-    same author (already guaranteed by scan_work_matches) and identical content
-    after whitespace removal are treated as self-hit aliases.
+    这里刻意不用模糊题名/正文去重：必须由 scan_work_matches 确认作者相同，
+    且移除空白后的正文完全一致，才把记录视为当前作品的自身命中别名。
     """
     chosen_id = choose_current_work_id(case, candidates)
     if chosen_id is None:
@@ -391,7 +390,7 @@ def _plain_messages(case: RetrievalIncrementCase) -> list[ChatCompletionMessageP
 
 
 def run_standalone_llm(case: RetrievalIncrementCase) -> StandaloneResult:
-    """Run the model with no Agent prompt and no Tool Schema."""
+    """不使用 Agent 提示词或 Tool Schema，直接调用模型。"""
     from backend.ai.model import client
     from backend.config import LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
 
@@ -414,10 +413,10 @@ def run_standalone_llm(case: RetrievalIncrementCase) -> StandaloneResult:
 
 
 def compact_tool_result(result: object, *, max_items: int = 8) -> CompactToolResult:
-    """Expose only product-facing candidates to the tool-using model.
+    """仅把面向产品的候选资料交给使用工具的模型。
 
-    Probe / Ground Truth metadata is intentionally excluded so the model never
-    sees the evaluation target through the tool result.
+    刻意排除 Probe 和 Ground Truth 元数据，避免模型从工具结果中
+    直接看到评测目标，造成信息泄漏。
     """
     diagnostics = _HYBRID_ADAPTER.validate_python(result)
     candidates: list[CompactCandidate] = []
@@ -451,10 +450,10 @@ def run_tool_augmented_llm(
     *,
     search_tool: Callable[[str], CompactToolResult],
 ) -> ToolLLMResult:
-    """Run one plain model with one local Retrieval function-call round trip.
+    """使用普通模型完成一轮本地 Retrieval 函数调用。
 
-    No LangGraph, no Agent system prompt, no autonomous multi-step loop.
-    The only added capability relative to run_standalone_llm is the Tool Schema.
+    不使用 LangGraph、Agent system Prompt 或自主多步循环。
+    相比 run_standalone_llm，唯一增加的能力是 Tool Schema。
     """
     from backend.ai.model import client
     from backend.config import LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
@@ -558,7 +557,7 @@ def tool_target_support(
     target_work_ids: set[str],
     max_items: int = 8,
 ) -> tuple[bool | None, int | None]:
-    """Check whether the exact target Work was actually shown to the LLM."""
+    """检查准确的目标 Work 是否真的展示给了 LLM。"""
     if result is None:
         return None, None
     diagnostics = _HYBRID_ADAPTER.validate_python(result)
@@ -610,7 +609,7 @@ def comparison_bucket(
     eligible_rank: int | None,
     agent_loop_probe: bool,
 ) -> str:
-    """Navigation label only; never a correctness score."""
+    """仅用于导航的分类标签，不是正确率分数。"""
     retrieval_top20 = (
         eligible_rank is not None
         and eligible_rank <= 20

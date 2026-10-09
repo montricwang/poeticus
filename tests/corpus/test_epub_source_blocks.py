@@ -1,4 +1,4 @@
-"""Source block type contracts preserve the synthetic DOM evidence format."""
+"""来源块的类型契约必须保留合成 DOM 证据格式。"""
 
 from bs4 import BeautifulSoup, Tag
 

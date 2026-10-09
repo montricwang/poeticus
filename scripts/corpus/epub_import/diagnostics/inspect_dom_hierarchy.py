@@ -1,8 +1,7 @@
-"""检查原始 XHTML 的包含关系，不发布受版权保护的正文。
+"""检查原始 XHTML 的 DOM 包含关系，不公开受版权保护的正文。
 
-Unlike the Poem extractor, this diagnostic reports only tag names, class/id
-attributes and source-block ordinals. It does NOT infer literary semantics.
-"""
+不同于 Poem 抽取器，本工具只输出标签名、class/id 属性
+和来源块序号，不判断文学语义。"""
 import argparse
 from pathlib import Path
 
@@ -78,8 +77,8 @@ def _parse_group(value):
 def inspect_hierarchy(book, html_name, groups):
     """返回所选块组的无正文 Markdown 结构报告。
 
-    Ordinals follow iter_source_blocks(): h1, h2, h4 and p in document order.
-    DOM ancestors are taken from the SAME BeautifulSoup tree as these blocks.
+    块号沿用 iter_source_blocks() 的规则：按文档顺序编号 h1、h2、h4、p。
+    DOM 祖先必须来自生成这些块的同一棵 BeautifulSoup 树。
     """
     item = book.get_item_with_href(html_name)
     if item is None:

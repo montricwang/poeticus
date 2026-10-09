@@ -21,7 +21,7 @@ jobs:
           BASE: https://poeticus-web-production.up.railway.app
         run: |
           set -euo pipefail
-          # Railway may be rolling out a new deployment or waking a sleeping web app.
+          # Railway 可能正在发布新部署，或唤醒休眠中的 Web 应用。
           ready=false
           for attempt in $(seq 1 18); do
             code=$(curl -sS -L --connect-timeout 10 --max-time 25 -o /tmp/poeticus-index.html -w '%{http_code}' "$BASE/" || true)

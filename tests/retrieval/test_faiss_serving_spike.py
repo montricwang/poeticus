@@ -77,7 +77,7 @@ def test_normalize_nprobes_rejects_invalid_inputs(nprobes, nlist):
 
 
 def test_project_full_index_bytes_separates_fixed_and_per_vector_cost():
-    # 1,000 bytes fixed + 10 bytes/vector in the measured sample.
+    # 测量样本包含 1,000 字节固定开销，每个向量增加 10 字节。
     projected = project_full_index_bytes(
         trained_empty_bytes=1_000,
         populated_sample_bytes=2_000,

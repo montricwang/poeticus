@@ -1,4 +1,4 @@
-"""Bundle path resolution is shared by tools and never starts a server."""
+"""Bundle 路径解析供多个工具共用，本身不会启动服务器。"""
 from __future__ import annotations
 
 import json

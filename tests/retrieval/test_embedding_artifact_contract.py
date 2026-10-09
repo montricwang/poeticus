@@ -1,4 +1,4 @@
-"""Completed Embedding artifacts are validated without importing experiment CLIs."""
+"""校验已完成的 Embedding Artifact 时不导入实验 CLI。"""
 from __future__ import annotations
 
 import json

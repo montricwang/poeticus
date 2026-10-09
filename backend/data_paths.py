@@ -1,9 +1,8 @@
-"""Shared locations for private Poeticus data, independent of the shell's CWD.
+"""Poeticus 私人数据资产的统一路径入口，不依赖 Shell 当前目录。
 
-By default data sits in a sibling directory of the Git checkout. Set the
-absolute POETICUS_DATA_ROOT path to relocate it without editing source code.
-Nothing in this module creates directories or moves existing assets.
-"""
+默认数据位于 Git 仓库的同级目录；可通过绝对路径环境变量
+POETICUS_DATA_ROOT 指向别处，无需修改源码。
+本模块不会创建目录，也不会移动现有资产。"""
 from __future__ import annotations
 
 import os

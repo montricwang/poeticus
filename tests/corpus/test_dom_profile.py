@@ -56,7 +56,7 @@ _REPORT_ADAPTER = TypeAdapter(ProfileReport)
 
 
 def checked_report(book: "Book", toc: object) -> ProfileReport:
-    """Validate the report fields asserted by these synthetic EPUB tests."""
+    """校验合成 EPUB 测试实际会断言的报告字段。"""
     return _REPORT_ADAPTER.validate_python(run(book, toc))
 
 

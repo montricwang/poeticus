@@ -1,4 +1,4 @@
-"""EPUB structure reports and nested TOCs use synthetic metadata only."""
+"""EPUB 结构报告与嵌套目录测试只使用合成元数据。"""
 
 from pathlib import Path
 from types import SimpleNamespace

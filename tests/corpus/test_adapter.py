@@ -30,12 +30,12 @@ class ExampleRecord(TypedDict):
 
 _RECORD_ADAPTER = TypeAdapter(ExampleRecord)
 
-# Adapter production API takes a real mutable dict; pass a dict copy of the
-# validated TypedDict fixture, without changing its underlying data fields.
+# Adapter 的正式 API 接收可变 dict；这里复制已校验的 TypedDict 测试数据，
+# 保留原始字段，不改变数据内容。
 
 
 def example(**kw: object) -> ExampleRecord:
-    """Validate synthetic source records before using them in adapter tests."""
+    """在 Adapter 测试中使用合成来源记录前，先校验其结构。"""
     r: dict[str, object] = {"id": "mock-001", "collection": "合成词集", "author": "词人甲",
          "tune": "某调", "title": None, "source": "合成版", "yusheng": None,
          "content": {

@@ -178,7 +178,7 @@ TEXT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
 
 
 def _available_tools() -> list[ChatCompletionFunctionToolParam]:
-    """Only expose the local-corpus tool when its service endpoint is configured."""
+    """仅在配置了本地语料检索服务地址时，才向模型开放这个工具。"""
     if text_retrieval_client.enabled:
         return [*TOOLS, TEXT_RETRIEVAL_TOOL]
     return list(TOOLS)
@@ -261,7 +261,7 @@ class RouterState(TypedDict):
 
 
 class RouterUpdate(TypedDict, total=False):
-    """LangGraph nodes return only the state fields they changed."""
+    """LangGraph 节点只返回本轮更新过的状态字段。"""
 
     messages: list[ChatCompletionMessageParam]
     tool_count: int

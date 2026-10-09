@@ -173,10 +173,9 @@ def unresolved_glyphs(poems):
 
 def normalize_poems(input_path, output_path, glyph_map=None):
     """
-    Normalize extracted poem JSON.
+    规范化已抽取的 Poem JSON。
 
-    This is the pipeline entry point.
-    CLI only wraps this function.
+    这是 Pipeline 的正式入口；CLI 只负责包装调用本函数。
     """
 
     poems = load_json(input_path)

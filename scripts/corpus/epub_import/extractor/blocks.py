@@ -1,8 +1,7 @@
 """为 EPUB 语义抽取保留尽量无损的块级证据。
 
-Keep source locations, immediate inline nodes and structural boundaries before
-assigning literary roles. This representation is local to the extraction stage.
-"""
+先保存来源位置、直接行内节点和结构边界，再判断它们的文学角色。
+这个中间结构只在抽取阶段使用。"""
 from dataclasses import dataclass, field
 from collections.abc import Iterator
 from typing import NotRequired, TypedDict

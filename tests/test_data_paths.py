@@ -1,4 +1,4 @@
-"""A Git checkout must not depend on any developer-specific drive or CWD."""
+"""Git 工作目录不能依赖开发者特定的磁盘路径或当前工作目录。"""
 import pytest
 
 from backend import data_paths

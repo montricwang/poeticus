@@ -1,9 +1,8 @@
-"""把私人 EPUB 中间记录转换为阅读记录与来源记录。
+"""将私人 EPUB 中间记录转换为公开阅读记录与私人来源记录。
 
-Original records are never mutated. Source positions are Unicode code-point
-offsets, NOT JavaScript UTF-16 offsets. Modern annotations/commentaries stay
-only in the private intermediate JSON and never enter the public repository.
-"""
+不修改原始记录。来源位置采用 Unicode code point 偏移，
+而不是 JavaScript UTF-16 偏移。现代注释和评语只保留在私人中间 JSON，
+不能进入公开作品库。"""
 from __future__ import annotations
 
 import hashlib
@@ -27,7 +26,7 @@ class ConvertedPoem:
 def _arrange_segments(record, originals):
     """返回阅读片段、来源索引映射与已执行处理。
 
-    Mapping value: (reader index, prefix length in reader segment, removed_LF).
+    映射值依次为：阅读片段索引、片段内前缀长度、被移除的换行符数。
     """
     output, mapping, actions = [], {}, []
     if record.get("collection") == LI_COLLECTION:

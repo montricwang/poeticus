@@ -1,8 +1,7 @@
 """检查 EPUB 排版信息，但不把 CSS 直接当作文学语义。
 
-This is a *static* cascade approximation, not browser getComputedStyle().
-Unsupported at-rules/selectors and unavailable stylesheets are reported.
-"""
+这里仅近似模拟静态 CSS 层叠，不等于浏览器的 getComputedStyle()；
+不支持的 at-rule、选择器或缺失的样式表都会报告出来。"""
 
 from pathlib import PurePosixPath
 from urllib.parse import unquote, urlsplit

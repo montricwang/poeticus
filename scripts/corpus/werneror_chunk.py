@@ -1,17 +1,15 @@
-"""Create sentence-level Retrieval chunks from normalized Werneror Works.
+"""把 Werneror Work 转换为句子级 Retrieval Chunk。
 
-This stage is intentionally still pre-Embedding:
+此阶段发生在 Embedding 之前：
 
-    Work JSONL -> sentence Chunk JSONL
+    Work JSONL → sentence Chunk JSONL
 
-Each chunk keeps a parent work_id plus half-open [start, end) character
-offsets into the original Work.content, so any retrieved text can be traced
-back without duplicating title/author/dynasty metadata on every chunk.
+每个 Chunk 保留父级 work_id，以及指向 Work.content 的左闭右开
+字符区间 [start, end)，用于回溯原文，而不在每个 Chunk 里重复保存
+题名、作者和朝代等元数据。
 
-Default sentence policy cuts after 。！？!? and absorbs adjacent sentence-end
-marks plus common closing quotation/bracket marks. Semicolons remain inside a
-sentence for this baseline.
-"""
+默认句子切分在 。！？!? 之后，并合并相邻句末标点与常见右引号、
+右括号；当前基线不按分号断句。"""
 from __future__ import annotations
 
 import argparse

@@ -121,9 +121,8 @@ def build_candidates(book, toc, collection_specs=COLLECTIONS):
 def choose_batch(candidates, *, round_number=1, limit=5):
     """挑选可解释的 warning 模式与干净对照样本组合。
 
-    Selection uses deterministic cycling through available candidates,
-    favoring different collections within one batch. It is NOT random
-    population sampling, and cannot provide a statistical accuracy estimate.
+    按照确定性循环顺序选择候选，同一批次优先覆盖不同分册。
+    这不是随机总体抽样，也不能据此估计统计准确率。
     """
     if round_number <= 0 or not (1 <= limit <= 20):
         raise ValueError("round_number must be >=1 and limit between 1 and 20")

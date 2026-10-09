@@ -1,19 +1,17 @@
-"""Build resumable Qwen embeddings for Werneror sentence chunks.
+"""为 Werneror sentence Chunk 构建可断点续跑的 Qwen Embedding。
 
-Pipeline:
+流程：
 
     sentence Chunk JSONL
-        -> Qwen3-Embedding-0.6B
-        -> normalized 512-d embeddings
-        -> float16 NumPy shards + manifest
+      → Qwen3-Embedding-0.6B
+      → 归一化的 512 维向量
+      → float16 NumPy 分片与 Manifest
 
-This is an offline corpus build step. It does not create a vector database or
-an ANN index. Completed shards are reusable artifacts for later pgvector /
-FAISS import.
+这是离线 Corpus 构建步骤，不创建向量数据库或 ANN 索引。
+完成的分片可以供后续 pgvector / FAISS 导入复用。
 
-The manifest binds a run to the exact input corpus hash, model fingerprint and
-embedding parameters. A compatible interrupted run resumes automatically.
-"""
+Manifest 将运行结果与输入语料 Hash、模型指纹和 Embedding 参数绑定；
+中断后仅在配置兼容时自动续跑。"""
 from __future__ import annotations
 
 import argparse
@@ -65,7 +63,7 @@ class CompletedShard(TypedDict):
 
 @with_config(ConfigDict(extra="allow"))
 class EmbeddingManifest(RunSignature):
-    """Resume state; preserve unknown metadata for forward compatibility."""
+    """恢复运行状态，同时保留尚不认识的元数据字段以兼容后续版本。"""
 
     status: str
     model_source: str
@@ -95,7 +93,7 @@ def sha256_file(path: Path, block_size: int = 8 * 1024 * 1024) -> str:
 
 
 def fingerprint_model_dir(model_dir: Path) -> str:
-    """Fingerprint local model files that materially define embeddings."""
+    """为实际决定 Embedding 结果的本地模型文件计算指纹。"""
     candidates = [
         model_dir / "config.json",
         model_dir / "modules.json",
@@ -123,7 +121,7 @@ def iter_chunks(
     path: Path,
     chunk_policy: str = CHUNK_POLICY,
 ) -> Iterator[tuple[int, dict[str, object]]]:
-    """Yield zero-based corpus row index plus validated Chunk record."""
+    """依次返回从零开始的语料行号及已校验的 Chunk 记录。"""
     index = 0
     with path.open(encoding="utf-8") as stream:
         for line_no, line in enumerate(stream, 1):

@@ -1,11 +1,10 @@
-"""Build the canonical Qwen clause-level Retrieval artifact.
+"""构建标准的 Qwen clause 级 Retrieval Artifact。
 
-This wrapper freezes the comparison settings established by the Retrieval Eval:
-- Werneror clause corpus
+这里固定 Retrieval Eval 得到的对照参数：
+- Werneror clause 语料
 - Qwen3-Embedding-0.6B
-- 1024 dimensions
-- normalized float16 shards
-"""
+- 1024 维
+- 归一化的 float16 分片"""
 from __future__ import annotations
 
 import argparse

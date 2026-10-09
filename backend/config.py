@@ -42,10 +42,9 @@ LLM_MAX_RETRIES = 0
 AGENT_MAX_TOOL_CALLS = 2
 
 
-# Text Retrieval Service lives outside the Railway web process because its
-# FAISS / BM25 / query-encoder artifacts are materially larger than the app.
-# Leave URL empty to keep the Tool hidden from the Agent until a serving
-# endpoint is configured.
+# Text Retrieval Service 独立于 Railway Web 进程部署，
+# 因为 FAISS、BM25 索引及 Query 编码模型远大于 Web 应用本身。
+# 未配置服务地址时，Agent 不会看到对应检索工具。
 TEXT_RETRIEVAL_BASE_URL = os.getenv(
     "POETICUS_TEXT_RETRIEVAL_URL",
     "",

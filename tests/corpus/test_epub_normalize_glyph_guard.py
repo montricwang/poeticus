@@ -1,4 +1,4 @@
-"""Synthetic glyph references: unresolved mappings must remain unchanged."""
+"""使用合成图片字引用：尚未识别的映射不得被擅自替换。"""
 
 from scripts.corpus.epub_import.pipeline.normalize import normalize_poem
 

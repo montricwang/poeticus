@@ -4,7 +4,7 @@ from typing import TypedDict
 
 
 class InlineNoteCandidate(TypedDict):
-    """A reversible font1 span record; positions refer to the flattened verse."""
+    """可逆的 font1 span 记录；位置相对于扁平化后的词文。"""
 
     kind: str
     origin: str

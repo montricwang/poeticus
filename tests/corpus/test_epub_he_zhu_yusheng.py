@@ -1,7 +1,7 @@
 """贺铸三段式词牌题头约定的回归测试。
 
-All poetry below is artificial, including the example headings: no book
-verses, modern annotations, or commercial EPUB pages are stored in Git.
+下方词文和示例题头均为人工合成；Git 中不保存原书词文、
+现代注释或商业 EPUB 页面。
 """
 import json
 
