@@ -9,7 +9,7 @@ def test_tool_trace_records_arguments_results_and_evidence_preview(monkeypatch):
 
     from scripts.evals.run_seed import _tool_trace
 
-    messages = [
+    messages: list[dict[str, object]] = [
         {
             "role": "assistant",
             "content": "",
@@ -69,10 +69,15 @@ def test_tool_trace_records_arguments_results_and_evidence_preview(monkeypatch):
     assert result["query"] == "刘伶"
     assert result["evidence_count"] == 1
 
-    preview = result["evidences"][0]
+    evidences = result["evidences"]
+    assert isinstance(evidences, list)
+    preview = evidences[0]
+    assert isinstance(preview, dict)
     assert preview["anchor"] == "刘伶"
     assert preview["source"] == {
         "title": "世说新语",
         "author": "刘义庆",
     }
-    assert len(preview["text_preview"]) == 240
+    preview_text = preview["text_preview"]
+    assert isinstance(preview_text, str)
+    assert len(preview_text) == 240
