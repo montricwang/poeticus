@@ -77,7 +77,7 @@ class StyleResolver:
                 groups = []
                 current = []
                 for token in node.prelude:
-                    if token.type == "literal" and token.value == ",":
+                    if token.type == "literal" and getattr(token, "value", None) == ",":
                         groups.append(tinycss2.serialize(current).strip())
                         current = []
                     else:
@@ -163,7 +163,8 @@ class DocumentStyles:
                 winners[name] = (priority, value, "inline style")
 
         output = dict(inherited)
-        sources = {k: f"继承自 {parent.name}" for k in inherited} if getattr(parent, "name", None) else {}
+        parent_name = getattr(parent, "name", None)
+        sources = {k: f"继承自 {parent_name}" for k in inherited} if parent_name else {}
         for name, (_priority, value, origin) in winners.items():
             if value == "inherit":
                 continue
