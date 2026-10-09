@@ -1,7 +1,7 @@
 /**
  * 一条视觉诗行和原文对应关系。
  * start/end 是 UTF-16 [start, end)（含来源换行字符）；sourceGapBefore
- * 仅表示前一行末尾存在来源双换行，不保证它就是词作上下阕。
+ * 表示前一行末尾存在来源双换行，用于显示段间留白。
  */
 export type PoemLine = {
   text: string
@@ -10,20 +10,20 @@ export type PoemLine = {
   sourceGapBefore: boolean
 }
 
-/** 一段原样文字；punctuation 只控制 CSS 样式，不改变字符内容。 */
+/** 连续的原文片段；punctuation 标记它是否采用标点样式。 */
 export type PoemTextRun = {
   text: string
   punctuation: boolean
 }
 
-// 断行规则是阅读版式选择，不代表考证后的句法或韵脚。
+// 阅读器在这些标点后结束视觉诗行。
 const LINE_ENDINGS = new Set(['，', ',', '。', '.', '！', '!', '？', '?'])
 // 右引号等闭合符号应随前一个句末标点留在同一行。
 const CLOSING_MARKS = new Set(['”', '’', '」', '』', '）', '》', '】'])
-// 独立着色标点与断行标点不同：顿号着色，但不在它后面强制换行。
+// 标点样式覆盖行内顿号；视觉断行条件由 LINE_ENDINGS 定义。
 const PUNCTUATION = /^[、，。；：！？,.!?;:]+$/u
 
-/** 识别 CR/LF，不做有损换行规范化。 */
+/** 识别原文中的 CR 与 LF 换行字符。 */
 function isNewline(character: string | undefined): boolean {
   return character === '\n' || character === '\r'
 }
@@ -31,7 +31,7 @@ function isNewline(character: string | undefined): boolean {
 /**
  * 把完整原文 source 切成视觉诗行，保留所有字符及 UTF-16 位置。
  * 返回的各行相邻、顺序不变：拼接全部 line.text 必须严格等于 source。
- * 仅用于排版，不推断词作上下阕或韵律结构。
+ * 这里的行边界用于视觉排版，来源段间留白另由 sourceGapBefore 记录。
  */
 export function buildPoemLines(source: string): PoemLine[] {
   const lines: PoemLine[] = []
@@ -86,7 +86,7 @@ export function buildPoemLines(source: string): PoemLine[] {
 /**
  * 将视觉诗行 line 切成普通文字与可弱化标点片段。
  * 捕获组使 split 不丢标点；返回片段依次拼接必须完全等于 line。
- * 后续字体、标点间距调整都应局限在展示层。
+ * 字体、颜色与标点间距由展示层控制。
  */
 export function buildPoemTextRuns(line: string): PoemTextRun[] {
   return line
