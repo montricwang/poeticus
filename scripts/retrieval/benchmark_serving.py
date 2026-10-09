@@ -14,7 +14,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import NotRequired, TypedDict
+from typing import NotRequired, Protocol, TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
@@ -306,7 +306,32 @@ def resolve_current_work_ids(
     return resolved
 
 
-def run_uncached_cases(runtime: RetrievalServingRuntime, cases: list[BenchmarkCase], work_path: Path, top_k: int) -> list[UncachedCaseSummary]:
+class _CacheClearer(Protocol):
+    def clear_cache(self) -> None: ...
+
+
+class _UncachedRuntime(Protocol):
+    @property
+    def encoder(self) -> _CacheClearer: ...
+
+    def search(
+        self,
+        text: str,
+        *,
+        current_text: str,
+        current_author: str | None,
+        target_dynasty: str | None,
+        final_top_k: int,
+        current_work_ids: set[str],
+    ) -> ServingSearchResult: ...
+
+
+def run_uncached_cases(
+    runtime: _UncachedRuntime,
+    cases: list[BenchmarkCase],
+    work_path: Path,
+    top_k: int,
+) -> list[UncachedCaseSummary]:
     """Measure actual uncached query encoding while excluding fixture self-hits.
 
     Resolving full Work IDs and scanning the corpus happen outside measured
