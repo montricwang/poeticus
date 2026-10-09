@@ -340,6 +340,8 @@ def run_uncached_cases(runtime: RetrievalServingRuntime, cases: list[BenchmarkCa
 
 
 def render_markdown(report: BenchmarkReport) -> str:
+    metadata_build = report["metadata_build"]
+    uncached_cases = report["uncached_cases"]
     lines = [
         "# Retrieval Serving Benchmark",
         "",
@@ -422,13 +424,13 @@ def render_markdown(report: BenchmarkReport) -> str:
             "## Metadata build",
             "",
             (
-                f"- build_seconds: {report['metadata_build']['build_seconds']:.1f}"
-                if report.get("metadata_build")
+                f"- build_seconds: {metadata_build['build_seconds']:.1f}"
+                if metadata_build
                 else "- metadata build manifest: unavailable"
             ),
             (
-                f"- database_gib: {report['metadata_build']['database_gib']:.3f}"
-                if report.get("metadata_build")
+                f"- database_gib: {metadata_build['database_gib']:.3f}"
+                if metadata_build
                 else ""
             ),
             "",
@@ -451,7 +453,7 @@ def render_markdown(report: BenchmarkReport) -> str:
         ]
     )
 
-    if report.get("uncached_cases"):
+    if uncached_cases:
         lines.extend([
             "",
             "## Uncached queries (self-hit excluded)",
@@ -459,7 +461,7 @@ def render_markdown(report: BenchmarkReport) -> str:
             "| case | current IDs | target visible | total ms | encode ms | sentence ANN ms | clause ANN ms | BM25 ms |",
             "| --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |",
         ])
-        for item in report["uncached_cases"]:
+        for item in uncached_cases:
             timing = item["timings"]
             lines.append(
                 "| " + " | ".join([
@@ -586,7 +588,7 @@ def main() -> None:
 
         samples = []
         visible = target_visible(warm, case)
-        candidate_preview = [
+        candidate_preview: list[dict[str, object]] = [
             {
                 "rank": item.rank,
                 "author": item.author,
@@ -637,7 +639,7 @@ def main() -> None:
         time.perf_counter() - concurrent_started
     ) * 1000
     individual = [
-        result.timings_ms["total_ms"]
+        _TIMINGS_ADAPTER.validate_python(result.timings_ms)["total_ms"]
         for result in concurrent_results
     ]
     uncached_cases = (
@@ -654,6 +656,7 @@ def main() -> None:
     virtual_memory = psutil.virtual_memory()
     swap_memory = psutil.swap_memory()
     disk_usage = psutil.disk_usage(str(paths.metadata_db.parent))
+    startup_profile: dict[str, object] = dict(runtime.startup_profile)
     report: BenchmarkReport = {
         "schema_version": "1",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -676,7 +679,7 @@ def main() -> None:
             "concurrency": args.concurrency,
             "device_requested": args.device,
         },
-        "startup_profile": runtime.startup_profile,
+        "startup_profile": startup_profile,
         "memory": {
             "samples": memory_samples,
             "steady_rss_mib": rss_mib(),
