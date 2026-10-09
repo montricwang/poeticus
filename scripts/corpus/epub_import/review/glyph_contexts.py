@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 
 from ..extractor.blocks import iter_source_blocks
 from ..extractor.extractor import extract_sections, raw_xhtml
-from .review_glyphs import _epub_image, glyph_sites
+from .glyph_sources import _epub_image, glyph_sites
 
 
 GLYPH_TOKEN = re.compile(r"\[\[GLYPH_(\d{3})\]\]")
