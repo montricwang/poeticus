@@ -63,7 +63,9 @@ def test_load_index_manifest_accepts_matching_artifact(tmp_path):
 def test_load_index_manifest_rejects_embedding_mismatch(tmp_path):
     (tmp_path / "index.faiss").write_bytes(b"FAKE")
     manifest = index_manifest()
-    manifest["source_embedding"]["input_sha256"] = "other"
+    source = manifest["source_embedding"]
+    assert isinstance(source, dict)
+    source["input_sha256"] = "other"
     (tmp_path / "manifest.json").write_text(
         json.dumps(manifest),
         encoding="utf-8",
