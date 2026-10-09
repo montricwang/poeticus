@@ -81,6 +81,19 @@ LOCAL_RETRIEVAL_TOOLS: list[ChatCompletionFunctionToolParam] = [
 ]
 
 
+class WorkCandidate(TypedDict):
+    work_id: str
+    title: str | None
+    author: str | None
+    dynasty: str | None
+    content_fingerprint: str
+
+
+class CaseWorkMatches(TypedDict):
+    current: list[WorkCandidate]
+    target: list[WorkCandidate]
+
+
 class RetrievalTarget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -140,9 +153,9 @@ def scan_work_matches(
     *,
     work_path: Path,
     cases: list[RetrievalIncrementCase],
-) -> dict[str, dict]:
+) -> dict[str, CaseWorkMatches]:
     """Resolve current / target works in one pass through Work JSONL."""
-    matches = {
+    matches: dict[str, CaseWorkMatches] = {
         case.id: {"current": [], "target": []}
         for case in cases
     }
@@ -197,7 +210,7 @@ def scan_work_matches(
 
 def choose_current_work_id(
     case: RetrievalIncrementCase,
-    candidates: list[dict],
+    candidates: list[WorkCandidate],
 ) -> str | None:
     if not candidates:
         return None
@@ -213,7 +226,7 @@ def choose_current_work_id(
 
 def choose_current_work_ids(
     case: RetrievalIncrementCase,
-    candidates: list[dict],
+    candidates: list[WorkCandidate],
 ) -> set[str]:
     """Return exact-content aliases of the chosen current Work.
 
@@ -747,6 +760,7 @@ def main() -> None:
         cases=selected,
     )
 
+    case_results: list[dict[str, object]] = []
     run = {
         "schema_version": "2",
         "dataset_id": dataset.dataset_id,
@@ -766,7 +780,7 @@ def main() -> None:
             "skip_model": args.skip_model,
             "skip_retrieval": args.skip_retrieval,
         },
-        "cases": [],
+        "cases": case_results,
         "note": (
             "comparison_bucket 只用于快速导航；"
             "最终判断必须人工阅读模型回答与 Retrieval evidence。"
@@ -908,7 +922,7 @@ def main() -> None:
             f"eligible_rank={eligible_rank}, "
             f"bucket={item['comparison_bucket']}"
         )
-        run["cases"].append(item)
+        case_results.append(item)
 
     stamp = datetime.now().strftime("%m%d%H%M")
     prefix = (
