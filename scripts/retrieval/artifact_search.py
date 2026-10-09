@@ -207,7 +207,7 @@ def encode_bert_ccpoem_query(
 ):
     try:
         import torch
-        from transformers import BertModel, BertTokenizer
+        from transformers import AutoModel, BertModel, BertTokenizer
     except ImportError as exc:
         raise RuntimeError(
             "BERT-CCPoem Retrieval 需要 torch / transformers；"
@@ -240,10 +240,12 @@ def encode_bert_ccpoem_query(
         str(model_path),
         local_files_only=True,
     )
-    model = BertModel.from_pretrained(
-        str(model_path),
-        local_files_only=True,
-    ).to(selected_device)
+    model = AutoModel.from_pretrained(
+        str(model_path), local_files_only=True
+    )
+    if not isinstance(model, BertModel):
+        raise ValueError("BERT-CCPoem 模型配置必须对应 BertModel")
+    model = model.to(selected_device)
     model.eval()
 
     vectors = encode_batch(
