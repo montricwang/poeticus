@@ -61,7 +61,7 @@ def test_paragraph_text_preserves_missing_glyph_and_linebreak():
     assert isinstance(paragraph, Tag)
 
     text, warnings = paragraph_text(paragraph, "part.xhtml", "text")
-    assert text == "前{{glyph:missing-src}}后\\n末".replace("\\n", "\n")
+    assert text == "前{{glyph:missing-src}}后\n末"
     assert warnings == [
         {
             "type": "missing_image_src",
