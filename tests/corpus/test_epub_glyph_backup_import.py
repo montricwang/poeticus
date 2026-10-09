@@ -1,6 +1,8 @@
 """测试只使用虚构字形与备份元数据，不使用商业文本。"""
 import json
 from copy import deepcopy
+from pathlib import Path
+from typing import NotRequired, TypedDict
 
 import pytest
 
@@ -9,7 +11,24 @@ from scripts.corpus.epub_import.import_poems import collect_missing_glyphs
 from scripts.corpus.epub_import.pipeline.normalize import normalize_poem
 
 
-def inputs(tmp_path):
+class GlyphBackupRecord(TypedDict):
+    id: str
+    slug: str
+    src: str
+
+
+class GlyphReviewValue(TypedDict):
+    source_form: str
+    display_form: NotRequired[str]
+
+
+class GlyphBackup(TypedDict):
+    schema: str
+    records: list[GlyphBackupRecord]
+    values: dict[str, GlyphReviewValue]
+
+
+def inputs(tmp_path: Path) -> tuple[Path, Path, GlyphBackup]:
     report = {
         "kind": "private-epub-import-preflight",
         "collections": [
@@ -23,7 +42,7 @@ def inputs(tmp_path):
             ]},
         ],
     }
-    backup = {
+    backup: GlyphBackup = {
         "schema": "poeticus-glyph-review-v1",
         "records": [
             {"id": "001", "slug": "test-a", "src": "rare.png"},
@@ -43,7 +62,7 @@ def inputs(tmp_path):
     return backup_path, report_path, backup
 
 
-def test_complete_backup_import_reuses_verified_ids_and_keeps_ids_without_substitute(tmp_path):
+def test_complete_backup_import_reuses_verified_ids_and_keeps_ids_without_substitute(tmp_path: Path) -> None:
     path, report, _ = inputs(tmp_path)
     map_dir = tmp_path / "maps"
     result = import_review_backup(path, report, map_dir)
@@ -79,7 +98,7 @@ def test_complete_backup_import_reuses_verified_ids_and_keeps_ids_without_substi
     assert normalized["warnings"][0]["resolved_form"] == "⿰木奇"
 
 
-def test_backup_rejects_wrong_order_and_missing_ids_before_writing(tmp_path):
+def test_backup_rejects_wrong_order_and_missing_ids_before_writing(tmp_path: Path) -> None:
     path, report, backup = inputs(tmp_path)
     folder = tmp_path / "maps"
     for altered in (
@@ -95,7 +114,7 @@ def test_backup_rejects_wrong_order_and_missing_ids_before_writing(tmp_path):
         assert not folder.exists()
 
 
-def test_backup_conflict_never_overwrites_existing_mapping(tmp_path):
+def test_backup_conflict_never_overwrites_existing_mapping(tmp_path: Path) -> None:
     path, report, backup = inputs(tmp_path)
     folder = tmp_path / "maps"
     import_review_backup(path, report, folder)
@@ -108,7 +127,7 @@ def test_backup_conflict_never_overwrites_existing_mapping(tmp_path):
     assert (folder / "test_a.json").read_bytes() == original
 
 
-def test_backup_empty_value_requires_partial_mode(tmp_path):
+def test_backup_empty_value_requires_partial_mode(tmp_path: Path) -> None:
     path, report, backup = inputs(tmp_path)
     backup["values"]["001"] = {"source_form": ""}
     path.write_text(json.dumps(backup, ensure_ascii=False), encoding="utf-8")
@@ -121,7 +140,7 @@ def test_backup_empty_value_requires_partial_mode(tmp_path):
     assert result["unfilled"] == ["001"]
 
 
-def test_backup_never_accepts_unrelated_multi_character_prose_as_a_glyph(tmp_path):
+def test_backup_never_accepts_unrelated_multi_character_prose_as_a_glyph(tmp_path: Path) -> None:
     path, report, backup = inputs(tmp_path)
     backup["values"]["001"] = {"source_form": "一个词组"}
     path.write_text(json.dumps(backup, ensure_ascii=False), encoding="utf-8")
