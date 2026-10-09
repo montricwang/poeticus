@@ -4,7 +4,8 @@ This module intentionally does not encode suite relationships, tune history or
 textual scholarship. Source markup remains available in the private EPUB.
 """
 import re
-from bs4 import NavigableString, Tag
+from bs4 import Tag
+from bs4.element import NavigableString
 
 from .blocks import _class_list, _string_attribute
 
