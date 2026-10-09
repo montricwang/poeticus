@@ -268,17 +268,17 @@
     line-height: var(--reader-preface-line-height);
   }
 
-  /* 块级 span 仅负责视觉分行，不能向原文插入真实换行字符。 */
+  /* 块级 span 负责视觉分行；DOM 中的文本保持原文字符顺序。 */
   .poem-reader-line {
     display: block;
   }
 
-  /* 只对来源本来存在的连续换行增加留白，不推断上下阕。 */
+  /* 原文中连续换行对应的段间留白。 */
   .poem-reader-source-gap {
     margin-block-start: 0.5em;
   }
 
-  /* 本轮只调整标点颜色，不压缩字号或字宽，避免多项变化混在一起。 */
+  /* 标点对比度低于正文，字号与占位宽度沿用正文排版。 */
   .poem-reader-punctuation {
     color: color-mix(in oklab, currentColor 70%, var(--background));
   }
