@@ -152,7 +152,7 @@ def build_corpus(
         tmp_output.unlink(missing_ok=True)
         raise
 
-    report = {
+    report: dict[str, object] = {
         "source": SOURCE_NAME,
         "source_dir": str(source_dir),
         "output": str(output_path),
