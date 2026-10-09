@@ -1,5 +1,3 @@
-import json
-
 from scripts.corpus.bert_ccpoem_embedding_build import (
     fingerprint_model_dir,
     run_signature,

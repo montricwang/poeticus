@@ -22,7 +22,6 @@ from backend.data_paths import EVAL_REPORTS_ROOT, READING_NORMALIZED_ROOT
 from typing import Any
 
 from scripts.evals.profile_editorial_notes import (
-    ROOT,
     TRAILING_SOURCE,
     classify_annotation_structure,
     collect_category,

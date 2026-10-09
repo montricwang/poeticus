@@ -1,11 +1,9 @@
 """The consolidated Serving benchmark preserves its cold-query diagnostics."""
 import json
-from pathlib import Path
 
 from backend.retrieval.serving import ServingCandidate, ServingSearchResult
 from scripts.retrieval.benchmark_serving import (
     BenchmarkCase,
-    render_markdown,
     resolve_current_work_ids,
     run_uncached_cases,
 )

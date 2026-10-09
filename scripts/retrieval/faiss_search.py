@@ -23,7 +23,7 @@ from typing import TypedDict
 from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.retrieval.embedding_artifact import (
-    ArtifactManifest,
+    ArtifactManifest as ArtifactManifest,
     load_artifact_manifest,
 )
 from scripts.retrieval.artifact_search import (

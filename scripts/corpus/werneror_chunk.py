@@ -21,16 +21,15 @@ from pathlib import Path
 from typing import TypedDict
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
+from backend.retrieval.text_units import (
+    split_clause_spans,
+    split_sentence_spans,
+)
 DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 DEFAULT_OUTPUT = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl"
 DEFAULT_REPORT = RETRIEVAL_REPORTS_ROOT / "werneror_sentence_chunks.json"
 DEFAULT_EXPECTED_WORKS = 853_385
 DEFAULT_EXPECTED_CHUNKS = 0
-
-from backend.retrieval.text_units import (
-    split_clause_spans,
-    split_sentence_spans,
-)
 
 POLICY = "sentence"
 CLAUSE_POLICY = "clause"

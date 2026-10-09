@@ -13,7 +13,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 from ..extractor.blocks import iter_source_blocks
-from ..extractor.extractor import extract_sections, raw_xhtml
+from ..extractor.extractor import raw_xhtml
 from .glyph_sources import _epub_image, glyph_sites
 
 

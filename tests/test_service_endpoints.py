@@ -59,7 +59,6 @@ def test_capabilities_exposes_browser_contract_without_secrets(client):
 
 
 def test_public_chat_path_works(monkeypatch, client):
-    import backend.app as api
 
     calls = []
 
@@ -89,7 +88,6 @@ def test_canonical_public_analyze_path(monkeypatch, client):
 
 
 def test_canonical_public_sse_path(monkeypatch, client):
-    import backend.app as api
 
     def fake_stream(state, stream_mode):
         yield "custom", {"type": "token", "text": "合成"}

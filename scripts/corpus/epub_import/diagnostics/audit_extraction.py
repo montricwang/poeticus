@@ -12,6 +12,7 @@ from backend.data_paths import EPUB_REPORTS_ROOT, READING_RAW_ROOT
 
 from ebooklib import epub
 
+from ..config import COLLECTIONS
 from ..epub.reader import parse_toc
 from .coverage import source_block_coverage
 from ..extractor.extractor import (
@@ -26,9 +27,6 @@ PRIORITY_WARNINGS = {
     "ambiguous_reference_after_verse", "missing_image_src",
     "ambiguous_heading_parts", "unclassified_before_inserted_author",
 }
-
-
-from ..config import COLLECTIONS
 
 
 def block_text_length(block: dict[str, object]) -> int:

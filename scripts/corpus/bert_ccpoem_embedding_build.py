@@ -14,8 +14,6 @@ import hashlib
 import json
 import math
 from pathlib import Path
-from typing import TypedDict
-
 from pydantic import ConfigDict, TypeAdapter, with_config
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
