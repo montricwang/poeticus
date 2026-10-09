@@ -157,7 +157,7 @@ def build_embeddings(
     try:
         import numpy as np
         import torch
-        from transformers import BertModel, BertTokenizer
+        from transformers import AutoModel, BertModel, BertTokenizer
     except ImportError as exc:
         raise RuntimeError(
             "BERT-CCPoem 构建需要 torch / transformers；"
@@ -217,9 +217,12 @@ def build_embeddings(
     tokenizer = BertTokenizer.from_pretrained(
         str(model_path), local_files_only=True
     )
-    model = BertModel.from_pretrained(
+    model = AutoModel.from_pretrained(
         str(model_path), local_files_only=True
-    ).to(selected_device)
+    )
+    if not isinstance(model, BertModel):
+        raise ValueError("BERT-CCPoem 模型配置必须对应 BertModel")
+    model = model.to(selected_device)
     model.eval()
 
     if model.config.hidden_size != DIMENSION:
