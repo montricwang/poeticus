@@ -27,7 +27,7 @@ from pathlib import Path
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
 from typing import Iterator, Mapping, NotRequired, TypedDict
 
-from pydantic import ConfigDict, TypeAdapter
+from pydantic import ConfigDict, TypeAdapter, with_config
 
 MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
 DEFAULT_INPUT = RETRIEVAL_CORPUS_ROOT / "werneror_chunks_sentence.jsonl"
@@ -63,9 +63,9 @@ class CompletedShard(TypedDict):
     bytes: int
 
 
+@with_config(ConfigDict(extra="allow"))
 class EmbeddingManifest(RunSignature):
-    # Preserve future metadata if an existing manifest is resumed.
-    __pydantic_config__ = ConfigDict(extra="allow")
+    """Resume state; preserve unknown metadata for forward compatibility."""
 
     status: str
     model_source: str
