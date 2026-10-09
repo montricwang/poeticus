@@ -1,5 +1,4 @@
 """使用合成记录测试 API 与 SQL 契约，不需要本地数据库。"""
-from types import SimpleNamespace
 from uuid import UUID
 
 import psycopg
