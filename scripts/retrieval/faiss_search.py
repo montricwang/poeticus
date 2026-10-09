@@ -29,6 +29,7 @@ from scripts.retrieval.artifact_search import (
     resolve_chunk_path,
     resolve_query_model_path,
 )
+from backend.retrieval.artifact_files import sha256_file
 from backend.retrieval.chronology import classify_dynasty_relation
 
 from scripts.retrieval.exact_search import (
@@ -38,7 +39,6 @@ from scripts.retrieval.exact_search import (
     read_selected_works,
     ChunkRecord,
     WorkRecord,
-    sha256_file,
 )
 from scripts.retrieval.faiss_full_index import (
     INDEX_FILENAME,
