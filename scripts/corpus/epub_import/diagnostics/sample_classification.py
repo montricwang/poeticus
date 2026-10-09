@@ -109,8 +109,9 @@ def build_candidates(book, toc, collection_specs=COLLECTIONS):
                     ):
                         for block in section["blocks"]:
                             if block["role"] == category:
-                                if block["block"] not in anchors:
-                                    anchors.append(block["block"])
+                                block_number = block["block"]
+                                if isinstance(block_number, int) and block_number not in anchors:
+                                    anchors.append(block_number)
                                 break
                     candidate["inspect_blocks"] = anchors
                 result[kind].append(candidate)
