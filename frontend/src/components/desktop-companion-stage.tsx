@@ -13,6 +13,7 @@ import { motionDurationMs } from '@/lib/motion'
 type DesktopCompanionStageProps = {
   children: ReactNode
   ready: boolean
+  idle: boolean
 }
 
 type CompanionLayout = {
@@ -26,7 +27,7 @@ type CompanionLayout = {
  * Keep the chat/analysis panel within that height (minus its toolbar), and
  * center the current content only as far as the available space permits.
  */
-export function DesktopCompanionStage({ children, ready }: DesktopCompanionStageProps) {
+export function DesktopCompanionStage({ children, ready, idle }: DesktopCompanionStageProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const [layout, setLayout] = useState<CompanionLayout>({
@@ -79,7 +80,8 @@ export function DesktopCompanionStage({ children, ready }: DesktopCompanionStage
   // The toolbar and composer share the measured stage; the message/analysis
   // scrollport consumes only what remains. No second viewport-height guess.
   const panelAvailableHeight = Math.max(0, layout.stageHeight - layout.toolbarHeight - 8)
-  const stageCenter = layout.stageHeight / 2
+  // A fresh, empty companion sits slightly above the geometric midpoint.
+  const stageCenter = layout.stageHeight * (idle ? 0.42 : 0.5)
   const verticalOffset = Math.max(
     0,
     Math.min(layout.stageHeight - layout.contentHeight, stageCenter - layout.contentHeight / 2),
