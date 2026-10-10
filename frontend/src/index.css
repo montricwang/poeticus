@@ -56,7 +56,7 @@
   /* Keep the half-stage offset in sync with the desktop reading stage height. */
   --desktop-reading-stage-min-height: 60dvh;
   --desktop-reading-stage-center-offset: 30dvh;
-  --companion-panel-max-height: min(38rem, calc(100dvh - 14rem));
+  --companion-panel-max-height: 38rem;
 
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -303,23 +303,12 @@ html.theme-transition #root * {
   }
 
   /*
-   * Firefox uses the standard thin scrollbar. Chromium and WebKit use our
-   * original 8px track / 2px inset thumb with rounded ends. Non-auto standard
-   * values override ::-webkit-scrollbar styles in newer Chromium, so reset
-   * them to auto ONLY inside the pseudo-element-supporting branch.
+   * 各滚动容器复用柔和的原生滚动条样式：8px 滚动条保留拖动区域，滑块约 2px。
+   * WebKit/Blink 内部滚动条两端内收，根页面滚动条仍按视口完整显示。
    */
   :is(html, .poeticus-scrollport) {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklab, var(--foreground) 12%, transparent) transparent;
-  }
-
-  .poeticus-scrollport.poeticus-auto-scrollbar {
-    scrollbar-color: transparent transparent;
-  }
-
-  :is(html, .poeticus-scrollport):not(.poeticus-auto-scrollbar):hover,
-  .poeticus-scrollport.poeticus-auto-scrollbar:is(:focus-within, [data-scrolling='true']) {
-    scrollbar-color: color-mix(in oklab, var(--foreground) 32%, transparent) transparent;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 6%, transparent) transparent;
   }
 
   @supports selector(::-webkit-scrollbar) {
@@ -330,13 +319,13 @@ html.theme-transition #root * {
 
     :is(html, .poeticus-scrollport)::-webkit-scrollbar {
       width: 8px;
-      height: 8px;
     }
 
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-track {
       background: transparent;
     }
 
+    /* 浏览器支持时，让内部滑块轨道与容器两端留一点距离。 */
     .poeticus-scrollport::-webkit-scrollbar-track {
       margin-block: 12px;
     }
@@ -344,30 +333,39 @@ html.theme-transition #root * {
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-thumb {
       border: 3px solid transparent;
       border-radius: 999px;
-      background: color-mix(in oklab, var(--foreground) 12%, transparent);
+      background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
       background-clip: padding-box;
+      transition: background-color 180ms ease;
     }
 
+    :is(html, .poeticus-scrollport)::-webkit-scrollbar-thumb:is(:hover, :active) {
+      background-color: color-mix(in oklab, var(--foreground) 35%, transparent);
+    }
+
+    /*
+     * 阅读区只缩短滑块的可见部分，不改变原生滑块的实际长度、
+     * 拖动区域或滚动速度。短内容下不强制固定滑块长度。
+     */
     .poeticus-reader-scrollport::-webkit-scrollbar-thumb {
       border-block-width: 8px;
-    }
-
-    .poeticus-scrollport.poeticus-auto-scrollbar::-webkit-scrollbar-thumb {
-      background-color: transparent;
-    }
-
-    :is(html, .poeticus-scrollport):not(.poeticus-auto-scrollbar):hover::-webkit-scrollbar-thumb,
-    .poeticus-scrollport.poeticus-auto-scrollbar:is(
-        :focus-within,
-        [data-scrolling='true']
-      )::-webkit-scrollbar-thumb {
-      background-color: color-mix(in oklab, var(--foreground) 32%, transparent);
     }
 
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-button {
       display: none;
       width: 0;
       height: 0;
+    }
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    :is(html, .poeticus-scrollport):is(:hover, :focus-within) {
+      scrollbar-color: color-mix(in oklab, var(--foreground) 35%, transparent) transparent;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :is(html, .poeticus-scrollport)::-webkit-scrollbar-thumb {
+      transition: none;
     }
   }
 
