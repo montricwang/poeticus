@@ -3,7 +3,11 @@ import type { RefObject } from 'react'
 
 import { buildPoemLines, buildPoemTextRuns } from '@/lib/poem-layout'
 import { selectionFromPoemRange } from '@/lib/poem-dom-selection'
-import { adaptiveOpticalStrength, inkTextLength, opticalCenterOffset } from '@/lib/poem-optical-center'
+import {
+  adaptiveOpticalStrength,
+  inkTextLength,
+  opticalCenterOffset,
+} from '@/lib/poem-optical-center'
 import type { SelectedText } from '@/types/poem'
 
 /**
