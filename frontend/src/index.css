@@ -314,7 +314,7 @@
       transition: background-color 180ms ease;
     }
 
-    .poem-reader-scrollport:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
+    .poem-reader-scrollport::-webkit-scrollbar-thumb:is(:hover, :active) {
       background-color: color-mix(in oklab, var(--foreground) 50%, transparent);
     }
 
@@ -328,6 +328,12 @@
   @supports not selector(::-webkit-scrollbar) {
     .poem-reader-scrollport:is(:hover, :focus-within) {
       scrollbar-color: color-mix(in oklab, var(--foreground) 50%, transparent) transparent;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .poem-reader-scrollport::-webkit-scrollbar-thumb {
+      transition: none;
     }
   }
 
