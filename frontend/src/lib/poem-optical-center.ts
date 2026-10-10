@@ -16,12 +16,14 @@ export type InkMeasure = {
 
 /**
  * 每行的可见正文宽度同时充当质量权重；将质心移到容器中心。
+ * leftBias 表示向左使用多少比例的单侧余白（0 为纯质心，1 为最大左偏）。
  * 平移限制在左右空白范围内，完整诗行仍处于可用阅读区域。
  */
 export function opticalCenterOffset(
   measures: readonly InkMeasure[],
   blockWidth: number,
   availableWidth: number,
+  leftBias = 0,
 ): number {
   if (
     !Number.isFinite(blockWidth) ||
@@ -43,7 +45,9 @@ export function opticalCenterOffset(
   }
   if (totalWeight === 0) return 0
 
-  const desired = blockWidth / 2 - weightedCenter / totalWeight
   const safeSpace = Math.max(0, (availableWidth - blockWidth) / 2)
+  // 以剩余半边空白为单位向左偏移，避免窄屏短句被质心推得过于靠右。
+  const bias = Number.isFinite(leftBias) ? Math.max(0, Math.min(1, leftBias)) : 0
+  const desired = blockWidth / 2 - weightedCenter / totalWeight - safeSpace * bias
   return Math.max(-safeSpace, Math.min(safeSpace, desired))
 }

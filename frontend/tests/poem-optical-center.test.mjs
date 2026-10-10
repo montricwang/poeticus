@@ -41,3 +41,19 @@ test('没有有效文字或无效尺寸时回退传统居中', () => {
   assert.equal(opticalCenterOffset([{ start: 0, width: 0 }], 10, 20), 0)
   assert.equal(opticalCenterOffset([{ start: 0, width: 4 }], Number.NaN, 20), 0)
 })
+
+test('向左偏移只使用单侧剩余空间的一部分', () => {
+  const rows = [80, 80, 80, 160, 160].map((width) => ({ start: 0, width }))
+  const pure = opticalCenterOffset(rows, 160, 300)
+  const biased = opticalCenterOffset(rows, 160, 300, 0.4)
+  assert.ok(Math.abs(pure - biased - 28) < 1e-9)
+  assert.equal(opticalCenterOffset(rows, 160, 160, 0.4), 0)
+  assert.equal(opticalCenterOffset(rows, 160, 300, 2), -70)
+})
+
+test('默认纯质心和无效偏移系数都保持原有算法', () => {
+  const rows = [{ start: 0, width: 50 }]
+  const expected = opticalCenterOffset(rows, 100, 200)
+  assert.equal(opticalCenterOffset(rows, 100, 200, 0), expected)
+  assert.equal(opticalCenterOffset(rows, 100, 200, Number.NaN), expected)
+})

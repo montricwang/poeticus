@@ -212,6 +212,7 @@
     --reader-poem-line-height: 1.75;
     --reader-poem-letter-spacing: 0.05em;
     --reader-poem-weight: 400;
+    --reader-optical-left-bias: 0.4;
   }
 
   .poem-reader-page {
@@ -349,6 +350,7 @@
       --reader-page-padding-top: 1.25rem;
       --reader-page-padding-bottom: 2.5rem;
       --reader-heading-size: 2.25rem;
+      --reader-optical-left-bias: 0;
     }
   }
 }

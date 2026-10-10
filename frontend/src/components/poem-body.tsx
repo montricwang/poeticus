@@ -54,13 +54,11 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
   const lines = buildPoemLines(poem)
 
   useLayoutEffect(() => {
-    // 开发环境的 A/B 对照：?poemCenter=classic 使用原有最长行居中。
-    if (
-      import.meta.env.DEV &&
-      new URLSearchParams(window.location.search).get('poemCenter') === 'classic'
-    ) {
-      return
-    }
+    // 开发环境可比较三种定位：默认含手机左偏、optical 为纯质心、classic 为原版。
+    const mode = import.meta.env.DEV
+      ? new URLSearchParams(window.location.search).get('poemCenter')
+      : null
+    if (mode === 'classic') return
 
     const block = poemRef.current
     const container = block?.parentElement
@@ -94,7 +92,11 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
         measures.push({ start: Math.max(0, start), width: inkRect.width })
       }
 
-      const offset = opticalCenterOffset(measures, blockRect.width, availableWidth)
+      const configuredBias = Number.parseFloat(
+        getComputedStyle(block).getPropertyValue('--reader-optical-left-bias'),
+      )
+      const leftBias = mode === 'optical' ? 0 : configuredBias
+      const offset = opticalCenterOffset(measures, blockRect.width, availableWidth, leftBias)
       block.style.translate = Math.abs(offset) < 0.5 ? '' : `${offset.toFixed(2)}px 0`
     }
 
