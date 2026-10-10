@@ -52,6 +52,15 @@ test('自动隐藏只改变滑块可见性，不覆盖 Chrome 自定义尺寸', 
   assert.match(styles, /\.poeticus-scrollport::-webkit-scrollbar-thumb \{/)
   assert.match(styles, /\[data-scrolling='true'\]/)
   assert.match(styles, /@supports not selector\(::-webkit-scrollbar\)/)
+  const autoHideStart = styles.indexOf('Only visibility changes while scrolling')
+  const webkitBlock = styles.slice(
+    styles.indexOf('@supports selector(::-webkit-scrollbar)', autoHideStart),
+    styles.indexOf('@media (prefers-reduced-motion: reduce)', autoHideStart),
+  )
+  // Reintroducing a non-auto standard color in this block would suppress the
+  // working Chromium ::-webkit-scrollbar thumb customization again.
+  assert.doesNotMatch(webkitBlock, /scrollbar-color\s*:/)
+  assert.doesNotMatch(webkitBlock, /scrollbar-width\s*:/)
   assert.match(thumb, /addEventListener\('scroll', onScroll, true\)/)
   assert.match(thumb, /removeEventListener\('scroll', onScroll, true\)/)
   assert.match(thumb, /--motion-scrollbar-idle-timeout/)
@@ -78,6 +87,8 @@ test('独立动画共用参数来源，历史消息与输入框不随整栏闪�
   assert.match(styles, /--motion-quote-enter: 460ms/)
   assert.match(styles, /--motion-chat-history-resize: 500ms/)
   assert.match(styles, /--motion-message-enter: 380ms/)
+  assert.match(styles, /--motion-chat-content-enter: 420ms/)
+  assert.match(styles, /--motion-companion-reflow: 520ms/)
   assert.match(app, /motionDurationMs\('--motion-poem-swap'\)/)
   assert.match(composer, /poeticus-quote-enter/)
   assert.match(chatPanel, /poeticus-chat-content-enter/)
