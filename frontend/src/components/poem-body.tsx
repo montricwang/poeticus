@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import type { RefObject } from 'react'
 
 import { buildPoemLines, buildPoemTextRuns } from '@/lib/poem-layout'
 import { selectionFromPoemRange } from '@/lib/poem-dom-selection'
+import { inkTextLength, opticalCenterOffset } from '@/lib/poem-optical-center'
 import type { SelectedText } from '@/types/poem'
 
 /**
@@ -17,12 +18,105 @@ type PoemBodyProps = {
   onSelect: (selection: SelectedText) => void
 }
 
+/**
+ * 测量行内前 length 个 UTF-16 字符占据的实际宽度。
+ * 一行可以包含多个文字、标点 span，因此遍历文本节点建立 Range。
+ */
+function textPrefixRect(line: HTMLElement, length: number): DOMRect | null {
+  if (length <= 0) return null
+  const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT)
+  const first = walker.nextNode()
+  if (!first) return null
+
+  const range = document.createRange()
+  range.setStart(first, 0)
+  let remaining = length
+  let node: Node | null = first
+
+  while (node) {
+    const nodeLength = node.textContent?.length ?? 0
+    if (remaining <= nodeLength) {
+      range.setEnd(node, remaining)
+      const rect = range.getBoundingClientRect()
+      return rect.width > 0 ? rect : null
+    }
+    remaining -= nodeLength
+    node = walker.nextNode()
+  }
+  return null
+}
+
 /** 负责诗文正文的排版、选区引用和复制交互。 */
 export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
   // 正文容器定义选区偏移的计算范围。
   const poemRef = useRef<HTMLParagraphElement>(null)
   // 根据原文生成用于展示的诗行。
   const lines = buildPoemLines(poem)
+
+  useLayoutEffect(() => {
+    // 开发环境的 A/B 对照：?poemCenter=classic 使用原有最长行居中。
+    if (
+      import.meta.env.DEV &&
+      new URLSearchParams(window.location.search).get('poemCenter') === 'classic'
+    ) {
+      return
+    }
+
+    const block = poemRef.current
+    const container = block?.parentElement
+    if (!block || !container) return
+
+    function update() {
+      if (!block || !container) return
+      const blockRect = block.getBoundingClientRect()
+      const containerStyle = getComputedStyle(container)
+      const availableWidth =
+        container.clientWidth -
+        Number.parseFloat(containerStyle.paddingLeft) -
+        Number.parseFloat(containerStyle.paddingRight)
+
+      const measures = []
+      for (const line of block.querySelectorAll<HTMLElement>('.poem-reader-line')) {
+        // 诗句自然折行时退回普通居中，不拿折行后的矩形计算单行重心。
+        const lineHeight = Number.parseFloat(getComputedStyle(line).lineHeight)
+        if (
+          Number.isFinite(lineHeight) &&
+          line.getBoundingClientRect().height > lineHeight * 1.5
+        ) {
+          block.style.translate = ''
+          return
+        }
+
+        const inkRect = textPrefixRect(line, inkTextLength(line.textContent ?? ''))
+        if (!inkRect) continue
+        const start = inkRect.left - blockRect.left
+        if (start < -0.5 || start + inkRect.width > blockRect.width + 0.5) {
+          block.style.translate = ''
+          return
+        }
+        measures.push({ start: Math.max(0, start), width: inkRect.width })
+      }
+
+      const offset = opticalCenterOffset(measures, blockRect.width, availableWidth)
+      block.style.translate = Math.abs(offset) < 0.5 ? '' : `${offset.toFixed(2)}px 0`
+    }
+
+    const observer = new ResizeObserver(update)
+    observer.observe(container)
+    observer.observe(block)
+    update()
+
+    // 字体异步加载和字体回退都可能改变文字的真实宽度。
+    let active = true
+    void document.fonts.ready.then(() => {
+      if (active) update()
+    })
+    return () => {
+      active = false
+      observer.disconnect()
+      block.style.translate = ''
+    }
+  }, [poem])
 
   useEffect(() => {
     // 拖选期间等待鼠标松开后再提交选区，避免重复提交中间状态。
