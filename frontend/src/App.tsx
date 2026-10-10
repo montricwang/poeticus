@@ -626,7 +626,7 @@ function App() {
 
                 <div
                   inert={!!switchTarget}
-                  className="poeticus-reading-columns grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-x-6"
+                  className="grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-x-6 lg:grid-cols-[minmax(0,var(--reader-column-share))_minmax(0,var(--companion-column-share))]"
                 >
                   <div className="relative flex h-full min-h-0 min-w-0 flex-col">
                     <div
