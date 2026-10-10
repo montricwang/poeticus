@@ -92,3 +92,18 @@ def get_poem(conn: Connection[DictRow], poem_id: UUID) -> DictRow | None:
            FROM poems WHERE id = %s""",
         (poem_id,),
     ).fetchone()
+
+
+def get_poem_neighbors(conn: Connection[DictRow], poem_id: UUID) -> DictRow | None:
+    """按唯一 source_order 找作品在原书顺序中的前后邻居，不受目录分页影响。"""
+    return conn.execute(
+        """SELECT
+             (SELECT id FROM poems AS earlier
+              WHERE earlier.source_order < p.source_order
+              ORDER BY earlier.source_order DESC LIMIT 1) AS previous_id,
+             (SELECT id FROM poems AS later
+              WHERE later.source_order > p.source_order
+              ORDER BY later.source_order ASC LIMIT 1) AS next_id
+           FROM poems AS p WHERE p.id = %s""",
+        (poem_id,),
+    ).fetchone()
