@@ -56,7 +56,7 @@
   /* Keep the half-stage offset in sync with the desktop reading stage height. */
   --desktop-reading-stage-min-height: 60dvh;
   --desktop-reading-stage-center-offset: 30dvh;
-  --companion-panel-max-height: min(42rem, calc(100dvh - 10rem));
+  --companion-panel-max-height: min(38rem, calc(100dvh - 14rem));
 
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -303,29 +303,31 @@ html.theme-transition #root * {
   }
 
   /*
-   * All scrollports share one native, thin scrollbar. The standard scrollbar
-   * properties take precedence in current Chromium/Firefox/Safari; only older
-   * WebKit browsers need pseudo-element fallback. Never reset these to auto.
+   * Firefox uses the standard thin scrollbar. Chromium and WebKit use our
+   * original 8px track / 2px inset thumb with rounded ends. Non-auto standard
+   * values override ::-webkit-scrollbar styles in newer Chromium, so reset
+   * them to auto ONLY inside the pseudo-element-supporting branch.
    */
   :is(html, .poeticus-scrollport) {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklab, var(--foreground) 12%, transparent) transparent;
   }
 
-  :is(html, .poeticus-scrollport):hover {
-    scrollbar-color: color-mix(in oklab, var(--foreground) 30%, transparent) transparent;
-  }
-
-  /* Auto-hide thumbs remain invisible until a scroll gesture or keyboard focus. */
   .poeticus-scrollport.poeticus-auto-scrollbar {
     scrollbar-color: transparent transparent;
   }
 
+  :is(html, .poeticus-scrollport):not(.poeticus-auto-scrollbar):hover,
   .poeticus-scrollport.poeticus-auto-scrollbar:is(:focus-within, [data-scrolling='true']) {
-    scrollbar-color: color-mix(in oklab, var(--foreground) 30%, transparent) transparent;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 32%, transparent) transparent;
   }
 
-  @supports not (scrollbar-color: red transparent) {
+  @supports selector(::-webkit-scrollbar) {
+    :is(html, .poeticus-scrollport) {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+
     :is(html, .poeticus-scrollport)::-webkit-scrollbar {
       width: 8px;
       height: 8px;
@@ -335,10 +337,14 @@ html.theme-transition #root * {
       background: transparent;
     }
 
+    .poeticus-scrollport::-webkit-scrollbar-track {
+      margin-block: 12px;
+    }
+
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-thumb {
       border: 3px solid transparent;
       border-radius: 999px;
-      background-color: color-mix(in oklab, var(--foreground) 12%, transparent);
+      background: color-mix(in oklab, var(--foreground) 12%, transparent);
       background-clip: padding-box;
     }
 
@@ -350,12 +356,12 @@ html.theme-transition #root * {
       background-color: transparent;
     }
 
-    :is(html, .poeticus-scrollport):hover::-webkit-scrollbar-thumb,
+    :is(html, .poeticus-scrollport):not(.poeticus-auto-scrollbar):hover::-webkit-scrollbar-thumb,
     .poeticus-scrollport.poeticus-auto-scrollbar:is(
         :focus-within,
         [data-scrolling='true']
       )::-webkit-scrollbar-thumb {
-      background-color: color-mix(in oklab, var(--foreground) 30%, transparent);
+      background-color: color-mix(in oklab, var(--foreground) 32%, transparent);
     }
 
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-button {
