@@ -1,8 +1,6 @@
-/**
- * Independent short rule below the chat/analysis view switch.
- * A whole CSS pixel avoids the varying two-pixel antialiasing of a 1.5px rule
- * without changing any of the other editorial dividers.
- */
+import { HorizontalEditorialDivider } from '@/components/editorial-divider'
+
+/** Independent placement, shared thickness and color with every editorial rule. */
 export function ViewToolbarDivider() {
-  return <div aria-hidden="true" className="mb-3 h-px w-[7.75rem] shrink-0 bg-border/80" />
+  return <HorizontalEditorialDivider className="mb-3 w-[7.75rem]" />
 }
