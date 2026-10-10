@@ -6,7 +6,7 @@ import { ThemeSwitcher } from '@/components/theme-switcher'
 import { PoemReader } from '@/components/poem-reader'
 import { ReaderNavigation } from '@/components/reader-navigation'
 import { PoemCatalog } from '@/components/poem-catalog'
-import { DesktopCompanionStage } from '@/components/desktop-companion-stage'
+import { ReaderCompanionLayout } from '@/components/reader-companion-layout'
 import { ChatPanel } from '@/components/chat-panel'
 import { AnalysisPanel } from '@/components/analysis-panel'
 import { MobileDiscussionScreen } from '@/components/mobile-discussion-screen'
@@ -609,8 +609,8 @@ function App() {
             </div>
 
             {/*
-              右侧助手独立管理内容高度、分割线及按钮位置；
-              目录收放时各栏随空间伸缩，阅读栏内部仍使用动态质心居中。
+              两栏和它们之间的分割线由 ReaderCompanionLayout 共同管理；
+              目录收放时各栏随空间伸缩，伴读内容与竖线共享动态定位。
             */}
             <div
               className={
@@ -625,39 +625,37 @@ function App() {
                   </div>
                 )}
 
-                <div
-                  inert={!!switchTarget}
-                  className="grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-x-6 lg:grid-cols-[minmax(0,var(--reader-column-share))_minmax(0,var(--companion-column-share))]"
-                >
-                  <div className="relative flex h-full min-h-0 min-w-0 flex-col">
-                    <div
-                      className={
-                        'poeticus-scrollport poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain pr-2 ' +
-                        (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
-                        (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
-                      }
-                      ref={readerScrollRef}
-                      onScroll={(event) => handleReaderScroll(event.currentTarget)}
-                    >
-                      <div className={poemTransitionClass + ' lg:flex lg:flex-1 lg:flex-col'}>
-                        {renderReaderContent()}
-                      </div>
-                    </div>
-                    {poemReady && (
-                      <ReaderNavigation
-                        neighbors={neighbors}
-                        disabled={chatLoading || analyzing || !!switchTarget}
-                        onNavigate={handlePoemChange}
-                      />
-                    )}
-                  </div>
-
-                  <DesktopCompanionStage
+                <div inert={!!switchTarget} className="h-full min-h-0 min-w-0">
+                  <ReaderCompanionLayout
                     ready={poemReady}
                     idle={activeView === 'chat' && turns.length === 0}
+                    reader={
+                      <div className="relative flex h-full min-h-0 min-w-0 flex-col">
+                        <div
+                          className={
+                            'poeticus-scrollport poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain pr-2 ' +
+                            (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
+                            (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
+                          }
+                          ref={readerScrollRef}
+                          onScroll={(event) => handleReaderScroll(event.currentTarget)}
+                        >
+                          <div className={poemTransitionClass + ' lg:flex lg:flex-1 lg:flex-col'}>
+                            {renderReaderContent()}
+                          </div>
+                        </div>
+                        {poemReady && (
+                          <ReaderNavigation
+                            neighbors={neighbors}
+                            disabled={chatLoading || analyzing || !!switchTarget}
+                            onNavigate={handlePoemChange}
+                          />
+                        )}
+                      </div>
+                    }
                   >
                     {renderDiscussionContent(false)}
-                  </DesktopCompanionStage>
+                  </ReaderCompanionLayout>
                 </div>
               </div>
             </div>
