@@ -495,7 +495,6 @@ function App() {
                 <div inert={!!switchTarget} className={poemTransitionClass}>
                   {renderReaderContent()}
                 </div>
-
               </div>
             </div>
 
@@ -670,7 +669,6 @@ function App() {
                     </DesktopCompanionStage>
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
