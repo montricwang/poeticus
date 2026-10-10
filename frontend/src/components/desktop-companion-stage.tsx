@@ -97,7 +97,7 @@ export function DesktopCompanionStage({ children, ready, idle }: DesktopCompanio
   return (
     <div
       ref={stageRef}
-      className="grid h-full min-h-0 min-w-0 grid-cols-[1.5px_minmax(0,1fr)] items-start gap-x-6"
+      className="grid h-full min-h-0 min-w-0 grid-cols-[var(--editorial-divider-thickness)_minmax(0,1fr)] items-start gap-x-6"
     >
       <div className={motionClass} style={{ marginTop: verticalOffset }}>
         <VerticalEditorialDivider
