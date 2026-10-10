@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 
+import { motionDurationMs } from '@/lib/motion'
+
 /**
  * Reveal the native thumb only while a scrollport is scrolling.
  * A single capturing listener covers reader, chat, analysis, catalog, quotes,
@@ -24,7 +26,7 @@ export function useAutoHideScrollbars() {
         window.setTimeout(() => {
           element.removeAttribute('data-scrolling')
           pending.delete(element)
-        }, 900),
+        }, motionDurationMs('--motion-scrollbar-idle-timeout')),
       )
     }
 
