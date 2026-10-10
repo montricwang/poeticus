@@ -241,9 +241,12 @@ function App() {
         }
 
         if (!reduceMotion) {
-          // Paint the new poem transparent before animating to its final position.
+          // Commit the restored poem, messages, composer and quote while hidden.
+          // Two frames give React and companion layout effects time to measure.
           setPoemSwapPhase('arriving')
-          await new Promise<void>((resolve) => window.setTimeout(resolve, 32))
+          await new Promise<void>((resolve) => {
+            window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()))
+          })
           if (controller.signal.aborted) return
           setPoemSwapPhase('steady')
           await new Promise<void>((resolve) => window.setTimeout(resolve, 220))
