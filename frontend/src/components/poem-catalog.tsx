@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { useScrollActivity } from '@/hooks/use-scroll-activity'
 import { poemIncipit, poemLabel } from '@/data/poem-library'
 import type { PoemFilters, PoemPage } from '@/data/poem-library'
 import { OVERLAY_CATALOG_MEDIA } from '@/lib/responsive-layout'
@@ -36,6 +37,7 @@ export function PoemCatalog({
   open,
 }: PoemCatalogProps) {
   const panelRef = useRef<HTMLElement>(null)
+  const markScrollActivity = useScrollActivity()
 
   useEffect(() => {
     if (!open) return
@@ -121,7 +123,9 @@ export function PoemCatalog({
       </form>
 
       <div
-        className="poeticus-scrollport min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        className="poeticus-scrollport poeticus-auto-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        onWheel={(event) => markScrollActivity(event.currentTarget)}
+        onTouchMove={(event) => markScrollActivity(event.currentTarget)}
         aria-busy={loading}
       >
         {error ? (
