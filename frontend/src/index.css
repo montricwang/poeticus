@@ -441,14 +441,6 @@ html.theme-transition #root * {
     }
   }
 
-  /* Fr weights apply after the catalog has claimed its own column. */
-  @media (min-width: 64rem) {
-    .poeticus-reading-columns {
-      grid-template-columns:
-        minmax(0, var(--reader-column-share)) minmax(0, var(--companion-column-share));
-    }
-  }
-
   /*
    * The input and its footer share a single animated width; the button follows
    * text growth until the companion column's actual width is reached.
