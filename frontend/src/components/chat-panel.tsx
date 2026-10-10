@@ -290,9 +290,7 @@ export function ChatPanel({
         aria-hidden="true"
         className={
           'grid min-h-0 transition-[grid-template-rows,opacity,margin-top] duration-[var(--motion-chat-history-resize)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
-          (turns.length > 0
-            ? 'mt-2 grid-rows-[1fr] opacity-100'
-            : 'mt-0 grid-rows-[0fr] opacity-0')
+          (turns.length > 0 ? 'mt-2 grid-rows-[1fr] opacity-100' : 'mt-0 grid-rows-[0fr] opacity-0')
         }
       >
         <div className="min-h-0 overflow-hidden">
