@@ -13,6 +13,7 @@ import type { ChatTurn, ChatViewport } from '@/types/chat'
 
 type ChatPanelProps = {
   poemId: string
+  swapPhase: 'steady' | 'leaving' | 'arriving'
   selected: SelectedText | null
   question: string
   turns: ChatTurn[]
@@ -33,6 +34,7 @@ type ChatPanelProps = {
 
 export function ChatPanel({
   poemId,
+  swapPhase,
   selected,
   question,
   turns,
@@ -108,15 +110,7 @@ export function ChatPanel({
     if (previousPoemRef.current === poemId) return
     previousPoemRef.current = poemId
     initializedRef.current = false
-
-    const history = historyContentRef.current
-    if (history && turns.length > 0) {
-      // Saved turns appear together; only their content fades, not the whole pane.
-      history.classList.remove('poeticus-chat-content-enter')
-      void history.offsetWidth
-      history.classList.add('poeticus-chat-content-enter')
-    }
-  }, [poemId, turns.length])
+  }, [poemId])
 
   async function handleCopy(key: string, content: string) {
     try {
@@ -240,7 +234,15 @@ export function ChatPanel({
               hasContentAbove && 'poeticus-scroll-fade-top',
             )}
           >
-            <div ref={historyContentRef} className="flex flex-col gap-6">
+            <div
+              ref={historyContentRef}
+              className={
+                'flex flex-col gap-6 transition-opacity ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+                (swapPhase === 'steady'
+                  ? 'opacity-100 duration-[var(--motion-chat-content-enter)]'
+                  : 'opacity-0 duration-[var(--motion-poem-swap)]')
+              }
+            >
               {turns.map((turn, index) => (
                 <div key={turn.id} className="space-y-4">
                   {index > 0 && <HorizontalEditorialDivider className="mb-6 w-12" />}
