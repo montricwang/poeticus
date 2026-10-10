@@ -98,24 +98,24 @@ export function ChatComposer({
 
       {/* Controls always span the companion width; only the text field grows. */}
       <div className="flex w-full items-center justify-between px-2">
-          <span className="text-xs text-muted-foreground">
-            {loading ? 'AI 正在回复' : 'Enter 发送 · Shift+Enter 换行'}
-          </span>
+        <span className="text-xs text-muted-foreground">
+          {loading ? 'AI 正在回复' : 'Enter 发送 · Shift+Enter 换行'}
+        </span>
 
-          <Button
-            type="button"
-            size="icon"
-            className="rounded-md"
-            onClick={onSend}
-            disabled={loading || !question.trim()}
-            aria-label="发送消息"
-          >
-            {loading ? (
-              <LoaderCircle className="size-4 animate-spin" />
-            ) : (
-              <ArrowUp className="size-4" />
-            )}
-          </Button>
+        <Button
+          type="button"
+          size="icon"
+          className="rounded-md"
+          onClick={onSend}
+          disabled={loading || !question.trim()}
+          aria-label="发送消息"
+        >
+          {loading ? (
+            <LoaderCircle className="size-4 animate-spin" />
+          ) : (
+            <ArrowUp className="size-4" />
+          )}
+        </Button>
       </div>
     </div>
   )
