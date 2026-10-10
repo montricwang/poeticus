@@ -39,6 +39,9 @@
 
   --radius: 0.625rem;
 
+  /* One geometric thickness for every editorial rule, including grid tracks. */
+  --editorial-divider-thickness: 1.5px;
+
   /*
    * 共用 UI 布局契约：这些值决定交互表现，不是随意选取的间距。
    * - 桌面阅读与伴读区共用父容器分配的视口空间；
