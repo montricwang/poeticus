@@ -309,11 +309,7 @@ function App() {
 
     return (
       <>
-        {/* 按钮组宽度由内容决定，短线始终略长于按钮组并从同一左边缘开始。 */}
-        <div className="mb-3 w-fit">
-          <ViewToolbar activeView={activeView} onViewChange={handleViewChange} />
-          <HorizontalEditorialDivider className="w-[calc(100%+0.75rem)]" />
-        </div>
+        <ViewToolbar activeView={activeView} onViewChange={handleViewChange} />
 
         <div
           className={
@@ -617,7 +613,7 @@ function App() {
             */}
             <div
               className={
-                'mx-auto h-full w-full min-h-0 min-w-0 max-w-[74rem] ' +
+                'mx-auto h-full w-full min-h-0 min-w-0 max-w-[82rem] ' +
                 (catalogOpen ? '2xl:pl-6' : '')
               }
             >
@@ -630,7 +626,7 @@ function App() {
 
                 <div
                   inert={!!switchTarget}
-                  className="grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-x-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(340px,1.15fr)]"
+                  className="grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-x-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
                 >
                   <div className="relative flex h-full min-h-0 min-w-0 flex-col">
                     <div
