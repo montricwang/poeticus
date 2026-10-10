@@ -1,5 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { VerticalEditorialDivider } from '@/components/editorial-divider'
 
@@ -8,63 +7,103 @@ type DesktopCompanionStageProps = {
   ready: boolean
 }
 
+type CompanionLayout = {
+  stageHeight: number
+  contentHeight: number
+  toolbarHeight: number
+}
+
 /**
- * Center the companion against the reading stage using its current content height.
- * A temporary quote can move the toolbar upward; clearing it must restore the
- * centered position instead of reserving the tallest height ever observed.
+ * The stage gets its real height from the shared desktop viewport layout.
+ * Keep the chat/analysis panel within that height (minus its toolbar), and
+ * center the current content only as far as the available space permits.
  */
 export function DesktopCompanionStage({ children, ready }: DesktopCompanionStageProps) {
+  const stageRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-  const [currentHeight, setCurrentHeight] = useState(0)
+  const [layout, setLayout] = useState<CompanionLayout>({
+    stageHeight: 0,
+    contentHeight: 0,
+    toolbarHeight: 0,
+  })
   const [animateLayout, setAnimateLayout] = useState(false)
 
   useLayoutEffect(() => {
+    const stage = stageRef.current
     const content = contentRef.current
-    if (!content) return
+    if (!stage || !content) return
 
+    const toolbar = content.firstElementChild
     const measure = () => {
-      const height = Math.ceil(content.getBoundingClientRect().height)
-      setCurrentHeight((previous) => (previous === height ? previous : height))
+      const stageHeight = Math.ceil(stage.getBoundingClientRect().height)
+      const contentHeight = Math.ceil(content.getBoundingClientRect().height)
+      const toolbarHeight = toolbar
+        ? Math.ceil(toolbar.getBoundingClientRect().height) +
+          Number.parseFloat(window.getComputedStyle(toolbar).marginBottom || '0')
+        : 0
+      setLayout((previous) =>
+        previous.stageHeight === stageHeight &&
+        previous.contentHeight === contentHeight &&
+        previous.toolbarHeight === toolbarHeight
+          ? previous
+          : { stageHeight, contentHeight, toolbarHeight },
+      )
     }
-    // Read the first real chat/composer/quote height before painting a new poem.
+
     measure()
     const observer = new ResizeObserver(measure)
+    observer.observe(stage)
     observer.observe(content)
+    if (toolbar) observer.observe(toolbar)
     return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
     if (!ready) return
-
-    // Let the restored poem and conversation settle before enabling movement.
-    // Otherwise the loading placeholder would animate into the first real layout.
+    // Prevent an entrance transition while the first saved chat is measured.
     const timer = window.setTimeout(() => setAnimateLayout(true), 300)
     return () => window.clearTimeout(timer)
   }, [ready])
 
-  // The grid remains at least 60dvh tall. Once the content exceeds that height,
-  // max() returns zero so the companion can grow normally without clipping.
-  const verticalOffset = `max(0px, calc(var(--desktop-reading-stage-center-offset) - ${currentHeight / 2}px))`
+  // The toolbar and composer share the measured stage; the message/analysis
+  // scrollport consumes only what remains. No second viewport-height guess.
+  const panelMaxHeight = Math.max(0, Math.min(608, layout.stageHeight - layout.toolbarHeight - 8))
+  const stageCenter = Math.min(layout.stageHeight / 2, window.innerHeight * 0.3)
+  const verticalOffset = Math.max(
+    0,
+    Math.min(layout.stageHeight - layout.contentHeight, stageCenter - layout.contentHeight / 2),
+  )
   const motionClass = animateLayout
-    ? 'transition-[margin-top] duration-[420ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none'
+    ? 'transition-[margin-top] duration-[520ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none'
     : ''
-  const dividerHeight = Math.max(176, currentHeight - 8)
+  const dividerHeight = Math.max(
+    0,
+    Math.min(layout.contentHeight - 8, layout.stageHeight - verticalOffset - 8),
+  )
 
   return (
-    <div className="grid min-h-[var(--desktop-reading-stage-min-height)] min-w-0 grid-cols-[1.5px_minmax(0,1fr)] items-start gap-x-6">
+    <div
+      ref={stageRef}
+      className="grid h-full min-h-0 min-w-0 grid-cols-[1.5px_minmax(0,1fr)] items-start gap-x-6"
+    >
       <div className={motionClass} style={{ marginTop: verticalOffset }}>
         <VerticalEditorialDivider
           className={
             'mt-1 ' +
             (animateLayout
-              ? 'transition-[height] duration-[420ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none'
+              ? 'transition-[height] duration-[520ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none'
               : '')
           }
           style={{ height: dividerHeight }}
         />
       </div>
       <div className={'min-w-0 ' + motionClass} style={{ marginTop: verticalOffset }}>
-        <div ref={contentRef}>{children}</div>
+        <div
+          ref={contentRef}
+          style={{ '--companion-panel-max-height': `${panelMaxHeight}px` } as CSSProperties}
+        >
+          {children}
+        </div>
       </div>
     </div>
   )
