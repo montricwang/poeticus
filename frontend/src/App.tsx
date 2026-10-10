@@ -481,9 +481,7 @@ function App() {
               即 76rem。外层 1600px 的空间用于容纳常驻目录。
             */}
             <div
-              className={
-                'mx-auto w-full min-w-0 max-w-[76rem] ' + (catalogOpen ? '2xl:pl-6' : '')
-              }
+              className={'mx-auto w-full min-w-0 max-w-[76rem] ' + (catalogOpen ? '2xl:pl-6' : '')}
             >
               <div className="relative min-w-0" aria-busy={!!switchTarget}>
                 {switchError && (
