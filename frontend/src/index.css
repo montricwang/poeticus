@@ -370,6 +370,34 @@ html.theme-transition #root * {
     }
   }
 
+  /* The composer itself fades only where its text is actually clipped. */
+  .poeticus-input-fade-top {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 14px);
+    mask-image: linear-gradient(to bottom, transparent, black 14px);
+  }
+
+  .poeticus-input-fade-bottom {
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 14px), transparent);
+    mask-image: linear-gradient(to bottom, black calc(100% - 14px), transparent);
+  }
+
+  .poeticus-input-fade-top.poeticus-input-fade-bottom {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black 14px,
+      black calc(100% - 14px),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black 14px,
+      black calc(100% - 14px),
+      transparent
+    );
+  }
+
   /* 只有上方还有已滚过的内容时才淡出顶部，避免削弱初次展示的标题和首条消息。 */
   /* 只在仍有未读内容的一侧淡出 28px；抵达末尾时原文与提示恢复完整显示。 */
   .poeticus-scroll-fade-top {
