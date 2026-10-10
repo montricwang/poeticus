@@ -81,7 +81,7 @@ export function DesktopCompanionStage({ children, ready }: DesktopCompanionStage
     Math.min(layout.stageHeight - layout.contentHeight, stageCenter - layout.contentHeight / 2),
   )
   const motionClass = animateLayout
-    ? 'transition-[margin-top] duration-[520ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none'
+    ? 'transition-[margin-top] duration-[var(--motion-companion-reflow)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none'
     : ''
   const dividerHeight = Math.max(
     0,
@@ -98,7 +98,7 @@ export function DesktopCompanionStage({ children, ready }: DesktopCompanionStage
           className={
             'mt-1 ' +
             (animateLayout
-              ? 'transition-[height] duration-[520ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none'
+              ? 'transition-[height] duration-[var(--motion-companion-reflow)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none'
               : '')
           }
           style={{ height: dividerHeight }}
