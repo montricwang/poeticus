@@ -18,9 +18,11 @@ import { fetchPoem } from '@/data/poem-library'
 import { usePoemCatalog } from '@/hooks/use-poem-catalog'
 import { usePoemDetail } from '@/hooks/use-poem-detail'
 import { usePoemNeighbors } from '@/hooks/use-poem-neighbors'
+import { useAutoHideScrollbars } from '@/hooks/use-auto-hide-scrollbars'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { usePoemAnalysis } from '@/hooks/use-poem-analysis'
 import { loadInitialChatState } from '@/lib/chat-initial-state'
+import { motionDurationMs } from '@/lib/motion'
 import {
   PERSISTENT_CATALOG_MEDIA,
   PERSISTENT_CATALOG_MIN_WIDTH,
@@ -53,6 +55,7 @@ function App() {
     () => window.matchMedia(WIDE_DISCUSSION_MEDIA).matches,
   )
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false)
+  useAutoHideScrollbars()
   const readerScrollRef = useRef<HTMLDivElement>(null)
   const [readerHasContentAbove, setReaderHasContentAbove] = useState(false)
   const [readerHasContentBelow, setReaderHasContentBelow] = useState(false)
@@ -205,7 +208,9 @@ function App() {
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
         if (!reduceMotion) {
           setPoemSwapPhase('leaving')
-          await new Promise<void>((resolve) => window.setTimeout(resolve, 300))
+          await new Promise<void>((resolve) =>
+            window.setTimeout(resolve, motionDurationMs('--motion-poem-swap')),
+          )
           if (controller.signal.aborted) return
         }
 
@@ -238,7 +243,9 @@ function App() {
           })
           if (controller.signal.aborted) return
           setPoemSwapPhase('steady')
-          await new Promise<void>((resolve) => window.setTimeout(resolve, 360))
+          await new Promise<void>((resolve) =>
+            window.setTimeout(resolve, motionDurationMs('--motion-poem-swap')),
+          )
         }
       })
       .catch((error: unknown) => {
@@ -280,7 +287,7 @@ function App() {
   const poemReady = !!activePoem && activePoem.id === poemId
   // Old poem stays visible during fetch; both columns use the same swap phase.
   const poemTransitionClass =
-    'transition-[opacity,transform] duration-[360ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+    'transition-[opacity,transform] duration-[var(--motion-poem-swap)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
     (poemSwapPhase === 'leaving'
       ? '-translate-y-1 opacity-0'
       : poemSwapPhase === 'arriving'
@@ -310,7 +317,7 @@ function App() {
 
         <div
           className={
-            'min-w-0 transition-opacity duration-150 ease-in-out motion-reduce:transition-none ' +
+            'min-w-0 transition-opacity duration-[var(--motion-view-fade)] ease-in-out motion-reduce:transition-none ' +
             (fillAvailableHeight ? 'flex min-h-0 flex-1 flex-col ' : '') +
             (viewFadingOut ? 'opacity-0' : 'opacity-100')
           }
@@ -356,7 +363,7 @@ function App() {
   function renderReaderContent() {
     if (poemReady) {
       return (
-        <div className="w-full lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:flex-col lg:pt-2">
+        <div className="w-full lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:pt-2">
           <PoemReader key={activePoem.id} work={activePoem} onSelect={handleReaderSelect} />
           {!wideDiscussionLayout && (
             <ReaderNavigation
