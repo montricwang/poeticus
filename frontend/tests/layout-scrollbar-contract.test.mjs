@@ -120,9 +120,12 @@ test('引文和消息列表都有退场状态，内容不会立即连同容器�
   assert.match(quote, /setRendered\(null\)/)
   assert.match(quote, /--motion-quote-enter/)
   assert.match(styles, /poeticus-quote-transition/)
-  assert.match(styles, /grid-template-rows: 0fr/)
+  assert.match(styles, /height: 0/)
+  assert.match(styles, /height var\(--motion-quote-enter\)/)
   assert.match(styles, /poeticus-quote-open/)
-  assert.match(styles, /grid-template-rows: 1fr/)
+  assert.match(quote, /ResizeObserver\(measure\)/)
+  assert.match(quote, /height: expanded \? contentHeight : 0/)
+  assert.doesNotMatch(quote, /key=\{/)
   assert.match(chat, /<ChatMessageList/)
   assert.doesNotMatch(chat, /turns\.length > 0 \|\| !fillAvailableHeight/)
   assert.match(chat, /grid-rows-\[0fr\]/)
@@ -130,4 +133,20 @@ test('引文和消息列表都有退场状态，内容不会立即连同容器�
   assert.match(chat, /<HorizontalEditorialDivider className="w-full"/)
   assert.match(chatList, /transition-opacity/)
   assert.match(companion, /idle \? 0\.42 : 0\.5/)
+})
+
+test('输入区有初始宽度，文字增长只扩展输入与发送按钮', () => {
+  const composer = readFileSync(
+    new URL('../src/components/chat-composer.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.match(composer, /composerWidthForLines/)
+  assert.match(composer, /poeticus-composer-frame/)
+  assert.match(composer, /--composer-content-width/)
+  assert.match(composer, /context\.measureText/)
+  assert.match(styles, /--motion-composer-width: 320ms/)
+  assert.match(styles, /width: var\(--composer-content-width, 18rem\)/)
+  assert.match(styles, /max-width: min\(100%, var\(--companion-panel-default-max-height\)\)/)
+  // Don't modify the shared divider to customize the editor.
+  assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
 })
