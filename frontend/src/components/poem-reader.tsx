@@ -15,7 +15,7 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
   const poem = poemText(work)
   const readerRef = useRef<HTMLDivElement>(null)
   return (
-    <div className="poem-reader min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:flex-1 lg:flex-col">
+    <div className="poem-reader min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       <div
         ref={readerRef}
         className="bg-transparent lg:flex lg:flex-1 lg:flex-col lg:justify-center"
