@@ -3,7 +3,7 @@ import type { RefObject } from 'react'
 
 import { buildPoemLines, buildPoemTextRuns } from '@/lib/poem-layout'
 import { selectionFromPoemRange } from '@/lib/poem-dom-selection'
-import { inkTextLength, opticalCenterOffset } from '@/lib/poem-optical-center'
+import { adaptiveOpticalStrength, inkTextLength, opticalCenterOffset } from '@/lib/poem-optical-center'
 import type { SelectedText } from '@/types/poem'
 
 /**
@@ -54,7 +54,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
   const lines = buildPoemLines(poem)
 
   useLayoutEffect(() => {
-    // 本地可比较三种定位：默认折中、optical 纯质心、classic 最长行居中。
+    // 默认按作品句长分布自动折中；开发环境可对照 classic、optical 和 fixed。
     const mode = import.meta.env.DEV
       ? new URLSearchParams(window.location.search).get('poemCenter')
       : null
@@ -92,10 +92,12 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
         measures.push({ start: Math.max(0, start), width: inkRect.width })
       }
 
-      const configuredStrength = Number.parseFloat(
-        getComputedStyle(block).getPropertyValue('--reader-optical-strength'),
-      )
-      const strength = mode === 'optical' ? 1 : configuredStrength
+      const strength =
+        mode === 'optical'
+          ? 1
+          : mode === 'fixed'
+            ? Number.parseFloat(getComputedStyle(block).getPropertyValue('--reader-optical-strength'))
+            : adaptiveOpticalStrength(measures)
       const offset = opticalCenterOffset(measures, blockRect.width, availableWidth, strength)
       block.style.translate = Math.abs(offset) < 0.5 ? '' : `${offset.toFixed(2)}px 0`
     }

@@ -15,6 +15,26 @@ export type InkMeasure = {
 }
 
 /**
+ * 根据诗行宽度分布，决定从传统居中向视觉质心靠近多少。
+ * 平均行宽与最长行宽的比值兼顾长短句及其出现次数，避免固定修正比例。
+ */
+export function adaptiveOpticalStrength(measures: readonly InkMeasure[]): number {
+  let count = 0
+  let totalWidth = 0
+  let maxWidth = 0
+  for (const { start, width } of measures) {
+    if (!Number.isFinite(start) || !Number.isFinite(width) || start < 0 || width <= 0) {
+      continue
+    }
+    count += 1
+    totalWidth += width
+    maxWidth = Math.max(maxWidth, width)
+  }
+  if (count === 0 || maxWidth === 0) return 0
+  return totalWidth / (count * maxWidth)
+}
+
+/**
  * 每行的可见正文宽度同时充当质量权重；将质心移到容器中心。
  * strength 控制从原有最长行居中向纯质心居中靠近的比例：
  * 0 保持原位置，1 完全按质心修正。最后限制在可用余白之内。
