@@ -5,7 +5,7 @@ import { inkTextLength, opticalCenterOffset } from '../src/lib/poem-optical-cent
 
 test('行尾句读不计入墨迹宽度，行内标点保留', () => {
   assert.equal(inkTextLength('春风、秋雨，'), 5)
-  assert.equal(inkTextLength('归来否？！”\\n\\n'.replaceAll('\\n', '\n')), 3)
+  assert.equal(inkTextLength('归来否？！”\n\n'), 3)
   assert.equal(inkTextLength('山海经》'), 4)
   assert.equal(inkTextLength('问君'), 2)
   assert.equal(inkTextLength('？！'), 0)
