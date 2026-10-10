@@ -21,19 +21,30 @@ export function QuotePreview({ selected, loading, onClearQuote }: QuotePreviewPr
 
   useEffect(() => {
     if (selected) {
-      setRendered(selected)
-      const frame = window.requestAnimationFrame(() => setExpanded(true))
-      return () => window.cancelAnimationFrame(frame)
+      // Commit the new quote in one frame, then allow the next frame to expand it.
+      // React can paint the collapsed grid row before its transition starts.
+      let revealFrame: number | null = null
+      const contentFrame = window.requestAnimationFrame(() => {
+        setRendered(selected)
+        revealFrame = window.requestAnimationFrame(() => setExpanded(true))
+      })
+      return () => {
+        window.cancelAnimationFrame(contentFrame)
+        if (revealFrame !== null) window.cancelAnimationFrame(revealFrame)
+      }
     }
 
-    setExpanded(false)
+    const closeFrame = window.requestAnimationFrame(() => setExpanded(false))
     const timeout = window.setTimeout(
       () => setRendered(null),
       window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ? 0
-        : motionDurationMs('--motion-quote-enter'),
+        : motionDurationMs('--motion-quote-enter') + 20,
     )
-    return () => window.clearTimeout(timeout)
+    return () => {
+      window.cancelAnimationFrame(closeFrame)
+      window.clearTimeout(timeout)
+    }
   }, [selected])
 
   return (
