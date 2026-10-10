@@ -48,7 +48,8 @@ test('向左偏移只使用单侧剩余空间的一部分', () => {
   const biased = opticalCenterOffset(rows, 160, 300, 0.4)
   assert.ok(Math.abs(pure - biased - 28) < 1e-9)
   assert.equal(opticalCenterOffset(rows, 160, 160, 0.4), 0)
-  assert.equal(opticalCenterOffset(rows, 160, 300, 2), -70)
+  assert.ok(Math.abs(opticalCenterOffset(rows, 160, 300, 2) - (pure - 70)) < 1e-9)
+  assert.equal(opticalCenterOffset([{ start: 140, width: 20 }], 160, 300, 1), -70)
 })
 
 test('默认纯质心和无效偏移系数都保持原有算法', () => {
