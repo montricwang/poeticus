@@ -42,10 +42,10 @@ export function ReaderPane({
         </div>
       </div>
       {navigation && (
-        <div className="mx-auto mt-6 w-full shrink-0 px-0 pb-4 lg:mt-auto lg:max-w-[27rem] lg:px-4 lg:pt-8 lg:pb-0">
+        <footer className="mx-auto mt-6 w-full shrink-0 px-0 pb-4 lg:mt-auto lg:max-w-[27rem] lg:px-4 lg:pt-8 lg:pb-0">
           <HorizontalEditorialDivider className="mb-3 hidden w-full lg:block" />
           {navigation}
-        </div>
+        </footer>
       )}
     </div>
   )
