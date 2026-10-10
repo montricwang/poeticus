@@ -63,7 +63,6 @@ function App() {
   const switchControllerRef = useRef<AbortController | null>(null)
   const [switchTarget, setSwitchTarget] = useState<string | null>(null)
   const [switchError, setSwitchError] = useState('')
-  const [showSwitchNotice, setShowSwitchNotice] = useState(false)
   const [poemSwapPhase, setPoemSwapPhase] = useState<'steady' | 'leaving' | 'arriving'>('steady')
 
   const [selected, setSelected] = useState<SelectedText | null>(null)
@@ -122,12 +121,6 @@ function App() {
       if (viewSwitchTimerRef.current !== null) window.clearTimeout(viewSwitchTimerRef.current)
     }
   }, [])
-
-  useEffect(() => {
-    if (!switchTarget) return
-    const timer = window.setTimeout(() => setShowSwitchNotice(true), 200)
-    return () => window.clearTimeout(timer)
-  }, [switchTarget])
 
   const updateReaderScrollEdges = useCallback((element: HTMLDivElement) => {
     const remaining = element.scrollHeight - element.clientHeight - element.scrollTop
@@ -204,7 +197,6 @@ function App() {
     const controller = new AbortController()
     switchControllerRef.current = controller
     setSwitchTarget(nextId)
-    setShowSwitchNotice(false)
     setSwitchError('')
 
     void fetchPoem(nextId, controller.signal)
@@ -213,8 +205,7 @@ function App() {
 
         // Avoid a blank screen during network waits; fade only after data arrives.
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        setShowSwitchNotice(false)
-        if (!reduceMotion) {
+            if (!reduceMotion) {
           setPoemSwapPhase('leaving')
           await new Promise<void>((resolve) => window.setTimeout(resolve, 160))
           if (controller.signal.aborted) return
@@ -260,8 +251,7 @@ function App() {
       .finally(() => {
         if (controller.signal.aborted) return
         switchControllerRef.current = null
-        setShowSwitchNotice(false)
-        setSwitchTarget(null)
+            setSwitchTarget(null)
       })
   }
 
@@ -329,12 +319,12 @@ function App() {
         >
           {activeView === 'chat' ? (
             <ChatPanel
-              key={activePoem.id}
+              poemId={activePoem.id}
               fillAvailableHeight={fillAvailableHeight}
               selected={selected}
               question={question}
               turns={turns}
-              loading={chatLoading || !!switchTarget}
+              loading={chatLoading}
               onQuestionChange={setQuestion}
               onClearQuote={() => setSelected(null)}
               onSend={handleSend}
@@ -503,15 +493,6 @@ function App() {
               </div>
             </div>
 
-            {showSwitchNotice && switchTarget && (
-              <div
-                role="status"
-                className="pointer-events-none absolute inset-x-0 top-3 z-20 text-center text-xs text-muted-foreground"
-              >
-                正在切换作品…
-              </div>
-            )}
-
             {poemReady && (
               <Button
                 type="button"
@@ -533,9 +514,7 @@ function App() {
           </section>
 
           <MobileDiscussionScreen open={mobileDiscussionOpen}>
-            <div className={'flex min-h-0 flex-1 flex-col ' + poemTransitionClass}>
-              {renderDiscussionContent(true)}
-            </div>
+            <div className="flex min-h-0 flex-1 flex-col">{renderDiscussionContent(true)}</div>
           </MobileDiscussionScreen>
 
           <div
@@ -669,21 +648,11 @@ function App() {
                         onNavigate={handlePoemChange}
                       />
                     )}
-                    {showSwitchNotice && switchTarget && (
-                      <div
-                        role="status"
-                        className="pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-xs text-muted-foreground"
-                      >
-                        正在切换作品…
-                      </div>
-                    )}
                   </div>
 
-                  <div className={poemTransitionClass}>
-                    <DesktopCompanionStage key={poemId} ready={poemReady}>
-                      {renderDiscussionContent(false)}
-                    </DesktopCompanionStage>
-                  </div>
+                  <DesktopCompanionStage ready={poemReady}>
+                    {renderDiscussionContent(false)}
+                  </DesktopCompanionStage>
                 </div>
               </div>
             </div>
