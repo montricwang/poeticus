@@ -54,6 +54,7 @@
   --motion-discussion-tablet-slide: 400ms;
 
   --desktop-reading-stage-min-height: 60dvh;
+  --desktop-reading-stage-center-offset: 30dvh;
   --companion-panel-max-height: min(42rem, calc(100dvh - 10rem));
 
   --sidebar: oklch(0.985 0 0);
