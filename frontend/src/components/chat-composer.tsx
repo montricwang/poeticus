@@ -26,7 +26,7 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [fades, setFades] = useState({ top: false, bottom: false })
-  const [composerWidth, setComposerWidth] = useState(288)
+  const [composerWidth, setComposerWidth] = useState(0)
 
   const updateFades = useCallback((element: HTMLTextAreaElement) => {
     const top = element.scrollTop > 4
