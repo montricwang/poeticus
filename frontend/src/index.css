@@ -119,6 +119,23 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* 只在用户主动或系统运行中切换外观时过渡；首屏与减少动画模式不启用。 */
+html.theme-transition,
+html.theme-transition #root,
+html.theme-transition #root * {
+  transition-property: color, background-color, border-color, fill, stroke;
+  transition-duration: 240ms;
+  transition-timing-function: ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transition,
+  html.theme-transition #root,
+  html.theme-transition #root * {
+    transition-duration: 0ms;
+  }
+}
+
 .dark {
   color-scheme: dark;
 
