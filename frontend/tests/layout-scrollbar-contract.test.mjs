@@ -12,13 +12,21 @@ const divider = readFileSync(
   new URL('../src/components/editorial-divider.tsx', import.meta.url),
   'utf8',
 )
+const readerPane = readFileSync(
+  new URL('../src/components/reader-pane.tsx', import.meta.url),
+  'utf8',
+)
+const companionPane = readFileSync(
+  new URL('../src/components/companion-pane.tsx', import.meta.url),
+  'utf8',
+)
 
 test('桌面阅读区使用剩余视口高度，正文在本栏滚动', () => {
   assert.match(app, /flex h-dvh min-h-0 flex-col overflow-hidden/)
   assert.match(app, /flex min-h-0 w-full max-w-\[1600px\] flex-1 flex-col overflow-hidden/)
   assert.match(companion, /grid h-full min-h-0 min-w-0/)
   assert.match(
-    app,
+    readerPane,
     /poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto/,
   )
   assert.doesNotMatch(app, /lg:h-auto lg:min-h-dvh lg:overflow-visible/)
@@ -194,13 +202,45 @@ test('视图短线独立成组件，引文关闭按钮仍紧邻文字', () => {
   assert.doesNotMatch(toolbar, /HorizontalEditorialDivider|ViewToolbarDivider/)
   assert.match(viewDivider, /<HorizontalEditorialDivider className="mb-3 w-\[7\.75rem\]"/)
   assert.doesNotMatch(viewDivider, /h-px|h-\[1\.5px\]/)
-  assert.match(app, /<ViewToolbar activeView=\{activeView\}/)
-  assert.match(app, /<ViewToolbarDivider \/>/)
+  assert.match(companionPane, /<ViewToolbar activeView=\{activeView\}/)
+  assert.match(companionPane, /<ViewToolbarDivider \/>/)
+  assert.doesNotMatch(app, /<ViewToolbarDivider|<ViewToolbar activeView=/)
   assert.match(quote, /inline-flex w-fit max-w-full/)
   assert.match(quote, /flex-\[0_1_auto\]/)
   assert.doesNotMatch(quote, /min-w-0 flex-1 overflow-y-auto/)
   assert.match(styles, /--composer-min-width: min\(100%, max\(22rem, 72%\)\)/)
   assert.match(divider, /h-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
+})
+
+test('阅读与伴读分割线由共同父 Pane 管理，不混入子组件', () => {
+  const navigation = readFileSync(
+    new URL('../src/components/reader-navigation.tsx', import.meta.url),
+    'utf8',
+  )
+  const chat = readFileSync(
+    new URL('../src/components/chat-panel.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.match(app, /<ReaderPane/)
+  assert.match(app, /<CompanionPane/)
+  assert.match(app, /<ReaderNavigation[^>]*embedded/)
+  assert.match(readerPane, /<HorizontalEditorialDivider/)
+  assert.doesNotMatch(navigation, /HorizontalEditorialDivider/)
+  assert.match(navigation, /if \(embedded\) return navigation/)
+  assert.match(navigation, /<footer className=/)
+  assert.match(companionPane, /<ViewToolbar/)
+  assert.match(companionPane, /<ViewToolbarDivider/)
+  assert.match(chat, /<HorizontalEditorialDivider className="w-full"/)
+  assert.match(companion, /<VerticalEditorialDivider/)
+  assert.match(styles, /--editorial-divider-thickness: 1\.5px/)
+
+  const scrollportIndex = readerPane.indexOf('ref={scrollRef}')
+  const readerDividerIndex = readerPane.indexOf('<HorizontalEditorialDivider')
+  const readerNavigationIndex = readerPane.indexOf('{navigation}', readerDividerIndex)
+  assert.ok(scrollportIndex < readerDividerIndex && readerDividerIndex < readerNavigationIndex)
+  assert.ok(
+    companionPane.indexOf('<ViewToolbar ') < companionPane.indexOf('<ViewToolbarDivider'),
+  )
 })
 
 test('手机阅读导航保留提示，前后按钮各自贴近两端', () => {
