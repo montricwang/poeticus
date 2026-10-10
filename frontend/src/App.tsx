@@ -297,7 +297,6 @@ function App() {
 
   function handleReaderScroll(element: HTMLDivElement) {
     updateReaderScrollEdges(element)
-    markReaderScrolling(element)
   }
 
   function renderDiscussionContent(fillAvailableHeight: boolean) {
@@ -484,6 +483,8 @@ function App() {
               }
               ref={readerScrollRef}
               onScroll={(event) => handleReaderScroll(event.currentTarget)}
+              onWheel={(event) => markReaderScrolling(event.currentTarget)}
+              onTouchMove={(event) => markReaderScrolling(event.currentTarget)}
             >
               {switchError && (
                 <div role="alert" className="mb-3 text-sm text-destructive">
@@ -650,6 +651,8 @@ function App() {
                       }
                       ref={readerScrollRef}
                       onScroll={(event) => handleReaderScroll(event.currentTarget)}
+                      onWheel={(event) => markReaderScrolling(event.currentTarget)}
+                      onTouchMove={(event) => markReaderScrolling(event.currentTarget)}
                     >
                       <div className={poemTransitionClass}>{renderReaderContent()}</div>
                     </div>
