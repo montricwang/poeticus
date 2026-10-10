@@ -435,8 +435,8 @@ html.theme-transition #root * {
 
   /*
    * The input and its footer share a single animated width; the button follows
-   * text growth until the companion column (or the 38rem editorial maximum)
-   * is reached. The quote above keeps the full available column width.
+   * text growth until the companion column's actual width is reached.
+   * The quote above keeps the full available column width.
    */
   .poeticus-composer-frame {
     --composer-min-width: 18rem;
