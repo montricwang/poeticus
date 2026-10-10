@@ -657,7 +657,7 @@ function App() {
                     </div>
                   </div>
 
-                  <DesktopCompanionStage key={poemId}>
+                  <DesktopCompanionStage key={poemId} ready={poemReady}>
                     {renderDiscussionContent(false)}
                   </DesktopCompanionStage>
                 </div>
