@@ -17,6 +17,7 @@ import { fetchPoem } from '@/data/poem-library'
 import { usePoemCatalog } from '@/hooks/use-poem-catalog'
 import { usePoemDetail } from '@/hooks/use-poem-detail'
 import { usePoemNeighbors } from '@/hooks/use-poem-neighbors'
+import { useScrollActivity } from '@/hooks/use-scroll-activity'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { usePoemAnalysis } from '@/hooks/use-poem-analysis'
 import { loadInitialChatState } from '@/lib/chat-initial-state'
@@ -53,6 +54,7 @@ function App() {
   )
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false)
   const readerScrollRef = useRef<HTMLDivElement>(null)
+  const markReaderScrolling = useScrollActivity()
   const [readerHasContentAbove, setReaderHasContentAbove] = useState(false)
   const [readerHasContentBelow, setReaderHasContentBelow] = useState(false)
 
@@ -284,6 +286,19 @@ function App() {
   }
 
   const poemReady = !!activePoem && activePoem.id === poemId
+  // Old poem stays visible during fetch; both columns use the same swap phase.
+  const poemTransitionClass =
+    'transition-[opacity,transform] duration-[220ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+    (poemSwapPhase === 'leaving'
+      ? '-translate-y-1 opacity-0'
+      : poemSwapPhase === 'arriving'
+        ? 'translate-y-1 opacity-0'
+        : 'translate-y-0 opacity-100')
+
+  function handleReaderScroll(element: HTMLDivElement) {
+    updateReaderScrollEdges(element)
+    markReaderScrolling(element)
+  }
 
   function renderDiscussionContent(fillAvailableHeight: boolean) {
     if (!poemReady) {
@@ -463,12 +478,12 @@ function App() {
             {/* 给底部正文留出空间，避免被悬浮的讨论按钮遮挡。 */}
             <div
               className={
-                'poeticus-scrollport poeticus-reader-scrollport h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8 ' +
+                'poeticus-scrollport poeticus-auto-scrollbar poeticus-reader-scrollport h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8 ' +
                 (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
                 (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
               }
               ref={readerScrollRef}
-              onScroll={(event) => updateReaderScrollEdges(event.currentTarget)}
+              onScroll={(event) => handleReaderScroll(event.currentTarget)}
             >
               {switchError && (
                 <div role="alert" className="mb-3 text-sm text-destructive">
@@ -477,30 +492,21 @@ function App() {
               )}
 
               <div className="relative min-w-0" aria-busy={!!switchTarget}>
-                <div
-                  inert={!!switchTarget}
-                  className={
-                    'transition-[opacity,transform] duration-[220ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
-                    (poemSwapPhase === 'leaving'
-                      ? '-translate-y-1 opacity-0'
-                      : poemSwapPhase === 'arriving'
-                        ? 'translate-y-1 opacity-0'
-                        : 'translate-y-0 opacity-100')
-                  }
-                >
+                <div inert={!!switchTarget} className={poemTransitionClass}>
                   {renderReaderContent()}
                 </div>
 
-                {showSwitchNotice && switchTarget && (
-                  <div
-                    role="status"
-                    className="pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-xs text-muted-foreground"
-                  >
-                    正在切换作品…
-                  </div>
-                )}
               </div>
             </div>
+
+            {showSwitchNotice && switchTarget && (
+              <div
+                role="status"
+                className="pointer-events-none absolute inset-x-0 top-3 z-20 text-center text-xs text-muted-foreground"
+              >
+                正在切换作品…
+              </div>
+            )}
 
             {poemReady && (
               <Button
@@ -523,7 +529,9 @@ function App() {
           </section>
 
           <MobileDiscussionScreen open={mobileDiscussionOpen}>
-            {renderDiscussionContent(true)}
+            <div className={'flex min-h-0 flex-1 flex-col ' + poemTransitionClass}>
+              {renderDiscussionContent(true)}
+            </div>
           </MobileDiscussionScreen>
 
           <div
@@ -634,42 +642,35 @@ function App() {
                   inert={!!switchTarget}
                   className="grid min-w-0 grid-cols-1 items-start gap-x-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(340px,1.15fr)]"
                 >
-                  <div
-                    className={
-                      'poeticus-scrollport poeticus-reader-scrollport min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2 ' +
-                      (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
-                      (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
-                    }
-                    ref={readerScrollRef}
-                    onScroll={(event) => updateReaderScrollEdges(event.currentTarget)}
-                  >
+                  <div className="relative min-w-0">
                     <div
                       className={
-                        'transition-[opacity,transform] duration-[220ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
-                        (poemSwapPhase === 'leaving'
-                          ? '-translate-y-1 opacity-0'
-                          : poemSwapPhase === 'arriving'
-                            ? 'translate-y-1 opacity-0'
-                            : 'translate-y-0 opacity-100')
+                        'poeticus-scrollport poeticus-auto-scrollbar poeticus-reader-scrollport min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2 ' +
+                        (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
+                        (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
                       }
+                      ref={readerScrollRef}
+                      onScroll={(event) => handleReaderScroll(event.currentTarget)}
                     >
-                      {renderReaderContent()}
+                      <div className={poemTransitionClass}>{renderReaderContent()}</div>
                     </div>
+                    {showSwitchNotice && switchTarget && (
+                      <div
+                        role="status"
+                        className="pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-xs text-muted-foreground"
+                      >
+                        正在切换作品…
+                      </div>
+                    )}
                   </div>
 
-                  <DesktopCompanionStage key={poemId} ready={poemReady}>
-                    {renderDiscussionContent(false)}
-                  </DesktopCompanionStage>
+                  <div className={poemTransitionClass}>
+                    <DesktopCompanionStage key={poemId} ready={poemReady}>
+                      {renderDiscussionContent(false)}
+                    </DesktopCompanionStage>
+                  </div>
                 </div>
 
-                {showSwitchNotice && switchTarget && (
-                  <div
-                    role="status"
-                    className="pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-xs text-muted-foreground"
-                  >
-                    正在切换作品…
-                  </div>
-                )}
               </div>
             </div>
           </div>
