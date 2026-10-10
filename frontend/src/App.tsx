@@ -613,7 +613,7 @@ function App() {
             */}
             <div
               className={
-                'mx-auto h-full w-full min-h-0 min-w-0 max-w-[82rem] ' +
+                'mx-auto h-full w-full min-h-0 min-w-0 max-w-[var(--reading-stage-max-width)] ' +
                 (catalogOpen ? '2xl:pl-6' : '')
               }
             >
@@ -626,7 +626,7 @@ function App() {
 
                 <div
                   inert={!!switchTarget}
-                  className="grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-x-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
+                  className="poeticus-reading-columns grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-x-6"
                 >
                   <div className="relative flex h-full min-h-0 min-w-0 flex-col">
                     <div
