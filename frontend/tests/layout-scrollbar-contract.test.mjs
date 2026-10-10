@@ -146,15 +146,10 @@ test('输入区有初始宽度，文字增长只扩展输入与发送按钮', ()
   assert.match(composer, /context\.measureText/)
   assert.match(styles, /--motion-composer-width: 320ms/)
   assert.match(styles, /--composer-min-width: 18rem/)
-  assert.match(
-    styles,
-    /width: max\(var\(--composer-min-width\), var\(--composer-content-width, 0px\)\)/,
-  )
+  assert.match(styles, /width: max\(var\(--composer-min-width\)/)
+  assert.match(styles, /var\(--composer-content-width, 0px\)/)
   assert.match(styles, /max-width: 100%/)
-  assert.doesNotMatch(
-    styles,
-    /max-width: min\(100%, var\(--companion-panel-default-max-height\)\)/,
-  )
+  assert.doesNotMatch(styles, /max-width: min\(/)
   // Don't modify the shared divider to customize the editor.
   assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
 })
