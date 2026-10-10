@@ -9,13 +9,12 @@ export function useScrollActivity() {
   const timerRef = useRef<number | null>(null)
   const elementRef = useRef<HTMLElement | null>(null)
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    return () => {
       if (timerRef.current !== null) window.clearTimeout(timerRef.current)
       elementRef.current?.removeAttribute('data-scrolling')
-    },
-    [],
-  )
+    }
+  }, [])
 
   return useCallback((element: HTMLElement) => {
     if (elementRef.current && elementRef.current !== element) {
