@@ -223,7 +223,10 @@ test('阅读与伴读分割线由共同父 Pane 管理，不混入子组件', ()
   assert.match(app, /<ReaderNavigation[^>]*embedded/)
   assert.match(readerPane, /<HorizontalEditorialDivider/)
   assert.match(navigation, /<HorizontalEditorialDivider className="mb-3 w-full" \/>/)
-  assert.match(readerPane, /<HorizontalEditorialDivider className="mb-3 hidden w-full lg:block" \/>/)
+  assert.match(
+    readerPane,
+    /<HorizontalEditorialDivider className="mb-3 hidden w-full lg:block" \/>/,
+  )
   assert.match(navigation, /if \(embedded\) return navigation/)
   assert.match(navigation, /<footer className=/)
   const embeddedIndex = navigation.indexOf('if (embedded) return navigation')
