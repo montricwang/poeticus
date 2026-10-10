@@ -36,12 +36,14 @@ test('延续生产版滚动条与分割线，不回退到浏览器默认外观',
     styles,
     /scrollbar-color: color-mix\(in oklab, var\(--foreground\) 6%, transparent\)/,
   )
+  assert.match(styles, /--editorial-divider-thickness: 1\.5px/)
+  assert.match(companion, /grid-cols-\[var\(--editorial-divider-thickness\)_minmax\(0,1fr\)\]/)
   assert.match(styles, /@supports selector\(::-webkit-scrollbar\)/)
   assert.match(styles, /border: 3px solid transparent/)
   assert.match(styles, /background-clip: padding-box/)
   assert.doesNotMatch(styles, /poeticus-auto-scrollbar/)
-  assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
-  assert.match(divider, /w-\[1\.5px\].*bg-border\/80/)
+  assert.match(divider, /h-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
+  assert.match(divider, /w-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
 })
 
 test('自动隐藏只改变滑块可见性，不覆盖 Chrome 自定义尺寸', () => {
@@ -151,7 +153,7 @@ test('输入区有初始宽度，文字增长只扩展输入与发送按钮', ()
   assert.match(styles, /max-width: 100%/)
   assert.doesNotMatch(styles, /max-width: min\(/)
   // Don't modify the shared divider to customize the editor.
-  assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
+  assert.match(divider, /h-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
 })
 
 test('阅读栏和伴读栏共用目录变化后的剩余空间', () => {
@@ -184,15 +186,15 @@ test('视图短线独立成组件，引文关闭按钮仍紧邻文字', () => {
     'utf8',
   )
   assert.doesNotMatch(toolbar, /HorizontalEditorialDivider|ViewToolbarDivider/)
-  assert.match(viewDivider, /mb-3 h-px w-\[7\.75rem\]/)
-  assert.doesNotMatch(viewDivider, /h-\[1\.5px\]|HorizontalEditorialDivider/)
+  assert.match(viewDivider, /<HorizontalEditorialDivider className="mb-3 w-\[7\.75rem\]"/)
+  assert.doesNotMatch(viewDivider, /h-px|h-\[1\.5px\]/)
   assert.match(app, /<ViewToolbar activeView=\{activeView\}/)
   assert.match(app, /<ViewToolbarDivider \/>/)
   assert.match(quote, /inline-flex w-fit max-w-full/)
   assert.match(quote, /flex-\[0_1_auto\]/)
   assert.doesNotMatch(quote, /min-w-0 flex-1 overflow-y-auto/)
   assert.match(styles, /--composer-min-width: min\(100%, max\(22rem, 72%\)\)/)
-  assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
+  assert.match(divider, /h-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
 })
 
 test('手机阅读导航保留提示，前后按钮各自贴近两端', () => {
@@ -221,5 +223,5 @@ test('发送按钮和操作提示使用全宽脚注，输入框宽度独立动�
   assert.ok(frame >= 0 && frameEnd > frame)
   assert.ok(controls > frameEnd && button > controls)
   assert.match(styles, /--motion-composer-width: 320ms/)
-  assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
+  assert.match(divider, /h-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
 })
