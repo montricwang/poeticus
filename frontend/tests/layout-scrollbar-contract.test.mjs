@@ -59,6 +59,23 @@ test('延续生产版滚动条与分割线，不回退到浏览器默认外观',
   assert.match(divider, /w-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
 })
 
+test('暖白与炭黑使用反色主操作，标点分别调色', () => {
+  const light = styles.slice(styles.indexOf(':root {'), styles.indexOf('@theme inline'))
+  const dark = styles.slice(styles.indexOf('.dark {'), styles.indexOf('@layer base'))
+  assert.match(light, /--background: #faf9f6/)
+  assert.match(light, /--foreground: #151411/)
+  assert.match(light, /--primary: #151411/)
+  assert.match(light, /--primary-foreground: #faf9f6/)
+  assert.match(light, /--reader-punctuation-ink: #928e88/)
+  assert.match(dark, /--background: #151411/)
+  assert.match(dark, /--foreground: #faf9f6/)
+  assert.match(dark, /--primary: #faf9f6/)
+  assert.match(dark, /--primary-foreground: #151411/)
+  assert.match(dark, /--reader-punctuation-ink: #85817b/)
+  assert.ok(styles.includes('color: var(--reader-punctuation-ink);'))
+  assert.ok(!styles.includes('currentColor 50%, var(--background)'))
+})
+
 test('自动隐藏只改变滑块可见性，不覆盖 Chrome 自定义尺寸', () => {
   const thumb = readFileSync(
     new URL('../src/hooks/use-auto-hide-scrollbars.ts', import.meta.url),
@@ -146,6 +163,9 @@ test('引文和消息列表都有退场状态，内容不会立即连同容器�
   assert.match(chat, /grid-rows-\[0fr\]/)
   assert.match(chat, /grid-rows-\[1fr\]/)
   assert.match(chat, /<HorizontalEditorialDivider className="w-full"/)
+  assert.match(chat, /fillAvailableHeight \|\| turns\.length > 0/)
+  assert.match(app, /renderDiscussionContent\(true\)/)
+  assert.match(app, /renderDiscussionContent\(false\)/)
   assert.match(chatList, /transition-opacity/)
   assert.match(companion, /idle \? 0\.42 : 0\.5/)
 })
