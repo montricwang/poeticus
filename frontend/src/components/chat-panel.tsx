@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
-import { ArrowDown } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { MessageEntrance } from '@/components/message-entrance'
 import { UserMessage } from '@/components/user-message'
 import { AssistantMessage } from '@/components/assistant-message'
 import { ChatComposer } from '@/components/chat-composer'
+import { ChatMessageList } from '@/components/chat-message-list'
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { cn } from '@/lib/utils'
 import type { SelectedText } from '@/types/poem'
@@ -217,32 +217,18 @@ export function ChatPanel({
       )}
 
       {(turns.length > 0 || !fillAvailableHeight) && (
-        <div
-          className={cn(
-            'relative min-h-0',
-            fillAvailableHeight
-              ? 'flex flex-1'
-              : 'shrink-0 overflow-hidden transition-[height] duration-[var(--motion-chat-history-resize)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none',
-          )}
-          style={fillAvailableHeight ? undefined : { height: historyHeight }}
+        <ChatMessageList
+          fillAvailableHeight={fillAvailableHeight}
+          height={historyHeight}
+          scrollRef={chatListRef}
+          contentRef={historyContentRef}
+          onScroll={handleScroll}
+          hasContentAbove={hasContentAbove}
+          isAtBottom={isAtBottom}
+          hasUnreadReply={hasUnreadReply}
+          onScrollToBottom={scrollToBottom}
+          swapPhase={swapPhase}
         >
-          <div
-            ref={chatListRef}
-            onScroll={(event) => handleScroll(event.currentTarget)}
-            className={cn(
-              'poeticus-scrollport flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain pt-3 pb-1 pr-2',
-              hasContentAbove && 'poeticus-scroll-fade-top',
-            )}
-          >
-            <div
-              ref={historyContentRef}
-              className={
-                'flex flex-col gap-6 transition-opacity ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
-                (swapPhase === 'steady'
-                  ? 'opacity-100 duration-[var(--motion-chat-content-enter)]'
-                  : 'opacity-0 duration-[var(--motion-poem-swap)]')
-              }
-            >
               {turns.map((turn, index) => (
                 <div key={turn.id} className="space-y-4">
                   {index > 0 && <HorizontalEditorialDivider className="mb-6 w-12" />}
@@ -304,37 +290,23 @@ export function ChatPanel({
                   </MessageEntrance>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div
-            className="pointer-events-none absolute right-2 bottom-0 left-0 h-8 bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_72%,transparent)_62%,var(--background)_100%)] dark:h-6 dark:bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_48%,transparent)_68%,var(--background)_100%)]"
-            aria-hidden="true"
-          />
-
-          {!isAtBottom && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-md bg-background/95 shadow-md backdrop-blur-sm"
-              aria-label={hasUnreadReply ? '新回复已生成，滚动到底部' : '滚动到底部'}
-              onClick={scrollToBottom}
-            >
-              <ArrowDown className="size-4" />
-              {hasUnreadReply && (
-                <>
-                  <span className="size-1.5 rounded-full bg-violet-500" />
-                  <span>新回复</span>
-                </>
-              )}
-            </Button>
-          )}
-        </div>
+        </ChatMessageList>
       )}
 
-      {/* 横向分割线由讨论父容器管理，不占用输入组件内部空间。 */}
-      {turns.length > 0 && <HorizontalEditorialDivider className="mt-2 w-full" />}
+      {/* The divider follows the history's height transition in both directions. */}
+      <div
+        aria-hidden="true"
+        className={
+          'grid min-h-0 transition-[grid-template-rows,opacity,margin-top] duration-[var(--motion-chat-history-resize)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+          (turns.length > 0
+            ? 'mt-2 grid-rows-[1fr] opacity-100'
+            : 'mt-0 grid-rows-[0fr] opacity-0')
+        }
+      >
+        <div className="min-h-0 overflow-hidden">
+          <HorizontalEditorialDivider className="w-full" />
+        </div>
+      </div>
 
       <div ref={composerRef} className="shrink-0">
         <ChatComposer
