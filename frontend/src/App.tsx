@@ -18,7 +18,6 @@ import { fetchPoem } from '@/data/poem-library'
 import { usePoemCatalog } from '@/hooks/use-poem-catalog'
 import { usePoemDetail } from '@/hooks/use-poem-detail'
 import { usePoemNeighbors } from '@/hooks/use-poem-neighbors'
-import { useScrollActivity } from '@/hooks/use-scroll-activity'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { usePoemAnalysis } from '@/hooks/use-poem-analysis'
 import { loadInitialChatState } from '@/lib/chat-initial-state'
@@ -55,7 +54,6 @@ function App() {
   )
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false)
   const readerScrollRef = useRef<HTMLDivElement>(null)
-  const markReaderScrolling = useScrollActivity()
   const [readerHasContentAbove, setReaderHasContentAbove] = useState(false)
   const [readerHasContentBelow, setReaderHasContentBelow] = useState(false)
 
@@ -471,14 +469,12 @@ function App() {
             {/* 给底部正文留出空间，避免被悬浮的讨论按钮遮挡。 */}
             <div
               className={
-                'poeticus-scrollport poeticus-auto-scrollbar poeticus-reader-scrollport h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8 ' +
+                'poeticus-scrollport poeticus-reader-scrollport h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8 ' +
                 (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
                 (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
               }
               ref={readerScrollRef}
               onScroll={(event) => handleReaderScroll(event.currentTarget)}
-              onWheel={(event) => markReaderScrolling(event.currentTarget)}
-              onTouchMove={(event) => markReaderScrolling(event.currentTarget)}
             >
               {switchError && (
                 <div role="alert" className="mb-3 text-sm text-destructive">
@@ -634,8 +630,6 @@ function App() {
                       }
                       ref={readerScrollRef}
                       onScroll={(event) => handleReaderScroll(event.currentTarget)}
-                      onWheel={(event) => markReaderScrolling(event.currentTarget)}
-                      onTouchMove={(event) => markReaderScrolling(event.currentTarget)}
                     >
                       <div className={poemTransitionClass + ' lg:flex lg:flex-1 lg:flex-col'}>
                         {renderReaderContent()}
