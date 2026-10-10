@@ -608,7 +608,10 @@ function App() {
               目录收放时各栏随空间伸缩，阅读栏内部仍使用动态质心居中。
             */}
             <div
-              className={'mx-auto h-full w-full min-h-0 min-w-0 max-w-[74rem] ' + (catalogOpen ? '2xl:pl-6' : '')}
+              className={
+                'mx-auto h-full w-full min-h-0 min-w-0 max-w-[74rem] ' +
+                (catalogOpen ? '2xl:pl-6' : '')
+              }
             >
               <div className="relative h-full min-h-0 min-w-0" aria-busy={!!switchTarget}>
                 {switchError && (
