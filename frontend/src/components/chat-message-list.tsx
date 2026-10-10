@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 type ChatMessageListProps = {
   children: ReactNode
   fillAvailableHeight: boolean
+  hasMessages: boolean
   height: number
   scrollRef: RefObject<HTMLDivElement | null>
   contentRef: RefObject<HTMLDivElement | null>
@@ -22,6 +23,7 @@ type ChatMessageListProps = {
 export function ChatMessageList({
   children,
   fillAvailableHeight,
+  hasMessages,
   height,
   scrollRef,
   contentRef,
@@ -63,12 +65,14 @@ export function ChatMessageList({
         </div>
       </div>
 
-      <div
-        className="pointer-events-none absolute right-2 bottom-0 left-0 h-8 bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_72%,transparent)_62%,var(--background)_100%)] dark:h-6 dark:bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_48%,transparent)_68%,var(--background)_100%)]"
-        aria-hidden="true"
-      />
+      {hasMessages && (
+        <div
+          className="pointer-events-none absolute right-2 bottom-0 left-0 h-8 bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_72%,transparent)_62%,var(--background)_100%)] dark:h-6 dark:bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_48%,transparent)_68%,var(--background)_100%)]"
+          aria-hidden="true"
+        />
+      )}
 
-      {!isAtBottom && (
+      {hasMessages && !isAtBottom && (
         <Button
           type="button"
           variant="outline"
