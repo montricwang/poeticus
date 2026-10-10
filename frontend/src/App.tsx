@@ -643,6 +643,7 @@ function App() {
                       >
                         {renderReaderContent()}
                       </ReaderPane>
+                    }
                   >
                     {renderDiscussionContent(false)}
                   </ReaderCompanionLayout>
