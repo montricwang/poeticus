@@ -53,6 +53,7 @@
   --motion-companion-ready-delay: 300ms;
   --motion-quote-enter: 460ms;
   --motion-message-enter: 380ms;
+  --motion-message-actions: 150ms;
   --motion-chat-content-enter: 420ms;
   --motion-view-fade: 150ms;
   --motion-analysis-result-enter: 180ms;
