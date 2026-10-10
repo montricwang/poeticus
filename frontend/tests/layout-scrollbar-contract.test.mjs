@@ -217,10 +217,7 @@ test('阅读与伴读分割线由共同父 Pane 管理，不混入子组件', ()
     new URL('../src/components/reader-navigation.tsx', import.meta.url),
     'utf8',
   )
-  const chat = readFileSync(
-    new URL('../src/components/chat-panel.tsx', import.meta.url),
-    'utf8',
-  )
+  const chat = readFileSync(new URL('../src/components/chat-panel.tsx', import.meta.url), 'utf8')
   assert.match(app, /<ReaderPane/)
   assert.match(app, /<CompanionPane/)
   assert.match(app, /<ReaderNavigation[^>]*embedded/)
@@ -238,9 +235,7 @@ test('阅读与伴读分割线由共同父 Pane 管理，不混入子组件', ()
   const readerDividerIndex = readerPane.indexOf('<HorizontalEditorialDivider')
   const readerNavigationIndex = readerPane.indexOf('{navigation}', readerDividerIndex)
   assert.ok(scrollportIndex < readerDividerIndex && readerDividerIndex < readerNavigationIndex)
-  assert.ok(
-    companionPane.indexOf('<ViewToolbar ') < companionPane.indexOf('<ViewToolbarDivider'),
-  )
+  assert.ok(companionPane.indexOf('<ViewToolbar ') < companionPane.indexOf('<ViewToolbarDivider'))
 })
 
 test('手机阅读导航保留提示，前后按钮各自贴近两端', () => {
