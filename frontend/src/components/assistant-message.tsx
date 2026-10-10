@@ -90,7 +90,7 @@ export function AssistantMessage({
 
         {/* 完整回答才允许复制和重新生成；生成中仍可手动选择正文。 */}
         {turn.status === 'done' && (
-          <div className="mt-2 flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+          <div className="mt-2 flex items-center gap-2 opacity-0 transition-opacity duration-[var(--motion-message-actions)] group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
             <ActionTooltip label="复制回复">
               <Button
                 type="button"
