@@ -79,10 +79,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
       for (const line of block.querySelectorAll<HTMLElement>('.poem-reader-line')) {
         // 诗句自然折行时退回普通居中，不拿折行后的矩形计算单行重心。
         const lineHeight = Number.parseFloat(getComputedStyle(line).lineHeight)
-        if (
-          Number.isFinite(lineHeight) &&
-          line.getBoundingClientRect().height > lineHeight * 1.5
-        ) {
+        if (Number.isFinite(lineHeight) && line.getBoundingClientRect().height > lineHeight * 1.5) {
           block.style.translate = ''
           return
         }
