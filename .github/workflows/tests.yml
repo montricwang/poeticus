@@ -61,6 +61,12 @@ jobs:
       - name: Lint frontend
         run: npm run lint
 
+      # Temporary diagnostic: CI prints Prettier's exact diff, then this step is removed.
+      - name: Inspect Prettier changes
+        run: |
+          npx prettier --write src/components/chat-panel.tsx
+          git diff -- src/components/chat-panel.tsx
+
       - name: Check frontend formatting
         run: npm run format:check
 
