@@ -91,8 +91,8 @@ export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantM
             <pre
               className={
                 isUser
-                  ? 'my-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs leading-5 [&_code]:bg-transparent [&_code]:p-0'
-                  : 'my-3 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs leading-6 [&_code]:bg-transparent [&_code]:p-0'
+                  ? 'poeticus-scrollport my-2 max-w-full overflow-x-auto rounded-lg bg-muted p-2 text-xs leading-5 [&_code]:bg-transparent [&_code]:p-0'
+                  : 'poeticus-scrollport my-3 max-w-full overflow-x-auto rounded-lg bg-muted p-3 text-xs leading-6 [&_code]:bg-transparent [&_code]:p-0'
               }
             >
               {children}
@@ -100,7 +100,7 @@ export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantM
           ),
 
           table: ({ children }) => (
-            <div className="my-4 max-w-full overflow-x-auto">
+            <div className="poeticus-scrollport my-4 max-w-full overflow-x-auto">
               <table className="w-full border-collapse text-left text-xs">{children}</table>
             </div>
           ),

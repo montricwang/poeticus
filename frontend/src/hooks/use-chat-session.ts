@@ -22,6 +22,16 @@ function maxTurnId(turns: ChatTurn[]): number {
   return turns.reduce((max, turn) => Math.max(max, turn.id), 0)
 }
 
+// Previously saved turns are not new messages: render them all at once on load.
+function restoredAnimationIds(turns: ChatTurn[]): Set<string> {
+  const ids = new Set<string>()
+  for (const turn of turns) {
+    ids.add(`user:${turn.id}`)
+    ids.add(`assistant:${turn.id}:${turn.status === 'pending' ? 'pending' : 'answer'}`)
+  }
+  return ids
+}
+
 type ChatSessionOptions = {
   initialChatState: InitialChatState
   poemId: string | null
@@ -46,7 +56,7 @@ export function useChatSession({
   const [chatLoading, setChatLoading] = useState(false)
   const inFlightRef = useRef(false)
   const nextTurnId = useRef(maxTurnId(initialChatState.turns))
-  const seenAnimationsRef = useRef(new Set<string>())
+  const seenAnimationsRef = useRef(restoredAnimationIds(initialChatState.turns))
   const chatViewportRef = useRef<ChatViewport>({ scrollTop: 0, atBottom: true })
   const [hasUnreadReply, setHasUnreadReply] = useState(false)
 
@@ -69,7 +79,7 @@ export function useChatSession({
     setTurns(nextTurns)
     nextTurnId.current = maxTurnId(nextTurns)
     setHasUnreadReply(false)
-    seenAnimationsRef.current.clear()
+    seenAnimationsRef.current = restoredAnimationIds(nextTurns)
     chatViewportRef.current = { scrollTop: 0, atBottom: true }
   }
 

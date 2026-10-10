@@ -3,6 +3,7 @@ import { Settings2 } from 'lucide-react'
 import { Popover, RadioGroup } from 'radix-ui'
 
 import { Button } from '@/components/ui/button'
+import { motionDurationMs } from '@/lib/motion'
 
 type Theme = 'light' | 'dark' | 'system'
 
@@ -39,7 +40,7 @@ export function ThemeSwitcher() {
         animationTimer.current = window.setTimeout(() => {
           root.classList.remove('theme-transition')
           animationTimer.current = null
-        }, 240)
+        }, motionDurationMs('--motion-theme-change'))
       }
     }
 

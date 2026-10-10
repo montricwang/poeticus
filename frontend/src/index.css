@@ -39,13 +39,34 @@
 
   --radius: 0.625rem;
 
+  /* One geometric thickness for every editorial rule, including grid tracks. */
+  --editorial-divider-thickness: 2px;
+
   /*
    * 共用 UI 布局契约：这些值决定交互表现，不是随意选取的间距。
-   * - 1024px 起阅读区与伴读区共用 60dvh 的视觉舞台；
-   * - 桌面端聊天与赏析刻意共用相同的高度上限；
-   * - 目录与讨论区的动效时长按交互命名，便于集中调整。
+   * - 桌面阅读与伴读区共用父容器分配的视口空间；
+   * - 对话与赏析的高度上限取自同一个变量；
+   * - 不同交互的动效时长集中配置，但只作用于对应组件。
    */
   --motion-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Component-specific timing. These are shared tokens, not a page-wide animation. */
+  --motion-poem-swap: 360ms;
+  --motion-chat-history-resize: 500ms;
+  --motion-companion-reflow: 520ms;
+  --motion-companion-ready-delay: 300ms;
+  --motion-quote-enter: 460ms;
+  --motion-composer-width: 320ms;
+  --motion-message-enter: 380ms;
+  --motion-message-actions: 150ms;
+  --motion-chat-content-enter: 420ms;
+  --motion-view-fade: 150ms;
+  --motion-analysis-result-enter: 180ms;
+  --motion-analysis-block-enter: 180ms;
+  --motion-analysis-char-enter: 260ms;
+  --motion-theme-change: 240ms;
+  --motion-tooltip-enter: 150ms;
+  --motion-scrollbar-color: 180ms;
+  --motion-scrollbar-idle-timeout: 900ms;
   --motion-catalog-phone-fade: 720ms;
   --motion-catalog-backdrop-fade: 520ms;
   --motion-catalog-drawer-slide: 620ms;
@@ -53,8 +74,17 @@
   --motion-discussion-phone-fade: 520ms;
   --motion-discussion-tablet-slide: 400ms;
 
-  --desktop-reading-stage-min-height: 60dvh;
-  --companion-panel-max-height: min(42rem, calc(100dvh - 10rem));
+  /*
+   * Desktop width contract: the two columns divide the available stage, not
+   * the viewport. Opening the 320px catalog simply reduces the stage track.
+   */
+  --reading-stage-max-width: 82rem;
+  --reader-column-share: 0.95fr;
+  --companion-column-share: 1.05fr;
+
+  /* Desktop panels share the space their parent grid actually allocates. */
+  --companion-panel-default-max-height: 38rem;
+  --companion-panel-max-height: var(--companion-panel-default-max-height);
 
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -124,7 +154,7 @@ html.theme-transition,
 html.theme-transition #root,
 html.theme-transition #root * {
   transition-property: color, background-color, border-color, fill, stroke;
-  transition-duration: 240ms;
+  transition-duration: var(--motion-theme-change);
   transition-timing-function: ease-in-out;
 }
 
@@ -333,7 +363,7 @@ html.theme-transition #root * {
       border-radius: 999px;
       background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
       background-clip: padding-box;
-      transition: background-color 180ms ease;
+      transition: background-color var(--motion-scrollbar-color) ease;
     }
 
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-thumb:is(:hover, :active) {
@@ -355,9 +385,27 @@ html.theme-transition #root * {
     }
   }
 
+  /*
+   * Only visibility changes while scrolling. Track width, inset, rounding,
+   * and the WebKit standard-property reset above remain the production baseline.
+   */
   @supports not selector(::-webkit-scrollbar) {
-    :is(html, .poeticus-scrollport):is(:hover, :focus-within) {
+    .poeticus-scrollport {
+      scrollbar-color: transparent transparent;
+    }
+
+    .poeticus-scrollport[data-scrolling='true'] {
       scrollbar-color: color-mix(in oklab, var(--foreground) 35%, transparent) transparent;
+    }
+  }
+
+  @supports selector(::-webkit-scrollbar) {
+    .poeticus-scrollport::-webkit-scrollbar-thumb {
+      background-color: transparent;
+    }
+
+    .poeticus-scrollport[data-scrolling='true']::-webkit-scrollbar-thumb {
+      background-color: color-mix(in oklab, var(--foreground) 35%, transparent);
     }
   }
 
@@ -365,6 +413,88 @@ html.theme-transition #root * {
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-thumb {
       transition: none;
     }
+  }
+
+  /*
+   * Quote entry, replacement and exit share one height transition. The value
+   * comes from the content's measured height instead of a guessed line count.
+   */
+  .poeticus-quote-transition {
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-4px);
+    margin-bottom: 0;
+    transition:
+      height var(--motion-quote-enter) var(--motion-ease-settle),
+      opacity var(--motion-quote-enter) var(--motion-ease-settle),
+      transform var(--motion-quote-enter) var(--motion-ease-settle),
+      margin-bottom var(--motion-quote-enter) var(--motion-ease-settle);
+  }
+
+  .poeticus-quote-open {
+    opacity: 1;
+    transform: translateY(0);
+    margin-bottom: 0.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .poeticus-quote-transition {
+      transition: none;
+    }
+  }
+
+  /*
+   * The input and its footer share a single animated width; the button follows
+   * text growth until the companion column's actual width is reached.
+   * The quote above keeps the full available column width.
+   */
+  .poeticus-composer-frame {
+    --composer-min-width: min(100%, max(22rem, 72%));
+    width: 100%;
+    max-width: 100%;
+  }
+
+  @media (min-width: 64rem) {
+    .poeticus-composer-frame {
+      width: max(var(--composer-min-width), var(--composer-content-width, 0px));
+      max-width: 100%;
+      transition: width var(--motion-composer-width) var(--motion-ease-settle);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .poeticus-composer-frame {
+      transition: none;
+    }
+  }
+
+  /* The composer itself fades only where its text is actually clipped. */
+  .poeticus-input-fade-top {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, black 14px);
+    mask-image: linear-gradient(to bottom, transparent, black 14px);
+  }
+
+  .poeticus-input-fade-bottom {
+    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 14px), transparent);
+    mask-image: linear-gradient(to bottom, black calc(100% - 14px), transparent);
+  }
+
+  .poeticus-input-fade-top.poeticus-input-fade-bottom {
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black 14px,
+      black calc(100% - 14px),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      black 14px,
+      black calc(100% - 14px),
+      transparent
+    );
   }
 
   /* 只有上方还有已滚过的内容时才淡出顶部，避免削弱初次展示的标题和首条消息。 */
