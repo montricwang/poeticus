@@ -245,7 +245,9 @@ test('两栏之间的竖线由布局层持有，并同伴读区共享实测位�
   assert.match(companion, /observer\.observe\(stage\)/)
   assert.match(companion, /--companion-panel-max-height/)
   // Divider and content are siblings in one grid, not nested in the chat pane.
+  const readerIndex = companion.indexOf('{reader}')
   const boundaryIndex = companion.indexOf('<VerticalEditorialDivider')
   const contentIndex = companion.indexOf('ref={stageRef}')
-  assert.ok(boundaryIndex > 0 && contentIndex > boundaryIndex)
+  assert.ok(readerIndex >= 0 && readerIndex < boundaryIndex && boundaryIndex < contentIndex)
+  assert.doesNotMatch(app, /desktop-companion-stage/)
 })
