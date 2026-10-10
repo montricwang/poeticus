@@ -74,8 +74,8 @@ export function DesktopCompanionStage({ children, ready }: DesktopCompanionStage
 
   // The toolbar and composer share the measured stage; the message/analysis
   // scrollport consumes only what remains. No second viewport-height guess.
-  const panelMaxHeight = Math.max(0, Math.min(608, layout.stageHeight - layout.toolbarHeight - 8))
-  const stageCenter = Math.min(layout.stageHeight / 2, window.innerHeight * 0.3)
+  const panelAvailableHeight = Math.max(0, layout.stageHeight - layout.toolbarHeight - 8)
+  const stageCenter = layout.stageHeight / 2
   const verticalOffset = Math.max(
     0,
     Math.min(layout.stageHeight - layout.contentHeight, stageCenter - layout.contentHeight / 2),
@@ -107,7 +107,11 @@ export function DesktopCompanionStage({ children, ready }: DesktopCompanionStage
       <div className={'min-w-0 ' + motionClass} style={{ marginTop: verticalOffset }}>
         <div
           ref={contentRef}
-          style={{ '--companion-panel-max-height': `${panelMaxHeight}px` } as CSSProperties}
+          style={
+            {
+              '--companion-panel-max-height': `min(var(--companion-panel-default-max-height), ${panelAvailableHeight}px)`,
+            } as CSSProperties
+          }
         >
           {children}
         </div>
