@@ -51,6 +51,8 @@ export function ReaderCompanionLayout({
     const content = contentRef.current
     if (!stage || !content) return
 
+    // CompanionPane is a Fragment: its first DOM child must remain ViewToolbar.
+    // Do not wrap that pane in another element without updating this measurement.
     const toolbar = content.firstElementChild
     const measure = () => {
       const stageHeight = Math.ceil(stage.getBoundingClientRect().height)
