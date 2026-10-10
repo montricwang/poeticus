@@ -185,6 +185,7 @@ test('视图短线独立成组件，引文关闭按钮仍紧邻文字', () => {
   )
   assert.doesNotMatch(toolbar, /HorizontalEditorialDivider|ViewToolbarDivider/)
   assert.match(viewDivider, /mb-3 h-px w-\[7\.75rem\]/)
+  assert.doesNotMatch(viewDivider, /h-\[1\.5px\]|HorizontalEditorialDivider/)
   assert.match(app, /<ViewToolbar activeView=\{activeView\}/)
   assert.match(app, /<ViewToolbarDivider \/>/)
   assert.match(quote, /inline-flex w-fit max-w-full/)
