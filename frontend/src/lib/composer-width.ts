@@ -1,4 +1,4 @@
-/** Width follows the longest typed line, then caps at the editorial column width. */
+/** Measure text only; CSS owns the minimum and maximum composer widths. */
 export function composerWidthForLines(
   question: string,
   measureText: (text: string) => number,
@@ -7,6 +7,6 @@ export function composerWidthForLines(
     .split(/\r?\n/)
     .reduce((widest, line) => Math.max(widest, measureText(line)), 0)
 
-  // 32px allows for the input's side padding and caret breathing room.
-  return Math.min(608, Math.max(288, Math.ceil(longestLine + 32)))
+  // Textarea padding and a little room for the caret.
+  return Math.ceil(longestLine + 32)
 }
