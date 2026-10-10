@@ -54,6 +54,11 @@ test('弱化标点只改变展示分段，不影响正常原文分行', () => {
   const source = '“春风”吹入《玉楼》，“夜未央”。□'
   const lines = buildPoemLines(source)
   assert.equal(lines.map((line) => line.text).join(''), source)
-  assert.equal(buildPoemTextRuns(source).map((run) => run.text).join(''), source)
+  assert.equal(
+    buildPoemTextRuns(source)
+      .map((run) => run.text)
+      .join(''),
+    source,
+  )
   assert.equal(lines[0].text, '“春风”吹入《玉楼》，“夜未央”。')
 })
