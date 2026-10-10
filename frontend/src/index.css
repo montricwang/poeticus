@@ -405,8 +405,8 @@ html.theme-transition #root * {
   }
 
   /*
-   * Quote entry and exit use the same transition. Grid rows track the real
-   * quote height without a hard-coded max-height animation.
+   * Quote entry, replacement and exit share one height transition. The value
+   * comes from the content's measured height instead of a guessed line count.
    */
   .poeticus-quote-transition {
     height: 0;
