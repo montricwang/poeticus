@@ -61,6 +61,11 @@ jobs:
       - name: Lint frontend
         run: npm run lint
 
+      - name: Inspect reader navigation formatting
+        run: |
+          npx prettier --write src/components/reader-navigation.tsx
+          git diff -- src/components/reader-navigation.tsx
+
       - name: Check frontend formatting
         run: npm run format:check
 
