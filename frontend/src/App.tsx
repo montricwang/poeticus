@@ -231,6 +231,7 @@ function App() {
       return
     }
 
+    // 重新生成时从赏析开头阅读，不沿用上一份结果的滚动位置。
     analysisScrollTopRef.current = 0
     setActiveView('analysis')
     void analyzePoem()
