@@ -104,7 +104,13 @@ export function ReaderCompanionLayout({
     : ''
 
   return (
-    <div className="grid h-full min-h-0 min-w-0 grid-cols-[minmax(0,var(--reader-column-share))_var(--editorial-divider-thickness)_minmax(0,var(--companion-column-share))] grid-rows-[minmax(0,1fr)] items-stretch gap-x-6">
+    <div
+      className="grid h-full min-h-0 min-w-0 grid-rows-[minmax(0,1fr)] items-stretch gap-x-6"
+      style={{
+        gridTemplateColumns:
+          'minmax(0, var(--reader-column-share)) var(--editorial-divider-thickness) minmax(0, var(--companion-column-share))',
+      }}
+    >
       <div className="min-h-0 min-w-0">{reader}</div>
 
       {/* The boundary belongs to the layout, not to either content column. */}
