@@ -60,5 +60,6 @@ test('弱化标点只改变展示分段，不影响正常原文分行', () => {
       .join(''),
     source,
   )
-  assert.equal(lines[0].text, '“春风”吹入《玉楼》，“夜未央”。')
+  assert.equal(lines[0].text, '“春风”吹入《玉楼》，')
+  assert.equal(lines[1].text, '“夜未央”。')
 })
