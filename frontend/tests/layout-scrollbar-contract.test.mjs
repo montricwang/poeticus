@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs'
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const styles = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8')
 const companion = readFileSync(
-  new URL('../src/components/desktop-companion-stage.tsx', import.meta.url),
+  new URL('../src/components/reader-companion-layout.tsx', import.meta.url),
   'utf8',
 )
 const divider = readFileSync(
@@ -16,7 +16,7 @@ const divider = readFileSync(
 test('桌面阅读区使用剩余视口高度，正文在本栏滚动', () => {
   assert.match(app, /flex h-dvh min-h-0 flex-col overflow-hidden/)
   assert.match(app, /flex min-h-0 w-full max-w-\[1600px\] flex-1 flex-col overflow-hidden/)
-  assert.match(app, /grid h-full min-h-0 min-w-0/)
+  assert.match(companion, /grid h-full min-h-0 min-w-0/)
   assert.match(
     app,
     /poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto/,
@@ -37,7 +37,10 @@ test('延续生产版滚动条与分割线，不回退到浏览器默认外观',
     /scrollbar-color: color-mix\(in oklab, var\(--foreground\) 6%, transparent\)/,
   )
   assert.match(styles, /--editorial-divider-thickness: 1\.5px/)
-  assert.match(companion, /grid-cols-\[var\(--editorial-divider-thickness\)_minmax\(0,1fr\)\]/)
+  assert.match(companion, /gridTemplateColumns:/)
+  assert.match(companion, /var\(--reader-column-share\)/)
+  assert.match(companion, /var\(--editorial-divider-thickness\)/)
+  assert.match(companion, /var\(--companion-column-share\)/)
   assert.doesNotMatch(companion, /grid-cols-\[1\.5px_/)
   assert.doesNotMatch(divider, /h-\[1\.5px\]|w-\[1\.5px\]/)
   assert.match(styles, /@supports selector\(::-webkit-scrollbar\)/)
@@ -163,8 +166,9 @@ test('阅读栏和伴读栏共用目录变化后的剩余空间', () => {
   assert.match(styles, /--reader-column-share: 0\.95fr/)
   assert.match(styles, /--companion-column-share: 1\.05fr/)
   assert.match(app, /max-w-\[var\(--reading-stage-max-width\)\]/)
-  assert.match(app, /lg:grid-cols-\[minmax\(0,var\(--reader-column-share\)\)/)
-  assert.match(app, /_minmax\(0,var\(--companion-column-share\)\)\]/)
+  assert.match(app, /<ReaderCompanionLayout/)
+  assert.match(companion, /gridTemplateColumns:/)
+  assert.doesNotMatch(app, /<DesktopCompanionStage/)
   assert.doesNotMatch(styles, /\.poeticus-reading-columns/)
   assert.match(app, /2xl:grid-cols-\[320px_minmax\(0,1fr\)\]/)
   assert.match(app, /2xl:transition-\[grid-template-columns\]/)
@@ -226,4 +230,22 @@ test('发送按钮和操作提示使用全宽脚注，输入框宽度独立动�
   assert.ok(controls > frameEnd && button > controls)
   assert.match(styles, /--motion-composer-width: 320ms/)
   assert.match(divider, /h-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
+})
+
+test('两栏之间的竖线由布局层持有，并同伴读区共享实测位置', () => {
+  assert.match(app, /<ReaderCompanionLayout/)
+  assert.doesNotMatch(app, /<VerticalEditorialDivider/)
+  assert.match(companion, /<VerticalEditorialDivider/)
+  assert.match(companion, /const stageCenter = layout\.stageHeight/)
+  assert.match(companion, /const verticalOffset = Math\.max/)
+  assert.match(companion, /const dividerHeight = Math\.max/)
+  assert.match(companion, /style=\{\{ marginTop: verticalOffset \}\}/)
+  assert.match(companion, /style=\{\{ height: dividerHeight \}\}/)
+  assert.match(companion, /observer\.observe\(content\)/)
+  assert.match(companion, /observer\.observe\(stage\)/)
+  assert.match(companion, /--companion-panel-max-height/)
+  // Divider and content are siblings in one grid, not nested in the chat pane.
+  const boundaryIndex = companion.indexOf('<VerticalEditorialDivider')
+  const contentIndex = companion.indexOf('ref={stageRef}')
+  assert.ok(boundaryIndex > 0 && contentIndex > boundaryIndex)
 })
