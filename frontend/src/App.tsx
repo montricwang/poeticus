@@ -4,6 +4,7 @@ import { ArrowLeft, MessageCircle, PanelLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { PoemReader } from '@/components/poem-reader'
+import { ReaderNavigation } from '@/components/reader-navigation'
 import { PoemCatalog } from '@/components/poem-catalog'
 import { DesktopCompanionStage } from '@/components/desktop-companion-stage'
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
@@ -365,14 +366,14 @@ function App() {
     if (poemReady) {
       return (
         <div className="w-full lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:flex-col lg:pt-2">
-          <PoemReader
-            key={activePoem.id}
-            work={activePoem}
-            onSelect={handleReaderSelect}
-            neighbors={neighbors}
-            navigationBlocked={chatLoading || analyzing || !!switchTarget}
-            onNavigate={handlePoemChange}
-          />
+          <PoemReader key={activePoem.id} work={activePoem} onSelect={handleReaderSelect} />
+          {!wideDiscussionLayout && (
+            <ReaderNavigation
+              neighbors={neighbors}
+              disabled={chatLoading || analyzing || !!switchTarget}
+              onNavigate={handlePoemChange}
+            />
+          )
         </div>
       )
     }
@@ -642,10 +643,10 @@ function App() {
                   inert={!!switchTarget}
                   className="grid min-w-0 grid-cols-1 items-start gap-x-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(340px,1.15fr)]"
                 >
-                  <div className="relative min-w-0">
+                  <div className="relative min-w-0 lg:flex lg:min-h-[calc(100dvh-9rem)] lg:flex-col">
                     <div
                       className={
-                        'poeticus-scrollport poeticus-auto-scrollbar poeticus-reader-scrollport min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2 ' +
+                        'poeticus-scrollport poeticus-auto-scrollbar poeticus-reader-scrollport min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:max-h-[calc(100dvh-12rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2 ' +
                         (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
                         (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
                       }
@@ -654,8 +655,17 @@ function App() {
                       onWheel={(event) => markReaderScrolling(event.currentTarget)}
                       onTouchMove={(event) => markReaderScrolling(event.currentTarget)}
                     >
-                      <div className={poemTransitionClass}>{renderReaderContent()}</div>
+                      <div className={poemTransitionClass + ' lg:flex lg:flex-1 lg:flex-col'}>
+                        {renderReaderContent()}
+                      </div>
                     </div>
+                    {poemReady && (
+                      <ReaderNavigation
+                        neighbors={neighbors}
+                        disabled={chatLoading || analyzing || !!switchTarget}
+                        onNavigate={handlePoemChange}
+                      />
+                    )}
                     {showSwitchNotice && switchTarget && (
                       <div
                         role="status"
