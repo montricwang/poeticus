@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 
 export type ActiveView = 'chat' | 'analysis'
 
@@ -9,7 +10,8 @@ type ViewToolbarProps = {
 
 export function ViewToolbar({ activeView, onViewChange }: ViewToolbarProps) {
   return (
-    <div className="mb-3 flex shrink-0 items-center gap-2" role="group" aria-label="讨论视图">
+    <div className="mb-3 w-fit shrink-0">
+      <div className="mb-3 flex items-center gap-2" role="group" aria-label="讨论视图">
       <Button
         type="button"
         variant={activeView === 'chat' ? 'default' : 'ghost'}
@@ -28,6 +30,8 @@ export function ViewToolbar({ activeView, onViewChange }: ViewToolbarProps) {
       >
         赏析
       </Button>
+      </div>
+      <HorizontalEditorialDivider className="w-[calc(100%+0.75rem)]" />
     </div>
   )
 }
