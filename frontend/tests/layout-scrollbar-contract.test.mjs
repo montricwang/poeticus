@@ -255,6 +255,7 @@ test('手机阅读导航保留提示，前后按钮各自贴近两端', () => {
   assert.doesNotMatch(navigation, /hidden whitespace-nowrap/)
   assert.match(navigation, /lg:max-w-\[27rem\]/)
   assert.match(navigation, /<HorizontalEditorialDivider className="mb-3 w-full" \/>/)
+  assert.doesNotMatch(navigation, /hidden w-full lg:block/)
   assert.doesNotMatch(navigation, /mx-auto mt-6 w-full max-w-\[27rem\]/)
 })
 
