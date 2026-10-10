@@ -222,67 +222,64 @@ export function ChatPanel({
         onScrollToBottom={scrollToBottom}
         swapPhase={swapPhase}
       >
-          {turns.map((turn, index) => (
-            <div key={turn.id} className="space-y-4">
-              {index > 0 && <HorizontalEditorialDivider className="mb-6 w-12" />}
-              <MessageEntrance
-                animationId={`user:${turn.id}`}
-                seenAnimationsRef={seenAnimationsRef}
-              >
-                <UserMessage
-                  turn={turn}
-                  editing={editingTurnId === turn.id}
-                  draft={editDraft}
-                  loading={loading}
-                  copyStatus={copyStatus}
-                  onDraftChange={setEditDraft}
-                  onStartEdit={() => {
-                    setEditingTurnId(turn.id)
-                    setEditDraft(turn.question)
-                  }}
-                  onCancelEdit={() => {
-                    setEditingTurnId(null)
-                    setEditDraft('')
-                  }}
-                  onSaveEdit={() => {
-                    const isOlderMessage = turn.id !== turns[turns.length - 1]?.id
+        {turns.map((turn, index) => (
+          <div key={turn.id} className="space-y-4">
+            {index > 0 && <HorizontalEditorialDivider className="mb-6 w-12" />}
+            <MessageEntrance animationId={`user:${turn.id}`} seenAnimationsRef={seenAnimationsRef}>
+              <UserMessage
+                turn={turn}
+                editing={editingTurnId === turn.id}
+                draft={editDraft}
+                loading={loading}
+                copyStatus={copyStatus}
+                onDraftChange={setEditDraft}
+                onStartEdit={() => {
+                  setEditingTurnId(turn.id)
+                  setEditDraft(turn.question)
+                }}
+                onCancelEdit={() => {
+                  setEditingTurnId(null)
+                  setEditDraft('')
+                }}
+                onSaveEdit={() => {
+                  const isOlderMessage = turn.id !== turns[turns.length - 1]?.id
 
-                    if (
-                      isOlderMessage &&
-                      !window.confirm('保存后将移除这条消息之后的对话，是否继续？')
-                    ) {
-                      return
-                    }
+                  if (
+                    isOlderMessage &&
+                    !window.confirm('保存后将移除这条消息之后的对话，是否继续？')
+                  ) {
+                    return
+                  }
 
-                    onEdit(turn.id, editDraft.trim())
-                    setEditingTurnId(null)
-                    setEditDraft('')
-                  }}
-                  onCopy={(content) => {
-                    void handleCopy(`${turn.id}:user`, content)
-                  }}
-                />
-              </MessageEntrance>
+                  onEdit(turn.id, editDraft.trim())
+                  setEditingTurnId(null)
+                  setEditDraft('')
+                }}
+                onCopy={(content) => {
+                  void handleCopy(`${turn.id}:user`, content)
+                }}
+              />
+            </MessageEntrance>
 
-              <MessageEntrance
-                key={`assistant:${turn.id}:${turn.status === 'pending' ? 'pending' : 'answer'}`}
-                animationId={`assistant:${turn.id}:${turn.status === 'pending' ? 'pending' : 'answer'}`}
-                seenAnimationsRef={seenAnimationsRef}
-                enabled={turn.status !== 'failed'}
-              >
-                <AssistantMessage
-                  turn={turn}
-                  loading={loading}
-                  copyStatus={copyStatus}
-                  onCopy={(content) => {
-                    void handleCopy(`${turn.id}:assistant`, content)
-                  }}
-                  onRetry={() => onRetry(turn.id)}
-                  onRegenerate={() => onRegenerate(turn.id)}
-                />
-              </MessageEntrance>
-            </div>
-          ))}
+            <MessageEntrance
+              key={`assistant:${turn.id}:${turn.status === 'pending' ? 'pending' : 'answer'}`}
+              animationId={`assistant:${turn.id}:${turn.status === 'pending' ? 'pending' : 'answer'}`}
+              seenAnimationsRef={seenAnimationsRef}
+              enabled={turn.status !== 'failed'}
+            >
+              <AssistantMessage
+                turn={turn}
+                loading={loading}
+                copyStatus={copyStatus}
+                onCopy={(content) => {
+                  void handleCopy(`${turn.id}:assistant`, content)
+                }}
+                onRetry={() => onRetry(turn.id)}
+                onRegenerate={() => onRegenerate(turn.id)}
+              />
+            </MessageEntrance>
+          </div>
+        ))}
       </ChatMessageList>
 
       {/* The divider follows the history's height transition in both directions. */}
