@@ -2,6 +2,7 @@ import { Check, Copy, LoaderCircle, RotateCcw } from 'lucide-react'
 
 import { AssistantMarkdown } from '@/components/assistant-markdown'
 import { Button } from '@/components/ui/button'
+import { ActionTooltip } from '@/components/action-tooltip'
 import type { ChatTurn } from '@/types/chat'
 
 type CopyStatus = {
@@ -33,8 +34,8 @@ export function AssistantMessage({
   if (turn.status === 'pending') {
     return (
       <div role="status" className="space-y-2">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground">AI 伴读</p>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground">Poeticus</p>
+        <div className="flex items-center gap-2 text-base text-muted-foreground">
           <LoaderCircle className="size-4 animate-spin" />
           正在思考……
         </div>
@@ -49,7 +50,7 @@ export function AssistantMessage({
         className={`space-y-2 border-l-2 py-1 pl-3 ${notice ? 'border-border' : 'border-destructive/40'}`}
       >
         <p className="text-xs font-medium tracking-wide text-muted-foreground">
-          {notice ? 'AI 伴读 · 稍等一会儿' : 'AI 伴读 · 请求失败'}
+          {notice ? 'Poeticus · 稍等一会儿' : 'Poeticus · 请求失败'}
         </p>
         {/* 网络中断后保留已经收到的正文，而不是清空历史输出。 */}
         {turn.answer && (
@@ -59,7 +60,7 @@ export function AssistantMessage({
         )}
         <p
           role={notice ? 'status' : 'alert'}
-          className={`mb-3 text-sm leading-6 ${notice ? 'text-muted-foreground' : 'text-destructive'}`}
+          className={`mb-3 text-base leading-7 ${notice ? 'text-muted-foreground' : 'text-destructive'}`}
         >
           {!notice && (turn.answer ? '回答未完成：' : '请求失败：')}
           {turn.error ?? '消息发送失败'}
@@ -75,8 +76,8 @@ export function AssistantMessage({
   if (!turn.answer) return null
 
   return (
-    <div className="min-w-0 space-y-2" aria-label="AI 伴读回复">
-      <div className="text-xs font-medium tracking-wide text-muted-foreground">AI 伴读</div>
+    <div className="min-w-0 space-y-2" aria-label="Poeticus回复">
+      <div className="text-xs font-medium tracking-wide text-muted-foreground">Poeticus</div>
       <div className="group min-w-0 select-text">
         <AssistantMarkdown content={turn.answer} />
 
@@ -90,33 +91,35 @@ export function AssistantMessage({
         {/* 完整回答才允许复制和重新生成；生成中仍可手动选择正文。 */}
         {turn.status === 'done' && (
           <div className="mt-2 flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-8 text-muted-foreground/60 hover:text-foreground"
-              onClick={() => onCopy(turn.answer ?? '')}
-              aria-label="复制 AI 回答"
-              title="复制 AI 回答"
-            >
-              {copySucceeded ? <Check className="size-4" /> : <Copy className="size-4" />}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-8 text-muted-foreground/60 hover:text-foreground"
-              onClick={onRegenerate}
-              disabled={loading || turn.regenerating}
-              aria-label="重新生成 AI 回答"
-              title="重新生成"
-            >
-              {turn.regenerating ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                <RotateCcw className="size-4" />
-              )}
-            </Button>
+            <ActionTooltip label="复制回复">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground/60 hover:text-foreground"
+                onClick={() => onCopy(turn.answer ?? '')}
+                aria-label="复制 AI 回答"
+              >
+                {copySucceeded ? <Check className="size-4" /> : <Copy className="size-4" />}
+              </Button>
+            </ActionTooltip>
+            <ActionTooltip label="重新生成">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground/60 hover:text-foreground"
+                onClick={onRegenerate}
+                disabled={loading || turn.regenerating}
+                aria-label="重新生成 AI 回答"
+              >
+                {turn.regenerating ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="size-4" />
+                )}
+              </Button>
+            </ActionTooltip>
             {copyFailed && (
               <span role="alert" className="text-xs text-destructive">
                 复制失败，请手动选择文字复制

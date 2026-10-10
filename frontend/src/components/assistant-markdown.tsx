@@ -11,13 +11,7 @@ export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantM
   const isUser = variant === 'user'
 
   return (
-    <div
-      className={
-        isUser
-          ? 'min-w-0 wrap-break-word text-sm leading-6 text-foreground/90'
-          : 'min-w-0 wrap-break-word text-sm leading-7 text-foreground/90'
-      }
-    >
+    <div className="min-w-0 wrap-break-word text-base leading-7 text-foreground/90">
       <ReactMarkdown
         remarkPlugins={isUser ? [remarkGfm, remarkBreaks] : [remarkGfm]}
         skipHtml
@@ -29,15 +23,15 @@ export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantM
           ),
 
           h1: ({ children }) => (
-            <h1 className="mb-3 mt-5 text-lg font-semibold first:mt-0">{children}</h1>
+            <h1 className="mb-3 mt-5 text-xl font-semibold first:mt-0">{children}</h1>
           ),
 
           h2: ({ children }) => (
-            <h2 className="mb-3 mt-5 text-base font-semibold first:mt-0">{children}</h2>
+            <h2 className="mb-3 mt-5 text-lg font-semibold first:mt-0">{children}</h2>
           ),
 
           h3: ({ children }) => (
-            <h3 className="mb-2 mt-4 text-sm font-semibold first:mt-0">{children}</h3>
+            <h3 className="mb-2 mt-4 text-base font-semibold first:mt-0">{children}</h3>
           ),
 
           strong: ({ children }) => (

@@ -120,7 +120,10 @@ export function PoemCatalog({
         <p className="mt-2 px-1 text-xs text-muted-foreground">空格分隔多个词，全部匹配即可</p>
       </form>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" aria-busy={loading}>
+      <div
+        className="poeticus-scrollport min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        aria-busy={loading}
+      >
         {error ? (
           <div role="alert" className="space-y-3 p-4 text-sm text-destructive">
             <p>目录获取失败：{error}</p>

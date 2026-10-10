@@ -20,8 +20,9 @@ export type PoemTextRun = {
 const LINE_ENDINGS = new Set(['，', ',', '。', '.', '！', '!', '？', '?'])
 // 右引号等闭合符号应随前一个句末标点留在同一行。
 const CLOSING_MARKS = new Set(['”', '’', '」', '』', '）', '》', '】'])
-// 标点样式覆盖行内顿号；视觉断行条件由 LINE_ENDINGS 定义。
-const PUNCTUATION = /^[、，。；：！？,.!?;:]+$/u
+// 标点样式兼顾中文书名号、各种引号与缺字方框；断行仍只按 LINE_ENDINGS。
+const PUNCTUATION_MARKS = /([\p{P}□■▢〓�]+)/u
+const PUNCTUATION = /^[\p{P}□■▢〓�]+$/u
 
 /** 识别原文中的 CR 与 LF 换行字符。 */
 function isNewline(character: string | undefined): boolean {
@@ -90,7 +91,7 @@ export function buildPoemLines(source: string): PoemLine[] {
  */
 export function buildPoemTextRuns(line: string): PoemTextRun[] {
   return line
-    .split(/([、，。；：！？,.!?;:]+)/u)
+    .split(PUNCTUATION_MARKS)
     .filter(Boolean)
     .map((text) => ({ text, punctuation: PUNCTUATION.test(text) }))
 }

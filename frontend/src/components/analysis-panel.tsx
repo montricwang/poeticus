@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { LoaderCircle } from 'lucide-react'
 
 import { AnalysisReveal, AnalysisTextEntrance } from '@/components/analysis-text-entrance'
+import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { PoemAnalysis } from '@/types/poem'
@@ -15,6 +16,7 @@ type AnalysisPanelProps = {
   switching: boolean
   animateResult: boolean
   onAnimationStarted: () => void
+  scrollTopRef: RefObject<number>
   fillAvailableHeight?: boolean
   className?: string
 }
@@ -35,7 +37,7 @@ function AnalysisResult({ analysis, animateResult, onAnimationStarted }: Analysi
   }, [animate, onAnimationStarted])
 
   return (
-    <div className={cn('space-y-10', animate && 'poeticus-analysis-result-enter')}>
+    <div className={cn('space-y-6', animate && 'poeticus-analysis-result-enter')}>
       <AnalysisReveal animate={animate}>
         {(revealed) => (
           <section>
@@ -43,19 +45,19 @@ function AnalysisResult({ analysis, animateResult, onAnimationStarted }: Analysi
               as="h3"
               text="现代汉语译文"
               animate={animate && revealed}
-              className="mb-4 text-base font-semibold"
+              className="mb-3 text-base font-semibold"
             />
             <AnalysisTextEntrance
               as="p"
               text={analysis.translation}
               animate={animate && revealed}
-              className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
+              className="whitespace-pre-wrap text-sm leading-7 text-foreground/85"
             />
           </section>
         )}
       </AnalysisReveal>
 
-      <div className="h-px w-12 bg-border/80" aria-hidden="true" />
+      <HorizontalEditorialDivider className="w-10" />
 
       <section>
         <AnalysisReveal animate={animate}>
@@ -64,7 +66,7 @@ function AnalysisResult({ analysis, animateResult, onAnimationStarted }: Analysi
               as="h3"
               text="词语注释"
               animate={animate && revealed}
-              className="mb-5 text-base font-semibold"
+              className="mb-4 text-base font-semibold"
             />
           )}
         </AnalysisReveal>
@@ -76,7 +78,7 @@ function AnalysisResult({ analysis, animateResult, onAnimationStarted }: Analysi
             )}
           </AnalysisReveal>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {analysis.glosses.map((gloss, index) => (
               <AnalysisReveal key={index} animate={animate}>
                 {(revealed) => (
@@ -101,7 +103,7 @@ function AnalysisResult({ analysis, animateResult, onAnimationStarted }: Analysi
         )}
       </section>
 
-      <div className="h-px w-12 bg-border/80" aria-hidden="true" />
+      <HorizontalEditorialDivider className="w-10" />
 
       <AnalysisReveal animate={animate}>
         {(revealed) => (
@@ -110,13 +112,13 @@ function AnalysisResult({ analysis, animateResult, onAnimationStarted }: Analysi
               as="h3"
               text="文学赏析"
               animate={animate && revealed}
-              className="mb-4 text-base font-semibold"
+              className="mb-3 text-base font-semibold"
             />
             <AnalysisTextEntrance
               as="p"
               text={analysis.commentary}
               animate={animate && revealed}
-              className="whitespace-pre-wrap text-sm leading-8 text-foreground/85"
+              className="whitespace-pre-wrap text-sm leading-7 text-foreground/85"
             />
           </section>
         )}
@@ -134,9 +136,23 @@ export function AnalysisPanel({
   switching,
   animateResult,
   onAnimationStarted,
+  scrollTopRef,
   fillAvailableHeight = false,
   className,
 }: AnalysisPanelProps) {
+  const scrollportRef = useRef<HTMLDivElement>(null)
+
+  // 对话/赏析相互切换会卸载当前面板，恢复先前的实际滚动位置。
+  // 用 layout effect 在浏览器绘制前复位，避免先跳到顶部再闪回原处。
+  useLayoutEffect(() => {
+    const scrollport = scrollportRef.current
+    if (!scrollport) return
+    scrollport.scrollTop = scrollTopRef.current
+    return () => {
+      scrollTopRef.current = scrollport.scrollTop
+    }
+  }, [scrollTopRef])
+
   return (
     <section
       aria-label="整首赏析"
@@ -151,8 +167,12 @@ export function AnalysisPanel({
       )}
     >
       <div
+        ref={scrollportRef}
+        onScroll={(event) => {
+          scrollTopRef.current = event.currentTarget.scrollTop
+        }}
         className={cn(
-          'min-h-0',
+          'poeticus-scrollport min-h-0',
           fillAvailableHeight
             ? 'flex-1 overflow-y-auto py-4 pr-2'
             : analysis
@@ -207,7 +227,7 @@ export function AnalysisPanel({
               fillAvailableHeight ? 'h-full' : 'py-8',
             )}
           >
-            <div className="space-y-4">
+            <div className="space-y-3">
               <p className="text-sm leading-7 text-muted-foreground">
                 生成译文、词语注释与文学赏析。
               </p>

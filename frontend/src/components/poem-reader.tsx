@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 
+import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { PoemBody } from '@/components/poem-body'
 
 import { poemText } from '@/data/poem-library'
@@ -56,6 +57,7 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
         </article>
       </div>
 
+      <HorizontalEditorialDivider className="mx-auto mt-4 w-20 lg:w-[82%] lg:max-w-[24rem]" />
       <p className="mt-3 text-center text-xs text-muted-foreground">划选诗句，即可引用提问</p>
     </div>
   )
