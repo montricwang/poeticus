@@ -222,7 +222,7 @@ export function ChatPanel({
         hasUnreadReply={hasUnreadReply}
         onScrollToBottom={scrollToBottom}
         swapPhase={swapPhase}
-        >
+      >
           {turns.map((turn, index) => (
             <div key={turn.id} className="space-y-4">
               {index > 0 && <HorizontalEditorialDivider className="mb-6 w-12" />}
