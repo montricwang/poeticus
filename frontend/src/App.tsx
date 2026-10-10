@@ -10,8 +10,8 @@ import { ReaderCompanionLayout } from '@/components/reader-companion-layout'
 import { ChatPanel } from '@/components/chat-panel'
 import { AnalysisPanel } from '@/components/analysis-panel'
 import { MobileDiscussionScreen } from '@/components/mobile-discussion-screen'
-import { ViewToolbar } from '@/components/view-toolbar'
-import { ViewToolbarDivider } from '@/components/view-toolbar-divider'
+import { CompanionPane } from '@/components/companion-pane'
+import { ReaderPane } from '@/components/reader-pane'
 import type { ActiveView } from '@/components/view-toolbar'
 
 import { fetchPoem } from '@/data/poem-library'
@@ -308,17 +308,12 @@ function App() {
     }
 
     return (
-      <>
-        <ViewToolbar activeView={activeView} onViewChange={handleViewChange} />
-        <ViewToolbarDivider />
-
-        <div
-          className={
-            'min-w-0 transition-opacity duration-[var(--motion-view-fade)] ease-in-out motion-reduce:transition-none ' +
-            (fillAvailableHeight ? 'flex min-h-0 flex-1 flex-col ' : '') +
-            (viewFadingOut ? 'opacity-0' : 'opacity-100')
-          }
-        >
+      <CompanionPane
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        fillAvailableHeight={fillAvailableHeight}
+        fadingOut={viewFadingOut}
+      >
           {activeView === 'chat' ? (
             <ChatPanel
               poemId={activePoem.id}
@@ -353,8 +348,7 @@ function App() {
               scrollTopRef={analysisScrollTopRef}
             />
           )}
-        </div>
-      </>
+      </CompanionPane>
     )
   }
 
