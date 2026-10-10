@@ -94,8 +94,10 @@ export function ChatComposer({
             (fades.bottom ? 'poeticus-input-fade-bottom' : '')
           }
         />
+      </div>
 
-        <div className="flex items-center justify-between px-2">
+      {/* Controls always span the companion width; only the text field grows. */}
+      <div className="flex w-full items-center justify-between px-2">
           <span className="text-xs text-muted-foreground">
             {loading ? 'AI 正在回复' : 'Enter 发送 · Shift+Enter 换行'}
           </span>
@@ -114,7 +116,6 @@ export function ChatComposer({
               <ArrowUp className="size-4" />
             )}
           </Button>
-        </div>
       </div>
     </div>
   )
