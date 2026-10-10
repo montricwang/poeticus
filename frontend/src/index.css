@@ -46,6 +46,19 @@
    * - 目录与讨论区的动效时长按交互命名，便于集中调整。
    */
   --motion-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Component-specific timing. These are shared tokens, not a page-wide animation. */
+  --motion-poem-swap: 360ms;
+  --motion-chat-history-resize: 500ms;
+  --motion-companion-reflow: 520ms;
+  --motion-quote-enter: 460ms;
+  --motion-message-enter: 380ms;
+  --motion-view-fade: 150ms;
+  --motion-analysis-result-enter: 180ms;
+  --motion-analysis-block-enter: 180ms;
+  --motion-analysis-char-enter: 260ms;
+  --motion-theme-change: 240ms;
+  --motion-tooltip-enter: 150ms;
+  --motion-scrollbar-color: 180ms;
   --motion-catalog-phone-fade: 720ms;
   --motion-catalog-backdrop-fade: 520ms;
   --motion-catalog-drawer-slide: 620ms;
@@ -53,10 +66,9 @@
   --motion-discussion-phone-fade: 520ms;
   --motion-discussion-tablet-slide: 400ms;
 
-  /* Keep the half-stage offset in sync with the desktop reading stage height. */
-  --desktop-reading-stage-min-height: 60dvh;
-  --desktop-reading-stage-center-offset: 30dvh;
-  --companion-panel-max-height: 38rem;
+  /* Desktop panels share the space their parent grid actually allocates. */
+  --companion-panel-default-max-height: 38rem;
+  --companion-panel-max-height: var(--companion-panel-default-max-height);
 
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -126,7 +138,7 @@ html.theme-transition,
 html.theme-transition #root,
 html.theme-transition #root * {
   transition-property: color, background-color, border-color, fill, stroke;
-  transition-duration: 240ms;
+  transition-duration: var(--motion-theme-change);
   transition-timing-function: ease-in-out;
 }
 
@@ -335,7 +347,7 @@ html.theme-transition #root * {
       border-radius: 999px;
       background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
       background-clip: padding-box;
-      transition: background-color 180ms ease;
+      transition: background-color var(--motion-scrollbar-color) ease;
     }
 
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-thumb:is(:hover, :active) {
@@ -357,15 +369,64 @@ html.theme-transition #root * {
     }
   }
 
-  @supports not selector(::-webkit-scrollbar) {
-    :is(html, .poeticus-scrollport):is(:hover, :focus-within) {
-      scrollbar-color: color-mix(in oklab, var(--foreground) 35%, transparent) transparent;
+  /*
+   * Only visibility changes while scrolling. Track width, inset, rounding,
+   * and the WebKit standard-property reset above remain the production baseline.
+   */
+  .poeticus-scrollport {
+    scrollbar-color: transparent transparent;
+  }
+
+  .poeticus-scrollport:is([data-scrolling='true'], :focus-within) {
+    scrollbar-color: color-mix(in oklab, var(--foreground) 35%, transparent) transparent;
+  }
+
+  @supports selector(::-webkit-scrollbar) {
+    /* Non-auto scrollbar-color must not override custom Chromium scrollbars. */
+    .poeticus-scrollport {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+
+    .poeticus-scrollport::-webkit-scrollbar-thumb {
+      background-color: transparent;
+    }
+
+    .poeticus-scrollport:is([data-scrolling='true'], :focus-within)::-webkit-scrollbar-thumb {
+      background-color: color-mix(in oklab, var(--foreground) 35%, transparent);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-thumb {
       transition: none;
+    }
+  }
+
+  @keyframes poeticus-quote-enter {
+    from {
+      opacity: 0;
+      max-height: 0;
+      transform: translateY(-4px);
+      margin-bottom: 0;
+    }
+    to {
+      opacity: 1;
+      max-height: 6rem;
+      transform: translateY(0);
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .poeticus-quote-enter {
+    max-height: 6rem;
+    overflow: hidden;
+    animation: poeticus-quote-enter var(--motion-quote-enter) var(--motion-ease-settle) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .poeticus-quote-enter {
+      animation: none;
     }
   }
 
