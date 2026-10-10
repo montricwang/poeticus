@@ -1,9 +1,10 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { ArrowUp, LoaderCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { QuotePreview } from '@/components/quote-preview'
+import { composerWidthForLines } from '@/lib/composer-width'
 import type { SelectedText } from '@/types/poem'
 
 type ChatComposerProps = {
@@ -25,6 +26,7 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [fades, setFades] = useState({ top: false, bottom: false })
+  const [composerWidth, setComposerWidth] = useState(288)
 
   const updateFades = useCallback((element: HTMLTextAreaElement) => {
     const top = element.scrollTop > 4
@@ -37,8 +39,19 @@ export function ChatComposer({
   useLayoutEffect(() => {
     const element = textareaRef.current
     if (!element) return
-    const frame = window.requestAnimationFrame(() => updateFades(element))
-    const observer = new ResizeObserver(() => updateFades(element))
+    const measure = () => {
+      updateFades(element)
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      if (!context) return
+
+      const computed = window.getComputedStyle(element)
+      context.font = computed.font || `${computed.fontSize} ${computed.fontFamily}`
+      const width = composerWidthForLines(question, (line) => context.measureText(line).width)
+      setComposerWidth((previous) => (previous === width ? previous : width))
+    }
+    const frame = window.requestAnimationFrame(measure)
+    const observer = new ResizeObserver(measure)
     observer.observe(element)
     return () => {
       window.cancelAnimationFrame(frame)
@@ -50,7 +63,10 @@ export function ChatComposer({
     <div className="shrink-0 bg-transparent px-0 pt-2 pb-0 lg:pt-2 lg:pb-1">
       <QuotePreview selected={selected} loading={loading} onClearQuote={onClearQuote} />
 
-      <div className="bg-transparent py-1">
+      <div
+        className="poeticus-composer-frame bg-transparent py-1"
+        style={{ '--composer-content-width': `${composerWidth}px` } as CSSProperties}
+      >
         <Textarea
           ref={textareaRef}
           placeholder="针对诗句提出你的问题……"
