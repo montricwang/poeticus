@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { LoaderCircle } from 'lucide-react'
 
 import { AnalysisReveal, AnalysisTextEntrance } from '@/components/analysis-text-entrance'
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { Button } from '@/components/ui/button'
+import { useScrollActivity } from '@/hooks/use-scroll-activity'
 import { cn } from '@/lib/utils'
 import type { PoemAnalysis } from '@/types/poem'
 
@@ -141,6 +142,30 @@ export function AnalysisPanel({
   className,
 }: AnalysisPanelProps) {
   const scrollportRef = useRef<HTMLDivElement>(null)
+  const markScrollActivity = useScrollActivity()
+  const [hasContentAbove, setHasContentAbove] = useState(false)
+  const [hasContentBelow, setHasContentBelow] = useState(false)
+
+  const updateScrollEdges = useCallback((element: HTMLDivElement) => {
+    const remaining = element.scrollHeight - element.clientHeight - element.scrollTop
+    setHasContentAbove(element.scrollTop > 8)
+    setHasContentBelow(remaining > 8)
+  }, [])
+
+  // The content can grow after its first paint; update fade edges as it resizes.
+  useEffect(() => {
+    const element = scrollportRef.current
+    if (!element) return
+    const observer = new ResizeObserver(() => updateScrollEdges(element))
+    observer.observe(element)
+    const content = element.firstElementChild
+    if (content) observer.observe(content)
+    const frame = window.requestAnimationFrame(() => updateScrollEdges(element))
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [analysis, analyzing, error, fillAvailableHeight, updateScrollEdges])
 
   // 对话/赏析相互切换会卸载当前面板，恢复先前的实际滚动位置。
   // 用 layout effect 在浏览器绘制前复位，避免先跳到顶部再闪回原处。
@@ -169,15 +194,20 @@ export function AnalysisPanel({
       <div
         ref={scrollportRef}
         onScroll={(event) => {
-          scrollTopRef.current = event.currentTarget.scrollTop
+          const element = event.currentTarget
+          scrollTopRef.current = element.scrollTop
+          updateScrollEdges(element)
+          markScrollActivity(element)
         }}
         className={cn(
-          'poeticus-scrollport min-h-0',
+          'poeticus-scrollport poeticus-auto-scrollbar min-h-0',
           fillAvailableHeight
             ? 'flex-1 overflow-y-auto py-4 pr-2'
             : analysis
               ? 'overflow-y-auto py-4 pr-2'
               : 'py-2 pr-2',
+          hasContentAbove && 'poeticus-scroll-fade-top',
+          hasContentBelow && 'poeticus-scroll-fade-bottom',
         )}
       >
         {analyzing ? (
