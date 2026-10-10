@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+
 import { PoemBody } from '@/components/poem-body'
 
 import { poemText } from '@/data/poem-library'
@@ -57,8 +58,6 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
           <PoemBody poem={poem} selectionScopeRef={readerRef} onSelect={onSelect} />
         </article>
       </div>
-
-
     </div>
   )
 }
