@@ -37,9 +37,7 @@ export function ReaderPane({
         ref={scrollRef}
         onScroll={(event) => onScroll(event.currentTarget)}
       >
-        <div className={poemTransitionClass + ' lg:flex lg:flex-1 lg:flex-col'}>
-          {children}
-        </div>
+        <div className={poemTransitionClass + ' lg:flex lg:flex-1 lg:flex-col'}>{children}</div>
       </div>
       {navigation && (
         <footer className="mx-auto mt-6 w-full shrink-0 px-0 pb-4 lg:mt-auto lg:max-w-[27rem] lg:px-4 lg:pt-8 lg:pb-0">
