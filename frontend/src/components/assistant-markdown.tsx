@@ -11,9 +11,7 @@ export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantM
   const isUser = variant === 'user'
 
   return (
-    <div
-      className="min-w-0 wrap-break-word text-base leading-7 text-foreground/90"
-    >
+    <div className="min-w-0 wrap-break-word text-base leading-7 text-foreground/90">
       <ReactMarkdown
         remarkPlugins={isUser ? [remarkGfm, remarkBreaks] : [remarkGfm]}
         skipHtml

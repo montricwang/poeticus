@@ -265,9 +265,7 @@ export function ChatPanel({
       )}
 
       {/* 横向分割线由讨论父容器管理，不占用输入组件内部空间。 */}
-      {turns.length > 0 && (
-        <HorizontalEditorialDivider className="mt-2 w-full" />
-      )}
+      {turns.length > 0 && <HorizontalEditorialDivider className="mt-2 w-full" />}
 
       <ChatComposer
         selected={selected}

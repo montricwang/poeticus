@@ -45,11 +45,17 @@ test('书名号、引号与缺字方框使用标点样式，正文不改字', ()
   const runs = buildPoemTextRuns(source)
   assert.equal(runs.map((run) => run.text).join(''), source)
   assert.equal(
-    runs.filter((run) => run.punctuation).map((run) => run.text).join(''),
+    runs
+      .filter((run) => run.punctuation)
+      .map((run) => run.text)
+      .join(''),
     '《》，“？”「」『』□■▢〓�',
   )
   assert.equal(
-    runs.filter((run) => !run.punctuation).map((run) => run.text).join(''),
+    runs
+      .filter((run) => !run.punctuation)
+      .map((run) => run.text)
+      .join(''),
     '读天问归来何时归去',
   )
 })

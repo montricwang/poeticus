@@ -568,7 +568,9 @@ function App() {
               右侧助手独立管理内容高度、分割线及按钮位置；
               目录收放时各栏随空间伸缩，阅读栏内部仍使用动态质心居中。
             */}
-            <div className={'mx-auto w-full min-w-0 max-w-[74rem] ' + (catalogOpen ? '2xl:pl-6' : '')}>
+            <div
+              className={'mx-auto w-full min-w-0 max-w-[74rem] ' + (catalogOpen ? '2xl:pl-6' : '')}
+            >
               <div className="relative min-w-0" aria-busy={!!switchTarget}>
                 {switchError && (
                   <div role="alert" className="mb-3 text-sm text-destructive">
