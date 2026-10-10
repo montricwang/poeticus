@@ -7,6 +7,7 @@ import { UserMessage } from '@/components/user-message'
 import { AssistantMessage } from '@/components/assistant-message'
 import { ChatComposer } from '@/components/chat-composer'
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
+import { useScrollActivity } from '@/hooks/use-scroll-activity'
 import { cn } from '@/lib/utils'
 import type { SelectedText } from '@/types/poem'
 import type { ChatTurn, ChatViewport } from '@/types/chat'
@@ -49,6 +50,7 @@ export function ChatPanel({
   className,
 }: ChatPanelProps) {
   const chatListRef = useRef<HTMLDivElement>(null)
+  const markScrollActivity = useScrollActivity()
   const initializedRef = useRef(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [hasContentAbove, setHasContentAbove] = useState(false)
@@ -102,6 +104,7 @@ export function ChatPanel({
   }, [turns, viewportRef])
 
   function handleScroll(list: HTMLDivElement) {
+    markScrollActivity(list)
     const distanceToBottom = list.scrollHeight - list.scrollTop - list.clientHeight
     const atBottom = distanceToBottom <= 64
 
@@ -171,8 +174,7 @@ export function ChatPanel({
             ref={chatListRef}
             onScroll={(event) => handleScroll(event.currentTarget)}
             className={cn(
-              'poeticus-scrollport flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto pt-3 pb-1 pr-2',
-              hasContentAbove && 'poeticus-scroll-fade-top',
+              'poeticus-scrollport poeticus-auto-scrollbar flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto pt-3 pb-1 pr-2',
             )}
           >
             {turns.map((turn, index) => (
@@ -238,6 +240,12 @@ export function ChatPanel({
             ))}
           </div>
 
+          {hasContentAbove && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 z-10 h-8 bg-gradient-to-b from-background to-transparent"
+            />
+          )}
           <div
             className="pointer-events-none absolute right-2 bottom-0 left-0 h-8 bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_72%,transparent)_62%,var(--background)_100%)] dark:h-6 dark:bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_48%,transparent)_68%,var(--background)_100%)]"
             aria-hidden="true"
