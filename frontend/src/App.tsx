@@ -314,40 +314,40 @@ function App() {
         fillAvailableHeight={fillAvailableHeight}
         fadingOut={viewFadingOut}
       >
-          {activeView === 'chat' ? (
-            <ChatPanel
-              poemId={activePoem.id}
-              swapPhase={poemSwapPhase}
-              fillAvailableHeight={fillAvailableHeight}
-              selected={selected}
-              question={question}
-              turns={turns}
-              loading={chatLoading}
-              onQuestionChange={setQuestion}
-              onClearQuote={() => setSelected(null)}
-              onSend={handleSend}
-              onRetry={handleRetry}
-              onRegenerate={handleRegenerate}
-              onEdit={handleEdit}
-              seenAnimationsRef={seenAnimationsRef}
-              viewportRef={chatViewportRef}
-              hasUnreadReply={hasUnreadReply}
-              onClearUnreadReply={() => setHasUnreadReply(false)}
-            />
-          ) : (
-            <AnalysisPanel
-              fillAvailableHeight={fillAvailableHeight}
-              analysis={analysis}
-              analyzing={analyzing}
-              error={analysisError}
-              limitNotice={analysisLimitNotice}
-              onAnalyze={handleAnalyze}
-              switching={!!switchTarget}
-              animateResult={animatedAnalysisId !== activePoem.id}
-              onAnimationStarted={() => setAnimatedAnalysisId(activePoem.id)}
-              scrollTopRef={analysisScrollTopRef}
-            />
-          )}
+        {activeView === 'chat' ? (
+          <ChatPanel
+            poemId={activePoem.id}
+            swapPhase={poemSwapPhase}
+            fillAvailableHeight={fillAvailableHeight}
+            selected={selected}
+            question={question}
+            turns={turns}
+            loading={chatLoading}
+            onQuestionChange={setQuestion}
+            onClearQuote={() => setSelected(null)}
+            onSend={handleSend}
+            onRetry={handleRetry}
+            onRegenerate={handleRegenerate}
+            onEdit={handleEdit}
+            seenAnimationsRef={seenAnimationsRef}
+            viewportRef={chatViewportRef}
+            hasUnreadReply={hasUnreadReply}
+            onClearUnreadReply={() => setHasUnreadReply(false)}
+          />
+        ) : (
+          <AnalysisPanel
+            fillAvailableHeight={fillAvailableHeight}
+            analysis={analysis}
+            analyzing={analyzing}
+            error={analysisError}
+            limitNotice={analysisLimitNotice}
+            onAnalyze={handleAnalyze}
+            switching={!!switchTarget}
+            animateResult={animatedAnalysisId !== activePoem.id}
+            onAnimationStarted={() => setAnimatedAnalysisId(activePoem.id)}
+            scrollTopRef={analysisScrollTopRef}
+          />
+        )}
       </CompanionPane>
     )
   }
