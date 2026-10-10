@@ -12,9 +12,9 @@ type ReaderNavigationProps = {
 
 export function ReaderNavigation({ neighbors, disabled, onNavigate }: ReaderNavigationProps) {
   return (
-    <footer className="mx-auto mt-6 w-full max-w-[27rem] shrink-0 px-4 pb-4 sm:px-8 lg:mt-auto lg:pt-8 lg:pb-0">
+    <footer className="mx-auto mt-6 w-full shrink-0 px-0 pb-4 lg:mt-auto lg:max-w-[27rem] lg:px-4 lg:pt-8 lg:pb-0">
       <HorizontalEditorialDivider className="mb-3 hidden w-full lg:block" />
-      <nav aria-label="切换作品" className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <nav aria-label="切换作品" className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
         <Button
           type="button"
           variant="ghost"
@@ -28,7 +28,7 @@ export function ReaderNavigation({ neighbors, disabled, onNavigate }: ReaderNavi
           <ChevronLeft className="size-4" aria-hidden="true" />
           上一首
         </Button>
-        <p className="hidden whitespace-nowrap text-center text-[11px] text-muted-foreground lg:block">
+        <p className="min-w-0 text-center text-[10px] leading-4 text-muted-foreground sm:text-[11px]">
           划选诗句，即可引用提问
         </p>
         <Button
