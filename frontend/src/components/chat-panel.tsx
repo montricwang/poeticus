@@ -231,7 +231,7 @@ export function ChatPanel({
             onWheel={(event) => markScrollActivity(event.currentTarget)}
             onTouchMove={(event) => markScrollActivity(event.currentTarget)}
             className={cn(
-              'poeticus-scrollport poeticus-auto-scrollbar flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto pt-3 pb-1 pr-2',
+              'poeticus-scrollport poeticus-auto-scrollbar flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain pt-3 pb-1 pr-2',
               hasContentAbove && 'poeticus-scroll-fade-top',
             )}
           >
