@@ -170,7 +170,7 @@ test('阅读栏和伴读栏共用目录变化后的剩余空间', () => {
   assert.doesNotMatch(app, /1\.15fr/)
 })
 
-test('工具栏自行拥有原有的短分割线，引文关闭按钮紧邻文字', () => {
+test('视图短线独立成组件，引文关闭按钮仍紧邻文字', () => {
   const toolbar = readFileSync(
     new URL('../src/components/view-toolbar.tsx', import.meta.url),
     'utf8',
@@ -179,12 +179,46 @@ test('工具栏自行拥有原有的短分割线，引文关闭按钮紧邻文�
     new URL('../src/components/quote-preview.tsx', import.meta.url),
     'utf8',
   )
-  assert.match(toolbar, /<HorizontalEditorialDivider/)
-  assert.match(toolbar, /w-\[calc\(100%\+0\.75rem\)\]/)
-  assert.doesNotMatch(app, /<ViewToolbar[\s\S]*?<HorizontalEditorialDivider className="w-\[calc\(/)
+  const viewDivider = readFileSync(
+    new URL('../src/components/view-toolbar-divider.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.doesNotMatch(toolbar, /HorizontalEditorialDivider|ViewToolbarDivider/)
+  assert.match(viewDivider, /mb-3 h-px w-\[7\.75rem\]/)
+  assert.match(app, /<ViewToolbar activeView=\{activeView\}/)
+  assert.match(app, /<ViewToolbarDivider \/>/)
   assert.match(quote, /inline-flex w-fit max-w-full/)
   assert.match(quote, /flex-\[0_1_auto\]/)
   assert.doesNotMatch(quote, /min-w-0 flex-1 overflow-y-auto/)
   assert.match(styles, /--composer-min-width: min\(100%, max\(22rem, 72%\)\)/)
+  assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
+})
+
+test('手机阅读导航保留提示，前后按钮各自贴近两端', () => {
+  const navigation = readFileSync(
+    new URL('../src/components/reader-navigation.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.match(navigation, /grid-cols-\[auto_minmax\(0,1fr\)_auto\]/)
+  assert.match(navigation, /justify-self-start/)
+  assert.match(navigation, /justify-self-end/)
+  assert.match(navigation, /划选诗句，即可引用提问/)
+  assert.doesNotMatch(navigation, /hidden whitespace-nowrap/)
+  assert.match(navigation, /lg:max-w-\[27rem\]/)
+  assert.doesNotMatch(navigation, /mx-auto mt-6 w-full max-w-\[27rem\]/)
+})
+
+test('发送按钮和操作提示使用全宽脚注，输入框宽度独立动画', () => {
+  const composer = readFileSync(
+    new URL('../src/components/chat-composer.tsx', import.meta.url),
+    'utf8',
+  )
+  const frame = composer.indexOf('className="poeticus-composer-frame')
+  const frameEnd = composer.indexOf('</div>', frame)
+  const controls = composer.indexOf('className="flex w-full items-center justify-between px-2"')
+  const button = composer.indexOf('aria-label="发送消息"')
+  assert.ok(frame >= 0 && frameEnd > frame)
+  assert.ok(controls > frameEnd && button > controls)
+  assert.match(styles, /--motion-composer-width: 320ms/)
   assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
 })
