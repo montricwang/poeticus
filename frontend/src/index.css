@@ -50,6 +50,7 @@
   --motion-poem-swap: 360ms;
   --motion-chat-history-resize: 500ms;
   --motion-companion-reflow: 520ms;
+  --motion-companion-ready-delay: 300ms;
   --motion-quote-enter: 460ms;
   --motion-message-enter: 380ms;
   --motion-chat-content-enter: 420ms;
@@ -60,6 +61,7 @@
   --motion-theme-change: 240ms;
   --motion-tooltip-enter: 150ms;
   --motion-scrollbar-color: 180ms;
+  --motion-scrollbar-idle-timeout: 900ms;
   --motion-catalog-phone-fade: 720ms;
   --motion-catalog-backdrop-fade: 520ms;
   --motion-catalog-drawer-slide: 620ms;
