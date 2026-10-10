@@ -373,21 +373,17 @@ html.theme-transition #root * {
    * Only visibility changes while scrolling. Track width, inset, rounding,
    * and the WebKit standard-property reset above remain the production baseline.
    */
-  .poeticus-scrollport {
-    scrollbar-color: transparent transparent;
-  }
+  @supports not selector(::-webkit-scrollbar) {
+    .poeticus-scrollport {
+      scrollbar-color: transparent transparent;
+    }
 
-  .poeticus-scrollport:is([data-scrolling='true'], :focus-within) {
-    scrollbar-color: color-mix(in oklab, var(--foreground) 35%, transparent) transparent;
+    .poeticus-scrollport:is([data-scrolling='true'], :focus-within) {
+      scrollbar-color: color-mix(in oklab, var(--foreground) 35%, transparent) transparent;
+    }
   }
 
   @supports selector(::-webkit-scrollbar) {
-    /* Non-auto scrollbar-color must not override custom Chromium scrollbars. */
-    .poeticus-scrollport {
-      scrollbar-width: auto;
-      scrollbar-color: auto;
-    }
-
     .poeticus-scrollport::-webkit-scrollbar-thumb {
       background-color: transparent;
     }
