@@ -210,15 +210,9 @@ export function ChatPanel({
         className,
       )}
     >
-      {/* 全屏移动工作区没有消息时，用弹性空白把输入区压到底部；
-          第一轮消息出现后，这一块自然替换成唯一的聊天滚动区。 */}
-      {fillAvailableHeight && turns.length === 0 && (
-        <div className="min-h-0 flex-1" aria-hidden="true" />
-      )}
-
-      {(turns.length > 0 || !fillAvailableHeight) && (
-        <ChatMessageList
+      <ChatMessageList
           fillAvailableHeight={fillAvailableHeight}
+          hasMessages={turns.length > 0}
           height={historyHeight}
           scrollRef={chatListRef}
           contentRef={historyContentRef}
@@ -290,8 +284,7 @@ export function ChatPanel({
                   </MessageEntrance>
                 </div>
               ))}
-        </ChatMessageList>
-      )}
+      </ChatMessageList>
 
       {/* The divider follows the history's height transition in both directions. */}
       <div
