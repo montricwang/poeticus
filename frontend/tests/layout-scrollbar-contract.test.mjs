@@ -17,7 +17,10 @@ test('桌面阅读区使用剩余视口高度，正文在本栏滚动', () => {
   assert.match(app, /flex h-dvh min-h-0 flex-col overflow-hidden/)
   assert.match(app, /flex min-h-0 w-full max-w-\[1600px\] flex-1 flex-col overflow-hidden/)
   assert.match(app, /grid h-full min-h-0 min-w-0/)
-  assert.match(app, /poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto/)
+  assert.match(
+    app,
+    /poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto/,
+  )
   assert.doesNotMatch(app, /lg:h-auto lg:min-h-dvh lg:overflow-visible/)
 })
 
@@ -29,7 +32,10 @@ test('伴读栏取父容器实际高度，并为输入框留出空间', () => {
 })
 
 test('延续生产版滚动条与分割线，不回退到浏览器默认外观', () => {
-  assert.match(styles, /scrollbar-color: color-mix\(in oklab, var\(--foreground\) 6%, transparent\)/)
+  assert.match(
+    styles,
+    /scrollbar-color: color-mix\(in oklab, var\(--foreground\) 6%, transparent\)/,
+  )
   assert.match(styles, /@supports selector\(::-webkit-scrollbar\)/)
   assert.match(styles, /border: 3px solid transparent/)
   assert.match(styles, /background-clip: padding-box/)
