@@ -3,7 +3,6 @@ import { ArrowUp, LoaderCircle, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { useScrollActivity } from '@/hooks/use-scroll-activity'
 import type { SelectedText } from '@/types/poem'
 
 type ChatComposerProps = {
@@ -24,7 +23,6 @@ export function ChatComposer({
   onSend,
 }: ChatComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const markScrollActivity = useScrollActivity()
   const [fades, setFades] = useState({ top: false, bottom: false })
 
   const updateFades = useCallback((element: HTMLTextAreaElement) => {
@@ -53,10 +51,8 @@ export function ChatComposer({
       {selected && (
         <div className="mb-2 flex min-w-0 items-start gap-2 border-l-2 border-violet-400/60 pl-3">
           <p
-            className="poeticus-scrollport poeticus-auto-scrollbar max-h-20 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap font-serif text-sm font-medium leading-6 text-foreground/85"
+            className="poeticus-scrollport max-h-20 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap font-serif text-sm font-medium leading-6 text-foreground/85"
             aria-label="引用原文"
-            onWheel={(event) => markScrollActivity(event.currentTarget)}
-            onTouchMove={(event) => markScrollActivity(event.currentTarget)}
           >
             {selected.text}
           </p>
@@ -79,8 +75,6 @@ export function ChatComposer({
           ref={textareaRef}
           placeholder="针对诗句提出你的问题……"
           onScroll={(event) => updateFades(event.currentTarget)}
-          onWheel={(event) => markScrollActivity(event.currentTarget)}
-          onTouchMove={(event) => markScrollActivity(event.currentTarget)}
           aria-label="输入问题"
           aria-busy={loading}
           value={question}
@@ -99,7 +93,7 @@ export function ChatComposer({
           // 不再显示全局 Textarea 的禁止操作光标。
           readOnly={loading}
           className={
-            'poeticus-scrollport poeticus-auto-scrollbar min-h-16 max-h-24 overflow-y-auto overscroll-contain resize-none border-0 bg-transparent px-2 text-base leading-7 shadow-none focus-visible:ring-0 md:min-h-16 md:max-h-36 md:text-base dark:bg-transparent ' +
+            'poeticus-scrollport min-h-16 max-h-24 overflow-y-auto overscroll-contain resize-none border-0 bg-transparent px-2 text-base leading-7 shadow-none focus-visible:ring-0 md:min-h-16 md:max-h-36 md:text-base dark:bg-transparent ' +
             (fades.top ? 'poeticus-input-fade-top ' : '') +
             (fades.bottom ? 'poeticus-input-fade-bottom' : '')
           }
