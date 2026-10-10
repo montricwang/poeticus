@@ -46,7 +46,7 @@ export function ChatComposer({
       if (!context) return
 
       const computed = window.getComputedStyle(element)
-      context.font = computed.font || `${computed.fontSize} ${computed.fontFamily}`
+      context.font = `${computed.fontStyle} ${computed.fontWeight} ${computed.fontSize} ${computed.fontFamily}`
       const width = composerWidthForLines(question, (line) => context.measureText(line).width)
       setComposerWidth((previous) => (previous === width ? previous : width))
     }
