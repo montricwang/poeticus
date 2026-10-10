@@ -52,6 +52,7 @@
   --motion-companion-reflow: 520ms;
   --motion-companion-ready-delay: 300ms;
   --motion-quote-enter: 460ms;
+  --motion-composer-width: 320ms;
   --motion-message-enter: 380ms;
   --motion-message-actions: 150ms;
   --motion-chat-content-enter: 420ms;
@@ -408,19 +409,19 @@ html.theme-transition #root * {
    * quote height without a hard-coded max-height animation.
    */
   .poeticus-quote-transition {
-    grid-template-rows: 0fr;
+    height: 0;
+    overflow: hidden;
     opacity: 0;
     transform: translateY(-4px);
     margin-bottom: 0;
     transition:
-      grid-template-rows var(--motion-quote-enter) var(--motion-ease-settle),
+      height var(--motion-quote-enter) var(--motion-ease-settle),
       opacity var(--motion-quote-enter) var(--motion-ease-settle),
       transform var(--motion-quote-enter) var(--motion-ease-settle),
       margin-bottom var(--motion-quote-enter) var(--motion-ease-settle);
   }
 
   .poeticus-quote-open {
-    grid-template-rows: 1fr;
     opacity: 1;
     transform: translateY(0);
     margin-bottom: 0.5rem;
@@ -428,6 +429,30 @@ html.theme-transition #root * {
 
   @media (prefers-reduced-motion: reduce) {
     .poeticus-quote-transition {
+      transition: none;
+    }
+  }
+
+  /*
+   * The input and its footer share a single animated width; the button follows
+   * text growth until the companion column (or the 38rem editorial maximum)
+   * is reached. The quote above keeps the full available column width.
+   */
+  .poeticus-composer-frame {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  @media (min-width: 64rem) {
+    .poeticus-composer-frame {
+      width: var(--composer-content-width, 18rem);
+      max-width: min(100%, var(--companion-panel-default-max-height));
+      transition: width var(--motion-composer-width) var(--motion-ease-settle);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .poeticus-composer-frame {
       transition: none;
     }
   }
