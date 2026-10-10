@@ -76,7 +76,7 @@ export function PoemCatalog({
       id="poem-catalog"
       ref={panelRef}
       aria-label="作品目录"
-      className="flex h-full min-h-0 w-screen flex-col sm:w-[min(88vw,420px)] border-r border-border bg-background 2xl:sticky 2xl:top-5 2xl:h-[calc(100vh-7rem)] 2xl:max-h-[900px] 2xl:w-full 2xl:border-0 2xl:bg-transparent"
+      className="flex h-full min-h-0 w-screen flex-col sm:w-[min(88vw,420px)] border-r border-border bg-background 2xl:relative 2xl:top-0 2xl:h-full 2xl:max-h-none 2xl:w-full 2xl:border-0 2xl:bg-transparent"
     >
       <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
         <div className="flex min-w-0 items-baseline gap-2">
