@@ -655,7 +655,7 @@ function App() {
                     )}
                   </div>
 
-                  <DesktopCompanionStage ready={poemReady}>
+                  <DesktopCompanionStage ready={poemReady} idle={activeView === 'chat' && turns.length === 0}>
                     {renderDiscussionContent(false)}
                   </DesktopCompanionStage>
                 </div>
