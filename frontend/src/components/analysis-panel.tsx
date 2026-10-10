@@ -201,7 +201,7 @@ export function AnalysisPanel({
         onWheel={(event) => markScrollActivity(event.currentTarget)}
         onTouchMove={(event) => markScrollActivity(event.currentTarget)}
         className={cn(
-          'poeticus-scrollport poeticus-auto-scrollbar min-h-0',
+          'poeticus-scrollport poeticus-auto-scrollbar min-h-0 overscroll-contain',
           fillAvailableHeight
             ? 'flex-1 overflow-y-auto py-4 pr-2'
             : analysis
