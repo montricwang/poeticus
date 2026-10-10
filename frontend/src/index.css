@@ -316,13 +316,12 @@ html.theme-transition #root * {
     scrollbar-color: color-mix(in oklab, var(--foreground) 30%, transparent) transparent;
   }
 
-  /* An idle reading area stays quiet; wheel/touch, focus or hover reveals a thin thumb. */
+  /* Auto-hide thumbs remain invisible until a scroll gesture or keyboard focus. */
   .poeticus-scrollport.poeticus-auto-scrollbar {
     scrollbar-color: transparent transparent;
   }
 
   .poeticus-scrollport.poeticus-auto-scrollbar:is(
-      :hover,
       :focus-within,
       [data-scrolling='true']
     ) {
@@ -356,7 +355,6 @@ html.theme-transition #root * {
 
     :is(html, .poeticus-scrollport):hover::-webkit-scrollbar-thumb,
     .poeticus-scrollport.poeticus-auto-scrollbar:is(
-        :hover,
         :focus-within,
         [data-scrolling='true']
       )::-webkit-scrollbar-thumb {
