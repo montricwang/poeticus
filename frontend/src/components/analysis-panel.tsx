@@ -197,8 +197,9 @@ export function AnalysisPanel({
           const element = event.currentTarget
           scrollTopRef.current = element.scrollTop
           updateScrollEdges(element)
-          markScrollActivity(element)
         }}
+        onWheel={(event) => markScrollActivity(event.currentTarget)}
+        onTouchMove={(event) => markScrollActivity(event.currentTarget)}
         className={cn(
           'poeticus-scrollport poeticus-auto-scrollbar min-h-0',
           fillAvailableHeight
