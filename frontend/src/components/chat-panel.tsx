@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 
-import { Button } from '@/components/ui/button'
 import { MessageEntrance } from '@/components/message-entrance'
 import { UserMessage } from '@/components/user-message'
 import { AssistantMessage } from '@/components/assistant-message'
