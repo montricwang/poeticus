@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef } from 'react'
 
 /**
  * Keep the native scrollbar available for dragging, but reveal its thumb only
- * while the user scrolls (or focuses the scrollport). Using a DOM attribute
- * avoids rerendering long poem/chat/analysis content on every scroll event.
+ * after direct scroll input (wheel/touch; keyboard focus stays discoverable).
+ * Programmatic scroll restoration must not flash the thumb on first paint.
+ * Using a DOM attribute avoids rerendering long poem/chat/analysis content.
  */
 export function useScrollActivity() {
   const timerRef = useRef<number | null>(null)
