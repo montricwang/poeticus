@@ -64,6 +64,13 @@ jobs:
       - name: Check frontend formatting
         run: npm run format:check
 
+      # Temporary formatting diagnostics; remove after reading the CI diff.
+      - name: Show expected formatting
+        if: failure()
+        run: |
+          npx prettier --write tests/poem-layout.test.mjs
+          git diff -- tests/poem-layout.test.mjs
+
       - name: Type-check and build frontend
         run: npm run build
 
