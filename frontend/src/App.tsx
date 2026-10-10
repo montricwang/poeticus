@@ -624,29 +624,25 @@ function App() {
                     ready={poemReady}
                     idle={activeView === 'chat' && turns.length === 0}
                     reader={
-                      <div className="relative flex h-full min-h-0 min-w-0 flex-col">
-                        <div
-                          className={
-                            'poeticus-scrollport poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain pr-2 ' +
-                            (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
-                            (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
-                          }
-                          ref={readerScrollRef}
-                          onScroll={(event) => handleReaderScroll(event.currentTarget)}
-                        >
-                          <div className={poemTransitionClass + ' lg:flex lg:flex-1 lg:flex-col'}>
-                            {renderReaderContent()}
-                          </div>
-                        </div>
-                        {poemReady && (
-                          <ReaderNavigation
-                            neighbors={neighbors}
-                            disabled={chatLoading || analyzing || !!switchTarget}
-                            onNavigate={handlePoemChange}
-                          />
-                        )}
-                      </div>
-                    }
+                      <ReaderPane
+                        scrollRef={readerScrollRef}
+                        onScroll={handleReaderScroll}
+                        hasContentAbove={readerHasContentAbove}
+                        hasContentBelow={readerHasContentBelow}
+                        poemTransitionClass={poemTransitionClass}
+                        navigation={
+                          poemReady ? (
+                            <ReaderNavigation
+                              embedded
+                              neighbors={neighbors}
+                              disabled={chatLoading || analyzing || !!switchTarget}
+                              onNavigate={handlePoemChange}
+                            />
+                          ) : null
+                        }
+                      >
+                        {renderReaderContent()}
+                      </ReaderPane>
                   >
                     {renderDiscussionContent(false)}
                   </ReaderCompanionLayout>
