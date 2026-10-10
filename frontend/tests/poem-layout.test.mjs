@@ -44,20 +44,10 @@ test('书名号、引号与缺字方框使用标点样式，正文不改字', ()
   const source = '读《天问》，“归来？”「何时」『归去』□■▢〓�'
   const runs = buildPoemTextRuns(source)
   assert.equal(runs.map((run) => run.text).join(''), source)
-  assert.equal(
-    runs
-      .filter((run) => run.punctuation)
-      .map((run) => run.text)
-      .join(''),
-    '《》，“？”「」『』□■▢〓�',
-  )
-  assert.equal(
-    runs
-      .filter((run) => !run.punctuation)
-      .map((run) => run.text)
-      .join(''),
-    '读天问归来何时归去',
-  )
+  const punctuation = runs.filter((run) => run.punctuation).map((run) => run.text)
+  const words = runs.filter((run) => !run.punctuation).map((run) => run.text)
+  assert.equal(punctuation.join(''), '《》，“？”「」『』□■▢〓�')
+  assert.equal(words.join(''), '读天问归来何时归去')
 })
 
 test('弱化标点只改变展示分段，不影响正常原文分行', () => {
