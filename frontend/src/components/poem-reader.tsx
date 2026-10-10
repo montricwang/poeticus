@@ -28,8 +28,8 @@ export function PoemReader({
   const poem = poemText(work)
   const readerRef = useRef<HTMLDivElement>(null)
   return (
-    <div className="poem-reader min-w-0">
-      <div ref={readerRef} className="bg-transparent">
+    <div className="poem-reader min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:flex-1 lg:flex-col">
+      <div ref={readerRef} className="bg-transparent lg:flex lg:flex-1 lg:flex-col lg:justify-center">
         <article className="poem-reader-page mx-auto w-full min-w-0 px-4 sm:px-8">
           <header className="poem-reader-header text-center">
             {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
@@ -69,39 +69,43 @@ export function PoemReader({
         </article>
       </div>
 
-      <HorizontalEditorialDivider className="mx-auto mt-4 w-20 lg:w-[82%] lg:max-w-[24rem]" />
-      <p className="mt-3 text-center text-xs text-muted-foreground">划选诗句，即可引用提问</p>
-      <nav
-        aria-label="切换作品"
-        className="mx-auto mt-4 flex max-w-[24rem] items-center justify-between px-4 sm:px-8"
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="font-normal text-muted-foreground hover:text-foreground"
-          disabled={navigationBlocked || !neighbors?.previous_id}
-          onClick={() => {
-            if (neighbors?.previous_id) onNavigate(neighbors.previous_id)
-          }}
+      <div className="mx-auto mt-8 w-full max-w-[27rem] px-4 pb-4 sm:px-8 lg:mt-auto lg:pb-2">
+        <HorizontalEditorialDivider className="mb-3 hidden w-full lg:block" />
+        <nav
+          aria-label="切换作品"
+          className="grid grid-cols-[1fr_auto_1fr] items-center gap-2"
         >
-          <ChevronLeft className="size-4" aria-hidden="true" />
-          上一首
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="font-normal text-muted-foreground hover:text-foreground"
-          disabled={navigationBlocked || !neighbors?.next_id}
-          onClick={() => {
-            if (neighbors?.next_id) onNavigate(neighbors.next_id)
-          }}
-        >
-          下一首
-          <ChevronRight className="size-4" aria-hidden="true" />
-        </Button>
-      </nav>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-fit justify-self-start px-1 font-normal text-muted-foreground hover:text-foreground"
+            disabled={navigationBlocked || !neighbors?.previous_id}
+            onClick={() => {
+              if (neighbors?.previous_id) onNavigate(neighbors.previous_id)
+            }}
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            上一首
+          </Button>
+          <p className="hidden whitespace-nowrap text-center text-[11px] text-muted-foreground lg:block">
+            划选诗句，即可引用提问
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-fit justify-self-end px-1 font-normal text-muted-foreground hover:text-foreground"
+            disabled={navigationBlocked || !neighbors?.next_id}
+            onClick={() => {
+              if (neighbors?.next_id) onNavigate(neighbors.next_id)
+            }}
+          >
+            下一首
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </Button>
+        </nav>
+      </div>
     </div>
   )
 }
