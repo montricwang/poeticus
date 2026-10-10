@@ -413,7 +413,7 @@ function App() {
   const showReaderHeader = wideDiscussionLayout || !mobileDiscussionOpen
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground lg:block lg:h-auto lg:min-h-dvh lg:overflow-visible">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
       <header className="shrink-0 border-b border-border/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           {showReaderHeader ? (
@@ -558,10 +558,10 @@ function App() {
       )}
 
       {wideDiscussionLayout && (
-        <main className="mx-auto w-full max-w-[1600px] px-5 pb-10 pt-7 md:px-8">
+        <main className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col overflow-hidden px-5 pb-7 pt-7 md:px-8">
           <div
             className={
-              'grid min-w-0 grid-cols-1 items-start gap-0 ' +
+              'grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-0 ' +
               '2xl:transition-[grid-template-columns] 2xl:duration-[var(--motion-catalog-grid-resize)] ' +
               '2xl:ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
               (catalogOpen
@@ -573,7 +573,7 @@ function App() {
               inert={!catalogOpen}
               aria-hidden={!catalogOpen}
               className={
-                'pointer-events-none fixed inset-0 z-50 2xl:sticky 2xl:top-5 2xl:z-auto ' +
+                'pointer-events-none fixed inset-0 z-50 2xl:relative 2xl:inset-auto 2xl:z-auto 2xl:h-full 2xl:min-h-0 ' +
                 '2xl:min-w-0 2xl:overflow-hidden ' +
                 (catalogOpen ? '2xl:border-r 2xl:border-border/60' : '2xl:border-r-0')
               }
@@ -612,9 +612,9 @@ function App() {
               目录收放时各栏随空间伸缩，阅读栏内部仍使用动态质心居中。
             */}
             <div
-              className={'mx-auto w-full min-w-0 max-w-[74rem] ' + (catalogOpen ? '2xl:pl-6' : '')}
+              className={'mx-auto h-full w-full min-h-0 min-w-0 max-w-[74rem] ' + (catalogOpen ? '2xl:pl-6' : '')}
             >
-              <div className="relative min-w-0" aria-busy={!!switchTarget}>
+              <div className="relative h-full min-h-0 min-w-0" aria-busy={!!switchTarget}>
                 {switchError && (
                   <div role="alert" className="mb-3 text-sm text-destructive">
                     作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
@@ -623,12 +623,12 @@ function App() {
 
                 <div
                   inert={!!switchTarget}
-                  className="grid min-w-0 grid-cols-1 items-start gap-x-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(340px,1.15fr)]"
+                  className="grid h-full min-h-0 min-w-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-x-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(340px,1.15fr)]"
                 >
-                  <div className="relative min-w-0 lg:flex lg:min-h-[calc(100dvh-9rem)] lg:flex-col">
+                  <div className="relative flex h-full min-h-0 min-w-0 flex-col">
                     <div
                       className={
-                        'poeticus-scrollport poeticus-auto-scrollbar poeticus-reader-scrollport min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:max-h-[calc(100dvh-12rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2 ' +
+                        'poeticus-scrollport poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain pr-2 ' +
                         (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
                         (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
                       }
