@@ -447,7 +447,7 @@ html.theme-transition #root * {
   @media (min-width: 64rem) {
     .poeticus-composer-frame {
       width: max(var(--composer-min-width), var(--composer-content-width, 0px));
-      max-width: min(100%, var(--companion-panel-default-max-height));
+      max-width: 100%;
       transition: width var(--motion-composer-width) var(--motion-ease-settle);
     }
   }
