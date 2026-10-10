@@ -207,7 +207,7 @@ function App() {
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
         if (!reduceMotion) {
           setPoemSwapPhase('leaving')
-          await new Promise<void>((resolve) => window.setTimeout(resolve, 160))
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 300))
           if (controller.signal.aborted) return
         }
 
@@ -240,7 +240,7 @@ function App() {
           })
           if (controller.signal.aborted) return
           setPoemSwapPhase('steady')
-          await new Promise<void>((resolve) => window.setTimeout(resolve, 220))
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 360))
         }
       })
       .catch((error: unknown) => {
@@ -282,7 +282,7 @@ function App() {
   const poemReady = !!activePoem && activePoem.id === poemId
   // Old poem stays visible during fetch; both columns use the same swap phase.
   const poemTransitionClass =
-    'transition-[opacity,transform] duration-[220ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+    'transition-[opacity,transform] duration-[360ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
     (poemSwapPhase === 'leaving'
       ? '-translate-y-1 opacity-0'
       : poemSwapPhase === 'arriving'
