@@ -113,6 +113,7 @@ test('引文和消息列表都有退场状态，内容不会立即连同容器�
     'utf8',
   )
   assert.match(quote, /setExpanded\(false\)/)
+  assert.match(quote, /setRendered\(selected\)/)
   assert.match(quote, /setRendered\(null\)/)
   assert.match(quote, /--motion-quote-enter/)
   assert.match(styles, /poeticus-quote-transition/)
@@ -120,6 +121,7 @@ test('引文和消息列表都有退场状态，内容不会立即连同容器�
   assert.match(styles, /poeticus-quote-open/)
   assert.match(styles, /grid-template-rows: 1fr/)
   assert.match(chat, /<ChatMessageList/)
+  assert.doesNotMatch(chat, /turns\.length > 0 \|\| !fillAvailableHeight/)
   assert.match(chat, /grid-rows-\[0fr\]/)
   assert.match(chat, /grid-rows-\[1fr\]/)
   assert.match(chat, /<HorizontalEditorialDivider className="w-full"/)
