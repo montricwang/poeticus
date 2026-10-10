@@ -325,6 +325,7 @@ function App() {
           {activeView === 'chat' ? (
             <ChatPanel
               poemId={activePoem.id}
+              swapPhase={poemSwapPhase}
               fillAvailableHeight={fillAvailableHeight}
               selected={selected}
               question={question}
