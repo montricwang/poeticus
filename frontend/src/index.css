@@ -12,14 +12,14 @@
 :root {
   color-scheme: light;
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: #faf9f6;
+  --foreground: #151411;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #151411;
+  --primary-foreground: #faf9f6;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -30,6 +30,8 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+  /* Quiet punctuation on warm paper; independently tuned from the dark theme. */
+  --reader-punctuation-ink: #928e88;
 
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -169,14 +171,14 @@ html.theme-transition #root * {
 .dark {
   color-scheme: dark;
 
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
+  --background: #151411;
+  --foreground: #faf9f6;
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: #faf9f6;
+  --primary-foreground: #151411;
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -187,6 +189,8 @@ html.theme-transition #root * {
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
+  /* Keep punctuation legible without matching the brightness of verse text. */
+  --reader-punctuation-ink: #85817b;
 
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -327,7 +331,7 @@ html.theme-transition #root * {
 
   /* 标点对比度低于正文，字号与占位宽度沿用正文排版。 */
   .poem-reader-punctuation {
-    color: color-mix(in oklab, currentColor 50%, var(--background));
+    color: var(--reader-punctuation-ink);
   }
 
   /*
