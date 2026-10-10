@@ -58,7 +58,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
   const lines = buildPoemLines(poem)
 
   useLayoutEffect(() => {
-    // 默认按作品句长分布自动折中；开发环境可对照 classic、optical 和 fixed。
+    // 开发环境可临时使用 classic 对照原布局；默认启用动态质心居中。
     const mode = import.meta.env.DEV
       ? new URLSearchParams(window.location.search).get('poemCenter')
       : null
@@ -96,13 +96,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
         measures.push({ start: Math.max(0, start), width: inkRect.width })
       }
 
-      let strength = adaptiveOpticalStrength(measures)
-      if (mode === 'optical') strength = 1
-      if (mode === 'fixed') {
-        strength = Number.parseFloat(
-          getComputedStyle(block).getPropertyValue('--reader-optical-strength'),
-        )
-      }
+      const strength = adaptiveOpticalStrength(measures)
       const offset = opticalCenterOffset(measures, blockRect.width, availableWidth, strength)
       block.style.translate = Math.abs(offset) < 0.5 ? '' : `${offset.toFixed(2)}px 0`
     }

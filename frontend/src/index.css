@@ -212,8 +212,6 @@
     --reader-poem-line-height: 1.75;
     --reader-poem-letter-spacing: 0.05em;
     --reader-poem-weight: 400;
-    /* 开发环境 ?poemCenter=fixed 的对照比例；默认按诗行分布自动计算。 */
-    --reader-optical-strength: 0.6;
   }
 
   .poem-reader-page {
