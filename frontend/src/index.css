@@ -382,7 +382,7 @@ html.theme-transition #root * {
       scrollbar-color: transparent transparent;
     }
 
-    .poeticus-scrollport:is([data-scrolling='true'], :focus-within) {
+    .poeticus-scrollport[data-scrolling='true'] {
       scrollbar-color: color-mix(in oklab, var(--foreground) 35%, transparent) transparent;
     }
   }
@@ -392,7 +392,7 @@ html.theme-transition #root * {
       background-color: transparent;
     }
 
-    .poeticus-scrollport:is([data-scrolling='true'], :focus-within)::-webkit-scrollbar-thumb {
+    .poeticus-scrollport[data-scrolling='true']::-webkit-scrollbar-thumb {
       background-color: color-mix(in oklab, var(--foreground) 35%, transparent);
     }
   }
