@@ -90,13 +90,39 @@ test('独立动画共用参数来源，历史消息与输入框不随整栏闪�
   assert.match(styles, /--motion-chat-content-enter: 420ms/)
   assert.match(styles, /--motion-companion-reflow: 520ms/)
   assert.match(app, /motionDurationMs\('--motion-poem-swap'\)/)
-  assert.match(composer, /poeticus-quote-enter/)
-  assert.match(chatPanel, /swapPhase === 'steady'/)
-  assert.match(chatPanel, /duration-\[var\(--motion-chat-content-enter\)\]/)
+  assert.match(composer, /<QuotePreview selected=\{selected\}/)
+  const chatList = readFileSync(
+    new URL('../src/components/chat-message-list.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.match(chatList, /swapPhase === 'steady'/)
+  assert.match(chatList, /duration-\[var\(--motion-chat-content-enter\)\]/)
   assert.doesNotMatch(chatPanel, /history\.offsetWidth/)
-  assert.match(chatPanel, /duration-\[var\(--motion-chat-history-resize\)\]/)
+  assert.match(chatList, /duration-\[var\(--motion-chat-history-resize\)\]/)
   assert.match(chatAnimation, /var\(--motion-message-enter\)/)
   assert.doesNotMatch(poemReader, /desktop-reading-stage-min-height/)
   assert.doesNotMatch(companion, /window\.innerHeight \* 0\.3/)
   assert.doesNotMatch(companion, /Math\.min\(608,/)
+})
+
+test('引文和消息列表都有退场状态，内容不会立即连同容器一起卸载', () => {
+  const quote = readFileSync(new URL('../src/components/quote-preview.tsx', import.meta.url), 'utf8')
+  const chat = readFileSync(new URL('../src/components/chat-panel.tsx', import.meta.url), 'utf8')
+  const chatList = readFileSync(
+    new URL('../src/components/chat-message-list.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.match(quote, /setExpanded\(false\)/)
+  assert.match(quote, /setRendered\(null\)/)
+  assert.match(quote, /--motion-quote-enter/)
+  assert.match(styles, /poeticus-quote-transition/)
+  assert.match(styles, /grid-template-rows: 0fr/)
+  assert.match(styles, /poeticus-quote-open/)
+  assert.match(styles, /grid-template-rows: 1fr/)
+  assert.match(chat, /<ChatMessageList/)
+  assert.match(chat, /grid-rows-\[0fr\]/)
+  assert.match(chat, /grid-rows-\[1fr\]/)
+  assert.match(chat, /<HorizontalEditorialDivider className="w-full"/)
+  assert.match(chatList, /transition-opacity/)
+  assert.match(companion, /idle \? 0\.42 : 0\.5/)
 })
