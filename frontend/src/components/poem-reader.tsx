@@ -90,7 +90,9 @@ export function PoemReader({
             <ChevronLeft className="size-4" aria-hidden="true" />
             上一首
           </Button>
-          <p className="hidden whitespace-nowrap text-center text-[11px] text-muted-foreground lg:block">
+          <p
+            className="hidden whitespace-nowrap text-center text-[11px] text-muted-foreground lg:block"
+          >
             划选诗句，即可引用提问
           </p>
           <Button
