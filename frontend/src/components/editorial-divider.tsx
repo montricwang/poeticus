@@ -7,23 +7,23 @@ type EditorialDividerProps = {
   style?: CSSProperties
 }
 
-/** 内容层次沿用书页式分隔，横竖均为 1.5px。 */
+/** Shared editorial rule. Geometry comes from one CSS token. */
 export function HorizontalEditorialDivider({ className, style }: EditorialDividerProps) {
   return (
     <div
       aria-hidden="true"
-      className={cn('pointer-events-none h-[1.5px] shrink-0 bg-border/80', className)}
+      className={cn('pointer-events-none h-[var(--editorial-divider-thickness)] shrink-0 bg-border/80', className)}
       style={style}
     />
   )
 }
 
-/** 两栏边界可独立微调厚度，不影响章节内横线。 */
+/** Vertical editorial rule with the same geometric thickness. */
 export function VerticalEditorialDivider({ className, style }: EditorialDividerProps) {
   return (
     <div
       aria-hidden="true"
-      className={cn('pointer-events-none w-[1.5px] shrink-0 bg-border/80', className)}
+      className={cn('pointer-events-none w-[var(--editorial-divider-thickness)] shrink-0 bg-border/80', className)}
       style={style}
     />
   )
