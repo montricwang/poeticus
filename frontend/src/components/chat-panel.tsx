@@ -7,7 +7,6 @@ import { UserMessage } from '@/components/user-message'
 import { AssistantMessage } from '@/components/assistant-message'
 import { ChatComposer } from '@/components/chat-composer'
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
-import { useScrollActivity } from '@/hooks/use-scroll-activity'
 import { cn } from '@/lib/utils'
 import type { SelectedText } from '@/types/poem'
 import type { ChatTurn, ChatViewport } from '@/types/chat'
@@ -57,7 +56,6 @@ export function ChatPanel({
   const composerRef = useRef<HTMLDivElement>(null)
   const [historyHeight, setHistoryHeight] = useState(0)
   const previousPoemRef = useRef(poemId)
-  const markScrollActivity = useScrollActivity()
   const initializedRef = useRef(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
   const [hasContentAbove, setHasContentAbove] = useState(false)
@@ -229,10 +227,8 @@ export function ChatPanel({
           <div
             ref={chatListRef}
             onScroll={(event) => handleScroll(event.currentTarget)}
-            onWheel={(event) => markScrollActivity(event.currentTarget)}
-            onTouchMove={(event) => markScrollActivity(event.currentTarget)}
             className={cn(
-              'poeticus-scrollport poeticus-auto-scrollbar flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain pt-3 pb-1 pr-2',
+              'poeticus-scrollport flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto overscroll-contain pt-3 pb-1 pr-2',
               hasContentAbove && 'poeticus-scroll-fade-top',
             )}
           >
