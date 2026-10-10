@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Settings2 } from 'lucide-react'
 import { Popover, RadioGroup } from 'radix-ui'
 
@@ -20,7 +20,7 @@ export function ThemeSwitcher() {
   const animationTimer = useRef<number | null>(null)
   const initialized = useRef(false)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
 
     function applyTheme() {
@@ -49,6 +49,7 @@ export function ThemeSwitcher() {
     return () => {
       media.removeEventListener('change', applyTheme)
       if (animationTimer.current !== null) window.clearTimeout(animationTimer.current)
+      document.documentElement.classList.remove('theme-transition')
     }
   }, [theme])
 
