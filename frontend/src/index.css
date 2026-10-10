@@ -41,9 +41,9 @@
 
   /*
    * 共用 UI 布局契约：这些值决定交互表现，不是随意选取的间距。
-   * - 1024px 起阅读区与伴读区共用 60dvh 的视觉舞台；
-   * - 桌面端聊天与赏析刻意共用相同的高度上限；
-   * - 目录与讨论区的动效时长按交互命名，便于集中调整。
+   * - 桌面阅读与伴读区共用父容器分配的视口空间；
+   * - 对话与赏析的高度上限取自同一个变量；
+   * - 不同交互的动效时长集中配置，但只作用于对应组件。
    */
   --motion-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
   /* Component-specific timing. These are shared tokens, not a page-wide animation. */
