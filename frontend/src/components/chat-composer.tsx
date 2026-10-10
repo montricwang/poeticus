@@ -1,8 +1,9 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowUp, LoaderCircle, X } from 'lucide-react'
+import { ArrowUp, LoaderCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { QuotePreview } from '@/components/quote-preview'
 import type { SelectedText } from '@/types/poem'
 
 type ChatComposerProps = {
@@ -47,31 +48,7 @@ export function ChatComposer({
 
   return (
     <div className="shrink-0 bg-transparent px-0 pt-2 pb-0 lg:pt-2 lg:pb-1">
-      {/* 划词引用只保留旁引竖线与关闭按钮，不再占一整行显示“引用原文”。 */}
-      {selected && (
-        <div
-          key={`${selected.start}:${selected.end}:${selected.text}`}
-          className="poeticus-quote-enter flex min-w-0 items-start gap-2 border-l-2 border-violet-400/60 pl-3"
-        >
-          <p
-            className="poeticus-scrollport max-h-20 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap font-serif text-sm font-medium leading-6 text-foreground/85"
-            aria-label="引用原文"
-          >
-            {selected.text}
-          </p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            className="mt-0.5 shrink-0 rounded-sm text-muted-foreground"
-            onClick={onClearQuote}
-            disabled={loading}
-            aria-label="移除引用"
-          >
-            <X className="size-3.5" />
-          </Button>
-        </div>
-      )}
+      <QuotePreview selected={selected} loading={loading} onClearQuote={onClearQuote} />
 
       <div className="bg-transparent py-1">
         <Textarea
