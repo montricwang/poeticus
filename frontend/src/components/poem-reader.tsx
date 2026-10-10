@@ -28,9 +28,7 @@ export function PoemReader({
   const poem = poemText(work)
   const readerRef = useRef<HTMLDivElement>(null)
   return (
-    <div
-      className="poem-reader min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:flex-1 lg:flex-col"
-    >
+    <div className="poem-reader min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:flex-1 lg:flex-col">
       <div
         ref={readerRef}
         className="bg-transparent lg:flex lg:flex-1 lg:flex-col lg:justify-center"
@@ -90,9 +88,7 @@ export function PoemReader({
             <ChevronLeft className="size-4" aria-hidden="true" />
             上一首
           </Button>
-          <p
-            className="hidden whitespace-nowrap text-center text-[11px] text-muted-foreground lg:block"
-          >
+          <p className="hidden whitespace-nowrap text-center text-[11px] text-muted-foreground lg:block">
             划选诗句，即可引用提问
           </p>
           <Button
