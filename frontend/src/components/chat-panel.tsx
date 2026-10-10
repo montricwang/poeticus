@@ -108,7 +108,15 @@ export function ChatPanel({
     if (previousPoemRef.current === poemId) return
     previousPoemRef.current = poemId
     initializedRef.current = false
-  }, [poemId])
+
+    const history = historyContentRef.current
+    if (history && turns.length > 0) {
+      // Saved turns appear together; only their content fades, not the whole pane.
+      history.classList.remove('poeticus-chat-content-enter')
+      void history.offsetWidth
+      history.classList.add('poeticus-chat-content-enter')
+    }
+  }, [poemId, turns.length])
 
   async function handleCopy(key: string, content: string) {
     try {
