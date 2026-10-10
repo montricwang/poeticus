@@ -341,7 +341,7 @@ function App() {
             }
           >
             {/* 给底部正文留出空间，避免被悬浮的讨论按钮遮挡。 */}
-            <div className="h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8">
+            <div className="poem-reader-scrollport h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8">
               {switchError && (
                 <div role="alert" className="mb-3 text-sm text-destructive">
                   作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
@@ -494,7 +494,7 @@ function App() {
                   inert={!!switchTarget}
                   className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]"
                 >
-                  <div className="min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2">
+                  <div className="poem-reader-scrollport min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2">
                     {renderReaderContent()}
                   </div>
 
