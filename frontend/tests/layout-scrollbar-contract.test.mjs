@@ -153,3 +153,34 @@ test('输入区有初始宽度，文字增长只扩展输入与发送按钮', ()
   // Don't modify the shared divider to customize the editor.
   assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
 })
+
+test('阅读栏和伴读栏共用目录变化后的剩余空间', () => {
+  assert.match(styles, /--reading-stage-max-width: 82rem/)
+  assert.match(styles, /--reader-column-share: 0\.95fr/)
+  assert.match(styles, /--companion-column-share: 1\.05fr/)
+  assert.match(styles, /\.poeticus-reading-columns/)
+  assert.match(app, /max-w-\[var\(--reading-stage-max-width\)\]/)
+  assert.match(app, /poeticus-reading-columns grid/)
+  assert.match(app, /2xl:grid-cols-\[320px_minmax\(0,1fr\)\]/)
+  assert.doesNotMatch(app, /0\.85fr/)
+  assert.doesNotMatch(app, /1\.15fr/)
+})
+
+test('工具栏自行拥有原有的短分割线，引文关闭按钮紧邻文字', () => {
+  const toolbar = readFileSync(
+    new URL('../src/components/view-toolbar.tsx', import.meta.url),
+    'utf8',
+  )
+  const quote = readFileSync(
+    new URL('../src/components/quote-preview.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.match(toolbar, /<HorizontalEditorialDivider/)
+  assert.match(toolbar, /w-\[calc\(100%\+0\.75rem\)\]/)
+  assert.doesNotMatch(app, /<ViewToolbar[\s\S]*?<HorizontalEditorialDivider className="w-\[calc\(/)
+  assert.match(quote, /inline-flex w-fit max-w-full/)
+  assert.match(quote, /flex-\[0_1_auto\]/)
+  assert.doesNotMatch(quote, /min-w-0 flex-1 overflow-y-auto/)
+  assert.match(styles, /--composer-min-width: min\(100%, max\(22rem, 72%\)\)/)
+  assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
+})
