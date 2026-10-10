@@ -8,6 +8,7 @@ import {
 } from 'react'
 
 import { VerticalEditorialDivider } from '@/components/editorial-divider'
+import { motionDurationMs } from '@/lib/motion'
 
 type DesktopCompanionStageProps = {
   children: ReactNode
@@ -68,7 +69,7 @@ export function DesktopCompanionStage({ children, ready }: DesktopCompanionStage
   useEffect(() => {
     if (!ready) return
     // Prevent an entrance transition while the first saved chat is measured.
-    const timer = window.setTimeout(() => setAnimateLayout(true), 300)
+    const timer = window.setTimeout(() => setAnimateLayout(true), motionDurationMs('--motion-companion-ready-delay'))
     return () => window.clearTimeout(timer)
   }, [ready])
 
