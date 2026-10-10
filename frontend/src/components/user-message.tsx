@@ -65,7 +65,7 @@ export function UserMessage({
               autoFocus
               value={draft}
               onChange={(event) => onDraftChange(event.target.value)}
-              className="min-h-24 resize-y rounded-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
+              className="poeticus-scrollport min-h-24 resize-y rounded-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
               aria-label="修改用户问题"
             />
 
