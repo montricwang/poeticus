@@ -439,13 +439,14 @@ html.theme-transition #root * {
    * is reached. The quote above keeps the full available column width.
    */
   .poeticus-composer-frame {
+    --composer-min-width: 18rem;
     width: 100%;
     max-width: 100%;
   }
 
   @media (min-width: 64rem) {
     .poeticus-composer-frame {
-      width: var(--composer-content-width, 18rem);
+      width: max(var(--composer-min-width), var(--composer-content-width, 0px));
       max-width: min(100%, var(--companion-panel-default-max-height));
       transition: width var(--motion-composer-width) var(--motion-ease-settle);
     }
