@@ -321,10 +321,7 @@ html.theme-transition #root * {
     scrollbar-color: transparent transparent;
   }
 
-  .poeticus-scrollport.poeticus-auto-scrollbar:is(
-      :focus-within,
-      [data-scrolling='true']
-    ) {
+  .poeticus-scrollport.poeticus-auto-scrollbar:is(:focus-within, [data-scrolling='true']) {
     scrollbar-color: color-mix(in oklab, var(--foreground) 30%, transparent) transparent;
   }
 
