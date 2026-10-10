@@ -108,7 +108,6 @@ export function fetchPoem(id: string, signal?: AbortSignal): Promise<Poem> {
   return readJson<Poem>(`/api/poems/${encodeURIComponent(id)}`, signal)
 }
 
-
 /** 前后首按 source_order 邻接，独立于目录分页和搜索条件。 */
 export function fetchPoemNeighbors(id: string, signal?: AbortSignal): Promise<PoemNeighbors> {
   return readJson<PoemNeighbors>(`/api/poems/${encodeURIComponent(id)}/neighbors`, signal)
