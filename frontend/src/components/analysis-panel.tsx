@@ -4,7 +4,6 @@ import { LoaderCircle } from 'lucide-react'
 import { AnalysisReveal, AnalysisTextEntrance } from '@/components/analysis-text-entrance'
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { Button } from '@/components/ui/button'
-import { useScrollActivity } from '@/hooks/use-scroll-activity'
 import { cn } from '@/lib/utils'
 import type { PoemAnalysis } from '@/types/poem'
 
@@ -142,7 +141,6 @@ export function AnalysisPanel({
   className,
 }: AnalysisPanelProps) {
   const scrollportRef = useRef<HTMLDivElement>(null)
-  const markScrollActivity = useScrollActivity()
   const [hasContentAbove, setHasContentAbove] = useState(false)
   const [hasContentBelow, setHasContentBelow] = useState(false)
 
@@ -198,10 +196,8 @@ export function AnalysisPanel({
           scrollTopRef.current = element.scrollTop
           updateScrollEdges(element)
         }}
-        onWheel={(event) => markScrollActivity(event.currentTarget)}
-        onTouchMove={(event) => markScrollActivity(event.currentTarget)}
         className={cn(
-          'poeticus-scrollport poeticus-auto-scrollbar min-h-0 overscroll-contain',
+          'poeticus-scrollport min-h-0 overscroll-contain',
           fillAvailableHeight
             ? 'flex-1 overflow-y-auto py-4 pr-2'
             : analysis
