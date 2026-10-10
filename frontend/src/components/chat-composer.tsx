@@ -49,7 +49,7 @@ export function ChatComposer({
     <div className="shrink-0 bg-transparent px-0 pt-2 pb-0 lg:pt-2 lg:pb-1">
       {/* 划词引用只保留旁引竖线与关闭按钮，不再占一整行显示“引用原文”。 */}
       {selected && (
-        <div className="mb-2 flex min-w-0 items-start gap-2 border-l-2 border-violet-400/60 pl-3">
+        <div className="poeticus-quote-enter flex min-w-0 items-start gap-2 border-l-2 border-violet-400/60 pl-3">
           <p
             className="poeticus-scrollport max-h-20 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap font-serif text-sm font-medium leading-6 text-foreground/85"
             aria-label="引用原文"
