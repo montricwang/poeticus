@@ -95,6 +95,7 @@ export function ChatPanel({
     const observer = new ResizeObserver(measure)
     observer.observe(messages)
     observer.observe(composer)
+    observer.observe(section)
     window.addEventListener('resize', measure)
     measure()
     return () => {
@@ -221,7 +222,7 @@ export function ChatPanel({
             'relative min-h-0',
             fillAvailableHeight
               ? 'flex flex-1'
-              : 'shrink-0 overflow-hidden transition-[height] duration-[380ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none',
+              : 'shrink-0 overflow-hidden transition-[height] duration-[500ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none',
           )}
           style={fillAvailableHeight ? undefined : { height: historyHeight }}
         >
