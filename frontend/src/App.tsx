@@ -60,6 +60,8 @@ function App() {
   const switchControllerRef = useRef<AbortController | null>(null)
   const [switchTarget, setSwitchTarget] = useState<string | null>(null)
   const [switchError, setSwitchError] = useState('')
+  const [showSwitchNotice, setShowSwitchNotice] = useState(false)
+  const [poemSwapPhase, setPoemSwapPhase] = useState<'steady' | 'leaving' | 'arriving'>('steady')
 
   const [selected, setSelected] = useState<SelectedText | null>(null)
   const { activePoem, setActivePoem, detailError, setDetailError, detailLoading, retryDetail } =
@@ -117,6 +119,12 @@ function App() {
       if (viewSwitchTimerRef.current !== null) window.clearTimeout(viewSwitchTimerRef.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (!switchTarget) return
+    const timer = window.setTimeout(() => setShowSwitchNotice(true), 200)
+    return () => window.clearTimeout(timer)
+  }, [switchTarget])
 
   const updateReaderScrollEdges = useCallback((element: HTMLDivElement) => {
     const remaining = element.scrollHeight - element.clientHeight - element.scrollTop
@@ -193,11 +201,21 @@ function App() {
     const controller = new AbortController()
     switchControllerRef.current = controller
     setSwitchTarget(nextId)
+    setShowSwitchNotice(false)
     setSwitchError('')
 
     void fetchPoem(nextId, controller.signal)
-      .then((work) => {
+      .then(async (work) => {
         if (controller.signal.aborted) return
+
+        // Avoid a blank screen during network waits; fade only after data arrives.
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        setShowSwitchNotice(false)
+        if (!reduceMotion) {
+          setPoemSwapPhase('leaving')
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 160))
+          if (controller.signal.aborted) return
+        }
 
         persistCurrentConversation()
         window.getSelection()?.removeAllRanges()
@@ -218,14 +236,25 @@ function App() {
         if (window.innerWidth < PERSISTENT_CATALOG_MIN_WIDTH) {
           closeCatalog()
         }
+
+        if (!reduceMotion) {
+          // Paint the new poem transparent before animating to its final position.
+          setPoemSwapPhase('arriving')
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 32))
+          if (controller.signal.aborted) return
+          setPoemSwapPhase('steady')
+          await new Promise<void>((resolve) => window.setTimeout(resolve, 220))
+        }
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
+        setPoemSwapPhase('steady')
         setSwitchError(error instanceof Error ? error.message : '切换作品失败，请重试')
       })
       .finally(() => {
         if (controller.signal.aborted) return
         switchControllerRef.current = null
+        setShowSwitchNotice(false)
         setSwitchTarget(null)
       })
   }
@@ -321,7 +350,7 @@ function App() {
   function renderReaderContent() {
     if (poemReady) {
       return (
-        <div className="w-full lg:my-auto lg:pt-2 lg:pb-10">
+        <div className="w-full lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:flex-col lg:pt-2">
           <PoemReader
             key={activePoem.id}
             work={activePoem}
@@ -448,14 +477,26 @@ function App() {
               )}
 
               <div className="relative min-w-0" aria-busy={!!switchTarget}>
-                <div inert={!!switchTarget}>{renderReaderContent()}</div>
+                <div
+                  inert={!!switchTarget}
+                  className={
+                    'transition-[opacity,transform] duration-[220ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+                    (poemSwapPhase === 'leaving'
+                      ? '-translate-y-1 opacity-0'
+                      : poemSwapPhase === 'arriving'
+                        ? 'translate-y-1 opacity-0'
+                        : 'translate-y-0 opacity-100')
+                  }
+                >
+                  {renderReaderContent()}
+                </div>
 
-                {switchTarget && (
+                {showSwitchNotice && switchTarget && (
                   <div
                     role="status"
-                    className="pointer-events-none absolute right-3 top-12 z-10 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
+                    className="pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-xs text-muted-foreground"
                   >
-                    正在载入下一首……
+                    正在切换作品…
                   </div>
                 )}
               </div>
@@ -602,7 +643,18 @@ function App() {
                     ref={readerScrollRef}
                     onScroll={(event) => updateReaderScrollEdges(event.currentTarget)}
                   >
-                    {renderReaderContent()}
+                    <div
+                      className={
+                        'transition-[opacity,transform] duration-[220ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+                        (poemSwapPhase === 'leaving'
+                          ? '-translate-y-1 opacity-0'
+                          : poemSwapPhase === 'arriving'
+                            ? 'translate-y-1 opacity-0'
+                            : 'translate-y-0 opacity-100')
+                      }
+                    >
+                      {renderReaderContent()}
+                    </div>
                   </div>
 
                   <DesktopCompanionStage key={poemId}>
@@ -610,12 +662,12 @@ function App() {
                   </DesktopCompanionStage>
                 </div>
 
-                {switchTarget && (
+                {showSwitchNotice && switchTarget && (
                   <div
                     role="status"
-                    className="pointer-events-none absolute right-3 top-12 z-10 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
+                    className="pointer-events-none absolute inset-x-0 top-3 z-10 text-center text-xs text-muted-foreground"
                   >
-                    正在载入下一首……
+                    正在切换作品…
                   </div>
                 )}
               </div>
