@@ -220,7 +220,7 @@ export function ChatPanel({
             'relative min-h-0',
             fillAvailableHeight
               ? 'flex flex-1'
-              : 'shrink-0 overflow-hidden transition-[height] duration-[500ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none',
+              : 'shrink-0 overflow-hidden transition-[height] duration-[var(--motion-chat-history-resize)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none',
           )}
           style={fillAvailableHeight ? undefined : { height: historyHeight }}
         >
