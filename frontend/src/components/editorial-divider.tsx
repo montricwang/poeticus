@@ -12,7 +12,10 @@ export function HorizontalEditorialDivider({ className, style }: EditorialDivide
   return (
     <div
       aria-hidden="true"
-      className={cn('pointer-events-none h-[var(--editorial-divider-thickness)] shrink-0 bg-border/80', className)}
+      className={cn(
+        'pointer-events-none h-[var(--editorial-divider-thickness)] shrink-0 bg-border/80',
+        className,
+      )}
       style={style}
     />
   )
@@ -23,7 +26,10 @@ export function VerticalEditorialDivider({ className, style }: EditorialDividerP
   return (
     <div
       aria-hidden="true"
-      className={cn('pointer-events-none w-[var(--editorial-divider-thickness)] shrink-0 bg-border/80', className)}
+      className={cn(
+        'pointer-events-none w-[var(--editorial-divider-thickness)] shrink-0 bg-border/80',
+        className,
+      )}
       style={style}
     />
   )
