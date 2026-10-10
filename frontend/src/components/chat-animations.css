@@ -27,8 +27,10 @@
 }
 
 .poeticus-chat-content-enter {
-  animation:
-    poeticus-chat-content-enter var(--motion-chat-content-enter) var(--motion-ease-settle) both;
+  animation-name: poeticus-chat-content-enter;
+  animation-duration: var(--motion-chat-content-enter);
+  animation-timing-function: var(--motion-ease-settle);
+  animation-fill-mode: both;
 }
 
 @media (prefers-reduced-motion: reduce) {
