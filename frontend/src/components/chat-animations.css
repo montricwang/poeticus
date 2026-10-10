@@ -14,7 +14,27 @@
   animation: poeticus-message-enter var(--motion-message-enter) var(--motion-ease-settle) both;
 }
 
+/* Only the restored history animates; composer and toolbar remain in place. */
+@keyframes poeticus-chat-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.poeticus-chat-content-enter {
+  animation: poeticus-chat-content-enter var(--motion-chat-content-enter) var(--motion-ease-settle) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .poeticus-chat-content-enter {
+    animation: none;
+  }
+
   .poeticus-message-enter {
     animation: none;
   }
