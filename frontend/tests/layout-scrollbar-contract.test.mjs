@@ -38,6 +38,8 @@ test('延续生产版滚动条与分割线，不回退到浏览器默认外观',
   )
   assert.match(styles, /--editorial-divider-thickness: 1\.5px/)
   assert.match(companion, /grid-cols-\[var\(--editorial-divider-thickness\)_minmax\(0,1fr\)\]/)
+  assert.doesNotMatch(companion, /grid-cols-\[1\.5px_/)
+  assert.doesNotMatch(divider, /h-\[1\.5px\]|w-\[1\.5px\]/)
   assert.match(styles, /@supports selector\(::-webkit-scrollbar\)/)
   assert.match(styles, /border: 3px solid transparent/)
   assert.match(styles, /background-clip: padding-box/)
