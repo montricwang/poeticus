@@ -209,7 +209,7 @@
     --reader-preface-body-gap: 1.25rem;
 
     --reader-poem-size: 1.125rem;
-    --reader-poem-line-height: 1.65;
+    --reader-poem-line-height: 1.8;
     --reader-poem-letter-spacing: 0.025em;
     --reader-poem-weight: 400;
   }
@@ -275,42 +275,60 @@
 
   /* 原文中连续换行对应的段间留白。 */
   .poem-reader-source-gap {
-    margin-block-start: 0.5em;
+    margin-block-start: 0.9em;
   }
 
   /* 标点对比度低于正文，字号与占位宽度沿用正文排版。 */
   .poem-reader-punctuation {
-    color: color-mix(in oklab, currentColor 40%, var(--background));
+    color: color-mix(in oklab, currentColor 50%, var(--background));
   }
 
   /*
-   * 阅读区使用浏览器原生滚动机制，轨道透明、滑块低对比。
-   * 标准属性覆盖现代浏览器；WebKit 伪元素作为兼容样式。
+   * 阅读区保留原生滚动机制；滑块平时低对比，操作时增强可见性。
+   * 支持 WebKit 滚动条的浏览器使用较宽的透明边框作为拖动区域。
    */
   .poem-reader-scrollport {
     scrollbar-width: thin;
-    scrollbar-color: color-mix(in oklab, var(--foreground) 25%, transparent) transparent;
+    scrollbar-color: color-mix(in oklab, var(--foreground) 20%, transparent) transparent;
   }
 
-  .poem-reader-scrollport::-webkit-scrollbar {
-    width: 6px;
+  @supports selector(::-webkit-scrollbar) {
+    .poem-reader-scrollport {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+
+    .poem-reader-scrollport::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .poem-reader-scrollport::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .poem-reader-scrollport::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: 999px;
+      background-color: color-mix(in oklab, var(--foreground) 20%, transparent);
+      background-clip: padding-box;
+      transition: background-color 180ms ease;
+    }
+
+    .poem-reader-scrollport:is(:hover, :focus-within)::-webkit-scrollbar-thumb {
+      background-color: color-mix(in oklab, var(--foreground) 50%, transparent);
+    }
+
+    .poem-reader-scrollport::-webkit-scrollbar-button {
+      display: none;
+      width: 0;
+      height: 0;
+    }
   }
 
-  .poem-reader-scrollport::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .poem-reader-scrollport::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: color-mix(in oklab, var(--foreground) 25%, transparent);
-  }
-
-  .poem-reader-scrollport::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in oklab, var(--foreground) 40%, transparent);
-  }
-
-  .poem-reader-scrollport::-webkit-scrollbar-button {
-    display: none;
+  @supports not selector(::-webkit-scrollbar) {
+    .poem-reader-scrollport:is(:hover, :focus-within) {
+      scrollbar-color: color-mix(in oklab, var(--foreground) 50%, transparent) transparent;
+    }
   }
 
   .poem-reader-body {
