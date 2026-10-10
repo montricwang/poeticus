@@ -376,7 +376,7 @@ function App() {
               disabled={chatLoading || analyzing || !!switchTarget}
               onNavigate={handlePoemChange}
             />
-          )
+          )}
         </div>
       )
     }
