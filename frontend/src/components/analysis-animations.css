@@ -29,7 +29,7 @@
 }
 
 .poeticus-analysis-result-enter {
-  animation: poeticus-analysis-result-enter 180ms ease-out both;
+  animation: poeticus-analysis-result-enter var(--motion-analysis-result-enter) ease-out both;
 }
 
 .poeticus-analysis-block-pending {
@@ -37,11 +37,11 @@
 }
 
 .poeticus-analysis-block-enter {
-  animation: poeticus-analysis-block-enter 180ms ease-out both;
+  animation: poeticus-analysis-block-enter var(--motion-analysis-block-enter) ease-out both;
 }
 
 .poeticus-analysis-char-enter {
-  animation: poeticus-analysis-char-enter 260ms ease-out both;
+  animation: poeticus-analysis-char-enter var(--motion-analysis-char-enter) ease-out both;
   animation-delay: var(--analysis-char-delay, 0ms);
 }
 

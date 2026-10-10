@@ -4,21 +4,25 @@ import { ArrowLeft, MessageCircle, PanelLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { PoemReader } from '@/components/poem-reader'
+import { ReaderNavigation } from '@/components/reader-navigation'
 import { PoemCatalog } from '@/components/poem-catalog'
-import { DesktopCompanionStage } from '@/components/desktop-companion-stage'
-import { HorizontalEditorialDivider } from '@/components/editorial-divider'
+import { ReaderCompanionLayout } from '@/components/reader-companion-layout'
 import { ChatPanel } from '@/components/chat-panel'
 import { AnalysisPanel } from '@/components/analysis-panel'
 import { MobileDiscussionScreen } from '@/components/mobile-discussion-screen'
-import { ViewToolbar } from '@/components/view-toolbar'
+import { CompanionPane } from '@/components/companion-pane'
+import { ReaderPane } from '@/components/reader-pane'
 import type { ActiveView } from '@/components/view-toolbar'
 
 import { fetchPoem } from '@/data/poem-library'
 import { usePoemCatalog } from '@/hooks/use-poem-catalog'
 import { usePoemDetail } from '@/hooks/use-poem-detail'
+import { usePoemNeighbors } from '@/hooks/use-poem-neighbors'
+import { useAutoHideScrollbars } from '@/hooks/use-auto-hide-scrollbars'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { usePoemAnalysis } from '@/hooks/use-poem-analysis'
 import { loadInitialChatState } from '@/lib/chat-initial-state'
+import { motionDurationMs } from '@/lib/motion'
 import {
   PERSISTENT_CATALOG_MEDIA,
   PERSISTENT_CATALOG_MIN_WIDTH,
@@ -51,6 +55,7 @@ function App() {
     () => window.matchMedia(WIDE_DISCUSSION_MEDIA).matches,
   )
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false)
+  useAutoHideScrollbars()
   const readerScrollRef = useRef<HTMLDivElement>(null)
   const [readerHasContentAbove, setReaderHasContentAbove] = useState(false)
   const [readerHasContentBelow, setReaderHasContentBelow] = useState(false)
@@ -59,6 +64,7 @@ function App() {
   const switchControllerRef = useRef<AbortController | null>(null)
   const [switchTarget, setSwitchTarget] = useState<string | null>(null)
   const [switchError, setSwitchError] = useState('')
+  const [poemSwapPhase, setPoemSwapPhase] = useState<'steady' | 'leaving' | 'arriving'>('steady')
 
   const [selected, setSelected] = useState<SelectedText | null>(null)
   const { activePoem, setActivePoem, detailError, setDetailError, detailLoading, retryDetail } =
@@ -89,6 +95,8 @@ function App() {
     setSelected,
     switchControllerRef,
   })
+
+  const neighbors = usePoemNeighbors(poemId)
 
   const [activeView, setActiveView] = useState<ActiveView>('chat')
   // 赏析面板切换视图时会卸载；用 ref 保留已读位置，不触发整页重渲染。
@@ -180,7 +188,7 @@ function App() {
       setActiveView(nextView)
       setViewFadingOut(false)
       viewSwitchTimerRef.current = null
-    }, 150)
+    }, motionDurationMs('--motion-view-fade'))
   }
 
   function handlePoemChange(nextId: string) {
@@ -193,13 +201,24 @@ function App() {
     setSwitchError('')
 
     void fetchPoem(nextId, controller.signal)
-      .then((work) => {
+      .then(async (work) => {
         if (controller.signal.aborted) return
+
+        // Avoid a blank screen during network waits; fade only after data arrives.
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        if (!reduceMotion) {
+          setPoemSwapPhase('leaving')
+          await new Promise<void>((resolve) =>
+            window.setTimeout(resolve, motionDurationMs('--motion-poem-swap')),
+          )
+          if (controller.signal.aborted) return
+        }
 
         persistCurrentConversation()
         window.getSelection()?.removeAllRanges()
         setActivePoem(work)
         setPoemId(work.id)
+        readerScrollRef.current?.scrollTo({ top: 0 })
         setDetailError('')
         restoreForPoem(work)
         setAnimatedAnalysisId(null)
@@ -214,9 +233,24 @@ function App() {
         if (window.innerWidth < PERSISTENT_CATALOG_MIN_WIDTH) {
           closeCatalog()
         }
+
+        if (!reduceMotion) {
+          // Commit the restored poem, messages, composer and quote while hidden.
+          // Two frames give React and companion layout effects time to measure.
+          setPoemSwapPhase('arriving')
+          await new Promise<void>((resolve) => {
+            window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()))
+          })
+          if (controller.signal.aborted) return
+          setPoemSwapPhase('steady')
+          await new Promise<void>((resolve) =>
+            window.setTimeout(resolve, motionDurationMs('--motion-poem-swap')),
+          )
+        }
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return
+        setPoemSwapPhase('steady')
         setSwitchError(error instanceof Error ? error.message : '切换作品失败，请重试')
       })
       .finally(() => {
@@ -251,6 +285,18 @@ function App() {
   }
 
   const poemReady = !!activePoem && activePoem.id === poemId
+  // Old poem stays visible during fetch; both columns use the same swap phase.
+  const poemTransitionClass =
+    'transition-[opacity,transform] duration-[var(--motion-poem-swap)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+    (poemSwapPhase === 'leaving'
+      ? '-translate-y-1 opacity-0'
+      : poemSwapPhase === 'arriving'
+        ? 'translate-y-1 opacity-0'
+        : 'translate-y-0 opacity-100')
+
+  function handleReaderScroll(element: HTMLDivElement) {
+    updateReaderScrollEdges(element)
+  }
 
   function renderDiscussionContent(fillAvailableHeight: boolean) {
     if (!poemReady) {
@@ -262,63 +308,62 @@ function App() {
     }
 
     return (
-      <>
-        {/* 按钮组宽度由内容决定，短线始终略长于按钮组并从同一左边缘开始。 */}
-        <div className="mb-3 w-fit">
-          <ViewToolbar activeView={activeView} onViewChange={handleViewChange} />
-          <HorizontalEditorialDivider className="w-[calc(100%+0.75rem)]" />
-        </div>
-
-        <div
-          className={
-            'min-w-0 transition-opacity duration-150 ease-in-out motion-reduce:transition-none ' +
-            (fillAvailableHeight ? 'flex min-h-0 flex-1 flex-col ' : '') +
-            (viewFadingOut ? 'opacity-0' : 'opacity-100')
-          }
-        >
-          {activeView === 'chat' ? (
-            <ChatPanel
-              key={activePoem.id}
-              fillAvailableHeight={fillAvailableHeight}
-              selected={selected}
-              question={question}
-              turns={turns}
-              loading={chatLoading || !!switchTarget}
-              onQuestionChange={setQuestion}
-              onClearQuote={() => setSelected(null)}
-              onSend={handleSend}
-              onRetry={handleRetry}
-              onRegenerate={handleRegenerate}
-              onEdit={handleEdit}
-              seenAnimationsRef={seenAnimationsRef}
-              viewportRef={chatViewportRef}
-              hasUnreadReply={hasUnreadReply}
-              onClearUnreadReply={() => setHasUnreadReply(false)}
-            />
-          ) : (
-            <AnalysisPanel
-              fillAvailableHeight={fillAvailableHeight}
-              analysis={analysis}
-              analyzing={analyzing}
-              error={analysisError}
-              limitNotice={analysisLimitNotice}
-              onAnalyze={handleAnalyze}
-              switching={!!switchTarget}
-              animateResult={animatedAnalysisId !== activePoem.id}
-              onAnimationStarted={() => setAnimatedAnalysisId(activePoem.id)}
-              scrollTopRef={analysisScrollTopRef}
-            />
-          )}
-        </div>
-      </>
+      <CompanionPane
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        fillAvailableHeight={fillAvailableHeight}
+        fadingOut={viewFadingOut}
+      >
+        {activeView === 'chat' ? (
+          <ChatPanel
+            poemId={activePoem.id}
+            swapPhase={poemSwapPhase}
+            fillAvailableHeight={fillAvailableHeight}
+            selected={selected}
+            question={question}
+            turns={turns}
+            loading={chatLoading}
+            onQuestionChange={setQuestion}
+            onClearQuote={() => setSelected(null)}
+            onSend={handleSend}
+            onRetry={handleRetry}
+            onRegenerate={handleRegenerate}
+            onEdit={handleEdit}
+            seenAnimationsRef={seenAnimationsRef}
+            viewportRef={chatViewportRef}
+            hasUnreadReply={hasUnreadReply}
+            onClearUnreadReply={() => setHasUnreadReply(false)}
+          />
+        ) : (
+          <AnalysisPanel
+            fillAvailableHeight={fillAvailableHeight}
+            analysis={analysis}
+            analyzing={analyzing}
+            error={analysisError}
+            limitNotice={analysisLimitNotice}
+            onAnalyze={handleAnalyze}
+            switching={!!switchTarget}
+            animateResult={animatedAnalysisId !== activePoem.id}
+            onAnimationStarted={() => setAnimatedAnalysisId(activePoem.id)}
+            scrollTopRef={analysisScrollTopRef}
+          />
+        )}
+      </CompanionPane>
     )
   }
 
   function renderReaderContent() {
     if (poemReady) {
       return (
-        <div className="w-full lg:my-auto lg:pt-2 lg:pb-10">
+        <div className="w-full lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:pt-2">
           <PoemReader key={activePoem.id} work={activePoem} onSelect={handleReaderSelect} />
+          {!wideDiscussionLayout && (
+            <ReaderNavigation
+              neighbors={neighbors}
+              disabled={chatLoading || analyzing || !!switchTarget}
+              onNavigate={handlePoemChange}
+            />
+          )}
         </div>
       )
     }
@@ -365,7 +410,7 @@ function App() {
   const showReaderHeader = wideDiscussionLayout || !mobileDiscussionOpen
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground lg:block lg:h-auto lg:min-h-dvh lg:overflow-visible">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
       <header className="shrink-0 border-b border-border/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           {showReaderHeader ? (
@@ -428,7 +473,7 @@ function App() {
                 (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
               }
               ref={readerScrollRef}
-              onScroll={(event) => updateReaderScrollEdges(event.currentTarget)}
+              onScroll={(event) => handleReaderScroll(event.currentTarget)}
             >
               {switchError && (
                 <div role="alert" className="mb-3 text-sm text-destructive">
@@ -437,16 +482,9 @@ function App() {
               )}
 
               <div className="relative min-w-0" aria-busy={!!switchTarget}>
-                <div inert={!!switchTarget}>{renderReaderContent()}</div>
-
-                {switchTarget && (
-                  <div
-                    role="status"
-                    className="pointer-events-none absolute right-3 top-12 z-10 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
-                  >
-                    正在载入下一首……
-                  </div>
-                )}
+                <div inert={!!switchTarget} className={poemTransitionClass}>
+                  {renderReaderContent()}
+                </div>
               </div>
             </div>
 
@@ -471,7 +509,7 @@ function App() {
           </section>
 
           <MobileDiscussionScreen open={mobileDiscussionOpen}>
-            {renderDiscussionContent(true)}
+            <div className="flex min-h-0 flex-1 flex-col">{renderDiscussionContent(true)}</div>
           </MobileDiscussionScreen>
 
           <div
@@ -515,10 +553,10 @@ function App() {
       )}
 
       {wideDiscussionLayout && (
-        <main className="mx-auto w-full max-w-[1600px] px-5 pb-10 pt-7 md:px-8">
+        <main className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col overflow-hidden px-5 pb-7 pt-7 md:px-8">
           <div
             className={
-              'grid min-w-0 grid-cols-1 items-start gap-0 ' +
+              'grid h-full min-h-0 grid-cols-1 grid-rows-[minmax(0,1fr)] items-stretch gap-0 ' +
               '2xl:transition-[grid-template-columns] 2xl:duration-[var(--motion-catalog-grid-resize)] ' +
               '2xl:ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
               (catalogOpen
@@ -530,7 +568,7 @@ function App() {
               inert={!catalogOpen}
               aria-hidden={!catalogOpen}
               className={
-                'pointer-events-none fixed inset-0 z-50 2xl:sticky 2xl:top-5 2xl:z-auto ' +
+                'pointer-events-none fixed inset-0 z-50 2xl:relative 2xl:inset-auto 2xl:z-auto 2xl:h-full 2xl:min-h-0 ' +
                 '2xl:min-w-0 2xl:overflow-hidden ' +
                 (catalogOpen ? '2xl:border-r 2xl:border-border/60' : '2xl:border-r-0')
               }
@@ -565,48 +603,51 @@ function App() {
             </div>
 
             {/*
-              右侧助手独立管理内容高度、分割线及按钮位置；
-              目录收放时各栏随空间伸缩，阅读栏内部仍使用动态质心居中。
+              两栏和它们之间的分割线由 ReaderCompanionLayout 共同管理；
+              目录收放时各栏随空间伸缩，伴读内容与竖线共享动态定位。
             */}
             <div
-              className={'mx-auto w-full min-w-0 max-w-[74rem] ' + (catalogOpen ? '2xl:pl-6' : '')}
+              className={
+                'mx-auto h-full w-full min-h-0 min-w-0 max-w-[var(--reading-stage-max-width)] ' +
+                (catalogOpen ? '2xl:pl-6' : '')
+              }
             >
-              <div className="relative min-w-0" aria-busy={!!switchTarget}>
+              <div className="relative h-full min-h-0 min-w-0" aria-busy={!!switchTarget}>
                 {switchError && (
                   <div role="alert" className="mb-3 text-sm text-destructive">
                     作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
                   </div>
                 )}
 
-                <div
-                  inert={!!switchTarget}
-                  className="grid min-w-0 grid-cols-1 items-start gap-x-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(340px,1.15fr)]"
-                >
-                  <div
-                    className={
-                      'poeticus-scrollport poeticus-reader-scrollport min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2 ' +
-                      (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
-                      (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
+                <div inert={!!switchTarget} className="h-full min-h-0 min-w-0">
+                  <ReaderCompanionLayout
+                    ready={poemReady}
+                    idle={activeView === 'chat' && turns.length === 0}
+                    reader={
+                      <ReaderPane
+                        scrollRef={readerScrollRef}
+                        onScroll={handleReaderScroll}
+                        hasContentAbove={readerHasContentAbove}
+                        hasContentBelow={readerHasContentBelow}
+                        poemTransitionClass={poemTransitionClass}
+                        navigation={
+                          poemReady ? (
+                            <ReaderNavigation
+                              embedded
+                              neighbors={neighbors}
+                              disabled={chatLoading || analyzing || !!switchTarget}
+                              onNavigate={handlePoemChange}
+                            />
+                          ) : null
+                        }
+                      >
+                        {renderReaderContent()}
+                      </ReaderPane>
                     }
-                    ref={readerScrollRef}
-                    onScroll={(event) => updateReaderScrollEdges(event.currentTarget)}
                   >
-                    {renderReaderContent()}
-                  </div>
-
-                  <DesktopCompanionStage key={poemId}>
                     {renderDiscussionContent(false)}
-                  </DesktopCompanionStage>
+                  </ReaderCompanionLayout>
                 </div>
-
-                {switchTarget && (
-                  <div
-                    role="status"
-                    className="pointer-events-none absolute right-3 top-12 z-10 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
-                  >
-                    正在载入下一首……
-                  </div>
-                )}
               </div>
             </div>
           </div>

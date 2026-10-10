@@ -19,7 +19,7 @@ export function ActionTooltip({ label, children }: ActionTooltipProps) {
           <Tooltip.Content
             side="bottom"
             sideOffset={6}
-            className="z-50 max-w-64 rounded-md bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-sm animate-in fade-in duration-150 motion-reduce:animate-none"
+            className="z-50 max-w-64 rounded-md bg-foreground px-2.5 py-1 text-xs font-medium text-background shadow-sm animate-in fade-in duration-[var(--motion-tooltip-enter)] motion-reduce:animate-none"
           >
             {label}
           </Tooltip.Content>

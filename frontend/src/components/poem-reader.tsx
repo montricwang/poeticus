@@ -1,6 +1,5 @@
 import { useRef } from 'react'
 
-import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { PoemBody } from '@/components/poem-body'
 
 import { poemText } from '@/data/poem-library'
@@ -16,8 +15,11 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
   const poem = poemText(work)
   const readerRef = useRef<HTMLDivElement>(null)
   return (
-    <div className="poem-reader min-w-0">
-      <div ref={readerRef} className="bg-transparent">
+    <div className="poem-reader min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      <div
+        ref={readerRef}
+        className="bg-transparent lg:flex lg:flex-1 lg:flex-col lg:justify-center"
+      >
         <article className="poem-reader-page mx-auto w-full min-w-0 px-4 sm:px-8">
           <header className="poem-reader-header text-center">
             {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
@@ -56,9 +58,6 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
           <PoemBody poem={poem} selectionScopeRef={readerRef} onSelect={onSelect} />
         </article>
       </div>
-
-      <HorizontalEditorialDivider className="mx-auto mt-4 w-20 lg:w-[82%] lg:max-w-[24rem]" />
-      <p className="mt-3 text-center text-xs text-muted-foreground">划选诗句，即可引用提问</p>
     </div>
   )
 }

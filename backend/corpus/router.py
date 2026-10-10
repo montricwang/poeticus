@@ -7,7 +7,7 @@ from psycopg import Connection
 from psycopg.rows import DictRow
 
 from .connection import get_connection
-from .repository import get_poem, list_poems
+from .repository import get_poem, get_poem_neighbors, list_poems
 
 router = APIRouter(prefix="/api/poems", tags=["poems"])
 
@@ -36,6 +36,11 @@ class PoemPage(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class PoemNeighbors(BaseModel):
+    previous_id: UUID | None
+    next_id: UUID | None
 
 
 class PoemDetail(BaseModel):
@@ -84,3 +89,12 @@ def detail(poem_id: UUID, conn: Connection[DictRow] = Depends(get_connection)):
     if record is None:
         raise HTTPException(status_code=404, detail="未找到该作品")
     return PoemDetail.model_validate(record)
+
+
+@router.get("/{poem_id}/neighbors", response_model=PoemNeighbors)
+def neighbors(poem_id: UUID, conn: Connection[DictRow] = Depends(get_connection)):
+    """按数据库原书顺序阅读上一首、下一首；不依赖目录当前页。"""
+    record = get_poem_neighbors(conn, poem_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="未找到该作品")
+    return PoemNeighbors.model_validate(record)

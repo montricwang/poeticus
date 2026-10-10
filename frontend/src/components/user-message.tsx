@@ -65,7 +65,7 @@ export function UserMessage({
               autoFocus
               value={draft}
               onChange={(event) => onDraftChange(event.target.value)}
-              className="min-h-24 resize-y rounded-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
+              className="poeticus-scrollport min-h-24 resize-y rounded-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
               aria-label="修改用户问题"
             />
 
@@ -97,7 +97,7 @@ export function UserMessage({
               <AssistantMarkdown content={turn.question} variant="user" />
             </div>
 
-            <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+            <div className="flex items-center gap-1 opacity-0 transition-opacity duration-[var(--motion-message-actions)] group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
               <ActionTooltip label="复制提问">
                 <Button
                   type="button"

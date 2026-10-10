@@ -63,7 +63,9 @@ class FakeConnection:
         self, *, pages: list[dict[str, object]] | None = None,
         details: dict[UUID, dict[str, object]] | None = None,
         count: int = 2,
+        neighbors: dict[UUID, dict[str, object]] | None = None,
     ):
+        self.neighbors = neighbors or {}
         self.pages = pages if pages is not None else [summary(), summary(TWO, 2)]
         self.details = details or {}
         self.count = count
@@ -76,6 +78,10 @@ class FakeConnection:
         self.calls.append((query_text, params))
         if "COUNT(*)" in query_text:
             return FakeRows(row={"total": self.count})
+        if "FROM poems AS p WHERE p.id =" in query_text:
+            poem_id = params[0]
+            assert isinstance(poem_id, UUID)
+            return FakeRows(row=self.neighbors.get(poem_id))
         if "FROM poems WHERE id =" in query_text:
             poem_id = params[0]
             assert isinstance(poem_id, UUID)
@@ -261,3 +267,27 @@ def test_repository_unspaced_query_remains_one_literal_term():
     sql, params = fake.calls[0]
     assert sql.count("STRPOS") == 5
     assert params == ("虞美人春花",) * 5
+
+
+def test_neighbors_follow_source_order_not_page(client):
+    fake = FakeConnection(neighbors={
+        ONE: {"previous_id": None, "next_id": TWO},
+        TWO: {"previous_id": ONE, "next_id": None},
+    })
+    override_connection(client, fake)
+    first = client.get(f"/api/poems/{ONE}/neighbors")
+    last = client.get(f"/api/poems/{TWO}/neighbors")
+    assert first.status_code == 200
+    assert first.json() == {"previous_id": None, "next_id": str(TWO)}
+    assert last.status_code == 200
+    assert last.json() == {"previous_id": str(ONE), "next_id": None}
+    assert all("poem_source_texts" not in query for query, _ in fake.calls)
+    assert "ORDER BY earlier.source_order DESC LIMIT 1" in fake.calls[0][0]
+    assert "ORDER BY later.source_order ASC LIMIT 1" in fake.calls[0][0]
+    assert fake.calls[0][1] == (ONE,)
+
+
+def test_neighbors_missing_or_invalid_poem_id(client):
+    override_connection(client, FakeConnection())
+    assert client.get(f"/api/poems/{ONE}/neighbors").status_code == 404
+    assert client.get("/api/poems/not-a-uuid/neighbors").status_code == 422
