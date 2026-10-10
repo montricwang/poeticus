@@ -11,7 +11,6 @@ type ChatComposerProps = {
   onQuestionChange: (value: string) => void
   onClearQuote: () => void
   onSend: () => void
-  showDivider?: boolean
 }
 
 export function ChatComposer({
@@ -21,17 +20,14 @@ export function ChatComposer({
   onQuestionChange,
   onClearQuote,
   onSend,
-  showDivider = true,
 }: ChatComposerProps) {
   return (
-    <div className="shrink-0 bg-transparent px-0 pt-3 pb-0 lg:py-4">
-      {showDivider && <div className="mx-2 mb-3 h-px bg-border/60" aria-hidden="true" />}
-
+    <div className="shrink-0 bg-transparent px-0 pt-2 pb-0 lg:pt-2 lg:pb-1">
       {/* 划词引用只保留旁引竖线与关闭按钮，不再占一整行显示“引用原文”。 */}
       {selected && (
         <div className="mb-2 flex min-w-0 items-start gap-2 border-l-2 border-violet-400/60 pl-3">
           <p
-            className="max-h-20 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap font-serif text-sm leading-6 text-foreground/80"
+            className="poeticus-scrollport max-h-20 min-w-0 flex-1 overflow-y-auto whitespace-pre-wrap font-serif text-sm font-medium leading-6 text-foreground/85"
             aria-label="引用原文"
           >
             {selected.text}
@@ -70,7 +66,7 @@ export function ChatComposer({
           // readOnly 而非 disabled：生成中仍可滚动、选中文字，
           // 不再显示全局 Textarea 的禁止操作光标。
           readOnly={loading}
-          className="min-h-16 max-h-24 overflow-y-auto overscroll-contain resize-none border-0 bg-transparent px-2 leading-6 shadow-none focus-visible:ring-0 md:min-h-24 md:max-h-36 dark:bg-transparent"
+          className="poeticus-scrollport min-h-16 max-h-24 overflow-y-auto overscroll-contain resize-none border-0 bg-transparent px-2 text-base leading-7 shadow-none focus-visible:ring-0 md:min-h-16 md:max-h-36 md:text-base dark:bg-transparent"
         />
 
         <div className="flex items-center justify-between px-2">
@@ -81,7 +77,7 @@ export function ChatComposer({
           <Button
             type="button"
             size="icon"
-            className="rounded-xl"
+            className="rounded-md"
             onClick={onSend}
             disabled={loading || !question.trim()}
             aria-label="发送消息"

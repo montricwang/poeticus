@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ArrowLeft, MessageCircle, PanelLeft } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { PoemReader } from '@/components/poem-reader'
 import { PoemCatalog } from '@/components/poem-catalog'
+import { DesktopCompanionStage } from '@/components/desktop-companion-stage'
+import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { ChatPanel } from '@/components/chat-panel'
 import { AnalysisPanel } from '@/components/analysis-panel'
 import { MobileDiscussionScreen } from '@/components/mobile-discussion-screen'
@@ -49,6 +51,9 @@ function App() {
     () => window.matchMedia(WIDE_DISCUSSION_MEDIA).matches,
   )
   const [mobileDiscussionOpen, setMobileDiscussionOpen] = useState(false)
+  const readerScrollRef = useRef<HTMLDivElement>(null)
+  const [readerHasContentAbove, setReaderHasContentAbove] = useState(false)
+  const [readerHasContentBelow, setReaderHasContentBelow] = useState(false)
 
   const catalogToggleRef = useRef<HTMLButtonElement>(null)
   const switchControllerRef = useRef<AbortController | null>(null)
@@ -86,6 +91,10 @@ function App() {
   })
 
   const [activeView, setActiveView] = useState<ActiveView>('chat')
+  // 赏析面板切换视图时会卸载；用 ref 保留已读位置，不触发整页重渲染。
+  const analysisScrollTopRef = useRef(0)
+  const [viewFadingOut, setViewFadingOut] = useState(false)
+  const viewSwitchTimerRef = useRef<number | null>(null)
   const [animatedAnalysisId, setAnimatedAnalysisId] = useState<string | null>(null)
   const { analysis, analyzing, analysisError, analysisLimitNotice, analyzePoem, resetAnalysis } =
     usePoemAnalysis({ poemId, activePoem, switchControllerRef })
@@ -100,8 +109,36 @@ function App() {
   })
 
   useEffect(() => {
-    return () => switchControllerRef.current?.abort()
+    return () => {
+      switchControllerRef.current?.abort()
+      if (viewSwitchTimerRef.current !== null) window.clearTimeout(viewSwitchTimerRef.current)
+    }
   }, [])
+
+  const updateReaderScrollEdges = useCallback((element: HTMLDivElement) => {
+    const remaining = element.scrollHeight - element.clientHeight - element.scrollTop
+    setReaderHasContentAbove(element.scrollTop > 8)
+    setReaderHasContentBelow(remaining > 8)
+  }, [])
+
+  useLayoutEffect(() => {
+    const element = readerScrollRef.current
+    if (!element) return
+
+    let active = true
+    const update = () => {
+      if (active) updateReaderScrollEdges(element)
+    }
+    const observer = new ResizeObserver(update)
+    observer.observe(element)
+    const content = element.querySelector('.poem-reader')
+    if (content) observer.observe(content)
+    void document.fonts.ready.then(update)
+    return () => {
+      active = false
+      observer.disconnect()
+    }
+  }, [activePoem, poemId, wideDiscussionLayout, updateReaderScrollEdges])
 
   useEffect(() => {
     const query = window.matchMedia(WIDE_DISCUSSION_MEDIA)
@@ -121,6 +158,30 @@ function App() {
     setCatalogOpen(false)
     window.requestAnimationFrame(() => catalogToggleRef.current?.focus())
   }, [])
+
+  function handleViewChange(nextView: ActiveView) {
+    if (nextView === activeView) {
+      if (viewSwitchTimerRef.current !== null) {
+        window.clearTimeout(viewSwitchTimerRef.current)
+        viewSwitchTimerRef.current = null
+        setViewFadingOut(false)
+      }
+      return
+    }
+    if (viewSwitchTimerRef.current !== null) window.clearTimeout(viewSwitchTimerRef.current)
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setActiveView(nextView)
+      setViewFadingOut(false)
+      viewSwitchTimerRef.current = null
+      return
+    }
+    setViewFadingOut(true)
+    viewSwitchTimerRef.current = window.setTimeout(() => {
+      setActiveView(nextView)
+      setViewFadingOut(false)
+      viewSwitchTimerRef.current = null
+    }, 150)
+  }
 
   function handlePoemChange(nextId: string) {
     if (inFlightRef.current || analyzing || !nextId || nextId === poemId) return
@@ -143,6 +204,10 @@ function App() {
         restoreForPoem(work)
         setAnimatedAnalysisId(null)
         resetAnalysis()
+        analysisScrollTopRef.current = 0
+        if (viewSwitchTimerRef.current !== null) window.clearTimeout(viewSwitchTimerRef.current)
+        viewSwitchTimerRef.current = null
+        setViewFadingOut(false)
         setActiveView('chat')
         setMobileDiscussionOpen(false)
 
@@ -166,6 +231,7 @@ function App() {
       return
     }
 
+    analysisScrollTopRef.current = 0
     setActiveView('analysis')
     void analyzePoem()
   }
@@ -196,40 +262,53 @@ function App() {
 
     return (
       <>
-        <ViewToolbar activeView={activeView} onViewChange={setActiveView} />
+        {/* 按钮组宽度由内容决定，短线始终略长于按钮组并从同一左边缘开始。 */}
+        <div className="mb-3 w-fit">
+          <ViewToolbar activeView={activeView} onViewChange={handleViewChange} />
+          <HorizontalEditorialDivider className="w-[calc(100%+0.75rem)]" />
+        </div>
 
-        {activeView === 'chat' ? (
-          <ChatPanel
-            key={activePoem.id}
-            fillAvailableHeight={fillAvailableHeight}
-            selected={selected}
-            question={question}
-            turns={turns}
-            loading={chatLoading || !!switchTarget}
-            onQuestionChange={setQuestion}
-            onClearQuote={() => setSelected(null)}
-            onSend={handleSend}
-            onRetry={handleRetry}
-            onRegenerate={handleRegenerate}
-            onEdit={handleEdit}
-            seenAnimationsRef={seenAnimationsRef}
-            viewportRef={chatViewportRef}
-            hasUnreadReply={hasUnreadReply}
-            onClearUnreadReply={() => setHasUnreadReply(false)}
-          />
-        ) : (
-          <AnalysisPanel
-            fillAvailableHeight={fillAvailableHeight}
-            analysis={analysis}
-            analyzing={analyzing}
-            error={analysisError}
-            limitNotice={analysisLimitNotice}
-            onAnalyze={handleAnalyze}
-            switching={!!switchTarget}
-            animateResult={animatedAnalysisId !== activePoem.id}
-            onAnimationStarted={() => setAnimatedAnalysisId(activePoem.id)}
-          />
-        )}
+        <div
+          className={
+            'min-w-0 transition-opacity duration-150 ease-in-out motion-reduce:transition-none ' +
+            (fillAvailableHeight ? 'flex min-h-0 flex-1 flex-col ' : '') +
+            (viewFadingOut ? 'opacity-0' : 'opacity-100')
+          }
+        >
+          {activeView === 'chat' ? (
+            <ChatPanel
+              key={activePoem.id}
+              fillAvailableHeight={fillAvailableHeight}
+              selected={selected}
+              question={question}
+              turns={turns}
+              loading={chatLoading || !!switchTarget}
+              onQuestionChange={setQuestion}
+              onClearQuote={() => setSelected(null)}
+              onSend={handleSend}
+              onRetry={handleRetry}
+              onRegenerate={handleRegenerate}
+              onEdit={handleEdit}
+              seenAnimationsRef={seenAnimationsRef}
+              viewportRef={chatViewportRef}
+              hasUnreadReply={hasUnreadReply}
+              onClearUnreadReply={() => setHasUnreadReply(false)}
+            />
+          ) : (
+            <AnalysisPanel
+              fillAvailableHeight={fillAvailableHeight}
+              analysis={analysis}
+              analyzing={analyzing}
+              error={analysisError}
+              limitNotice={analysisLimitNotice}
+              onAnalyze={handleAnalyze}
+              switching={!!switchTarget}
+              animateResult={animatedAnalysisId !== activePoem.id}
+              onAnimationStarted={() => setAnimatedAnalysisId(activePoem.id)}
+              scrollTopRef={analysisScrollTopRef}
+            />
+          )}
+        </div>
       </>
     )
   }
@@ -341,7 +420,15 @@ function App() {
             }
           >
             {/* 给底部正文留出空间，避免被悬浮的讨论按钮遮挡。 */}
-            <div className="poem-reader-scrollport h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8">
+            <div
+              className={
+                'poeticus-scrollport poeticus-reader-scrollport h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8 ' +
+                (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
+                (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
+              }
+              ref={readerScrollRef}
+              onScroll={(event) => updateReaderScrollEdges(event.currentTarget)}
+            >
               {switchError && (
                 <div role="alert" className="mb-3 text-sm text-destructive">
                   作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
@@ -477,12 +564,10 @@ function App() {
             </div>
 
             {/*
-              桌面双栏宽度与页眉内容区一致：max-w-7xl (80rem) 扣除两侧 md:px-8，
-              即 76rem。外层 1600px 的空间用于容纳常驻目录。
+              右侧助手独立管理内容高度、分割线及按钮位置；
+              目录收放时各栏随空间伸缩，阅读栏内部仍使用动态质心居中。
             */}
-            <div
-              className={'mx-auto w-full min-w-0 max-w-[76rem] ' + (catalogOpen ? '2xl:pl-6' : '')}
-            >
+            <div className={'mx-auto w-full min-w-0 max-w-[74rem] ' + (catalogOpen ? '2xl:pl-6' : '')}>
               <div className="relative min-w-0" aria-busy={!!switchTarget}>
                 {switchError && (
                   <div role="alert" className="mb-3 text-sm text-destructive">
@@ -492,17 +577,23 @@ function App() {
 
                 <div
                   inert={!!switchTarget}
-                  className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]"
+                  className="grid min-w-0 grid-cols-1 items-start gap-x-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(340px,1.15fr)]"
                 >
-                  <div className="poem-reader-scrollport min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2">
+                  <div
+                    className={
+                      'poeticus-scrollport poeticus-reader-scrollport min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:max-h-[calc(100dvh-8rem)] lg:flex-col lg:overflow-y-auto lg:overscroll-contain lg:pr-2 ' +
+                      (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
+                      (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
+                    }
+                    ref={readerScrollRef}
+                    onScroll={(event) => updateReaderScrollEdges(event.currentTarget)}
+                  >
                     {renderReaderContent()}
                   </div>
 
-                  <div className="flex min-h-[var(--desktop-reading-stage-min-height)] min-w-0 items-center">
-                    <div className="w-full border-l border-border/60 pl-7">
-                      {renderDiscussionContent(false)}
-                    </div>
-                  </div>
+                  <DesktopCompanionStage key={poemId}>
+                    {renderDiscussionContent(false)}
+                  </DesktopCompanionStage>
                 </div>
 
                 {switchTarget && (

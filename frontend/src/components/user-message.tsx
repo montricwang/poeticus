@@ -1,5 +1,6 @@
 import { Check, Copy, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ActionTooltip } from '@/components/action-tooltip'
 import { Textarea } from '@/components/ui/textarea'
 import { AssistantMarkdown } from '@/components/assistant-markdown'
 import type { ChatTurn } from '@/types/chat'
@@ -55,7 +56,7 @@ export function UserMessage({
           /* 编辑模式 */
           <div className="w-full min-w-64 space-y-3 rounded-sm bg-muted/45 p-3 dark:bg-muted/25">
             {turn.selection && (
-              <div className="border-l-2 border-violet-400/70 py-1 pl-3 pr-1 text-sm leading-6 text-muted-foreground">
+              <div className="border-l-2 border-violet-400/70 py-1 pl-3 pr-1 text-base leading-7 text-muted-foreground">
                 {turn.selection.text}
               </div>
             )}
@@ -64,7 +65,7 @@ export function UserMessage({
               autoFocus
               value={draft}
               onChange={(event) => onDraftChange(event.target.value)}
-              className="min-h-24 resize-y rounded-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
+              className="min-h-24 resize-y rounded-none border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
               aria-label="修改用户问题"
             />
 
@@ -88,7 +89,7 @@ export function UserMessage({
           <>
             <div className="w-full min-w-0 space-y-3 py-0.5">
               {turn.selection && (
-                <blockquote className="border-l-2 border-border pl-3 text-sm leading-6 text-muted-foreground">
+                <blockquote className="border-l-2 border-border pl-3 text-base leading-7 text-muted-foreground">
                   {turn.selection.text}
                 </blockquote>
               )}
@@ -97,30 +98,32 @@ export function UserMessage({
             </div>
 
             <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8 text-muted-foreground/60 hover:text-foreground"
-                aria-label="复制用户消息"
-                title="复制用户消息"
-                onClick={() => onCopy(copyContent)}
-              >
-                {copySucceeded ? <Check className="size-4" /> : <Copy className="size-4" />}
-              </Button>
+              <ActionTooltip label="复制提问">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-muted-foreground/60 hover:text-foreground"
+                  aria-label="复制用户消息"
+                  onClick={() => onCopy(copyContent)}
+                >
+                  {copySucceeded ? <Check className="size-4" /> : <Copy className="size-4" />}
+                </Button>
+              </ActionTooltip>
 
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-8 text-muted-foreground/60 hover:text-foreground"
-                disabled={loading}
-                aria-label="编辑用户消息"
-                title="编辑"
-                onClick={onStartEdit}
-              >
-                <Pencil className="size-4" />
-              </Button>
+              <ActionTooltip label="编辑提问">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-muted-foreground/60 hover:text-foreground"
+                  disabled={loading}
+                  aria-label="编辑用户消息"
+                  onClick={onStartEdit}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+              </ActionTooltip>
 
               {copyFailed && (
                 <span role="alert" className="text-xs text-destructive">

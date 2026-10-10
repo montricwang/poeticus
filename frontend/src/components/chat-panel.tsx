@@ -6,6 +6,7 @@ import { MessageEntrance } from '@/components/message-entrance'
 import { UserMessage } from '@/components/user-message'
 import { AssistantMessage } from '@/components/assistant-message'
 import { ChatComposer } from '@/components/chat-composer'
+import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { cn } from '@/lib/utils'
 import type { SelectedText } from '@/types/poem'
 import type { ChatTurn, ChatViewport } from '@/types/chat'
@@ -50,6 +51,7 @@ export function ChatPanel({
   const chatListRef = useRef<HTMLDivElement>(null)
   const initializedRef = useRef(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
+  const [hasContentAbove, setHasContentAbove] = useState(false)
 
   const [copyStatus, setCopyStatus] = useState<{
     key: string
@@ -94,6 +96,7 @@ export function ChatPanel({
       viewportRef.current.scrollTop = list.scrollTop
       viewportRef.current.atBottom = atBottom
       setIsAtBottom(atBottom)
+      setHasContentAbove(list.scrollTop > 8)
     })
     return () => window.cancelAnimationFrame(frame)
   }, [turns, viewportRef])
@@ -105,6 +108,7 @@ export function ChatPanel({
     viewportRef.current.scrollTop = list.scrollTop
     viewportRef.current.atBottom = atBottom
     setIsAtBottom(atBottom)
+    setHasContentAbove(list.scrollTop > 8)
 
     if (atBottom && hasUnreadReply) {
       onClearUnreadReply()
@@ -136,6 +140,7 @@ export function ChatPanel({
     if (list) {
       list.scrollTop = list.scrollHeight
       viewportRef.current.scrollTop = list.scrollTop
+      setHasContentAbove(list.scrollTop > 8)
     }
 
     onSend()
@@ -165,11 +170,14 @@ export function ChatPanel({
           <div
             ref={chatListRef}
             onScroll={(event) => handleScroll(event.currentTarget)}
-            className="flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto py-4 pr-2"
+            className={cn(
+              'poeticus-scrollport flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto pt-3 pb-1 pr-2',
+              hasContentAbove && 'poeticus-scroll-fade-top',
+            )}
           >
             {turns.map((turn, index) => (
               <div key={turn.id} className="space-y-4">
-                {index > 0 && <div className="mb-6 h-px w-12 bg-border/80" aria-hidden="true" />}
+                {index > 0 && <HorizontalEditorialDivider className="mb-6 w-12" />}
                 <MessageEntrance
                   animationId={`user:${turn.id}`}
                   seenAnimationsRef={seenAnimationsRef}
@@ -231,7 +239,7 @@ export function ChatPanel({
           </div>
 
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_72%,transparent)_62%,var(--background)_100%)] dark:h-6 dark:bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_48%,transparent)_68%,var(--background)_100%)]"
+            className="pointer-events-none absolute right-2 bottom-0 left-0 h-8 bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_72%,transparent)_62%,var(--background)_100%)] dark:h-6 dark:bg-[linear-gradient(to_bottom,transparent_0%,color-mix(in_oklab,var(--background)_48%,transparent)_68%,var(--background)_100%)]"
             aria-hidden="true"
           />
 
@@ -240,7 +248,7 @@ export function ChatPanel({
               type="button"
               variant="outline"
               size="sm"
-              className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-background/95 shadow-md backdrop-blur-sm"
+              className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-md bg-background/95 shadow-md backdrop-blur-sm"
               aria-label={hasUnreadReply ? '新回复已生成，滚动到底部' : '滚动到底部'}
               onClick={scrollToBottom}
             >
@@ -256,6 +264,11 @@ export function ChatPanel({
         </div>
       )}
 
+      {/* 横向分割线由讨论父容器管理，不占用输入组件内部空间。 */}
+      {turns.length > 0 && (
+        <HorizontalEditorialDivider className="mt-2 w-full" />
+      )}
+
       <ChatComposer
         selected={selected}
         question={question}
@@ -263,7 +276,6 @@ export function ChatPanel({
         onQuestionChange={onQuestionChange}
         onClearQuote={onClearQuote}
         onSend={handleSendFromComposer}
-        showDivider={turns.length > 0}
       />
     </section>
   )

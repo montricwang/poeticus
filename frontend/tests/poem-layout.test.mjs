@@ -39,3 +39,25 @@ test('句内顿号保持原样并可独立着色', () => {
     '、，。',
   )
 })
+
+test('书名号、引号与缺字方框使用标点样式，正文不改字', () => {
+  const source = '读《天问》，“归来？”「何时」『归去』□■▢〓�'
+  const runs = buildPoemTextRuns(source)
+  assert.equal(runs.map((run) => run.text).join(''), source)
+  assert.equal(
+    runs.filter((run) => run.punctuation).map((run) => run.text).join(''),
+    '《》，“？”「」『』□■▢〓�',
+  )
+  assert.equal(
+    runs.filter((run) => !run.punctuation).map((run) => run.text).join(''),
+    '读天问归来何时归去',
+  )
+})
+
+test('弱化标点只改变展示分段，不影响正常原文分行', () => {
+  const source = '“春风”吹入《玉楼》，“夜未央”。□'
+  const lines = buildPoemLines(source)
+  assert.equal(lines.map((line) => line.text).join(''), source)
+  assert.equal(buildPoemTextRuns(source).map((run) => run.text).join(''), source)
+  assert.equal(lines[0].text, '“春风”吹入《玉楼》，“夜未央”。')
+})
