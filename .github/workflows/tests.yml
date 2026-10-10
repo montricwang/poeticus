@@ -61,6 +61,12 @@ jobs:
       - name: Lint frontend
         run: npm run lint
 
+      # Temporary diagnostic: emit exact Prettier diff for the extracted panes.
+      - name: Inspect pane extraction formatting
+        run: |
+          npx prettier --write src/components/reader-pane.tsx tests/layout-scrollbar-contract.test.mjs
+          git diff -- src/components/reader-pane.tsx tests/layout-scrollbar-contract.test.mjs
+
       - name: Check frontend formatting
         run: npm run format:check
 
