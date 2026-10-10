@@ -104,7 +104,6 @@ export function ChatPanel({
   }, [turns, viewportRef])
 
   function handleScroll(list: HTMLDivElement) {
-    markScrollActivity(list)
     const distanceToBottom = list.scrollHeight - list.scrollTop - list.clientHeight
     const atBottom = distanceToBottom <= 64
 
@@ -173,6 +172,8 @@ export function ChatPanel({
           <div
             ref={chatListRef}
             onScroll={(event) => handleScroll(event.currentTarget)}
+            onWheel={(event) => markScrollActivity(event.currentTarget)}
+            onTouchMove={(event) => markScrollActivity(event.currentTarget)}
             className={cn(
               'poeticus-scrollport poeticus-auto-scrollbar flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto pt-3 pb-1 pr-2',
             )}
