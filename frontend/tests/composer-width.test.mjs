@@ -4,7 +4,10 @@ import assert from 'node:assert/strict'
 import { composerWidthForLines } from '../src/lib/composer-width.ts'
 
 const measure = (text) =>
-  Array.from(text).reduce((total, character) => total + (character.codePointAt(0) > 255 ? 16 : 8), 0)
+  Array.from(text).reduce(
+    (total, character) => total + (character.codePointAt(0) > 255 ? 16 : 8),
+    0,
+  )
 
 test('empty question reports only padding; CSS supplies the initial width', () => {
   assert.equal(composerWidthForLines('', measure), 32)
