@@ -11,6 +11,7 @@ import { ChatPanel } from '@/components/chat-panel'
 import { AnalysisPanel } from '@/components/analysis-panel'
 import { MobileDiscussionScreen } from '@/components/mobile-discussion-screen'
 import { ViewToolbar } from '@/components/view-toolbar'
+import { ViewToolbarDivider } from '@/components/view-toolbar-divider'
 import type { ActiveView } from '@/components/view-toolbar'
 
 import { fetchPoem } from '@/data/poem-library'
@@ -309,6 +310,7 @@ function App() {
     return (
       <>
         <ViewToolbar activeView={activeView} onViewChange={handleViewChange} />
+        <ViewToolbarDivider />
 
         <div
           className={
