@@ -188,7 +188,7 @@ function App() {
       setActiveView(nextView)
       setViewFadingOut(false)
       viewSwitchTimerRef.current = null
-    }, 150)
+    }, motionDurationMs('--motion-view-fade'))
   }
 
   function handlePoemChange(nextId: string) {
