@@ -42,19 +42,30 @@ test('没有有效文字或无效尺寸时回退传统居中', () => {
   assert.equal(opticalCenterOffset([{ start: 0, width: 4 }], Number.NaN, 20), 0)
 })
 
-test('向左偏移只使用单侧剩余空间的一部分', () => {
-  const rows = [80, 80, 80, 160, 160].map((width) => ({ start: 0, width }))
-  const pure = opticalCenterOffset(rows, 160, 300)
-  const biased = opticalCenterOffset(rows, 160, 300, 0.4)
-  assert.ok(Math.abs(pure - biased - 28) < 1e-9)
-  assert.equal(opticalCenterOffset(rows, 160, 160, 0.4), 0)
-  assert.ok(Math.abs(opticalCenterOffset(rows, 160, 300, 2) - (pure - 70)) < 1e-9)
-  assert.equal(opticalCenterOffset([{ start: 140, width: 20 }], 160, 300, 1), -70)
+test('折中模式只应用质心修正的一定比例', () => {
+  const rows = [4, 4, 4, 8, 8].map((width) => ({ start: 0, width }))
+  const full = opticalCenterOffset(rows, 8, 20)
+  assert.ok(Math.abs(opticalCenterOffset(rows, 8, 20, 0.6) - full * 0.6) < 1e-9)
+  assert.equal(opticalCenterOffset(rows, 8, 20, 0), 0)
+  assert.equal(opticalCenterOffset(rows, 8, 20, 1), full)
 })
 
-test('默认纯质心和无效偏移系数都保持原有算法', () => {
-  const rows = [{ start: 0, width: 50 }]
-  const expected = opticalCenterOffset(rows, 100, 200)
-  assert.equal(opticalCenterOffset(rows, 100, 200, 0), expected)
-  assert.equal(opticalCenterOffset(rows, 100, 200, Number.NaN), expected)
+test('折中模式不以容器余白为依据额外左移', () => {
+  const rows = [{ start: 0, width: 8 }]
+  assert.equal(opticalCenterOffset(rows, 8, 10, 0.6), 0)
+  assert.equal(opticalCenterOffset(rows, 8, 100, 0.6), 0)
+})
+
+test('窄屏仍以完整诗行的可用空间限制位移', () => {
+  const rows = [4, 4, 4, 8, 8].map((width) => ({ start: 0, width }))
+  assert.equal(opticalCenterOffset(rows, 8, 9, 0.6), 0.5)
+  assert.equal(opticalCenterOffset(rows, 8, 8, 0.6), 0)
+})
+
+test('过界或无效折中系数不会产生不可预测偏移', () => {
+  const rows = [4, 4, 4, 8, 8].map((width) => ({ start: 0, width }))
+  const pure = opticalCenterOffset(rows, 8, 20)
+  assert.equal(opticalCenterOffset(rows, 8, 20, 2), pure)
+  assert.equal(opticalCenterOffset(rows, 8, 20, -1), 0)
+  assert.equal(opticalCenterOffset(rows, 8, 20, Number.NaN), pure)
 })
