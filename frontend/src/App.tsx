@@ -205,7 +205,7 @@ function App() {
 
         // Avoid a blank screen during network waits; fade only after data arrives.
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-            if (!reduceMotion) {
+        if (!reduceMotion) {
           setPoemSwapPhase('leaving')
           await new Promise<void>((resolve) => window.setTimeout(resolve, 160))
           if (controller.signal.aborted) return
@@ -251,7 +251,7 @@ function App() {
       .finally(() => {
         if (controller.signal.aborted) return
         switchControllerRef.current = null
-            setSwitchTarget(null)
+        setSwitchTarget(null)
       })
   }
 
