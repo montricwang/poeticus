@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,26 @@ type QuotePreviewProps = {
 export function QuotePreview({ selected, loading, onClearQuote }: QuotePreviewProps) {
   const [rendered, setRendered] = useState<SelectedText | null>(selected)
   const [expanded, setExpanded] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [contentHeight, setContentHeight] = useState(0)
+
+  // Measure the quote's natural height while its animated outer wrapper clips it.
+  // A new selection only changes this height; it never remounts the preview.
+  useLayoutEffect(() => {
+    const element = contentRef.current
+    if (!element) return
+    const measure = () => {
+      const nextHeight = Math.ceil(element.getBoundingClientRect().height)
+      setContentHeight((previous) => (previous === nextHeight ? previous : nextHeight))
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    const frame = window.requestAnimationFrame(measure)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
+  }, [])
 
   useEffect(() => {
     if (selected) {
@@ -50,12 +70,13 @@ export function QuotePreview({ selected, loading, onClearQuote }: QuotePreviewPr
   return (
     <div
       aria-hidden={!expanded}
+      style={{ height: expanded ? contentHeight : 0 }}
       className={
-        'poeticus-quote-transition grid min-w-0 ' +
+        'poeticus-quote-transition min-w-0 ' +
         (expanded ? 'poeticus-quote-open' : 'pointer-events-none')
       }
     >
-      <div className="min-h-0 overflow-hidden" inert={!expanded}>
+      <div ref={contentRef} className="min-w-0" inert={!expanded}>
         {rendered && (
           <div className="flex min-w-0 items-start gap-2 border-l-2 border-violet-400/60 pl-3">
             <p
