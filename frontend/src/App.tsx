@@ -16,6 +16,7 @@ import type { ActiveView } from '@/components/view-toolbar'
 import { fetchPoem } from '@/data/poem-library'
 import { usePoemCatalog } from '@/hooks/use-poem-catalog'
 import { usePoemDetail } from '@/hooks/use-poem-detail'
+import { usePoemNeighbors } from '@/hooks/use-poem-neighbors'
 import { useConversationPersistence } from '@/hooks/use-conversation-persistence'
 import { usePoemAnalysis } from '@/hooks/use-poem-analysis'
 import { loadInitialChatState } from '@/lib/chat-initial-state'
@@ -89,6 +90,8 @@ function App() {
     setSelected,
     switchControllerRef,
   })
+
+  const neighbors = usePoemNeighbors(poemId)
 
   const [activeView, setActiveView] = useState<ActiveView>('chat')
   // 赏析面板切换视图时会卸载；用 ref 保留已读位置，不触发整页重渲染。
@@ -200,6 +203,7 @@ function App() {
         window.getSelection()?.removeAllRanges()
         setActivePoem(work)
         setPoemId(work.id)
+        readerScrollRef.current?.scrollTo({ top: 0 })
         setDetailError('')
         restoreForPoem(work)
         setAnimatedAnalysisId(null)
@@ -318,7 +322,14 @@ function App() {
     if (poemReady) {
       return (
         <div className="w-full lg:my-auto lg:pt-2 lg:pb-10">
-          <PoemReader key={activePoem.id} work={activePoem} onSelect={handleReaderSelect} />
+          <PoemReader
+            key={activePoem.id}
+            work={activePoem}
+            onSelect={handleReaderSelect}
+            neighbors={neighbors}
+            navigationBlocked={chatLoading || analyzing || !!switchTarget}
+            onNavigate={handlePoemChange}
+          />
         </div>
       )
     }

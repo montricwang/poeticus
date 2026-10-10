@@ -1,18 +1,30 @@
 import { useRef } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
 
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { PoemBody } from '@/components/poem-body'
 
 import { poemText } from '@/data/poem-library'
-import type { Poem } from '@/data/poem-library'
+import type { Poem, PoemNeighbors } from '@/data/poem-library'
 import type { SelectedText } from '@/types/poem'
 
 type PoemReaderProps = {
   work: Poem
   onSelect: (selection: SelectedText) => void
+  neighbors: PoemNeighbors | null
+  navigationBlocked: boolean
+  onNavigate: (id: string) => void
 }
 
-export function PoemReader({ work, onSelect }: PoemReaderProps) {
+export function PoemReader({
+  work,
+  onSelect,
+  neighbors,
+  navigationBlocked,
+  onNavigate,
+}: PoemReaderProps) {
   const poem = poemText(work)
   const readerRef = useRef<HTMLDivElement>(null)
   return (
@@ -59,6 +71,37 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
 
       <HorizontalEditorialDivider className="mx-auto mt-4 w-20 lg:w-[82%] lg:max-w-[24rem]" />
       <p className="mt-3 text-center text-xs text-muted-foreground">划选诗句，即可引用提问</p>
+      <nav
+        aria-label="切换作品"
+        className="mx-auto mt-4 flex max-w-[24rem] items-center justify-between px-4 sm:px-8"
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="font-normal text-muted-foreground hover:text-foreground"
+          disabled={navigationBlocked || !neighbors?.previous_id}
+          onClick={() => {
+            if (neighbors?.previous_id) onNavigate(neighbors.previous_id)
+          }}
+        >
+          <ChevronLeft className="size-4" aria-hidden="true" />
+          上一首
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="font-normal text-muted-foreground hover:text-foreground"
+          disabled={navigationBlocked || !neighbors?.next_id}
+          onClick={() => {
+            if (neighbors?.next_id) onNavigate(neighbors.next_id)
+          }}
+        >
+          下一首
+          <ChevronRight className="size-4" aria-hidden="true" />
+        </Button>
+      </nav>
     </div>
   )
 }
