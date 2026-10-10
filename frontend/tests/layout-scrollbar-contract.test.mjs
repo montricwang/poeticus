@@ -106,7 +106,10 @@ test('独立动画共用参数来源，历史消息与输入框不随整栏闪�
 })
 
 test('引文和消息列表都有退场状态，内容不会立即连同容器一起卸载', () => {
-  const quote = readFileSync(new URL('../src/components/quote-preview.tsx', import.meta.url), 'utf8')
+  const quote = readFileSync(
+    new URL('../src/components/quote-preview.tsx', import.meta.url),
+    'utf8',
+  )
   const chat = readFileSync(new URL('../src/components/chat-panel.tsx', import.meta.url), 'utf8')
   const chatList = readFileSync(
     new URL('../src/components/chat-message-list.tsx', import.meta.url),
