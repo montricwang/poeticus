@@ -43,3 +43,47 @@ test('延续生产版滚动条与分割线，不回退到浏览器默认外观',
   assert.match(divider, /h-\[1\.5px\].*bg-border\/80/)
   assert.match(divider, /w-\[1\.5px\].*bg-border\/80/)
 })
+
+test('自动隐藏只改变滑块可见性，不覆盖 Chrome 自定义尺寸', () => {
+  const thumb = readFileSync(
+    new URL('../src/hooks/use-auto-hide-scrollbars.ts', import.meta.url),
+    'utf8',
+  )
+  assert.match(styles, /\.poeticus-scrollport::-webkit-scrollbar-thumb \{/)
+  assert.match(styles, /\[data-scrolling='true'\]/)
+  assert.match(styles, /@supports not selector\(::-webkit-scrollbar\)/)
+  assert.match(thumb, /addEventListener\('scroll', onScroll, true\)/)
+  assert.match(thumb, /removeEventListener\('scroll', onScroll, true\)/)
+  assert.match(thumb, /--motion-scrollbar-idle-timeout/)
+})
+
+test('独立动画共用参数来源，历史消息与输入框不随整栏闪烁', () => {
+  const composer = readFileSync(
+    new URL('../src/components/chat-composer.tsx', import.meta.url),
+    'utf8',
+  )
+  const chatPanel = readFileSync(
+    new URL('../src/components/chat-panel.tsx', import.meta.url),
+    'utf8',
+  )
+  const chatAnimation = readFileSync(
+    new URL('../src/components/chat-animations.css', import.meta.url),
+    'utf8',
+  )
+  const poemReader = readFileSync(
+    new URL('../src/components/poem-reader.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.match(styles, /--motion-poem-swap: 360ms/)
+  assert.match(styles, /--motion-quote-enter: 460ms/)
+  assert.match(styles, /--motion-chat-history-resize: 500ms/)
+  assert.match(styles, /--motion-message-enter: 380ms/)
+  assert.match(app, /motionDurationMs\('--motion-poem-swap'\)/)
+  assert.match(composer, /poeticus-quote-enter/)
+  assert.match(chatPanel, /poeticus-chat-content-enter/)
+  assert.match(chatPanel, /duration-\[var\(--motion-chat-history-resize\)\]/)
+  assert.match(chatAnimation, /var\(--motion-message-enter\)/)
+  assert.doesNotMatch(poemReader, /desktop-reading-stage-min-height/)
+  assert.doesNotMatch(companion, /window\.innerHeight \* 0\.3/)
+  assert.doesNotMatch(companion, /Math\.min\(608,/)
+})
