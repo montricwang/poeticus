@@ -92,12 +92,13 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
         measures.push({ start: Math.max(0, start), width: inkRect.width })
       }
 
-      const strength =
-        mode === 'optical'
-          ? 1
-          : mode === 'fixed'
-            ? Number.parseFloat(getComputedStyle(block).getPropertyValue('--reader-optical-strength'))
-            : adaptiveOpticalStrength(measures)
+      let strength = adaptiveOpticalStrength(measures)
+      if (mode === 'optical') strength = 1
+      if (mode === 'fixed') {
+        strength = Number.parseFloat(
+          getComputedStyle(block).getPropertyValue('--reader-optical-strength'),
+        )
+      }
       const offset = opticalCenterOffset(measures, blockRect.width, availableWidth, strength)
       block.style.translate = Math.abs(offset) < 0.5 ? '' : `${offset.toFixed(2)}px 0`
     }

@@ -76,20 +76,10 @@ test('过界或无效折中系数不会产生不可预测偏移', () => {
 
 test('动态修正比例由平均句宽和最长句宽共同决定', () => {
   const lengths = [4, 4, 4, 8, 8]
-  assert.equal(
-    adaptiveOpticalStrength(lengths.map((width) => ({ start: 0, width }))),
-    0.7,
-  )
-  assert.equal(
-    adaptiveOpticalStrength([4, 4, 4, 4, 8].map((width) => ({ start: 0, width }))),
-    0.6,
-  )
-  assert.ok(
-    Math.abs(
-      adaptiveOpticalStrength([...Array(10).fill(4), 8].map((width) => ({ start: 0, width }))) -
-        6 / 11,
-    ) < 1e-9,
-  )
+  assert.equal(adaptiveOpticalStrength(lengths.map((width) => ({ start: 0, width }))), 0.7)
+  assert.equal(adaptiveOpticalStrength([4, 4, 4, 4, 8].map((width) => ({ start: 0, width }))), 0.6)
+  const mostlyShort = [...Array(10).fill(4), 8].map((width) => ({ start: 0, width }))
+  assert.ok(Math.abs(adaptiveOpticalStrength(mostlyShort) - 6 / 11) < 1e-9)
 })
 
 test('全部等长时强度为一，但质心修正为零', () => {
