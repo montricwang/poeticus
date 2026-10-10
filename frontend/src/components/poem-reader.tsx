@@ -28,8 +28,13 @@ export function PoemReader({
   const poem = poemText(work)
   const readerRef = useRef<HTMLDivElement>(null)
   return (
-    <div className="poem-reader min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:flex-1 lg:flex-col">
-      <div ref={readerRef} className="bg-transparent lg:flex lg:flex-1 lg:flex-col lg:justify-center">
+    <div
+      className="poem-reader min-w-0 lg:flex lg:min-h-[var(--desktop-reading-stage-min-height)] lg:flex-1 lg:flex-col"
+    >
+      <div
+        ref={readerRef}
+        className="bg-transparent lg:flex lg:flex-1 lg:flex-col lg:justify-center"
+      >
         <article className="poem-reader-page mx-auto w-full min-w-0 px-4 sm:px-8">
           <header className="poem-reader-header text-center">
             {/* 有寓声时尊重来源题头次序：寓声为主，原词牌为辅。 */}
@@ -71,10 +76,7 @@ export function PoemReader({
 
       <div className="mx-auto mt-8 w-full max-w-[27rem] px-4 pb-4 sm:px-8 lg:mt-auto lg:pb-2">
         <HorizontalEditorialDivider className="mb-3 hidden w-full lg:block" />
-        <nav
-          aria-label="切换作品"
-          className="grid grid-cols-[1fr_auto_1fr] items-center gap-2"
-        >
+        <nav aria-label="切换作品" className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <Button
             type="button"
             variant="ghost"
