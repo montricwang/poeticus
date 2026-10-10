@@ -11,7 +11,7 @@
 }
 
 .poeticus-message-enter {
-  animation: poeticus-message-enter 320ms var(--motion-ease-settle) both;
+  animation: poeticus-message-enter var(--motion-message-enter) var(--motion-ease-settle) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
