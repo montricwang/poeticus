@@ -13,6 +13,7 @@ import type { SelectedText } from '@/types/poem'
 import type { ChatTurn, ChatViewport } from '@/types/chat'
 
 type ChatPanelProps = {
+  poemId: string
   selected: SelectedText | null
   question: string
   turns: ChatTurn[]
@@ -32,6 +33,7 @@ type ChatPanelProps = {
 }
 
 export function ChatPanel({
+  poemId,
   selected,
   question,
   turns,
@@ -50,6 +52,11 @@ export function ChatPanel({
   className,
 }: ChatPanelProps) {
   const chatListRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const historyContentRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLDivElement>(null)
+  const [historyHeight, setHistoryHeight] = useState(0)
+  const previousPoemRef = useRef(poemId)
   const markScrollActivity = useScrollActivity()
   const initializedRef = useRef(false)
   const [isAtBottom, setIsAtBottom] = useState(true)
@@ -61,6 +68,47 @@ export function ChatPanel({
   } | null>(null)
   const [editingTurnId, setEditingTurnId] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState('')
+
+  // Keep the toolbar/composer mounted while only the message viewport grows
+  // or shrinks. The measured height is capped at the visible companion budget.
+  useLayoutEffect(() => {
+    if (fillAvailableHeight) return
+    const section = sectionRef.current
+    const messages = historyContentRef.current
+    const composer = composerRef.current
+    const list = chatListRef.current
+    if (!section || !messages || !composer || !list) return
+
+    const measure = () => {
+      const maxHeight = Number.parseFloat(window.getComputedStyle(section).maxHeight)
+      const available = Number.isFinite(maxHeight)
+        ? Math.max(0, maxHeight - composer.getBoundingClientRect().height - 12)
+        : window.innerHeight / 2
+      const target = turns.length === 0 ? 0 : Math.min(messages.scrollHeight + 16, available)
+      setHistoryHeight((previous) => (Math.abs(previous - target) < 1 ? previous : target))
+      if (viewportRef.current.atBottom) {
+        window.requestAnimationFrame(() => {
+          list.scrollTop = list.scrollHeight
+        })
+      }
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(messages)
+    observer.observe(composer)
+    window.addEventListener('resize', measure)
+    measure()
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [fillAvailableHeight, turns.length, viewportRef])
+
+  // On poem switches the same component preserves the input region, but resets
+  // the saved scroll-position initialization for the newly restored conversation.
+  if (previousPoemRef.current !== poemId) {
+    previousPoemRef.current = poemId
+    initializedRef.current = false
+  }
 
   async function handleCopy(key: string, content: string) {
     try {
@@ -150,14 +198,13 @@ export function ChatPanel({
 
   return (
     <section
+      ref={sectionRef}
       aria-label="阅读讨论"
       className={cn(
         'flex min-h-0 min-w-0 flex-col bg-transparent',
         fillAvailableHeight
           ? 'flex-1'
-          : turns.length > 0
-            ? 'h-auto max-h-[var(--companion-panel-max-height)]'
-            : 'h-auto',
+          : 'max-h-[var(--companion-panel-max-height)] overflow-hidden',
         className,
       )}
     >
@@ -167,19 +214,28 @@ export function ChatPanel({
         <div className="min-h-0 flex-1" aria-hidden="true" />
       )}
 
-      {turns.length > 0 && (
-        <div className="relative flex min-h-0 flex-1">
+      {(turns.length > 0 || !fillAvailableHeight) && (
+        <div
+          className={cn(
+            'relative min-h-0',
+            fillAvailableHeight
+              ? 'flex flex-1'
+              : 'shrink-0 overflow-hidden transition-[height] duration-[380ms] ease-[var(--motion-ease-settle)] motion-reduce:transition-none',
+          )}
+          style={fillAvailableHeight ? undefined : { height: historyHeight }}
+        >
           <div
             ref={chatListRef}
             onScroll={(event) => handleScroll(event.currentTarget)}
             onWheel={(event) => markScrollActivity(event.currentTarget)}
             onTouchMove={(event) => markScrollActivity(event.currentTarget)}
             className={cn(
-              'poeticus-scrollport poeticus-auto-scrollbar flex min-h-0 w-full flex-1 flex-col gap-6 overflow-y-auto pt-3 pb-1 pr-2',
+              'poeticus-scrollport poeticus-auto-scrollbar flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto pt-3 pb-1 pr-2',
               hasContentAbove && 'poeticus-scroll-fade-top',
             )}
           >
-            {turns.map((turn, index) => (
+            <div ref={historyContentRef} className="flex flex-col gap-6">
+              {turns.map((turn, index) => (
               <div key={turn.id} className="space-y-4">
                 {index > 0 && <HorizontalEditorialDivider className="mb-6 w-12" />}
                 <MessageEntrance
@@ -239,7 +295,8 @@ export function ChatPanel({
                   />
                 </MessageEntrance>
               </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           <div
@@ -271,14 +328,16 @@ export function ChatPanel({
       {/* 横向分割线由讨论父容器管理，不占用输入组件内部空间。 */}
       {turns.length > 0 && <HorizontalEditorialDivider className="mt-2 w-full" />}
 
-      <ChatComposer
+      <div ref={composerRef} className="shrink-0">
+        <ChatComposer
         selected={selected}
         question={question}
         loading={loading}
         onQuestionChange={onQuestionChange}
         onClearQuote={onClearQuote}
         onSend={handleSendFromComposer}
-      />
+        />
+      </div>
     </section>
   )
 }
