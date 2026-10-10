@@ -22,10 +22,13 @@ export function DesktopCompanionStage({ children, ready }: DesktopCompanionStage
     const content = contentRef.current
     if (!content) return
 
-    const observer = new ResizeObserver(() => {
+    const measure = () => {
       const height = Math.ceil(content.getBoundingClientRect().height)
       setCurrentHeight((previous) => (previous === height ? previous : height))
-    })
+    }
+    // Read the first real chat/composer/quote height before painting a new poem.
+    measure()
+    const observer = new ResizeObserver(measure)
     observer.observe(content)
     return () => observer.disconnect()
   }, [])
@@ -35,7 +38,7 @@ export function DesktopCompanionStage({ children, ready }: DesktopCompanionStage
 
     // Let the restored poem and conversation settle before enabling movement.
     // Otherwise the loading placeholder would animate into the first real layout.
-    const timer = window.setTimeout(() => setAnimateLayout(true), 100)
+    const timer = window.setTimeout(() => setAnimateLayout(true), 300)
     return () => window.clearTimeout(timer)
   }, [ready])
 
