@@ -69,7 +69,10 @@ export function DesktopCompanionStage({ children, ready }: DesktopCompanionStage
   useEffect(() => {
     if (!ready) return
     // Prevent an entrance transition while the first saved chat is measured.
-    const timer = window.setTimeout(() => setAnimateLayout(true), motionDurationMs('--motion-companion-ready-delay'))
+    const timer = window.setTimeout(
+      () => setAnimateLayout(true),
+      motionDurationMs('--motion-companion-ready-delay'),
+    )
     return () => window.clearTimeout(timer)
   }, [ready])
 
