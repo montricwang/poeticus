@@ -29,7 +29,7 @@
 }
 
 .poeticus-analysis-result-enter {
-  animation: poeticus-analysis-result-enter 180ms ease-out both;
+  animation: poeticus-analysis-result-enter var(--motion-analysis-result-enter) ease-out both;
 }
 
 .poeticus-analysis-block-pending {
