@@ -3,5 +3,11 @@
   "exclude": ["**/__pycache__", "**/.venv", "**/node_modules"],
   "pythonVersion": "3.12",
   "typeCheckingMode": "standard",
-  "failOnWarnings": false
+  "failOnWarnings": false,
+  "reportCallInDefaultInitializer": "none",
+  "reportAny": "none",
+  "reportExplicitAny": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownArgumentType": "none"
 }
