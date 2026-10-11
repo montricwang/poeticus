@@ -12,6 +12,7 @@ Railway poeticus-web
    ├─ frontend/dist
    ├─ /api/poems*
    ├─ /api/chat* / Agent
+   ├─ /api/analyze
    └─ Railway PostgreSQL
 ```
 
