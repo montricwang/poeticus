@@ -8,6 +8,7 @@ import pytest
 from backend.evidence.schema import EvidenceItem, EvidenceSource
 from backend.retrieval.client import (
     RetrievalCandidate,
+    RetrievalClientError,
     RetrievalSearchResponse,
 )
 
@@ -546,6 +547,53 @@ def test_local_retrieval_tool_adds_host_poem_context_and_returns_candidates(
     assert payload["evidence_type"] == "text_retrieval"
     assert payload["candidates"][0]["author"] == "杜甫"
     assert payload["candidates"][0]["text"] == "片片轻鸥下急湍。"
+
+
+def test_local_retrieval_failure_returns_tool_error_and_agent_finishes(
+    monkeypatch,
+    agent,
+):
+    create_calls = []
+
+    def fake_create(**kwargs):
+        create_calls.append(kwargs)
+        if len(create_calls) == 1:
+            return _tool_call_response(
+                "retrieval-offline",
+                "search_predecessor_texts",
+                json.dumps({"text": "片片轻鸥落晚沙"}, ensure_ascii=False),
+            )
+        return _text_response("本次语料检索不可用，我无法核实具体的前代出处。")
+
+    class UnavailableRetrievalClient:
+        enabled = True
+
+        async def search(self, *, text, current_poem, top_k):
+            raise RetrievalClientError("Text Retrieval Service 请求失败")
+
+    monkeypatch.setattr(agent, "client", _fake_client(fake_create))
+    monkeypatch.setattr(
+        agent, "text_retrieval_client", UnavailableRetrievalClient()
+    )
+
+    result = agent.graph.invoke(
+        {
+            "poem": "片片轻鸥落晚沙。",
+            "question": "这句改用了谁的诗？",
+        }
+    )
+
+    tool_message = next(
+        message
+        for message in create_calls[1]["messages"]
+        if message.get("role") == "tool"
+    )
+    payload = json.loads(tool_message["content"])
+    assert payload["status"] == "error"
+    assert payload["evidences"] == []
+    assert result["tool_count"] == 1
+    assert result["reply"] == "本次语料检索不可用，我无法核实具体的前代出处。"
+    assert len(create_calls) == 2
 
 
 def test_agent_prompt_prioritizes_corpus_retrieval_for_textual_provenance(agent):

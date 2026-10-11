@@ -1,6 +1,6 @@
 # Poeticus｜当前生产部署
 
-本文描述 v0.3.0 的生产结构、资源边界和常用运维检查。历史预览环境、首次上线过程和 Retrieval Spike 的经历保留在 [开发日志](devlog/)、Release notes 与 [ADR-0001](adr/0001-separate-text-retrieval-service.md)；历史运行命令不是当前部署依据。
+本文记录截至 2026-10-11 的生产部署、已验证的 Retrieval 接入方式和当前可执行的运维检查。原腾讯云检索节点已销毁；旧节点性能数据保留为历史基线。历史实验见 [开发日志](devlog/)、Release notes 与 [ADR-0001](adr/0001-separate-text-retrieval-service.md)。
 
 ## 1. 生产拓扑
 
@@ -11,31 +11,13 @@ Railway poeticus-web
    ├─ FastAPI: backend.app:app
    ├─ frontend/dist
    ├─ /api/poems*
-   ├─ /api/chat*
-   ├─ /api/analyze
-   └─ Agent
-        │
-        ├────────────→ Railway PostgreSQL
-        │
-        │ HTTPS + Bearer token
-        ▼
-Tencent Cloud Shanghai
-   Nginx :443
-        ↓
-   127.0.0.1:8787
-   Text Retrieval Service
-   ├─ Qwen3-Embedding-0.6B query encoder
-   ├─ sentence FAISS
-   ├─ clause FAISS
-   ├─ sentence BM25
-   └─ compact SQLite metadata
+   ├─ /api/chat* / Agent
+   └─ Railway PostgreSQL
 ```
 
-Web、作品数据库和 Text Retrieval 目前分成三个资源边界：
+生产中的 Web、Agent 和作品数据库运行在 Railway。当前 `POETICUS_TEXT_RETRIEVAL_URL` 为空，Agent 不注册 `search_predecessor_texts`；普通问答和其他 Evidence 工具不依赖自建 Retrieval 节点。
 
-- Railway Web：页面、API、Agent、SSE；
-- Railway PostgreSQL：公开阅读作品；
-- 腾讯云 Retrieval：约 85 万首外部 Corpus 的 Hybrid Retrieval。
+独立 Retrieval 已在开发机 WSL 恢复。2026-10-11 曾通过带 Bearer 认证的 Cloudflare Quick Tunnel，完成 Railway → 本地 Retrieval → Agent 的真实端到端测试（两次检索请求均返回 HTTP 200）。之后将 Railway URL 恢复为空并重新部署。Quick Tunnel 不是常驻生产入口。
 
 架构决策见 [ADR-0001](adr/0001-separate-text-retrieval-service.md)。
 
@@ -89,43 +71,19 @@ Railway PostgreSQL
 
 ## 4. Retrieval 节点
 
-当前主机：
+当前没有持续在线的公网 Retrieval 节点。此前腾讯云上海 Ubuntu 24.04 / 2 vCPU / 8 GiB 的实例已销毁，原 `/opt/poeticus`、`/etc/poeticus-retrieval.env`、Nginx、systemd 和公网 IP 不再有效。
 
-```text
-Tencent Cloud Shanghai
-Ubuntu 24.04
-2 vCPU
-8 GiB RAM
-CPU only
-single worker
-system disk ≈ 50 GiB
+2026-10-11 使用现存模型、FAISS、BM25 与 SQLite Artifact，在 WSL Ubuntu 的 `~/projects/poeticus` 和相邻的 `~/projects/poeticus-data` 目录恢复 CPU Serving：
+
+```bash
+python -m scripts.retrieval.run_serving --device cpu
 ```
 
-运行目录：
-
-```text
-/opt/poeticus
-/opt/poeticus-data
-/etc/poeticus-retrieval.env
-```
-
-systemd unit：
-
-```text
-poeticus-retrieval.service
-```
-
-Retrieval 只监听：
-
-```text
-127.0.0.1:8787
-```
-
-8787 不进入腾讯云 Security Group 的公网入站规则。
+默认仅监听 `127.0.0.1:8787`。本地服务与公网隧道需要分别启动；Railway 无法直接访问开发机的 loopback 地址。重新启用公网检索前须验证 Bearer 认证、HTTPS、可达性及断连降级。
 
 ## 5. Serving Artifact
 
-当前线上 Bundle：
+已验证的 Serving Bundle：
 
 | Artifact | 大小 |
 | --- | ---: |
@@ -147,9 +105,9 @@ pq_bits=8
 nprobe=64
 ```
 
-## 6. Linux 资源基线
+## 6. 历史 Linux 资源基线
 
-2C8G 首轮 benchmark：
+以下数据来自已销毁的腾讯云 2C8G CPU 节点，并非当前 WSL 或未来 VPS 的性能保证：
 
 ### Memory
 
@@ -185,93 +143,27 @@ individual p95  ≈ 2.80 s
 throughput      ≈ 1.78 req/s
 ```
 
-当前 8 GiB RAM 足够；如果以后需要升级，先看真实 CPU / concurrency 指标。
+旧节点在该次测试中未出现 OOM；新主机需重新测量启动耗时、内存峰值与延迟。
 
 ## 7. HTTPS 与认证
 
-公网入口由 Nginx 提供：
+本地 Retrieval 默认监听 loopback HTTP，不对公网开放 `8787`。启动时如设置 `POETICUS_TEXT_RETRIEVAL_TOKEN`，受保护接口将验证 Bearer Token；独立启动脚本不会自动读取工作目录中的 `.env`。
 
-```text
-Railway
-  ↓ HTTPS + Bearer token
-Nginx :443
-  ↓
-127.0.0.1:8787
-```
+2026-10-11 使用 Cloudflare Quick Tunnel 临时提供 HTTPS 公网入口，验证未携带 Token 时受保护接口返回 401、使用正确 Token 时返回 200，并完成 Agent 真实检索。临时域名与 Tunnel 可用性不保证长期稳定，测试结束后 Railway 已恢复为不依赖该地址。
 
-当前 Security Group：
-
-- SSH：开放给维护入口；
-- TCP 80：ACME HTTP-01；
-- TCP 443：HTTPS；
-- TCP 8787：不开放。
-
-Bearer token 存在：
-
-```text
-/etc/poeticus-retrieval.env
-```
-
-文件权限 `600`，root-only。
-
-未带正确 token 的受保护 Retrieval endpoint 返回 401。
-
-Let’s Encrypt 当前使用公网 IP 证书。Certbot 已建立自动续期任务，第一次续期与 Nginx reload 验证由 #167 跟踪。
+原腾讯云 Nginx、Let's Encrypt IP 证书与 systemd 的配置属于历史部署，不再存在有效的证书续期任务。
 
 ## 8. Retrieval 代码部署
 
-> **迁移提醒（#177）**：下面是截至 v0.3.0 已在腾讯云运行的生产信息；仓库路径重构后，Serving 将默认从 `/opt/poeticus-data/retrieval/` 加载 Artifact，而线上现有目录仍为 `/opt/poeticus-data/output/retrieval/`。在验收数据迁移和可用性前，不要直接把新版本 Retrieval 代码部署到这台机器。旧路径表示生产现状，并非新版推荐布局。
+当前开发机使用 `scripts.retrieval.inspect_serving_bundle` 检查现存 Artifact，再使用 `scripts.retrieval.run_serving` 启动 WSL Serving，不重新生成离线 Embedding。
 
-
-服务器访问 `raw.githubusercontent.com` 曾出现长时间无数据，因此当前维护路径从开发机主动推送。
-
-仓库提供：
-
-```bash
-bash scripts/retrieval/deploy_vps.sh <ssh-key> <user@host> [public-url]
-```
-
-例如 Windows Git Bash：
-
-```bash
-bash scripts/retrieval/deploy_vps.sh \
-  /c/Users/you/.ssh/tencent.pem \
-  ubuntu@43.143.103.147
-```
-
-脚本：
-
-1. 打包 `backend/retrieval`、`scripts/retrieval` 与 Retrieval requirements 文件；
-2. 使用指定私钥和 `BatchMode=yes` 连接；
-3. 解压到 `/opt/poeticus`；
-4. Python compileall；
-5. restart systemd；
-6. 最长等待 120 秒，循环检查 localhost `/health`；
-7. ready 后再检查公网 HTTPS `/health`。
-
-脚本只同步代码。若 `requirements-retrieval.txt` 真正新增依赖，仍应显式更新远端 venv，再 restart。
+`scripts/retrieval/deploy_vps.sh` 是原腾讯云节点的 SSH 同步脚本，只同步代码，不负责配置新节点或上传模型索引。**不要再对已销毁的 `43.143.103.147` 执行此脚本。** 未来迁移到 Oracle 或其他 VPS 时应重新确认部署方式、目录、鉴权和资源基线。
 
 ## 9. Readiness 与 502
 
-一次真实 restart 暴露了很重要的状态差异：
+检索节点先加载 Qwen 模型、FAISS、BM25 和 SQLite metadata，HTTP 进程启动不等于模型已 ready。只有本地 `GET /health` 返回 200，才说明 Serving Runtime 准备完毕。
 
-```text
-systemd active
-→ Python process 已存在
-
-127.0.0.1:8787 LISTEN
-→ Uvicorn 已开始监听
-
-localhost /health 200
-→ Retrieval runtime ready
-
-public /health 200
-→ Nginx → upstream 链路 ready
-```
-
-systemd 已 active、模型和 FAISS 仍在加载时，Nginx 可能暂时返回 502。
-
-部署脚本因此等待 localhost health，不再依赖固定 sleep。
+旧 2C8G 节点冷启动曾耗时约 35 秒，不应依赖固定 sleep。新的环境以真实健康检查为准；如果隧道已启动而后端未 ready，网关可能出现连接错误或 502。
 
 ## 10. Chronology metadata
 
@@ -302,40 +194,27 @@ Agent 调用 Retrieval 时，如果 `current.dynasty=null`：
 
 ### Railway Web
 
-1. 最新 deployment 成功；
-2. `GET /health` 200；
-3. 首页返回 HTML；
-4. `GET /api/poems?limit=1` 可读；
-5. `/api/info` 版本正确；
-6. 涉及聊天时验证 SSE。
+1. 最新 Deployment 为 SUCCESS，且 `GET /health` 返回 200；
+2. 首页、`GET /api/poems?limit=1`、`GET /api/info` 正常；
+3. 实际询问一个诗词问题，验证 SSE 与最终回答；
+4. 未启用自建检索时确认 `POETICUS_TEXT_RETRIEVAL_URL` 为空，Agent 不注册 Corpus 工具。
 
-### Retrieval
+### 本地 Retrieval（按需启动）
 
 ```bash
-sudo systemctl status poeticus-retrieval --no-pager
-sudo ss -ltnp | grep 8787
+python -m scripts.retrieval.inspect_serving_bundle
+python -m scripts.retrieval.run_serving --device cpu
+# 另一个终端：
 curl -i http://127.0.0.1:8787/health
-curl -i https://43.143.103.147/health
 ```
 
-最后再做真实 Agent E2E。健康检查只能证明服务可访问，无法证明 ranking 与 Agent 判断正确。
+设置 Token 后，还须验证受保护接口无认证时为 401、有正确认证时为 200，再考虑公网隧道。公网健康检查不能代替真实 Agent 工具调用验收。
 
 ## 12. 当前运维边界
 
-已经确认：
+已确认：本地 WSL Retrieval 能加载约 8.02 GiB Serving Bundle 并返回真实候选；Cloudflare Tunnel 曾使 Railway Agent 成功调用本地检索，两次 `POST /v1/retrieval/search` 均返回 HTTP 200；实验结束后 Railway URL 恢复为空，Web 不依赖检索节点运行。
 
-- 2C8G 能承载当前 full Corpus single worker；
-- Web → Retrieval HTTPS 已生产连通；
-- Bearer auth 生效；
-- 8787 没有公网暴露；
-- 陆游 → 杜甫 long-tail E2E 已在线通过。
+`TEXT_RETRIEVAL_TIMEOUT_SECONDS = 15.0` 是 HTTP 客户端各阶段的超时设置，并非整个 Agent 请求的硬截止时间。连接、超时和响应错误会变成工具 `status:error`，目前没有自动熔断；断连后模型能否如实说明未检索仍需真实交互验收，见 [#180](https://github.com/montricwang/poeticus/issues/180)。
 
-继续观察：
+旧 2C8G 数据仅作为新实例选型参考。已销毁节点的证书续期 [#167](https://github.com/montricwang/poeticus/issues/167) 不再是当前线上维护任务；重复语料与版本 self-hit 另见 [#151](https://github.com/montricwang/poeticus/issues/151)。
 
-- #167：证书自动续期；
-- #151：duplicate / variant self-hit；
-- 跨境网络长期稳定性；
-- 真实并发是否需要 4C8G；
-- 是否值得建立完整 Retrieval CI/CD。
-
-资源与服务通信的后续补课见 [#166](https://github.com/montricwang/poeticus/issues/166)；跨项目协作规则统一维护在 [GPT Finishing School《教学与开发协作手册》](https://github.com/montricwang/gpt-finishing-school/blob/main/审校与工作流/教学与开发协作手册.md)。

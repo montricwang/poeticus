@@ -126,7 +126,7 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 
 `main` 是稳定主线。功能和重构通过短期分支、PR、CI 后合并。
 
-当前生产由 Railway Web / PostgreSQL 与独立 Text Retrieval 节点共同组成；真实配置见 [deployment.md](deployment.md)。具体未来工作进入 GitHub Issues 或 [roadmap.md](roadmap.md)，不要在操作文档里保留已经结束的预览阶段说明。
+当前生产运行在 Railway Web / PostgreSQL；自建 Text Retrieval 已在 WSL 恢复，但 Railway 暂未配置长期检索地址。实际状态见 [deployment.md](deployment.md)。具体未来工作进入 GitHub Issues 或 [roadmap.md](roadmap.md)，不要在操作文档里保留已经结束的预览阶段说明。
 
 ## 7. 工程决策的记录边界
 
@@ -144,7 +144,7 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 python -m pip install -r requirements-retrieval.txt
 ```
 
-当前生产 Retrieval 包含：
+本地 Retrieval Serving 包含：
 
 - Qwen query encoder；
 - sentence / clause FAISS；
@@ -176,28 +176,18 @@ python -m pytest tests/retrieval/test_serving_paths.py tests/retrieval/test_meta
 
 本地只做 Web / Agent 开发时，可以不配置 Retrieval URL；此时 `search_predecessor_texts` 不注册给 Agent。
 
-## 9. Retrieval VPS 更新
+## 9. Retrieval 部署与本地验证
 
-当前从开发机主动把 Retrieval 代码推到腾讯云，避免服务器直接访问 GitHub raw 的不稳定链路。
+原腾讯云 Retrieval 节点已销毁，旧 IP 与 SSH 私钥不再作为有效生产部署入口。历史 `scripts/retrieval/deploy_vps.sh` 仅保留作参考，不应再对旧服务器执行。
 
-Windows Git Bash：
+本地 WSL 使用现存 `poeticus-data/` 资产，检查并启动：
 
 ```bash
-bash scripts/retrieval/deploy_vps.sh \
-  /c/Users/you/.ssh/tencent.pem \
-  ubuntu@43.143.103.147
+python -m scripts.retrieval.inspect_serving_bundle
+python -m scripts.retrieval.run_serving --device cpu
 ```
 
-脚本显式使用私钥和 SSH `BatchMode`，不会退回密码认证。它会：
-
-- 在远端检查新 `retrieval/` 布局中必要的 Embedding Manifest 已迁移，未迁移则拒绝替换/重启旧服务；
-- 上传 Retrieval 代码（含 `backend/data_paths.py`）；
-- compileall；
-- restart systemd；
-- 循环等待 localhost `/health`；
-- ready 后检查公网 HTTPS health。
-
-依赖变更仍需单独更新远端 venv。生产资源、Nginx、证书和端口规则见 [deployment.md](deployment.md)。
+服务默认监听 `127.0.0.1:8787`。启用 Bearer 认证后才能考虑通过 Tunnel 对公网开放；Railway URL 为空时不注册自建文本检索工具。现行部署与临时公网连通记录见 [生产部署](deployment.md) 和 [#180](https://github.com/montricwang/poeticus/issues/180)。
 
 ## 10. 文档落盘规则
 

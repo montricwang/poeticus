@@ -114,3 +114,30 @@ def test_retrieval_client_requires_configured_service():
                 current_poem=CurrentPoem(text="甲"),
             )
         )
+
+@pytest.mark.parametrize(
+    "failure",
+    ["connection_refused", "response_timeout", "http_503", "invalid_json"],
+)
+def test_retrieval_client_reports_remote_failures(failure):
+    def handler(request: httpx.Request) -> httpx.Response:
+        if failure == "connection_refused":
+            raise httpx.ConnectError("connection refused", request=request)
+        if failure == "response_timeout":
+            raise httpx.ReadTimeout("response timed out", request=request)
+        if failure == "http_503":
+            return httpx.Response(503, json={"detail": "unavailable"})
+        return httpx.Response(200, text="not-json")
+
+    client = TextRetrievalClient(
+        base_url="https://retrieval.example",
+        transport=httpx.MockTransport(handler),
+    )
+
+    with pytest.raises(RetrievalClientError, match="请求失败"):
+        asyncio.run(
+            client.search(
+                text="片片轻鸥落晚沙",
+                current_poem=CurrentPoem(text="片片轻鸥落晚沙。"),
+            )
+        )
