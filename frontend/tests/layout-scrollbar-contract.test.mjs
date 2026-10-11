@@ -70,8 +70,8 @@ test('暖白与炭黑使用反色主操作，标点以主题前景色透明度�
   assert.match(dark, /--foreground: #faf9f6/)
   assert.match(dark, /--primary: #faf9f6/)
   assert.match(dark, /--primary-foreground: #151411/)
-  assert.match(light, /--reader-punctuation-opacity: 45%/)
-  assert.match(dark, /--reader-punctuation-opacity: 55%/)
+  assert.match(light, /--reader-punctuation-opacity: 20%/)
+  assert.match(dark, /--reader-punctuation-opacity: 20%/)
   assert.match(
     styles,
     /color: color-mix\(in srgb, var\(--foreground\) var\(--reader-punctuation-opacity\), transparent\)/,
