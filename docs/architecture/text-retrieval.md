@@ -1,10 +1,10 @@
 # Text Retrieval 架构基线
 
-> 当前架构基线：v0.3.0（2026-10-08）。本文描述运行中的检索系统和真实已知边界；实验演进过程在文末只保留链接。生产部署以 [Deployment](../deployment.md) 为准。
+> 检索实现基线：v0.3.0（2026-10-08）。原腾讯云节点已销毁；2026-10-11 在 WSL 恢复 Serving，并通过 Cloudflare Tunnel 完成 Railway 真实检索测试。当前 Railway 的 Retrieval URL 已留空，下述 v0.3.0 性能与线上数据是历史基线。现行部署以 [Deployment](../deployment.md) 为准。
 
-## 0. 当前生产基线（v0.3.0）
+## 0. v0.3.0 检索基线与当前状态
 
-截至 2026-10-08，Text Retrieval 已经进入线上 Agent。
+截至 2026-10-08，Text Retrieval 曾接入线上 Agent；原检索主机随后销毁。现存的检索算法与 HTTP Service 已在 WSL 恢复，2026-10-11 完成临时远程检索测试。
 
 ### 运行期链路
 
@@ -52,7 +52,7 @@ float16 build artifacts
 
 ### Serving Index
 
-生产使用两套 FAISS IVFPQ：
+Serving Bundle 使用两套 FAISS IVFPQ：
 
 ```text
 sentence FAISS   1.189 GiB
@@ -105,20 +105,21 @@ metadata v2 删除了请求期不需要的 clause `chunk_id UNIQUE` index。全�
 
 因此 Werneror dynasty 只能支持粗 chronology。同朝、overlap、unknown 继续保留给 Agent 判断。
 
-### Production service boundary
+### 服务边界与历史资源基线
 
 ```text
 Railway Web / Agent
+        │ HTTPS + Bearer（2026-10-11 临时测试）
+        ▼
+Cloudflare Quick Tunnel
         │
-        │ HTTPS + Bearer
         ▼
-Tencent Cloud Nginx
-        │ localhost HTTP
-        ▼
-Text Retrieval Service :8787
+WSL Text Retrieval Service :8787
 ```
 
-2C8G Linux single worker 已通过 full Corpus benchmark：
+临时公网链路已完成真实检索，但当前 Railway URL 留空；旧腾讯云 Nginx 入口已退役。
+
+历史腾讯云 2C8G Linux single worker 的 full Corpus benchmark：
 
 - ready RSS 约 4.4 GiB；
 - benchmark 后约 5.3 GiB；
@@ -126,9 +127,9 @@ Text Retrieval Service :8787
 - page cache 后一次 restart 约 18.25 s；
 - 5 并发约 1.78 req/s。
 
-资源与运维细节见 [当前生产部署](../deployment.md)。
+上述旧资源基线不代表 WSL 或新 VPS 的性能，现行运维见 [当前部署](../deployment.md)。
 
-### 线上 E2E canary
+### 已验证的 E2E canary
 
 陆游：
 
@@ -144,7 +145,7 @@ Text Retrieval Service :8787
 chronology_status=clearly_earlier
 ```
 
-线上 Agent 随后正确使用杜甫候选，并把“文本对应很强”与“缺少明确引用记载”同时交代。
+历史线上 Agent 曾正确使用杜甫候选，并把“文本对应很强”与“缺少明确引用记载”同时交代。2026-10-11 临时 Tunnel 的 E2E 也成功返回杜甫候选；测试结束后 Railway URL 恢复为空。
 
 ### 当前已知边界
 
@@ -152,7 +153,7 @@ chronology_status=clearly_earlier
 - 粗 dynasty overlap 会保留部分晚于目标作者的候选；
 - Werneror dynasty 不能承担精细历史断代；
 - transformed-use 仍可能需要 Agent query reformulation；
-- 当前 2C8G 的长期并发上限尚未由真实流量确定；
+- 旧 2C8G 的长期并发上限尚未由真实流量确定；
 - 唐宋 Serving Profile / Corpus pruning：#163，deferred。
 
 当前 Retrieval 继续遵循一个停止线：真实产品 Case 出现新的稳定失败，再决定是否增加 reranker、clause BM25、pq512、multi-span 或更细 chronology。
@@ -504,14 +505,14 @@ Werneror/Poetry 适合作为大规模候选发现语料，但不能把其中的�
 
 ## 10. 当前已定事项与仍开放的边界
 
-**v0.3.0 已完成**：sentence / clause Qwen Dense、sentence character 2–3 gram BM25、deterministic Query Plan、Work-level RRF、Candidate Eligibility、FAISS IVFPQ、compact metadata v2、独立 HTTP Retrieval Service、Railway Agent Tool 接入和真实线上 E2E。这些不再是“待选后端 / 下一轮 Spike”。当前生产参数与资源测量见第 0 节和 [Deployment](../deployment.md)。
+**v0.3.0 已完成**：sentence / clause Qwen Dense、sentence character 2–3 gram BM25、deterministic Query Plan、Work-level RRF、Candidate Eligibility、FAISS IVFPQ、compact metadata v2、独立 HTTP Retrieval Service，以及当时的 Railway Agent Tool 与真实 E2E。这些仍是已经实现的技术能力，但当前没有常驻线上 Retrieval 节点。历史资源基线见第 0 节，现行状态见 [Deployment](../deployment.md)。
 
 **待解决或待观察**：
 
 - #151：同一作品重复版本或异本导致的 self-hit；
 - 粗粒度朝代与同朝先后无法提供准确 chronology，可靠逐首年代数据仍待补；
-- #167：Let's Encrypt 公网 IP 证书首次自动续期验证；
-- 真实流量下的网络稳定性、延迟和 2C8G 并发上限；
+- #167：原节点 IP 证书续期任务已失去适用主机，待按现行部署整理；
+- 未来常驻部署的网络稳定性、延迟及新主机并发上限；
 - 全文 multi-span evidence、curated 文献 RAG，以及必要时的 Agent / Retrieval Eval 增量；
 - #163：唐宋 Serving Profile 属 deferred，不是本版发布阻塞项。
 
