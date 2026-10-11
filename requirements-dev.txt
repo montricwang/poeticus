@@ -3,3 +3,4 @@ pytest
 httpx
 numpy
 basedpyright==1.40.2
+mcp[cli]>=2,<3
