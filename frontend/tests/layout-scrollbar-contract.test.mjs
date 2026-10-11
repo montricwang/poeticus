@@ -59,21 +59,25 @@ test('延续生产版滚动条与分割线，不回退到浏览器默认外观',
   assert.match(divider, /w-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
 })
 
-test('暖白与炭黑使用反色主操作，标点分别调色', () => {
+test('暖白与炭黑使用反色主操作，标点以主题前景色透明度弱化', () => {
   const light = styles.slice(styles.indexOf(':root {'), styles.indexOf('@theme inline'))
   const dark = styles.slice(styles.indexOf('.dark {'), styles.indexOf('@layer base'))
   assert.match(light, /--background: #faf9f6/)
   assert.match(light, /--foreground: #151411/)
   assert.match(light, /--primary: #151411/)
   assert.match(light, /--primary-foreground: #faf9f6/)
-  assert.match(light, /--reader-punctuation-ink: #928e88/)
   assert.match(dark, /--background: #151411/)
   assert.match(dark, /--foreground: #faf9f6/)
   assert.match(dark, /--primary: #faf9f6/)
   assert.match(dark, /--primary-foreground: #151411/)
-  assert.match(dark, /--reader-punctuation-ink: #85817b/)
-  assert.ok(styles.includes('color: var(--reader-punctuation-ink);'))
-  assert.ok(!styles.includes('currentColor 50%, var(--background)'))
+  assert.match(light, /--reader-punctuation-opacity: 20%/)
+  assert.match(dark, /--reader-punctuation-opacity: 20%/)
+  assert.match(
+    styles,
+    /color: color-mix\(in srgb, var\(--foreground\) var\(--reader-punctuation-opacity\), transparent\)/,
+  )
+  assert.doesNotMatch(styles, /--reader-punctuation-ink:/)
+  assert.doesNotMatch(styles, /\.poem-reader-punctuation\s*\{\s*opacity:/)
 })
 
 test('自动隐藏只改变滑块可见性，不覆盖 Chrome 自定义尺寸', () => {

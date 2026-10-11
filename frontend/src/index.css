@@ -14,6 +14,7 @@
 
   --background: #faf9f6;
   --foreground: #151411;
+  --reader-punctuation-opacity: 20%;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -30,8 +31,6 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  /* Quiet punctuation on warm paper; independently tuned from the dark theme. */
-  --reader-punctuation-ink: #928e88;
 
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -173,6 +172,7 @@ html.theme-transition #root * {
 
   --background: #151411;
   --foreground: #faf9f6;
+  --reader-punctuation-opacity: 20%;
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
@@ -189,8 +189,6 @@ html.theme-transition #root * {
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  /* Keep punctuation legible without matching the brightness of verse text. */
-  --reader-punctuation-ink: #85817b;
 
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -329,9 +327,9 @@ html.theme-transition #root * {
     margin-block-start: 0.9em;
   }
 
-  /* 标点对比度低于正文，字号与占位宽度沿用正文排版。 */
+  /* 只降低标点文字颜色的不透明度，避免对整段元素和选区应用 opacity。 */
   .poem-reader-punctuation {
-    color: var(--reader-punctuation-ink);
+    color: color-mix(in srgb, var(--foreground) var(--reader-punctuation-opacity), transparent);
   }
 
   /*
