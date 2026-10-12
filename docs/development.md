@@ -133,7 +133,7 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 - **Issue 标题／正文：中文**。
 - **PR 标题／说明：中文**，技术标识、代码、路径等可保留原文。
 - **Git Commit message：英文**，包括 subject、正文与 Squash and Merge 时 GitHub 提议的最终提交信息；建议遵守已有 Conventional Commit 约定，如 `docs: document hybrid deployment`。
-- PR 标题与最终 Squash Commit 标题是不同字段：**不要直接把中文 PR 标题作为合并提交标题**。现有 `.github/workflows/english-commit-subjects.yml` 检查 PR 中各 Commit 的 ASCII subject，不能代替人工检查最终 Squash 标题，也不限制 PR 标题用中文。
+- PR 标题与最终 Squash Commit 标题是不同字段：**不要直接把中文 PR 标题作为合并提交标题**。`.github/workflows/english-commit-subjects.yml` 同时检查 PR 内的提交标题及推送到 `main` 的提交标题（ASCII）；但 `push` 检查发生在提交进入 `main` **之后**，只能发现问题，不能阻止合并。要在写入前阻止违反规则的 Commit，还需要仓库规则（commit-message ruleset／分支保护），或在每次 Squash 合并时手动核对英文标题；PR 标题仍允许中文。
 
 这项约定的跨项目来源是 [《教学与开发协作手册》Git 协作章节](https://github.com/montricwang/gpt-finishing-school/blob/main/审校与工作流/教学与开发协作手册.md)，项目执行入口以本节为准；无需让其他项目继承 Poeticus 的特例。
 
