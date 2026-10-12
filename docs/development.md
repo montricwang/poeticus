@@ -126,7 +126,16 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 
 `main` 是稳定主线。功能和重构通过短期分支、PR、CI 后合并。
 
-当前生产运行在 Railway Web / PostgreSQL；自建 Text Retrieval 已在 WSL 恢复，但 Railway 暂未配置长期检索地址。实际状态见 [deployment.md](deployment.md)。具体未来工作进入 GitHub Issues 或 [roadmap.md](roadmap.md)，不要在操作文档里保留已经结束的预览阶段说明。
+当前生产运行在 Railway Web / PostgreSQL，网站使用 `https://poeticus.app`；自建 Text Retrieval 运行在开发机 WSL，通过 Windows `cloudflared` 命名 Tunnel 向 Railway 提供按需访问。是否可用取决于本地两个进程的状态；运行条件与待验收项见 [deployment.md](deployment.md)。后续计划进入 GitHub Issues 或 [roadmap.md](roadmap.md)。
+
+### Git 协作文字语言（Poeticus）
+
+- **Issue 标题／正文：中文**。
+- **PR 标题／说明：中文**，技术标识、代码、路径等可保留原文。
+- **Git Commit message：英文**，包括 subject、正文与 Squash and Merge 时 GitHub 提议的最终提交信息；建议遵守已有 Conventional Commit 约定，如 `docs: document hybrid deployment`。
+- PR 标题与最终 Squash Commit 标题是不同字段：**不要直接把中文 PR 标题作为合并提交标题**。现有 `.github/workflows/english-commit-subjects.yml` 检查 PR 中各 Commit 的 ASCII subject，不能代替人工检查最终 Squash 标题，也不限制 PR 标题用中文。
+
+这项约定的跨项目来源是 [《教学与开发协作手册》Git 协作章节](https://github.com/montricwang/gpt-finishing-school/blob/main/审校与工作流/教学与开发协作手册.md)，项目执行入口以本节为准；无需让其他项目继承 Poeticus 的特例。
 
 ## 7. 工程决策的记录边界
 
@@ -187,7 +196,17 @@ python -m scripts.retrieval.inspect_serving_bundle
 python -m scripts.retrieval.run_serving --device cpu
 ```
 
-服务默认监听 `127.0.0.1:8787`。启用 Bearer 认证后才能考虑通过 Tunnel 对公网开放；Railway URL 为空时不注册自建文本检索工具。现行部署与临时公网连通记录见 [生产部署](deployment.md) 和 [#180](https://github.com/montricwang/poeticus/issues/180)。
+服务默认监听 WSL 内 `127.0.0.1:8787`。本地开发 Web／Agent 只需要前端和后端，`POETICUS_TEXT_RETRIEVAL_URL` 留空则不注册自建检索工具；在本地独立调试 Retrieval 时，只需启动 WSL Serving，不必开启公网 Tunnel。
+
+当需要让**线上 Railway Agent** 使用本地 Retrieval 时，另须保持 WSL Serving 和 Windows `cloudflared` 命名 Tunnel 连接器同时运行；无需额外启动本地前端、Web 后端，也不需要把 LangSmith 当成本地服务。Tunnel Token 只供 `cloudflared` 使用，独立于 WSL／Railway 一致设置的 Retrieval Bearer Token。不要把任一 Token 提交到仓库。
+
+| 场景 | 需要启动的本地进程 |
+| --- | --- |
+| 本地 UI／API 开发 | Vite 前端、FastAPI 后端（及所需的本地数据库） |
+| 单独调试 Retrieval | WSL Retrieval Serving |
+| 公网演示使用本地检索 | WSL Retrieval Serving、Windows cloudflared |
+
+当前公网域名及启动／恢复、在线验证方式见 [生产部署](deployment.md) 和 [#180](https://github.com/montricwang/poeticus/issues/180)。
 
 ## 10. 文档落盘规则
 
