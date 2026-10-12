@@ -493,7 +493,7 @@ function App() {
                 type="button"
                 size="lg"
                 variant="outline"
-                className="absolute right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-20 rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm"
+                className="absolute right-4 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm"
                 aria-controls="mobile-discussion-screen"
                 aria-expanded={mobileDiscussionOpen}
                 aria-label={selected ? '打开讨论并使用已选诗句提问' : '打开阅读讨论'}
