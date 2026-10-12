@@ -1,6 +1,6 @@
 # 数字人文资源地图：Poeticus 可复用的外部成果
 
-> 更新：2026-10-09；**研究入口，不是已接入清单或许可保证。**
+> 更新：2026-10-12；**研究入口，不是已接入清单或许可保证。**
 >
 > 当前执行验证：[Issue #184](https://github.com/montricwang/poeticus/issues/184)。
 > 当前 KG 选型问题：[Issue #149](https://github.com/montricwang/poeticus/issues/149)；词话产品架构：[Issue #133](https://github.com/montricwang/poeticus/issues/133)；优先收录书目：[Issue #147](https://github.com/montricwang/poeticus/issues/147)。
@@ -27,13 +27,16 @@ Poeticus 已有：3491 首公开阅读词作、约 85 万首作品的 Hybrid Tex
 | [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry) | 开放仓库中的诗词 JSON | 扩充/对照作品文本 | 数据来源已知；新来源进入阅读库前按 [#36](https://github.com/montricwang/poeticus/issues/36) 校勘、查重、核许可，不自动覆盖正文 |
 | [Song Ci Corpus（Zenodo）](https://zenodo.org/records/17798065) | 可下载 SQLite 文件（页面列 ci_curated.db） | 用于作品和字段的对照；不包含现成词学批评网络 | **已确认下载入口，未读取文件**；记录页的 License 字段未能明确读出具体条款，复用前核实 |
 | [维基文库词话专题](https://zh.wikisource.org/wiki/Portal:詞話) | 词话数字文本及目录入口 | [#133](https://github.com/montricwang/poeticus/issues/133) 小规模词话 Corpus 的起点 | 待逐部检查版本、卷/则、缺页、错字、文本及再发布许可 |
+| [识典古籍](https://www.shidianguji.com/) / [北京大学数字人文研究中心项目说明](https://pkudh.org/project/shidianguji/) | 北大与字节跳动联合研发的古籍阅读、图文对照、版本/卷章元数据、全文检索与机器粗校/人工精校体系 | **可能减少**词话原文、书目元数据、古籍 OCR/初校和语义查询的自建工作；先验证按需引用与版本定位 | **2026-10-12 用户 WSL 实测**：Tavily Extract/Firecrawl Keyless Scrape 均从《词源》卷下读到“清空”“骚雅”等候选原文，但有段落粘连；尚未找到已确认可用于第三方产品的公开 API/批量导出许可。网页免费阅读 **不等于**允许自动镜像或再分发；仅将 URL 作为候选来源 |
 | [古汉语典故资源库](https://github.com/KaijieMo-kj/Ancient-Chinese-Allusion-Resource-Database) | 约 2.3 万典形、3 万余条用典标注，公开典故 JSON 和测试集 | **潜在补充 Provider / 离线评测集 / 局部替代**，不预设全量取代 CNKGraph | **2026 年 4 月末用户已调查，主观体验不佳**（具体失败记录待追溯）；README 声明数据 MIT。先复盘旧结论，只有能补真实缺口再重新实测，勿当新发现 |
 | [CNKGraph 开放资源](https://cnkgraph.com/Home/OpenResources) / [Web API](https://open.cnkgraph.com/swagger) | 古籍、诗文数据包；人物、典故、出处与化用等接口 | 已接入部分典故/出处能力；也可作外部事实资料 | **Poeticus 已使用部分 API**；官网明确 API 用于研究学习，**仅限非商业用途**。全面接入/再分发前须重新核对适用范围 |
-| [CBDB API](https://cbdb.hsites.harvard.edu/cbdb-api) | 中国历代人物 ID、姓名与 JSON 传记/关系信息；亦有独立数据库资源 | 人物别名、身份与交游关系对齐 | 官方 API 文档可查；**Poeticus 未实测**；公开应用及不同数据子集的授权需核实 |
+| [CBDB API](https://cbdb.hsites.harvard.edu/cbdb-api) / [2026-08-20 授权条款](https://cbdb.hsites.harvard.edu/cbdb-data-licensing-terms) | 中国历代人物 ID、姓名与 JSON 传记/关系信息；亦有独立数据库资源 | 人物别名、身份与交游关系对齐 | **Poeticus 尚未实测人物 API**。2026-08-20 起：当前 standalone release 范围内的数据仍为 CC BY-NC-SA 4.0；超出其日期/体量范围的较新数据，另有禁止演绎、再分发及用作第三方公开查询服务等限制。不能因 API 对外可调用就直接接入公开 Poeticus；正式用途须逐项核对或获得授权 |
 | [CTP API](https://ctext.org/tools/api) / [数字人文工具](https://ctext.org/digital-humanities) | 古籍检索、文本及关联的数字人文工具 | 查询古籍原文与引文出处 | 研究入口；未验证调用配额、访问权限、字段稳定性和产品使用范围 |
 | [唐宋文学编年地图](https://poem.cnkgraph.com/) | 作家生平、活动轨迹、时空信息 | 辅助编年、人物/地理问题 | 已有公开平台；具体 API / 结构化导出与授权待确认 |
 
 **注意**：技术能调用 ≠ 资料可合法复制 ≠ 资料可公开提供服务。文本的原始版本、编辑者整理成果、API 与数据库许可要分别核查；尤其不能因“古人作品属于公有领域”就默认所有现代整理版都可任意使用。
+
+**获取与复用分开判断**：单篇在线阅读/按需查询、可复核 URL 引用、经许可的小型本地缓存、批量下载/离线导入、公开再分发，是不同的使用方式。优先评估外部 API/网页能否替代本地的**长尾候选查询**；核心作品阅读与词话连续阅读是否仍要自有 Document Corpus，按 [#133](https://github.com/montricwang/poeticus/issues/133) 的原文定位、离线可用性和版本要求决定。参见 [#184](https://github.com/montricwang/poeticus/issues/184) 与 [#235](https://github.com/montricwang/poeticus/issues/235) 的真实试验；当前**没有决定弃用 RAG / 本地 Corpus**。
 
 ## B. 主要给现成代码、评测或方法
 
@@ -45,6 +48,10 @@ Poeticus 已有：3491 首公开阅读词作、约 85 万首作品的 Hybrid Tex
 | [《古诗词图谱的构建及分析研究》（刘昱彤等，2020）](https://doi.org/10.7544/issn1000-1239.2020.20190641) | 词汇—注释—语义分类图谱，实验用唐诗分类与情感任务 | 词语/意象层级的初步建模 | **已审阅用户提供的论文全文**：标签按词/标题规则自动生成，不能把分类 F1 直接当成文学理解能力；不等于词学批评史图谱 |
 
 ACP-RAG 与 Poeticus 当前 Text Retrieval 有显著功能交集。**不因另一篇论文指标高就另造一套 Pipeline**：必须同数据、同问题、区分 Retriever 找不到与 Agent 用不好两类失败。
+
+### EPUB 内容解析（工具，不是现成史料）
+
+| [EbookLib（Python）](https://github.com/aerkalov/ebooklib) | 解析 EPUB2/3 的目录、spine、书目元数据与 XHTML 正文 | 先用普通 Python 阅读已有合法 EPUB，再评估与 Poeticus Document Schema 的对齐；不必因为遇到 EPUB 就先找一个 MCP Server | 读取能力有官方样例；**Poeticus 对真实词话 EPUB 的章节/注释定位尚未做本轮对照**；库本身为 AGPL，依赖选择需另核对 |
 
 ## C. 数据组织标准：不自造原文锚点与版本规则
 
