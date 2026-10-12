@@ -1,10 +1,10 @@
 # Text Retrieval 架构基线
 
-> 检索实现基线：v0.3.0（2026-10-08）。原腾讯云节点已销毁；2026-10-11 在 WSL 恢复 Serving，并通过 Cloudflare Tunnel 完成 Railway 真实检索测试。当前 Railway 的 Retrieval URL 已留空，下述 v0.3.0 性能与线上数据是历史基线。现行部署以 [Deployment](../deployment.md) 为准。
+> 检索实现基线：v0.3.0（2026-10-08）。原腾讯云节点已销毁；2026-10-11 在 WSL 恢复 Serving，先通过 Quick Tunnel 完成真实检索测试，随后配置 `retrieval.poeticus.app` 命名 Tunnel，并在 Railway 启用检索地址。命名 Tunnel 恢复后的真实检索仍须按 [Deployment](../deployment.md) 验收；下述 v0.3.0 性能数据是历史基线。
 
 ## 0. v0.3.0 检索基线与当前状态
 
-截至 2026-10-08，Text Retrieval 曾接入线上 Agent；原检索主机随后销毁。现存的检索算法与 HTTP Service 已在 WSL 恢复，2026-10-11 完成临时远程检索测试。
+截至 2026-10-08，Text Retrieval 曾接入线上 Agent；原检索主机随后销毁。现存检索算法与 HTTP Service 已在 WSL 恢复。2026-10-11 的临时 Quick Tunnel 测试已经成功，当前使用命名 Tunnel 将 Railway 与本地 Retrieval 连接；在线状态取决于本地 Serving 和连接器，尚不能仅凭 Tunnel 在线宣称检索链路已验收。
 
 ### 运行期链路
 
@@ -109,15 +109,18 @@ metadata v2 删除了请求期不需要的 clause `chunk_id UNIQUE` index。全�
 
 ```text
 Railway Web / Agent
-        │ HTTPS + Bearer（2026-10-11 临时测试）
+        │ HTTPS + Bearer
         ▼
-Cloudflare Quick Tunnel
-        │
+retrieval.poeticus.app（Cloudflare 公网入口）
+        │ 命名 Tunnel：poeticus-retrieval
         ▼
-WSL Text Retrieval Service :8787
+Windows cloudflared（连接器）
+        │ localhost:8787
+        ▼
+WSL Text Retrieval Service（127.0.0.1:8787）
 ```
 
-临时公网链路已完成真实检索，但当前 Railway URL 留空；旧腾讯云 Nginx 入口已退役。
+Windows 连接器和 WSL Serving 是两个独立进程；Tunnel Token 用于连接器认证，Retrieval Bearer Token 用于 HTTP API 认证。Cloudflare 只转发请求，不执行 Qwen／FAISS 检索。当前命名 Tunnel 的真实 Agent POST 仍需重新验收；更早 Quick Tunnel 的检索成功仅作为历史证据。旧腾讯云 Nginx 入口已退役。
 
 历史腾讯云 2C8G Linux single worker 的 full Corpus benchmark：
 
@@ -145,7 +148,7 @@ WSL Text Retrieval Service :8787
 chronology_status=clearly_earlier
 ```
 
-历史线上 Agent 曾正确使用杜甫候选，并把“文本对应很强”与“缺少明确引用记载”同时交代。2026-10-11 临时 Tunnel 的 E2E 也成功返回杜甫候选；测试结束后 Railway URL 恢复为空。
+历史线上 Agent 曾正确使用杜甫候选，并把“文本对应很强”与“缺少明确引用记载”同时交代。2026-10-11 Quick Tunnel 的 E2E 也成功返回杜甫候选；此测试不能代替之后切换至命名 Tunnel 的在线验收。
 
 ### 当前已知边界
 
