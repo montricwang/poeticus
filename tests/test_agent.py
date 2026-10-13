@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from backend.ai.tools import TOOLS, TEXT_RETRIEVAL_TOOL, available_tools
 from backend.evidence.schema import EvidenceItem, EvidenceSource
 from backend.retrieval.client import (
     RetrievalCandidate,
@@ -336,9 +337,9 @@ def test_tool_budget_exhaustion_disables_tools_and_hides_protocol(
         create_calls[2]["messages"][0]["content"]
     )
 
-def test_tool_contracts_separate_allusion_and_reference_search(agent):
-    allusion_tool = agent.TOOLS[0]["function"]
-    reference_tool = agent.TOOLS[1]["function"]
+def test_tool_contracts_separate_allusion_and_reference_search():
+    allusion_tool = TOOLS[0]["function"]
+    reference_tool = TOOLS[1]["function"]
 
     assert allusion_tool["name"] == "lookup_allusion"
     assert "人物故事" in allusion_tool["description"]
@@ -357,7 +358,7 @@ def test_tool_contracts_separate_allusion_and_reference_search(agent):
     text_param = reference_tool["parameters"]["properties"]["text"]
     assert "目标短句" in text_param["description"]
 
-    retrieval_tool = agent.TEXT_RETRIEVAL_TOOL["function"]
+    retrieval_tool = TEXT_RETRIEVAL_TOOL["function"]
     assert retrieval_tool["name"] == "search_predecessor_texts"
     assert "自建古典诗词 Corpus" in retrieval_tool["description"]
     assert "借了谁哪一句诗" in retrieval_tool["description"]
@@ -431,24 +432,20 @@ def test_reference_tool_queries_target_clause_and_returns_candidates(
     assert result["evidences"][0]["metadata"]["dynasty"] == "唐"
 
 
-
-
-def test_local_retrieval_tool_is_hidden_when_service_is_disabled(
-    monkeypatch,
-    agent,
-):
-    monkeypatch.setattr(
-        agent,
-        "text_retrieval_client",
-        SimpleNamespace(enabled=False),
-    )
+@pytest.mark.parametrize("retrieval_enabled", [False, True])
+def test_available_tools_matches_retrieval_configuration(retrieval_enabled):
+    """仅配置检索服务时向模型开放语料检索，且保留已有工具顺序。"""
 
     names = [
         item["function"]["name"]
-        for item in agent._available_tools()
+        for item in available_tools(retrieval_enabled=retrieval_enabled)
     ]
 
-    assert "search_predecessor_texts" not in names
+    expected_names = ["lookup_allusion", "lookup_reference"]
+    if retrieval_enabled:
+        expected_names.append("search_predecessor_texts")
+
+    assert names == expected_names
 
 
 def test_local_retrieval_tool_adds_host_poem_context_and_returns_candidates(

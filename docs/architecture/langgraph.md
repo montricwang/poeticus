@@ -36,7 +36,11 @@ flowchart TD
 - `lookup_reference`：外部 reference evidence；
 - `search_predecessor_texts`：Poeticus 自建 Corpus 的前代文本候选检索。
 
-`search_predecessor_texts` 只有在 Retrieval URL 已配置时才注册。它通过 `TextRetrievalClient` 调用独立 Retrieval Service；当前作品正文、作者、题名和可用 dynasty 由 host application 注入，模型只决定检索文本。
+`backend/ai/tools.py` 定义提供给模型的工具 Schema；`available_tools(retrieval_enabled)` 根据 Retrieval URL 是否已配置，决定是否把 `search_predecessor_texts` 加入工具清单。这项判断只检查配置，不代表服务当前健康。
+
+工具调用由 `backend/ai/graph.py` 的 `execute_tools()` 执行：典故与出处查询通过 `EvidenceService.search()` 交给 CNKGraph Provider；文本互文检索通过 `TextRetrievalClient` 请求独立 Retrieval Service。当前作品正文、作者、题名和可用 dynasty 由宿主 Agent 注入，模型只决定检索文本。
+
+对外 `backend/mcp/server.py` 也通过 `EvidenceService` 查询典故与出处，但它是独立的 MCP 入口；现有 Agent 不经过 MCP Server。`EvidenceService` 负责选择 Provider 并返回 `EvidenceItem`，Agent 与 MCP 分别整理自己的输出格式。
 
 用户明确追问“借了谁哪一句 / 化用了哪段前代文本”时，Agent 优先使用 `search_predecessor_texts`。第一轮结果弱时，可以在当前 2 次工具预算内换一个更有辨识度的文本锚点继续检索。
 
@@ -67,7 +71,9 @@ textual provenance question
 
 ## 4. Graph State
 
-`RouterState` 的主要字段：
+`AgentState` 是整个 LangGraph 工作流的共享状态；各节点使用 `AgentStateUpdate` 返回本节点更新的字段。两种类型都定义在 `backend/ai/graph.py`，没有改变状态字段或节点拓扑。
+
+`AgentState` 的主要字段：
 
 | 字段 | 用途 |
 | --- | --- |

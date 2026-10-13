@@ -16,7 +16,8 @@ from typing import TypedDict
 from openai.types.chat import ChatCompletionMessageParam
 
 from backend.ai.context import PoemContext
-from backend.ai.graph import HistoryMessage, RouterState, TOOLS, _agent_user_message, graph
+from backend.ai.graph import HistoryMessage, AgentState, _agent_user_message, graph
+from backend.ai.tools import TOOLS
 from backend.ai.model import client
 from backend.ai.prompt_loader import compose_prompt
 from backend.config import LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
@@ -51,7 +52,7 @@ def load_dataset(path: Path) -> EvalDataset:
     return EvalDataset.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def graph_state(case: EvalCase) -> RouterState:
+def graph_state(case: EvalCase) -> AgentState:
     context = PoemContext(
         id=f"eval:{case.id}",
         title=case.input.context.title,

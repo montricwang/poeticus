@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.ai.context import PoemContext
-from backend.ai.graph import RouterState, graph
+from backend.ai.graph import AgentState, graph
 from backend.config import (
     CHAT_MAX_HISTORY_MESSAGE_CHARS,
     CHAT_MAX_HISTORY_MESSAGES,
@@ -153,7 +153,7 @@ def validate_chat_request(request: ChatRequest) -> None:
         )
 
 
-def graph_input(request: ChatRequest) -> RouterState:
+def graph_input(request: ChatRequest) -> AgentState:
     """将聊天请求中的作品、问题和对话上下文整理成 LangGraph 输入状态。"""
 
     # 保留本轮上下文，将历史消息转换成 Graph 使用的字典列表。

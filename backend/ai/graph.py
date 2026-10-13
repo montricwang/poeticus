@@ -13,16 +13,14 @@ from typing import Literal, NotRequired, TypedDict, cast
 from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, START, END
 from openai import APIError
-from openai.types.chat import (
-    ChatCompletionFunctionToolParam,
-    ChatCompletionMessageParam,
-)
+from openai.types.chat import ChatCompletionMessageParam
 from openai.types.chat.completion_create_params import (
     CompletionCreateParamsNonStreaming,
     CompletionCreateParamsStreaming,
 )
 
 from backend.ai.model import client
+from backend.ai.tools import available_tools
 from backend.config import AGENT_MAX_TOOL_CALLS, LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
 from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
@@ -88,110 +86,6 @@ evidence_service = EvidenceService(
         "cnkgraph": CNKGraphProvider(),
     }
 )
-
-# 定义向模型公开的证据查询工具及其参数格式。
-TOOLS: list[ChatCompletionFunctionToolParam] = [
-    {
-        "type": "function",
-        "function": {
-            "name": "lookup_allusion",
-            "description": (
-                "查询中国古典诗词中的人物故事、掌故、神话传说和典故性短语的出处或含义。"
-                "适合回答‘这个典故是什么故事/什么意思’；"
-                "如果用户明确问‘借了谁哪一句诗、化用了哪段前代文本’，"
-                "不要用本工具，应优先使用 search_predecessor_texts。"
-                "不要用于整句诗文的全文相似检索、作品创作年代、作者生平、"
-                "诗中人物身份或普通文学赏析。"
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "term": {
-                        "type": "string",
-                        "description": (
-                            "真正需要查询的典故词语或短语。"
-                            "优先使用最短且有辨识度的锚点；"
-                            "不要机械地把整句诗、整段选区作为查询词。"
-                        ),
-                    }
-                },
-                "required": ["term"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "lookup_reference",
-            "description": (
-                "从外部诗词知识来源查询一句或短句可能对应的前代诗文、成句或化用候选。"
-                "适合核对已有外部 reference evidence；"
-                "返回结果只是候选，可能包含当前作品或后代作品，"
-                "必须结合作者年代和文本关系判断。"
-                "不适合解释人物故事型典故，也不能保证识别高度压缩或反用。"
-                "若 search_predecessor_texts 可用，同一个文本来源问题不要先用本工具重复试探；"
-                "只有本地 Corpus Tool 不可用，或已有明确理由需要外部 reference evidence 时再使用。"
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "text": {
-                        "type": "string",
-                        "description": (
-                            "真正要比较来源的诗句或短句。"
-                            "优先只提交目标短句，不要机械地提交整首诗。"
-                        ),
-                    }
-                },
-                "required": ["text"],
-                "additionalProperties": False,
-            },
-        },
-    },
-]
-
-# 本地诗词语料检索工具，根据服务配置决定是否向模型开放。
-TEXT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
-    "type": "function",
-    "function": {
-        "name": "search_predecessor_texts",
-        "description": (
-            "在 Poeticus 自建古典诗词 Corpus 中检索可能对应当前文本的前代候选。"
-            "用户问‘借了谁哪一句诗、化用了哪段前代文本、和哪一句前代文本有关’时，"
-            "应优先使用本工具，即使目标短语同时带有典故色彩。"
-            "适合寻找近似成句、改写、拆取重组和长尾互文；"
-            "这是全文检索候选发现，不等于已经证明引用或化用。"
-            "普通赏析、作者生平和人物故事型典故不要调用。"
-            "如果第一轮结果不足，而问题仍然是文本来源，"
-            "可以换一个更有辨识度的文本锚点再检索一次。"
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "text": {
-                    "type": "string",
-                    "description": (
-                        "真正需要寻找前代文本的目标诗句或短片段。"
-                        "优先保留有辨识度的原文；不要机械提交整首作品，"
-                        "也不要把自己猜测的出处改写成 Query。"
-                    ),
-                }
-            },
-            "required": ["text"],
-            "additionalProperties": False,
-        },
-    },
-}
-
-
-def _available_tools() -> list[ChatCompletionFunctionToolParam]:
-    """仅在配置了本地语料检索服务地址时，才向模型开放这个工具。"""
-
-    if text_retrieval_client.enabled:
-        return [*TOOLS, TEXT_RETRIEVAL_TOOL]
-
-    return list(TOOLS)
 
 
 # ===== 2. 消息、工具调用与工作流状态 =====
@@ -267,7 +161,7 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
     )
 
 
-class RouterState(TypedDict):
+class AgentState(TypedDict):
     """LangGraph 运行时的共享状态，保存问题、消息、工具结果和回答。"""
 
     poem: str
@@ -284,7 +178,7 @@ class RouterState(TypedDict):
     stream_reply: NotRequired[bool]
 
 
-class RouterUpdate(TypedDict, total=False):
+class AgentStateUpdate(TypedDict, total=False):
     """LangGraph 节点只返回本轮更新过的状态字段。"""
 
     messages: list[ChatCompletionMessageParam]
@@ -298,7 +192,7 @@ class RouterUpdate(TypedDict, total=False):
 # ===== 3. Agent 输入与模型请求 =====
 
 
-def _agent_user_message(state: RouterState) -> str:
+def _agent_user_message(state: AgentState) -> str:
     """将当前作品、选区、阅读上下文和问题拼成用户消息。"""
 
     return (
@@ -332,7 +226,7 @@ def _stream_agent_decision(
         "stream": True,
     }
     if tools_enabled:
-        request_kwargs["tools"] = _available_tools()
+        request_kwargs["tools"] = available_tools(text_retrieval_client.enabled)
         request_kwargs["tool_choice"] = "auto"
 
     # --- 3.2 初始化正文与工具调用分片缓存 ---
@@ -442,7 +336,7 @@ def _stream_agent_decision(
 # ===== 4. Agent 决策与工作流路由 =====
 
 
-def agent_decide(state: RouterState) -> RouterUpdate:
+def agent_decide(state: AgentState) -> AgentStateUpdate:
     """准备本轮对话，调用模型，并返回最终回答或工具调用请求。"""
 
     # --- 4.1 首次进入时建立模型消息历史 ---
@@ -508,7 +402,7 @@ def agent_decide(state: RouterState) -> RouterUpdate:
             "temperature": 0,
         }
         if tools_enabled:
-            request_kwargs["tools"] = _available_tools()
+            request_kwargs["tools"] = available_tools(text_retrieval_client.enabled)
             request_kwargs["tool_choice"] = "auto"
 
         try:
@@ -590,7 +484,7 @@ def agent_decide(state: RouterState) -> RouterUpdate:
     }
 
 
-def route_agent(state: RouterState) -> Literal["tools", "done"]:
+def route_agent(state: AgentState) -> Literal["tools", "done"]:
     """根据模型是否提出工具调用，选择工具节点或结束本轮。"""
 
     if state.get("tool_calls"):
@@ -602,7 +496,44 @@ def route_agent(state: RouterState) -> Literal["tools", "done"]:
 # ===== 5. 工具执行与结果回传 =====
 
 
-def execute_tools(state: RouterState) -> RouterUpdate:
+async def _execute_evidence_query(
+    *,
+    query: str,
+    evidence_type: Literal["allusion", "reference"],
+    max_items: int,
+) -> tuple[dict[str, object], list[dict[str, object]]]:
+    """调用证据服务，整理 Agent 工具回复及写入 State 的证据。"""
+
+    evidences = await evidence_service.search(
+        query=query,
+        provider_name="cnkgraph",
+        evidence_type=evidence_type,
+    )
+
+    # 限制回传给模型的文本与来源标题长度，避免证据材料过长。
+
+    evidence_items: list[dict[str, object]] = []
+    for item in evidences[:max_items]:
+        evidence_data: dict[str, object] = item.model_dump()
+        evidence_data["text"] = item.text[:1600]
+        source = evidence_data.get("source")
+        if isinstance(source, dict):
+            title = source.get("title")
+            if isinstance(title, str):
+                source["title"] = title[:200]
+        evidence_items.append(evidence_data)
+
+    result: dict[str, object] = {
+        "status": "ok" if evidence_items else "no_hit",
+        "query": query,
+        "evidence_type": evidence_type,
+        "evidences": evidence_items,
+    }
+
+    return result, evidence_items
+
+
+def execute_tools(state: AgentState) -> AgentStateUpdate:
     """执行模型请求的工具，将查询结果和工具消息写回工作流状态。"""
 
     # --- 5.1 获取工具调用并检查调用 ID ---
@@ -678,33 +609,12 @@ def execute_tools(state: RouterState) -> RouterUpdate:
                             ),
                         }
                     else:
-                        evidences = await evidence_service.search(
+                        result, evidence_items = await _execute_evidence_query(
                             query=query,
-                            provider_name="cnkgraph",
                             evidence_type=evidence_type,
+                            max_items=max_items,
                         )
-
-                        # 限制回传给后续 LLM 轮次的工具材料长度，避免外部证据
-                        # 带入过长文本。reference 多保留两条候选，便于跨年代比较。
-                        evidence_items: list[dict[str, object]] = []
-                        for item in evidences[:max_items]:
-                            evidence_data: dict[str, object] = item.model_dump()
-                            evidence_data["text"] = item.text[:1600]
-                            source = evidence_data.get("source")
-                            if isinstance(source, dict):
-                                title = source.get("title")
-                                if isinstance(title, str):
-                                    source["title"] = title[:200]
-                            evidence_items.append(evidence_data)
-
                         all_evidences.extend(evidence_items)
-
-                        result = {
-                            "status": ("ok" if evidence_items else "no_hit"),
-                            "query": query,
-                            "evidence_type": evidence_type,
-                            "evidences": evidence_items,
-                        }
 
                 except (
                     ValueError,
@@ -765,7 +675,7 @@ def execute_tools(state: RouterState) -> RouterUpdate:
     }
 
 
-builder = StateGraph(RouterState)
+builder = StateGraph(AgentState)
 
 builder.add_node("agent", agent_decide)
 builder.add_node("tools", execute_tools)
