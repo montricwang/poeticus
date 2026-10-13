@@ -19,7 +19,7 @@ type ChatMessageListProps = {
   swapPhase: 'steady' | 'leaving' | 'arriving'
 }
 
-/** Owns the scrolling, content fade and bottom-edge affordances, not the composer. */
+/** 管理消息列表的滚动、内容淡入及底部提示；输入区由其他组件负责。 */
 export function ChatMessageList({
   children,
   fillAvailableHeight,

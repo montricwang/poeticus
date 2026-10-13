@@ -14,6 +14,8 @@ def default_paths(
     data_root: Path,
     model_root: Path,
 ) -> ServingPaths:
+    """由数据根目录和模型根目录定位整套 Serving 资产。"""
+
     data_root = data_root.expanduser().resolve()
     model_root = model_root.expanduser().resolve()
 

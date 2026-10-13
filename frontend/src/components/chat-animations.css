@@ -1,4 +1,4 @@
-/* Only new messages animate here; restored history is handled by ChatPanel. */
+/* 这里只对新消息播放入场动画；恢复的历史消息由 ChatPanel 处理。 */
 @keyframes poeticus-message-enter {
   from {
     opacity: 0;

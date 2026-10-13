@@ -6,6 +6,7 @@ export type ServiceCapabilities = {
   }
 }
 
+// 共享一次服务能力请求；读取失败时清空缓存，允许下次重试。
 let cached: Promise<ServiceCapabilities> | null = null
 
 function positiveInteger(value: unknown, field: string): number {
@@ -46,6 +47,7 @@ async function fetchCapabilities(): Promise<ServiceCapabilities> {
   }
 }
 
+/** 读取后端发布的聊天参数上限，供前端构造请求和截断历史。 */
 export function loadServiceCapabilities(): Promise<ServiceCapabilities> {
   if (!cached) {
     cached = fetchCapabilities().catch((error) => {

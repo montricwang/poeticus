@@ -68,6 +68,8 @@ def _assert_metadata_consistent(
     current: str | None,
     incoming: str | None,
 ) -> str | None:
+    """同一作品多通道元数据必须兼容，冲突时停止融合。"""
+
     if current is None:
         return incoming
     if incoming is None or incoming == current:
@@ -99,6 +101,7 @@ def fuse_candidates_rrf(
 
     accumulators: dict[str, _FusionAccumulator] = {}
 
+    # 每条排名列表中，同一作品只能贡献一次 RRF 分数。
     for result in results:
         seen_in_list: set[str] = set()
 
@@ -160,6 +163,7 @@ def fuse_candidates_rrf(
         for work_id, accumulator in accumulators.items()
     ]
 
+    # 先按融合分数，再按最好名次及稳定作品 ID 排序。
     candidates.sort(
         key=lambda candidate: (
             -candidate.rrf_score,

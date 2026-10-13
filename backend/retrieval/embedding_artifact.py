@@ -19,6 +19,8 @@ SUPPORTED_CHUNK_POLICIES = frozenset({"sentence", "clause"})
 
 
 class ExactShard(TypedDict):
+    """一段连续 Embedding 数据的行号区间与文件名。"""
+
     start: int
     end: int
     file: str
@@ -26,6 +28,8 @@ class ExactShard(TypedDict):
 
 @with_config(ConfigDict(extra="allow"))
 class ExactManifest(TypedDict):
+    """完整 Embedding 资产的模型指纹、数量与分片记录。"""
+
     status: str
     model: str
     model_fingerprint: str
@@ -37,6 +41,8 @@ class ExactManifest(TypedDict):
 
 @with_config(ConfigDict(extra="allow"))
 class ArtifactManifest(ExactManifest):
+    """在基础 Manifest 上增加语料切分粒度。"""
+
     chunk_policy: Literal["sentence", "clause"]
 
 

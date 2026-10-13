@@ -1,3 +1,5 @@
+"""Poeticus 对外 MCP 工具入口：注册典故与出处查询，并复用证据服务。"""
+
 from typing import Literal
 
 from mcp.server import MCPServer
@@ -6,6 +8,7 @@ from backend.evidence.providers.cnkgraph import CNKGraphProvider
 from backend.evidence.service import EvidenceService
 
 
+# 创建对外 MCP Server；这一步只注册工具，不会执行查询。
 mcp = MCPServer("Poeticus")
 
 evidence_service = EvidenceService(
@@ -20,6 +23,8 @@ async def _search(
     evidence_type: Literal["allusion", "reference"],
     limit: int,
 ) -> dict[str, object]:
+    """校验 MCP 输入、限制候选数量与文本长度，返回统一的查询结果字典。"""
+
     query = query.strip()
 
     if not query or len(query) > 120:
@@ -31,6 +36,7 @@ async def _search(
         evidence_type=evidence_type,
     )
 
+    # MCP 返回结构在入口整理；底层 EvidenceService 不处理 MCP 协议。
     evidences = [
         {**item.model_dump(), "text": item.text[:1600]} for item in items[:limit]
     ]

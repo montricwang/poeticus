@@ -1,6 +1,7 @@
 import type { ChatTurn } from '@/types/chat'
 import type { SelectedText } from '@/types/poem'
 
+// 浏览器本地按作品保存会话；数据经过版本与字段检查后才能恢复。
 const STORAGE_KEY = 'poeticus:chat-state'
 const SCHEMA_VERSION = 1
 const INTERRUPTED_ERROR = '上次生成因页面刷新而中断，请重新请求。'
@@ -131,6 +132,7 @@ function isChatStoreV1(value: unknown): value is ChatStoreV1 {
   )
 }
 
+/** 读取并校验当前版本数据；缺失、格式不合法或存储不可用时返回空仓库。 */
 function readStore(): ChatStoreV1 {
   if (typeof window === 'undefined') return emptyStore()
 
@@ -156,6 +158,7 @@ function writeStore(store: ChatStoreV1): void {
   }
 }
 
+/** 页面重载后的未完成生成一律标为中断，不能继续显示为运行中。 */
 function restoreTurn(turn: StoredTurn): ChatTurn {
   if (turn.status === 'pending' || turn.status === 'streaming') {
     return {
@@ -220,6 +223,7 @@ export function saveLastActivePoemId(poemId: string): void {
   writeStore(store)
 }
 
+/** 按作品 ID 恢复一份独立会话，未找到时返回 null。 */
 export function loadPoemConversation(poemId: string): ConversationSnapshot | null {
   const stored = readStore().conversationsByPoem[poemId]
   if (!stored) return null
@@ -236,6 +240,7 @@ export function loadPoemConversation(poemId: string): ConversationSnapshot | nul
   }
 }
 
+/** 按作品覆盖保存历史与草稿，失败时不阻断当前页面聊天。 */
 export function savePoemConversation(conversation: ConversationToSave): void {
   const store = readStore()
 

@@ -21,6 +21,7 @@ type PoemCatalogProps = {
   open: boolean
 }
 
+/** 展示分页目录和筛选框；窄屏抽屉打开时约束键盘焦点。 */
 export function PoemCatalog({
   catalog,
   filters,
@@ -40,6 +41,7 @@ export function PoemCatalog({
   useEffect(() => {
     if (!open) return
 
+    /** Esc 关闭目录，窄屏时 Tab 焦点限制在打开的抽屉内。 */
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         onClose()

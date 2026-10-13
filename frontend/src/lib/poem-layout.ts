@@ -59,14 +59,14 @@ export function buildPoemLines(source: string): PoemLine[] {
 
     if (LINE_ENDINGS.has(character)) {
       let end = cursor + 1
-      // Keep ?!, …… and closing quotes with the verse they terminate.
+      // 连续句末标点及右引号应与它们结束的诗句留在同一行。
       while (
         end < source.length &&
         (LINE_ENDINGS.has(source[end]) || CLOSING_MARKS.has(source[end]))
       ) {
         end += 1
       }
-      // An explicit source line break after punctuation already marks the next line.
+      // 标点后的原文换行已经确定了下一行的起点。
       while (end < source.length && isNewline(source[end])) end += 1
       appendLine(end)
       cursor = end

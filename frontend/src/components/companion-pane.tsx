@@ -12,9 +12,9 @@ type CompanionPaneProps = {
 }
 
 /**
- * Owns the view switch, its boundary, and the currently visible content.
- * A fragment preserves the DOM structure measured by ReaderCompanionLayout:
- * its first child remains ViewToolbar, with no extra clipping wrapper.
+ * 组织视图切换、分隔线与当前面板内容。
+ * 使用 Fragment 保持 ReaderCompanionLayout 所测量的 DOM 结构：
+ * 首个子元素仍是 ViewToolbar，不增加可能裁剪内容的包装节点。
  */
 export function CompanionPane({
   activeView,

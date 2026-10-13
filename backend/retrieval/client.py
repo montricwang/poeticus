@@ -25,6 +25,8 @@ class RetrievalClientError(RuntimeError):
 
 
 class RetrievalCandidate(BaseModel):
+    """HTTP 客户端接收的一条检索候选，包含排名与作品元数据。"""
+
     model_config = ConfigDict(extra="ignore")
 
     rank: int = Field(ge=1)
@@ -39,6 +41,8 @@ class RetrievalCandidate(BaseModel):
 
 
 class RetrievalSearchResponse(BaseModel):
+    """检索服务的响应契约：状态、原始查询和有序候选。"""
+
     model_config = ConfigDict(extra="ignore")
 
     status: Literal["ok", "no_hit"]
@@ -48,6 +52,8 @@ class RetrievalSearchResponse(BaseModel):
 
 @dataclass(frozen=True)
 class CurrentPoem:
+    """当前阅读作品的信息，供服务端排除自身命中和判断年代。"""
+
     text: str
     title: str | None = None
     author: str | None = None
@@ -55,6 +61,8 @@ class CurrentPoem:
 
 
 class TextRetrievalClient:
+    """向独立的本地检索服务发送 HTTP 请求并校验返回契约。"""
+
     def __init__(
         self,
         *,
@@ -79,6 +87,8 @@ class TextRetrievalClient:
         current_poem: CurrentPoem,
         top_k: int = 8,
     ) -> RetrievalSearchResponse:
+        """提交查询与当前作品信息，检查 HTTP 与候选响应的一致性。"""
+
         query = text.strip()
         if not query:
             raise ValueError("Text Retrieval query 不能为空")
@@ -142,6 +152,7 @@ class TextRetrievalClient:
                 "Text Retrieval Service ok 却没有候选"
             )
 
+        # 候选按 1 开始连续编号，防止下游把异常排序当成有效证据。
         ranks = [item.rank for item in result.candidates]
         if ranks != list(range(1, len(ranks) + 1)):
             raise RetrievalClientError(

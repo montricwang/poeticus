@@ -27,6 +27,8 @@ _TABLES: dict[ChunkPolicy, str] = {
 
 @dataclass(frozen=True)
 class ChunkMetadata:
+    """一次检索命中的 Chunk 正文及其所属作品与行号。"""
+
     global_row: int
     chunk_id: str
     work_id: str
@@ -37,6 +39,8 @@ class ChunkMetadata:
 
 @dataclass(frozen=True)
 class WorkMetadata:
+    """作品级来源、作者、朝代等只读元数据。"""
+
     work_id: str
     title: str | None
     author: str | None
@@ -51,6 +55,8 @@ def content_fingerprint(text: str) -> str:
 
 
 def _iter_jsonl(path: Path) -> Iterator[dict[str, object]]:
+    """逐行读取 JSONL，明确报告格式不合法的行号。"""
+
     with path.open(encoding="utf-8") as stream:
         for line_no, line in enumerate(stream, 1):
             if not line.strip():
@@ -69,6 +75,8 @@ def _iter_jsonl(path: Path) -> Iterator[dict[str, object]]:
 
 
 def _create_schema(connection: sqlite3.Connection) -> None:
+    """建立供在线随机读取的作品、Chunk 与资产元数据表。"""
+
     connection.executescript(
         """
         CREATE TABLE artifact_meta (
@@ -355,6 +363,8 @@ class MetadataStore:
             )
 
     def stats(self) -> dict[str, str]:
+        """从 artifact_meta 读取版本、哈希和数量等资产契约信息。"""
+
         connection = self._connect()
         try:
             rows = connection.execute(
@@ -365,6 +375,8 @@ class MetadataStore:
         return {row["key"]: row["value"] for row in rows}
 
     def _connect(self) -> sqlite3.Connection:
+        """以只读 SQLite URI 建立连接，防止 Serving 修改索引元数据。"""
+
         connection = sqlite3.connect(
             self.path.as_uri() + "?mode=ro",
             uri=True,
@@ -378,6 +390,7 @@ class MetadataStore:
         for start in range(0, len(values), size):
             yield values[start:start + size]
 
+    # 根据检索通道返回的全局行号，批量回查 Chunk 正文。
     def read_chunks(
         self,
         policy: ChunkPolicy,
@@ -423,6 +436,7 @@ class MetadataStore:
             )
         return found
 
+    # 根据作品 ID 批量回查元数据，缺失的 ID 应显式报错。
     def read_works(
         self,
         work_ids: Iterable[str],
@@ -498,6 +512,7 @@ class MetadataStore:
             if isinstance(row["dynasty"], str) and row["dynasty"]
         }
 
+    # 用作者和去空白的全文指纹识别精确别名；异文不一定命中。
     def find_current_work_aliases(
         self,
         *,

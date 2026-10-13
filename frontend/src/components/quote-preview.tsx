@@ -12,8 +12,8 @@ type QuotePreviewProps = {
 }
 
 /**
- * Retain the last quote until its exit transition has finished.
- * Otherwise a conditional {selected && ...} unmounts the quote immediately.
+ * 移除引用时仍保留上一条引用，直到退出动画结束。
+ * 若直接使用 {selected && ...}，清空选区会让引用立即卸载。
  */
 export function QuotePreview({ selected, loading, onClearQuote }: QuotePreviewProps) {
   const [rendered, setRendered] = useState<SelectedText | null>(selected)
@@ -21,8 +21,7 @@ export function QuotePreview({ selected, loading, onClearQuote }: QuotePreviewPr
   const contentRef = useRef<HTMLDivElement>(null)
   const [contentHeight, setContentHeight] = useState(0)
 
-  // Measure the quote's natural height while its animated outer wrapper clips it.
-  // A new selection only changes this height; it never remounts the preview.
+  // 在外层动画容器裁剪内容时测量引用的自然高度；更换选区只更新高度，不重新挂载预览。
   useLayoutEffect(() => {
     const element = contentRef.current
     if (!element) return
@@ -41,8 +40,7 @@ export function QuotePreview({ selected, loading, onClearQuote }: QuotePreviewPr
 
   useEffect(() => {
     if (selected) {
-      // Commit the new quote in one frame, then allow the next frame to expand it.
-      // React can paint the collapsed grid row before its transition starts.
+      // 第一帧更新引用内容，下一帧再展开，让 React 有机会先绘制收起状态。
       let revealFrame: number | null = null
       const contentFrame = window.requestAnimationFrame(() => {
         setRendered(selected)

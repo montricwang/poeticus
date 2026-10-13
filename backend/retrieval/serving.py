@@ -24,6 +24,8 @@ from backend.retrieval.serving_manifest import _load_json, _required_positive_in
 
 @dataclass(frozen=True)
 class ServingPaths:
+    """常驻检索所需模型、索引与 SQLite 数据库的完整路径集合。"""
+
     sentence_embedding_dir: Path
     sentence_faiss_dir: Path
     clause_embedding_dir: Path
@@ -35,6 +37,8 @@ class ServingPaths:
 
 @dataclass(frozen=True)
 class ServingCandidate:
+    """面向 HTTP 返回的精简作品候选。"""
+
     rank: int
     work_id: str
     text: str
@@ -48,6 +52,8 @@ class ServingCandidate:
 
 @dataclass(frozen=True)
 class ServingSearchResult:
+    """一次服务查询的候选、作品别名与耗时统计。"""
+
     status: RetrievalStatus
     query: str
     candidates: tuple[ServingCandidate, ...]
@@ -273,11 +279,15 @@ class RetrievalServingRuntime:
         final_top_k: int = 8,
         current_work_ids: set[str] | None = None,
     ) -> ServingSearchResult:
+        """识别当前作品及年代，运行检索链并整理对外候选与耗时。"""
+
         query = text.strip()
         if not query:
             raise ValueError("Retrieval query 不能为空")
         if final_top_k <= 0:
             raise ValueError("final_top_k 必须为正整数")
+
+        # --- 1. 定位当前作品的精确别名及可推断的朝代 ---
 
         aliases_started = time.perf_counter()
         aliases = self.metadata.find_current_work_aliases(
@@ -294,6 +304,8 @@ class RetrievalServingRuntime:
         )
 
         alias_ms = (time.perf_counter() - aliases_started) * 1000
+
+        # --- 2. 组装常驻通道并执行检索、融合和筛选 ---
 
         service = TextRetrievalService(
             [
@@ -324,6 +336,8 @@ class RetrievalServingRuntime:
             float(profile.get("total_ms", 0.0))
             for profile in profiles.values()
         )
+
+        # --- 3. 从融合证据中选择返回给 Agent 的代表性文本 ---
 
         candidates: list[ServingCandidate] = []
         for rank, item in enumerate(result.candidates, 1):
