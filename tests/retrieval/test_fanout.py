@@ -1,9 +1,9 @@
-from backend.retrieval.fanout import (
+from backend.retrieval.pipeline.fanout import (
     ChannelDescriptor,
     RetrievalHit,
     execute_query_fanout,
 )
-from backend.retrieval.query_strategy import build_query_plan
+from backend.retrieval.pipeline.query_strategy import build_query_plan
 
 
 class FakeChannel:

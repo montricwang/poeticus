@@ -12,7 +12,7 @@ from backend.retrieval.chronology import (
     ChronologyStatus,
     classify_dynasty_relation,
 )
-from backend.retrieval.fusion import FusedCandidate
+from backend.retrieval.pipeline.fusion import FusedCandidate
 
 RejectionReason = Literal["self_hit", "clearly_later"]
 

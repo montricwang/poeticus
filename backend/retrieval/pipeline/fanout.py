@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Protocol, Sequence
 
-from backend.retrieval.query_strategy import QueryVariant
+from backend.retrieval.pipeline.query_strategy import QueryVariant
 
 RetrievalMethod = Literal["dense", "lexical"]
 ChunkPolicy = Literal["sentence", "clause"]

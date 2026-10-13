@@ -207,14 +207,14 @@ Agent (backend/ai/graph.py)
       ├─ serving_manifest.py              Manifest 读取与必要字段校验
       ├─ metadata_store.py                Work / Chunk 行号与正文回查
       └─ service.py                        TextRetrievalService：纯检索编排
-          ├─ query_strategy.py            passage/sentence/clause Query Plan
-          ├─ fanout.py                     把去重后的 Query 发给各 Channel
-          │    └─ serving_channels.py      真正访问模型 / FAISS / SQLite
+          ├─ pipeline/query_strategy.py   passage/sentence/clause Query Plan
+          ├─ pipeline/fanout.py            把去重后的 Query 发给各 Channel
+          │    └─ retrieval/serving_channels.py  真正访问模型 / FAISS / SQLite（根目录）
           │         ├─ QwenQueryEncoder    Qwen Query Embedding + 缓存
           │         ├─ FaissDenseChannel   sentence / clause ANN
           │         └─ SentenceBm25Channel sentence 字符 n-gram + FTS5
-          ├─ fusion.py                     Work-level RRF 聚合排名
-          └─ eligibility.py                排除自身/明确晚出的候选
+          ├─ pipeline/fusion.py            Work-level RRF 聚合排名
+          └─ pipeline/eligibility.py       排除自身/明确晚出的候选
   → server.py → client.py → Agent           Top-K 候选供模型比较
 ```
 
