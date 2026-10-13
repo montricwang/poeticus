@@ -13,7 +13,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import TYPE_CHECKING, Sequence
 
-from backend.retrieval.pipeline.fanout import ChannelDescriptor, ChunkPolicy, RetrievalHit
+from backend.retrieval.poem.pipeline.fanout import ChannelDescriptor, ChunkPolicy, RetrievalHit
 from backend.retrieval.lexical_terms import match_query_or_none
 from backend.retrieval.metadata_store import MetadataStore
 from backend.retrieval.serving_manifest import (

@@ -11,14 +11,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Collection, Literal, Sequence
 
-from backend.retrieval.pipeline.eligibility import (
+from backend.retrieval.poem.pipeline.eligibility import (
     EligibleCandidate,
     RejectedCandidate,
     apply_candidate_eligibility,
 )
-from backend.retrieval.pipeline.fanout import RetrievalChannel, execute_query_fanout
-from backend.retrieval.pipeline.fusion import DEFAULT_RRF_K, fuse_candidates_rrf
-from backend.retrieval.pipeline.query_strategy import QueryVariant, build_query_plan
+from backend.retrieval.poem.pipeline.fanout import RetrievalChannel, execute_query_fanout
+from backend.retrieval.poem.pipeline.fusion import DEFAULT_RRF_K, fuse_candidates_rrf
+from backend.retrieval.poem.pipeline.query_strategy import QueryVariant, build_query_plan
 
 RetrievalStatus = Literal["ok", "no_hit"]
 

@@ -1,11 +1,11 @@
 import json
 
-from backend.retrieval.pipeline.fanout import (
+from backend.retrieval.poem.pipeline.fanout import (
     ChannelDescriptor,
     QueryChannelResult,
     RetrievalHit,
 )
-from backend.retrieval.pipeline.query_strategy import QueryOrigin, QueryVariant
+from backend.retrieval.poem.pipeline.query_strategy import QueryOrigin, QueryVariant
 from scripts.retrieval.hybrid_eval import (
     find_probe_work_ids,
     probe_list_supports,

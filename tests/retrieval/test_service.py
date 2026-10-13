@@ -1,4 +1,4 @@
-from backend.retrieval.pipeline.fanout import (
+from backend.retrieval.poem.pipeline.fanout import (
     ChannelDescriptor,
     RetrievalHit,
 )
