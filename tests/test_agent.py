@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from backend.ai.tools import TOOLS, TEXT_RETRIEVAL_TOOL, available_tools
 from backend.evidence.schema import EvidenceItem, EvidenceSource
 from backend.retrieval.client import (
     RetrievalCandidate,
@@ -336,32 +337,50 @@ def test_tool_budget_exhaustion_disables_tools_and_hides_protocol(
         create_calls[2]["messages"][0]["content"]
     )
 
-def test_tool_contracts_separate_allusion_and_reference_search(agent):
-    allusion_tool = agent.TOOLS[0]["function"]
-    reference_tool = agent.TOOLS[1]["function"]
+def test_tool_contracts_separate_allusion_and_reference_search():
+    """检查模型工具 Schema 中实际存在的说明与查询字段。"""
+
+    allusion_tool = TOOLS[0]["function"]
+    reference_tool = TOOLS[1]["function"]
+    retrieval_tool = TEXT_RETRIEVAL_TOOL["function"]
 
     assert allusion_tool["name"] == "lookup_allusion"
-    assert "人物故事" in allusion_tool["description"]
-    assert "借了谁哪一句诗" in allusion_tool["description"]
-    assert "整句诗文的全文相似检索" in allusion_tool["description"]
+    allusion_description = allusion_tool.get("description")
+    assert isinstance(allusion_description, str)
+    assert "人物故事" in allusion_description
+    assert "借了谁哪一句诗" in allusion_description
+    assert "整句诗文的全文相似检索" in allusion_description
 
-    term = allusion_tool["parameters"]["properties"]["term"]
-    assert "最短且有辨识度的锚点" in term["description"]
+    allusion_parameters = allusion_tool.get("parameters")
+    assert isinstance(allusion_parameters, dict)
+    allusion_properties = allusion_parameters.get("properties")
+    assert isinstance(allusion_properties, dict)
+    term = allusion_properties.get("term")
+    assert isinstance(term, dict)
+    assert "最短且有辨识度的锚点" in term.get("description", "")
 
     assert reference_tool["name"] == "lookup_reference"
-    assert "前代诗文" in reference_tool["description"]
-    assert "当前作品或后代作品" in reference_tool["description"]
-    assert "高度压缩或反用" in reference_tool["description"]
-    assert "不要先用本工具重复试探" in reference_tool["description"]
+    reference_description = reference_tool.get("description")
+    assert isinstance(reference_description, str)
+    assert "前代诗文" in reference_description
+    assert "当前作品或后代作品" in reference_description
+    assert "高度压缩或反用" in reference_description
+    assert "不要先用本工具重复试探" in reference_description
 
-    text_param = reference_tool["parameters"]["properties"]["text"]
-    assert "目标短句" in text_param["description"]
+    reference_parameters = reference_tool.get("parameters")
+    assert isinstance(reference_parameters, dict)
+    reference_properties = reference_parameters.get("properties")
+    assert isinstance(reference_properties, dict)
+    text_param = reference_properties.get("text")
+    assert isinstance(text_param, dict)
+    assert "目标短句" in text_param.get("description", "")
 
-    retrieval_tool = agent.TEXT_RETRIEVAL_TOOL["function"]
     assert retrieval_tool["name"] == "search_predecessor_texts"
-    assert "自建古典诗词 Corpus" in retrieval_tool["description"]
-    assert "借了谁哪一句诗" in retrieval_tool["description"]
-    assert "长尾互文" in retrieval_tool["description"]
+    retrieval_description = retrieval_tool.get("description")
+    assert isinstance(retrieval_description, str)
+    assert "自建古典诗词 Corpus" in retrieval_description
+    assert "借了谁哪一句诗" in retrieval_description
+    assert "长尾互文" in retrieval_description
 
 
 def test_reference_tool_queries_target_clause_and_returns_candidates(
@@ -431,24 +450,20 @@ def test_reference_tool_queries_target_clause_and_returns_candidates(
     assert result["evidences"][0]["metadata"]["dynasty"] == "唐"
 
 
-
-
-def test_local_retrieval_tool_is_hidden_when_service_is_disabled(
-    monkeypatch,
-    agent,
-):
-    monkeypatch.setattr(
-        agent,
-        "text_retrieval_client",
-        SimpleNamespace(enabled=False),
-    )
+@pytest.mark.parametrize("retrieval_enabled", [False, True])
+def test_available_tools_matches_retrieval_configuration(retrieval_enabled):
+    """仅配置检索服务时向模型开放语料检索，且保留已有工具顺序。"""
 
     names = [
         item["function"]["name"]
-        for item in agent._available_tools()
+        for item in available_tools(retrieval_enabled=retrieval_enabled)
     ]
 
-    assert "search_predecessor_texts" not in names
+    expected_names = ["lookup_allusion", "lookup_reference"]
+    if retrieval_enabled:
+        expected_names.append("search_predecessor_texts")
+
+    assert names == expected_names
 
 
 def test_local_retrieval_tool_adds_host_poem_context_and_returns_candidates(

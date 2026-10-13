@@ -130,3 +130,48 @@ def test_evidence_provider_error(evidence_service, mock_cnkgraph_http):
 
     with pytest.raises(CNKGraphError, match="HTTP 503"):
         _search(evidence_service, query="绸缪")
+
+
+@pytest.mark.parametrize(
+    ("response_kind", "expected_message"),
+    [
+        ("timeout", "网络请求失败"),
+        ("invalid_json", "返回无效 JSON"),
+    ],
+)
+def test_evidence_transport_and_json_errors(
+    evidence_service,
+    mock_cnkgraph_http,
+    response_kind,
+    expected_message,
+):
+    """网络超时和无效 JSON 必须报错，不能伪装成查询无结果。"""
+
+    def handler(request: httpx.Request):
+        if response_kind == "timeout":
+            raise httpx.ReadTimeout("模拟读取超时", request=request)
+
+        return httpx.Response(200, content=b"invalid json")
+
+    mock_cnkgraph_http(handler)
+
+    with pytest.raises(CNKGraphError, match=expected_message):
+        _search(evidence_service)
+
+
+def test_cnkgraph_base_url_and_timeout_config(monkeypatch, mock_cnkgraph_http):
+    """Provider 使用部署期 URL 配置及原有的 10 秒超时。"""
+
+    monkeypatch.setenv("CNKGRAPH_BASE_URL", "https://example.invalid")
+    provider = CNKGraphProvider()
+
+    assert provider.base_url == "https://example.invalid"
+    assert provider.timeout == 10.0
+
+    def handler(request: httpx.Request):
+        assert request.url.host == "example.invalid"
+        return httpx.Response(200, json=[])
+
+    mock_cnkgraph_http(handler)
+
+    assert asyncio.run(provider.search("不存在", "allusion")) == []
