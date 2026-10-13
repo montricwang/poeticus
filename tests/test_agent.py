@@ -7,7 +7,7 @@ import pytest
 
 from backend.ai.tools import TOOLS, TEXT_RETRIEVAL_TOOL, available_tools
 from backend.evidence.schema import EvidenceItem, EvidenceSource
-from backend.retrieval.client import (
+from backend.retrieval.poem.client import (
     RetrievalCandidate,
     RetrievalClientError,
     RetrievalSearchResponse,

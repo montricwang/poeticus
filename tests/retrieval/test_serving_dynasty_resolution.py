@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 
-from backend.retrieval.metadata_store import MetadataStore, WorkMetadata
-from backend.retrieval.serving import (
+from backend.retrieval.poem.metadata_store import MetadataStore, WorkMetadata
+from backend.retrieval.poem.serving import (
     _dominant_known_dynasty,
     _resolve_target_dynasty,
 )

@@ -1,4 +1,4 @@
-"""Text Retrieval 的确定性多 Query 规划。
+"""Poem Retrieval 的确定性多 Query 规划。
 
 无需 LLM 改写，将选中的文本分别切成 passage、sentence、clause 级 Query。
 相同查询文本只检索一次，同时保留每种粒度在原文中的位置。"""
@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from backend.retrieval.text_units import split_clause_spans, split_sentence_spans
+from backend.retrieval.poem.text_units import split_clause_spans, split_sentence_spans
 
 QueryLevel = Literal["passage", "sentence", "clause"]
 

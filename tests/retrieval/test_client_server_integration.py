@@ -2,9 +2,9 @@ import asyncio
 
 import httpx
 
-from backend.retrieval.client import CurrentPoem, TextRetrievalClient
-from backend.retrieval.server import create_app
-from backend.retrieval.serving import ServingCandidate, ServingSearchResult
+from backend.retrieval.poem.client import CurrentPoem, TextRetrievalClient
+from backend.retrieval.poem.server import create_app
+from backend.retrieval.poem.serving import ServingCandidate, ServingSearchResult
 
 
 class FakeRuntime:

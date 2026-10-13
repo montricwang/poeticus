@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import TypedDict
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
-from backend.retrieval.text_units import (
+from backend.retrieval.poem.text_units import (
     split_clause_spans,
     split_sentence_spans,
 )

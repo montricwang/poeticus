@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from backend.data_paths import MODELS_ROOT, RETRIEVAL_ROOT
-from backend.retrieval.serving_paths import default_paths
+from backend.retrieval.poem.serving_paths import default_paths
 
 DEFAULT_DATA_ROOT = RETRIEVAL_ROOT
 DEFAULT_MODEL_ROOT = MODELS_ROOT

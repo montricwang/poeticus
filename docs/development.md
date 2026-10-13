@@ -126,7 +126,7 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 
 `main` 是稳定主线。功能和重构通过短期分支、PR、CI 后合并。
 
-当前生产运行在 Railway Web / PostgreSQL，网站使用 `https://poeticus.app`；自建 Text Retrieval 运行在开发机 WSL，通过 Windows `cloudflared` 命名 Tunnel 向 Railway 提供按需访问。是否可用取决于本地两个进程的状态；运行条件与待验收项见 [deployment.md](deployment.md)。后续计划进入 GitHub Issues 或 [roadmap.md](roadmap.md)。
+当前生产运行在 Railway Web / PostgreSQL，网站使用 `https://poeticus.app`；自建 Poem Retrieval 运行在开发机 WSL，通过 Windows `cloudflared` 命名 Tunnel 向 Railway 提供按需访问。是否可用取决于本地两个进程的状态；运行条件与待验收项见 [deployment.md](deployment.md)。后续计划进入 GitHub Issues 或 [roadmap.md](roadmap.md)。
 
 ### Git 协作文字语言（Poeticus）
 
@@ -143,7 +143,7 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 
 不要再并行维护 Decision Register；2026-10-07/08 的旧决策快照已在 Git 历史保存，长期结论已迁移到 ADR。完整职责见 [文档导航](README.md)。
 
-## 8. Text Retrieval 开发环境
+## 8. Poem Retrieval 开发环境
 
 完整本地 Serving Artifact 的默认位置为 `../poeticus-data/retrieval/`，模型在 `../poeticus-data/models/`；仅用于构建的 Work/Chunk JSONL 在 `retrieval/corpus/`，不需要复制到生产 Serving Bundle。
 
@@ -163,7 +163,7 @@ python -m pip install -r requirements-retrieval.txt
 - Work-level RRF；
 - Candidate Eligibility。
 
-完整架构见 [Text Retrieval 架构](architecture/text-retrieval.md)。
+完整架构见 [Poem Retrieval 架构](architecture/text-retrieval.md)。
 
 ### 本地 Serving 资产定位与工具边界
 
@@ -173,9 +173,9 @@ python -m pip install -r requirements-retrieval.txt
 - `python -m scripts.retrieval.run_serving`：加载现有模型、FAISS、BM25 和 Metadata，启动本地 HTTP 服务；
 - `python -m scripts.retrieval.benchmark_serving`：按评测 Case 检查常驻 Runtime 的资源和检索延迟。
 
-这些入口**共同导入** `backend/retrieval/serving_paths.py::default_paths`，由该函数从 sentence Embedding Manifest 的模型指纹推导 Serving 资产位置。`backend/data_paths.py` 只定义整个私有数据工作区的根目录；`serving_paths.py` 则定义本套 Retrieval 运行资产的具体布局。检查或评测工具不依赖 `run_serving.py`，以免把启动 Uvicorn 的入口误当公共底座。
+这些入口**共同导入** `backend/retrieval/poem/serving_paths.py::default_paths`，由该函数从 sentence Embedding Manifest 的模型指纹推导 Serving 资产位置。`backend/data_paths.py` 只定义整个私有数据工作区的根目录；`serving_paths.py` 则定义本套 Retrieval 运行资产的具体布局。检查或评测工具不依赖 `run_serving.py`，以免把启动 Uvicorn 的入口误当公共底座。
 
-Manifest 中记录的 Work/Chunk 文件 SHA256 由 `backend/retrieval/artifact_files.py` 统一计算。**路径定位是「去哪里找」，指纹校验是「找到的东西是不是同一套」**；两者不可混为一谈，也不可因为只是重构而删除指纹校验。轻量合成回归可以运行：
+Manifest 中记录的 Work/Chunk 文件 SHA256 由 `backend/retrieval/poem/artifact_files.py` 统一计算。**路径定位是「去哪里找」，指纹校验是「找到的东西是不是同一套」**；两者不可混为一谈，也不可因为只是重构而删除指纹校验。轻量合成回归可以运行：
 
 ```powershell
 python -m pytest tests/retrieval/test_serving_paths.py tests/retrieval/test_metadata_store.py -q

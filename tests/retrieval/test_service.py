@@ -2,7 +2,7 @@ from backend.retrieval.poem.pipeline.fanout import (
     ChannelDescriptor,
     RetrievalHit,
 )
-from backend.retrieval.service import TextRetrievalService
+from backend.retrieval.poem.service import TextRetrievalService
 
 
 class FakeChannel:

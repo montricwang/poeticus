@@ -29,7 +29,7 @@ from backend.retrieval.poem.pipeline.fanout import (
 )
 from backend.retrieval.poem.pipeline.fusion import DEFAULT_RRF_K, fuse_candidates_rrf
 from backend.retrieval.poem.pipeline.query_strategy import build_query_plan
-from backend.retrieval.embedding_artifact import QWEN_MODEL, load_artifact_manifest
+from backend.retrieval.poem.embedding_artifact import QWEN_MODEL, load_artifact_manifest
 from scripts.retrieval.artifact_search import (
     resolve_chunk_path,
     resolve_query_model_path,

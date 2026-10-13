@@ -20,15 +20,15 @@ from pydantic import TypeAdapter
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT
 
-from backend.retrieval.artifact_files import sha256_file
-from backend.retrieval.embedding_artifact import (
+from backend.retrieval.poem.artifact_files import sha256_file
+from backend.retrieval.poem.embedding_artifact import (
     ArtifactManifest as ArtifactManifest,
     BERT_CCPOEM_MODEL as BERT_CCPOEM_MODEL,
     QWEN_MODEL as QWEN_MODEL,
     SUPPORTED_MODELS as SUPPORTED_MODELS,
     load_artifact_manifest as load_artifact_manifest,
 )
-from backend.retrieval.chronology import candidate_prior_dynasties
+from backend.retrieval.poem.chronology import candidate_prior_dynasties
 
 from scripts.retrieval.exact_search import (
     DEFAULT_DATA_ROOT as DEFAULT_DATA_ROOT,

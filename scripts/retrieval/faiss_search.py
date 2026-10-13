@@ -19,7 +19,7 @@ from typing import TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
-from backend.retrieval.embedding_artifact import (
+from backend.retrieval.poem.embedding_artifact import (
     ArtifactManifest as ArtifactManifest,
     load_artifact_manifest,
 )
@@ -28,8 +28,8 @@ from scripts.retrieval.artifact_search import (
     resolve_chunk_path,
     resolve_query_model_path,
 )
-from backend.retrieval.artifact_files import sha256_file
-from backend.retrieval.chronology import classify_dynasty_relation
+from backend.retrieval.poem.artifact_files import sha256_file
+from backend.retrieval.poem.chronology import classify_dynasty_relation
 
 from scripts.retrieval.exact_search import (
     DEFAULT_WORKS,

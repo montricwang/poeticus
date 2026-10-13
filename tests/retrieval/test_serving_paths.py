@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.retrieval.serving_paths import default_paths
+from backend.retrieval.poem.serving_paths import default_paths
 from scripts.retrieval.benchmark_serving import default_paths as benchmark_paths
 from scripts.retrieval.inspect_serving_bundle import default_paths as inspect_paths
 from scripts.retrieval.run_serving import default_paths as launcher_paths

@@ -3,8 +3,8 @@ import sqlite3
 
 import pytest
 
-from backend.retrieval.artifact_files import sha256_file
-from backend.retrieval.metadata_store import (
+from backend.retrieval.poem.artifact_files import sha256_file
+from backend.retrieval.poem.metadata_store import (
     METADATA_SCHEMA_VERSION,
     MetadataStore,
     build_metadata_store,

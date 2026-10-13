@@ -14,9 +14,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Sequence
 
 from backend.retrieval.poem.pipeline.fanout import ChannelDescriptor, ChunkPolicy, RetrievalHit
-from backend.retrieval.lexical_terms import match_query_or_none
-from backend.retrieval.metadata_store import MetadataStore
-from backend.retrieval.serving_manifest import (
+from backend.retrieval.poem.lexical_terms import match_query_or_none
+from backend.retrieval.poem.metadata_store import MetadataStore
+from backend.retrieval.poem.serving_manifest import (
     _embedding_source_signature,
     _load_json,
     _required_positive_int,

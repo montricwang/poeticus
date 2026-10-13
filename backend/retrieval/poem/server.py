@@ -8,7 +8,7 @@ from typing import Annotated, Literal, Protocol
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.retrieval.serving import ServingSearchResult
+from backend.retrieval.poem.serving import ServingSearchResult
 
 
 class CurrentPoemRequest(BaseModel):

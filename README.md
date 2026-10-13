@@ -4,7 +4,7 @@
 
 Poeticus 是一个面向中国古典诗词的 AI 辅助阅读器。读者可以在阅读作品时直接划选字句、提出问题，围绕原文展开连续讨论；不必为了查询一个典故或理解一处措辞而反复离开阅读页面。
 
-**项目状态：v0.4.0 公网版。** 网站已面向访客开放，无需账号或自备 API Key；作品 API 的 **3491 首词作**已通过公网读取验收。AI 问答和赏析使用服务端共享的每日额度及限流保护。前代文本问题还可以调用 Poeticus 自建 Text Retrieval Service，从约 85 万首外部古典诗词中寻找候选来源。
+**项目状态：v0.4.0 公网版。** 网站已面向访客开放，无需账号或自备 API Key；作品 API 的 **3491 首词作**已通过公网读取验收。AI 问答和赏析使用服务端共享的每日额度及限流保护。前代文本问题还可以调用 Poeticus 自建 Poem Retrieval Service，从约 85 万首外部古典诗词中寻找候选来源。
 
 ## 在线体验
 
@@ -37,19 +37,19 @@ Poeticus 尝试让**作品成为阅读中心，AI 成为可以随时交谈的伴
 | HTTP 后端 | FastAPI、Pydantic | 作品查询、请求校验、聊天与赏析 API |
 | AI 工作流 | LangGraph、LLM API | 结合作品上下文生成回答，按需调用查证与 Retrieval 工具 |
 | 作品存储 | PostgreSQL、psycopg | 作品目录分页、正文读取、字段搜索 |
-| Text Retrieval | Qwen3-Embedding、FAISS、SQLite FTS5 BM25、RRF | 从 Werneror 约 85 万首作品中发现前代文本候选 |
+| Poem Retrieval | Qwen3-Embedding、FAISS、SQLite FTS5 BM25、RRF | 从 Werneror 约 85 万首作品中发现前代文本候选 |
 | Retrieval Serving | WSL Ubuntu、FastAPI、Cloudflare Tunnel | 本地承载模型与索引，由 Windows 连接器将 Railway HTTPS + Bearer 请求转发到 WSL |
 | 验证 | pytest、前端 lint/build、Node 测试、AI Eval、生产 E2E | 回归检查、检索增量验证与真实链路验收 |
 
 作品读取采用 `GET /api/poems` 与 `GET /api/poems/{UUID}`；聊天在正式部署中使用同源 `POST /api/chat/stream` SSE；FastAPI 同时提供 Vite 静态文件和作品 API。`GET /health` 用于存活检查，`GET /api/info` 返回非敏感版本元数据。公网 AI 使用量限制及故障保护见 [#77](https://github.com/montricwang/poeticus/issues/77)。
 
-文档按当前架构、决策、开发操作、私有数据和历史日志分工，先看 [文档导航](docs/README.md)。了解技术细节，可阅读 [LangGraph 架构](docs/architecture/langgraph.md)、[Text Retrieval 架构](docs/architecture/text-retrieval.md)、[作品数据库架构](docs/architecture/corpus-database.md)、[当前生产部署](docs/deployment.md) 和 [开发日志](docs/devlog/)。
+文档按当前架构、决策、开发操作、私有数据和历史日志分工，先看 [文档导航](docs/README.md)。了解技术细节，可阅读 [LangGraph 架构](docs/architecture/langgraph.md)、[Poem Retrieval 架构](docs/architecture/text-retrieval.md)、[作品数据库架构](docs/architecture/corpus-database.md)、[当前生产部署](docs/deployment.md) 和 [开发日志](docs/devlog/)。
 
 后端实现统一位于 `backend/` 包：`app.py` 组装 FastAPI，`api/` 负责 HTTP 接口，`ai/` 放模型与 LangGraph，`corpus/` 管作品数据，`evidence/` 管典故查证。生产环境直接以 `backend.app:app` 启动，不再保留根目录兼容模块。
 
 ## 当前阶段与边界
 
-- 当前以古典词作为主要阅读对象，仍有作品字段与文本尚待核对；AI 解释、典故候选和 Text Retrieval 候选都需要结合原文与可靠文献继续判断。
+- 当前以古典词作为主要阅读对象，仍有作品字段与文本尚待核对；AI 解释、典故候选和 Poem Retrieval 候选都需要结合原文与可靠文献继续判断。
 - 会话历史目前存储在**当前浏览器的 localStorage**，没有账号登录、跨设备同步或服务端长期记忆。
 - 公开仓库不包含私有商业 EPUB、来源证据、批量抽取结果、数据库凭证或开发者的本地作品库。要运行数据库阅读功能，需自行准备具有使用权限的作品数据。
 - 云端只含可供阅读的作品字段，不包括私人出版社注评和源书证据；所有内容仍应按具体版本追溯来源，未做逐首校勘。公开 AI 采用服务端请求配额与并发限制，不提供无限免费调用。当前本地检索是按需在线的外部依赖，部署健康与实际检索验收状态以 [生产部署文档](docs/deployment.md) 为准。

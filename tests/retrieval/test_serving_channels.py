@@ -6,7 +6,7 @@ import sqlite3
 
 import pytest
 
-from backend.retrieval.serving_channels import SentenceBm25Channel
+from backend.retrieval.poem.serving_channels import SentenceBm25Channel
 from scripts.retrieval.lexical_bm25 import build_bm25_index
 
 
