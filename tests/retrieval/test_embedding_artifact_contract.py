@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from backend.retrieval.embedding_artifact import (
+from backend.retrieval.poem.embedding_artifact import (
     BERT_CCPOEM_MODEL,
     QWEN_MODEL,
     ExactManifest,

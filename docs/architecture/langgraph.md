@@ -49,7 +49,7 @@ flowchart TD
 
 候选资料只是回答材料，不自动等于已经完成文献校勘。外部文本进入后续模型调用前会做长度限制。
 
-Text Retrieval 返回的 chronology status 也只是粗粒度信号。Werneror 的 dynasty label 会把部分五代人物标成“唐”；Agent 不能把它直接表述成精确历史断代。
+Poem Retrieval 返回的 chronology status 也只是粗粒度信号。Werneror 的 dynasty label 会把部分五代人物标成“唐”；Agent 不能把它直接表述成精确历史断代。
 
 当前已验证的产品路径：
 

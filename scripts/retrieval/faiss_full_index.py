@@ -23,7 +23,7 @@ from typing import TypedDict
 
 from pydantic import TypeAdapter
 
-from backend.retrieval.embedding_artifact import load_artifact_manifest
+from backend.retrieval.poem.embedding_artifact import load_artifact_manifest
 from scripts.retrieval.vector_sampling import (
     load_sampled_vectors,
     sample_global_rows,

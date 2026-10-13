@@ -20,9 +20,9 @@ from typing import Iterator, TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
-from backend.retrieval.artifact_files import sha256_file
-from backend.retrieval.chronology import candidate_prior_dynasties
-from backend.retrieval.lexical_terms import (
+from backend.retrieval.poem.artifact_files import sha256_file
+from backend.retrieval.poem.chronology import candidate_prior_dynasties
+from backend.retrieval.poem.lexical_terms import (
     character_ngrams as character_ngrams,
     iter_character_runs as iter_character_runs,
     match_query_or_none,

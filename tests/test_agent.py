@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.evidence.schema import EvidenceItem, EvidenceSource
-from backend.retrieval.client import (
+from backend.retrieval.poem.client import (
     RetrievalCandidate,
     RetrievalClientError,
     RetrievalSearchResponse,

@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from backend.retrieval.text_units import split_clause_spans, split_sentence_spans
+from backend.retrieval.poem.text_units import split_clause_spans, split_sentence_spans
 
 QueryLevel = Literal["passage", "sentence", "clause"]
 

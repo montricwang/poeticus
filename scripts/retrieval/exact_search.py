@@ -20,12 +20,12 @@ from typing import Iterable, Mapping, NotRequired, TypedDict
 
 from pydantic import ConfigDict, TypeAdapter, with_config
 
-from backend.retrieval.artifact_files import sha256_file
-from backend.retrieval.embedding_artifact import (
+from backend.retrieval.poem.artifact_files import sha256_file
+from backend.retrieval.poem.embedding_artifact import (
     ExactManifest as ExactManifest,
     ExactShard as ExactShard,
 )
-from backend.retrieval.chronology import (
+from backend.retrieval.poem.chronology import (
     DYNASTY_PERIODS as DYNASTY_PERIODS,
     candidate_prior_dynasties,
 )

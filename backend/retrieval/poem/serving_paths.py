@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from backend.retrieval.serving import ServingPaths
+from backend.retrieval.poem.serving import ServingPaths
 
 
 def default_paths(

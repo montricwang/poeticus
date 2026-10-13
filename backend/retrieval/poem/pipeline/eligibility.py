@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Collection, Literal, Sequence
 
-from backend.retrieval.chronology import (
+from backend.retrieval.poem.chronology import (
     ChronologyStatus,
     classify_dynasty_relation,
 )

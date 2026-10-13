@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from backend.retrieval.server import create_app
-from backend.retrieval.serving import (
+from backend.retrieval.poem.server import create_app
+from backend.retrieval.poem.serving import (
     ServingCandidate,
     ServingSearchResult,
 )

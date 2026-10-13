@@ -4,7 +4,7 @@ import json
 import httpx
 import pytest
 
-from backend.retrieval.client import (
+from backend.retrieval.poem.client import (
     CurrentPoem,
     RetrievalClientError,
     TextRetrievalClient,

@@ -28,7 +28,7 @@ from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
 from backend.ai.context import PoemContext, format_poem_context
 from backend.ai.prompt_loader import compose_prompt
-from backend.retrieval.client import (
+from backend.retrieval.poem.client import (
     CurrentPoem,
     RetrievalClientError,
     text_retrieval_client,

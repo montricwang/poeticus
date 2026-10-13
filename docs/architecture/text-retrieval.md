@@ -1,6 +1,6 @@
-# Text Retrieval 架构基线
+# Poem Retrieval 架构基线
 
-> **业务边界（2026-10-13）**：本文记录的是现有诗歌语料的 **Poem Retrieval**，以诗歌作品为候选单位，包含作品自身排除、朝代先后判断和 Work-level RRF。`Text Retrieval` 是旧接口和服务的暂存名称，不代表未来针对词话、古籍、现代书籍或辞书的通用本地检索实现。
+> **业务边界（2026-10-13）**：当前实现位于 `backend/retrieval/poem/`，是针对本地诗歌语料的 **Poem Retrieval**：以诗歌作品为候选单位，包含作品自身排除、朝代先后判断和 Work-level RRF。`Text Retrieval` 保留在既有服务类名、HTTP 接口及配置中作为历史名称；未来针对词话、古籍、现代书籍或辞书的通用本地 Text Retrieval 尚未实现，不应直接复用这些诗歌业务规则。
 
 > 检索实现基线：v0.3.0（2026-10-08）。原腾讯云节点已销毁；2026-10-11 在 WSL 恢复 Serving，先通过 Quick Tunnel 完成真实检索测试，随后配置 `retrieval.poeticus.app` 命名 Tunnel，并在 Railway 启用检索地址。命名 Tunnel 恢复后的真实检索仍须按 [Deployment](../deployment.md) 验收；下述 v0.3.0 性能数据是历史基线。
 
@@ -184,13 +184,13 @@ chronology_status=clearly_earlier
 
 Embedding/Index/SQLite 是**可重建资产**，Work/Chunk 是它们的数据来源。Manifest、SHA256 和 row-id 对应关系是必要的数据契约；不要为缩短代码而删除校验。关键关系：**FAISS vector global row == Chunk JSONL logical row**；检索命中后依据 Metadata Store 回查它属于哪段文字、哪首作品。生产检索本身不扫描原始 JSONL。
 
-**Embedding Artifact 的代码归属（#182 后续审计）**：`backend/retrieval/embedding_artifact.py` 定义已完成 Embedding 的 Manifest 结构及校验规则，包括模型、chunk_policy、分片文件存在性、连续行号和总 Chunk 数。`scripts/retrieval/faiss_full_index.py` 是索引**构建入口**，直接引用这个稳定模块；`scripts/retrieval/artifact_search.py` 和 `exact_search.py` 是**诊断入口**，继续保留各自的检索行为。正式构建不再为校验 Manifest 导入实验入口。
+**Embedding Artifact 的代码归属（#182 后续审计）**：`backend/retrieval/poem/embedding_artifact.py` 定义已完成 Embedding 的 Manifest 结构及校验规则，包括模型、chunk_policy、分片文件存在性、连续行号和总 Chunk 数。`scripts/retrieval/faiss_full_index.py` 是索引**构建入口**，直接引用这个稳定模块；`scripts/retrieval/artifact_search.py` 和 `exact_search.py` 是**诊断入口**，继续保留各自的检索行为。正式构建不再为校验 Manifest 导入实验入口。
 
 ```text
 Embedding shards + manifest.json
        │
        ▼
-backend/retrieval/embedding_artifact.py
+backend/retrieval/poem/embedding_artifact.py
        ├→ FAISS index builder（faiss_full_index.py）
        └→ 单通道/Exact/Hybrid 实验诊断
 ```
@@ -203,20 +203,20 @@ backend/retrieval/embedding_artifact.py
 
 ```text
 Agent (backend/ai/graph.py)
-  → backend/retrieval/client.py            HTTP 请求 / 失败转换
-  → backend/retrieval/server.py            API Schema、认证、/health
-  → backend/retrieval/serving.py           Runtime：校验资产、装配通道、整理响应
+  → backend/retrieval/poem/client.py            HTTP 请求 / 失败转换
+  → backend/retrieval/poem/server.py            API Schema、认证、/health
+  → backend/retrieval/poem/serving.py           Runtime：校验资产、装配通道、整理响应
       ├─ serving_manifest.py              Manifest 读取与必要字段校验
       ├─ metadata_store.py                Work / Chunk 行号与正文回查
       └─ service.py                        TextRetrievalService：纯检索编排
-          ├─ poem/pipeline/query_strategy.py   passage/sentence/clause Query Plan
-          ├─ poem/pipeline/fanout.py            把去重后的 Query 发给各 Channel
-          │    └─ retrieval/serving_channels.py  真正访问模型 / FAISS / SQLite（根目录）
+          ├─ pipeline/query_strategy.py   passage/sentence/clause Query Plan
+          ├─ pipeline/fanout.py            把去重后的 Query 发给各 Channel
+          │    └─ serving_channels.py         真正访问模型 / FAISS / SQLite（poem 包）
           │         ├─ QwenQueryEncoder    Qwen Query Embedding + 缓存
           │         ├─ FaissDenseChannel   sentence / clause ANN
           │         └─ SentenceBm25Channel sentence 字符 n-gram + FTS5
-          ├─ poem/pipeline/fusion.py            Work-level RRF 聚合排名
-          └─ poem/pipeline/eligibility.py       排除自身/明确晚出的候选
+          ├─ pipeline/fusion.py            Work-level RRF 聚合排名
+          └─ pipeline/eligibility.py       排除自身/明确晚出的候选
   → server.py → client.py → Agent           Top-K 候选供模型比较
 ```
 
@@ -237,13 +237,13 @@ Agent (backend/ai/graph.py)
 
 **Hybrid Eval 与生产 Runtime 的取舍（#182 P2 审计）**：保留 `scripts/retrieval/hybrid_eval.py` 作为**离线诊断基线**，它通过 JSONL 回查原始 Chunk/Work，并报告每个 Query × Channel 的 probe rank、缺失列表及融合前后候选情况。正式 `RetrievalServingRuntime` 使用预构建 Metadata SQLite、常驻模型与索引，只返回产品需要的候选和性能摘要。两者共享 Query Plan、RRF、Eligibility 的确定性算法，但**不同的资产读取和诊断语义有意保留**；不能为了减少重复直接将 Eval 入口替换为生产 Runtime。此处是源码职责判断，不代表已完成同一真实 Artifact 下的输出对照验收。
 
-**抽象边界（#182 P1）**：`backend/retrieval/lexical_terms.py` 负责共同字符切分与 FTS5 表达式；离线诊断对不可检索 Query 抛错，在线 Serving 将其视为无结果。`backend/retrieval/artifact_files.py` 提供不依赖模型的 SHA256 文件哈希。长期构建工具不再从 `exact_search.py` 借用路径常量与哈希函数。历史实验仍可复用 Exact Search 的诊断算法。
+**抽象边界（#182 P1）**：`backend/retrieval/poem/lexical_terms.py` 负责共同字符切分与 FTS5 表达式；离线诊断对不可检索 Query 抛错，在线 Serving 将其视为无结果。`backend/retrieval/poem/artifact_files.py` 提供不依赖模型的 SHA256 文件哈希。长期构建工具不再从 `exact_search.py` 借用路径常量与哈希函数。历史实验仍可复用 Exact Search 的诊断算法。
 
 **推荐学习顺序**：先读 `server.create_app` → `serving.RetrievalServingRuntime.search` → `service.TextRetrievalService.search`，明确「入口、运行时、编排」各自负责什么；再读 `query_strategy`、`fanout`、`fusion`、`eligibility`；最后才进入 `serving_channels.FaissDenseChannel / SentenceBm25Channel`、`serving_manifest` 与离线构建。遇到 Manifest/行号不一致时先查资产版本契约；不要先从历史实验脚本开始，也不必先理解 IVFPQ 的内部数学。
 
 ## 1. 目标与非目标
 
-Text Retrieval 只解决一个问题：
+Poem Retrieval 只解决一个问题：
 
 > **给当前诗词中的一段文本，从前代语料中找出值得让 LLM 继续比较的候选文本。**
 
@@ -269,7 +269,7 @@ DeepSeek / Agent
 
 - `lookup_allusion`：人物、故事、典故性短语；
 - `lookup_reference`：现有 reference evidence；
-- Text Retrieval：当前文本与前代文本之间的候选发现；
+- Poem Retrieval：当前诗词与语料中前代诗歌之间的候选发现；
 - DeepSeek / Agent：综合候选与上下文作最终判断。
 
 不把所有文学证据统一塞进一个万能向量库。
@@ -458,7 +458,7 @@ manifest 绑定：
 
 ## 7. 时间顺序
 
-Text Retrieval 的产品问题是寻找“前代”文本，而不是任意时代的相似文本。
+Poem Retrieval 的产品问题是寻找“前代”文本，而不是任意时代的相似文本。
 
 因此 chronology 至少需要参与最终候选约束，但第一版不建立复杂年代知识库。当前可依赖的基础 metadata 是 dynasty；同朝代的精确先后仍可能不确定，应允许 LLM 输出不确定性。
 

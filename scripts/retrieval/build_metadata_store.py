@@ -7,7 +7,7 @@ from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_ROOT
 
-from backend.retrieval.metadata_store import build_metadata_store
+from backend.retrieval.poem.metadata_store import build_metadata_store
 DEFAULT_DATA_ROOT = RETRIEVAL_ROOT
 DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 

@@ -11,15 +11,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from backend.retrieval.chronology import DYNASTY_PERIODS
-from backend.retrieval.metadata_store import MetadataStore
-from backend.retrieval.service import RetrievalStatus, TextRetrievalService
-from backend.retrieval.serving_channels import (
+from backend.retrieval.poem.chronology import DYNASTY_PERIODS
+from backend.retrieval.poem.metadata_store import MetadataStore
+from backend.retrieval.poem.service import RetrievalStatus, TextRetrievalService
+from backend.retrieval.poem.serving_channels import (
     FaissDenseChannel,
     QwenQueryEncoder,
     SentenceBm25Channel,
 )
-from backend.retrieval.serving_manifest import _load_json, _required_positive_int
+from backend.retrieval.poem.serving_manifest import _load_json, _required_positive_int
 
 
 @dataclass(frozen=True)

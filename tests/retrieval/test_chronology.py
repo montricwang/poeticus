@@ -1,6 +1,6 @@
 import pytest
 
-from backend.retrieval.chronology import (
+from backend.retrieval.poem.chronology import (
     candidate_prior_dynasties,
     classify_dynasty_relation,
 )

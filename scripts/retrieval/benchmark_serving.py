@@ -25,8 +25,8 @@ from backend.data_paths import (
 )
 
 
-from backend.retrieval.serving import RetrievalServingRuntime, ServingSearchResult
-from backend.retrieval.serving_paths import default_paths
+from backend.retrieval.poem.serving import RetrievalServingRuntime, ServingSearchResult
+from backend.retrieval.poem.serving_paths import default_paths
 
 DEFAULT_DATA_ROOT = RETRIEVAL_ROOT
 DEFAULT_MODEL_ROOT = MODELS_ROOT

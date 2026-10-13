@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Literal, Sequence, cast
 
-from backend.retrieval.artifact_files import sha256_file
+from backend.retrieval.poem.artifact_files import sha256_file
 
 ChunkPolicy = Literal["sentence", "clause"]
 METADATA_SCHEMA_VERSION = "2"

@@ -5,8 +5,8 @@ import hashlib
 
 import pytest
 
-from backend.retrieval.artifact_files import sha256_file
-from backend.retrieval.lexical_terms import (
+from backend.retrieval.poem.artifact_files import sha256_file
+from backend.retrieval.poem.lexical_terms import (
     character_ngrams,
     match_query_or_none,
 )
