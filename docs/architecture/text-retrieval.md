@@ -1,5 +1,7 @@
 # Text Retrieval 架构基线
 
+> **业务边界（2026-10-13）**：本文记录的是现有诗歌语料的 **Poem Retrieval**，以诗歌作品为候选单位，包含作品自身排除、朝代先后判断和 Work-level RRF。`Text Retrieval` 是旧接口和服务的暂存名称，不代表未来针对词话、古籍、现代书籍或辞书的通用本地检索实现。
+
 > 检索实现基线：v0.3.0（2026-10-08）。原腾讯云节点已销毁；2026-10-11 在 WSL 恢复 Serving，先通过 Quick Tunnel 完成真实检索测试，随后配置 `retrieval.poeticus.app` 命名 Tunnel，并在 Railway 启用检索地址。命名 Tunnel 恢复后的真实检索仍须按 [Deployment](../deployment.md) 验收；下述 v0.3.0 性能数据是历史基线。
 
 ## 0. v0.3.0 检索基线与当前状态
@@ -207,14 +209,14 @@ Agent (backend/ai/graph.py)
       ├─ serving_manifest.py              Manifest 读取与必要字段校验
       ├─ metadata_store.py                Work / Chunk 行号与正文回查
       └─ service.py                        TextRetrievalService：纯检索编排
-          ├─ query_strategy.py            passage/sentence/clause Query Plan
-          ├─ fanout.py                     把去重后的 Query 发给各 Channel
-          │    └─ serving_channels.py      真正访问模型 / FAISS / SQLite
+          ├─ poem/pipeline/query_strategy.py   passage/sentence/clause Query Plan
+          ├─ poem/pipeline/fanout.py            把去重后的 Query 发给各 Channel
+          │    └─ retrieval/serving_channels.py  真正访问模型 / FAISS / SQLite（根目录）
           │         ├─ QwenQueryEncoder    Qwen Query Embedding + 缓存
           │         ├─ FaissDenseChannel   sentence / clause ANN
           │         └─ SentenceBm25Channel sentence 字符 n-gram + FTS5
-          ├─ fusion.py                     Work-level RRF 聚合排名
-          └─ eligibility.py                排除自身/明确晚出的候选
+          ├─ poem/pipeline/fusion.py            Work-level RRF 聚合排名
+          └─ poem/pipeline/eligibility.py       排除自身/明确晚出的候选
   → server.py → client.py → Agent           Top-K 候选供模型比较
 ```
 

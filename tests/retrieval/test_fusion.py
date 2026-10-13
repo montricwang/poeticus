@@ -2,13 +2,13 @@ import math
 
 import pytest
 
-from backend.retrieval.fanout import (
+from backend.retrieval.poem.pipeline.fanout import (
     ChannelDescriptor,
     QueryChannelResult,
     RetrievalHit,
 )
-from backend.retrieval.fusion import fuse_candidates_rrf
-from backend.retrieval.query_strategy import build_query_plan
+from backend.retrieval.poem.pipeline.fusion import fuse_candidates_rrf
+from backend.retrieval.poem.pipeline.query_strategy import build_query_plan
 
 
 def _result(query, channel_name, method, chunk_policy, hits):

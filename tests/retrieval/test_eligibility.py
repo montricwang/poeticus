@@ -1,5 +1,5 @@
-from backend.retrieval.eligibility import apply_candidate_eligibility
-from backend.retrieval.fusion import FusedCandidate
+from backend.retrieval.poem.pipeline.eligibility import apply_candidate_eligibility
+from backend.retrieval.poem.pipeline.fusion import FusedCandidate
 
 
 def _candidate(work_id, *, dynasty):

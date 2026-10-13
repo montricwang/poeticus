@@ -1,6 +1,6 @@
 import pytest
 
-from backend.retrieval.query_strategy import build_query_plan
+from backend.retrieval.poem.pipeline.query_strategy import build_query_plan
 
 
 def _levels(variant):

@@ -13,12 +13,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Sequence, TypedDict
 
-from backend.retrieval.fanout import (
+from backend.retrieval.poem.pipeline.fanout import (
     ChannelDescriptor,
     QueryChannelResult,
     RetrievalHit,
 )
-from backend.retrieval.query_strategy import QueryOrigin
+from backend.retrieval.poem.pipeline.query_strategy import QueryOrigin
 
 DEFAULT_RRF_K = 60
 
