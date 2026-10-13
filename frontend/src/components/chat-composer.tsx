@@ -96,7 +96,7 @@ export function ChatComposer({
         />
       </div>
 
-      {/* Controls always span the companion width; only the text field grows. */}
+      {/* 控件区域始终占满伴读列宽度，只有文本输入框随内容伸缩。 */}
       <div className="flex w-full items-center justify-between px-2">
         <span className="text-xs text-muted-foreground">
           {loading ? 'AI 正在回复' : 'Enter 发送 · Shift+Enter 换行'}

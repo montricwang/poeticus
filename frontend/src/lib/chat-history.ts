@@ -1,5 +1,6 @@
 import type { ChatTurn, HistoryMessage } from '@/types/chat'
 
+/** 把历史提问及其原文引用整理为下一轮模型可读的用户消息。 */
 function historyUserContent(turn: ChatTurn) {
   if (!turn.selection) {
     return turn.question
@@ -8,6 +9,7 @@ function historyUserContent(turn: ChatTurn) {
   return `引用原文：${turn.selection.text}\n\n问题：${turn.question}`
 }
 
+/** 只取当前轮之前已完成的对话，并按服务端允许的轮数截断。 */
 export function buildHistory(
   turns: ChatTurn[],
   currentTurnId: number,

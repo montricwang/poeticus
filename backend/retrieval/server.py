@@ -12,6 +12,8 @@ from backend.retrieval.serving import ServingSearchResult
 
 
 class CurrentPoemRequest(BaseModel):
+    """服务端用于排除自身命中的当前作品内容和元数据。"""
+
     model_config = ConfigDict(extra="forbid")
 
     text: str = Field(min_length=1, max_length=12_000)
@@ -21,6 +23,8 @@ class CurrentPoemRequest(BaseModel):
 
 
 class RetrievalSearchRequest(BaseModel):
+    """外部检索请求的文本、Top-K 与当前作品信息。"""
+
     model_config = ConfigDict(extra="forbid")
 
     text: str = Field(min_length=1, max_length=120)
@@ -29,6 +33,8 @@ class RetrievalSearchRequest(BaseModel):
 
 
 class RetrievalCandidateResponse(BaseModel):
+    """返回给 Agent 的一条有序作品候选。"""
+
     rank: int
     work_id: str
     text: str
@@ -41,6 +47,8 @@ class RetrievalCandidateResponse(BaseModel):
 
 
 class RetrievalSearchResponse(BaseModel):
+    """检索结果的 HTTP 响应结构，不含内部诊断详情。"""
+
     status: Literal["ok", "no_hit"]
     query: str
     candidates: list[RetrievalCandidateResponse]
@@ -68,6 +76,8 @@ def create_app(
     *,
     api_token: str = "",
 ) -> FastAPI:
+    """把给定检索 Runtime 包装成带可选令牌认证的 FastAPI 服务。"""
+
     app = FastAPI(
         title="Poeticus Text Retrieval Service",
         version="0.1.0",

@@ -6,7 +6,7 @@ type MobileDiscussionScreenProps = {
 }
 
 export function MobileDiscussionScreen({ open, children }: MobileDiscussionScreenProps) {
-  // Phone uses a fade; md–lg keeps the tablet slide. Their durations are intentionally independent.
+  // 手机使用淡入淡出，平板宽度使用滑入动画；两种动画的时长分别控制。
   return (
     <section
       id="mobile-discussion-screen"

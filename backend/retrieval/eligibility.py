@@ -19,12 +19,16 @@ RejectionReason = Literal["self_hit", "clearly_later"]
 
 @dataclass(frozen=True)
 class EligibleCandidate:
+    """通过候选资格检查的作品及其年代关系。"""
+
     candidate: FusedCandidate
     chronology_status: ChronologyStatus
 
 
 @dataclass(frozen=True)
 class RejectedCandidate:
+    """被排除的作品、排除原因及其年代关系。"""
+
     candidate: FusedCandidate
     reason: RejectionReason
     chronology_status: ChronologyStatus
@@ -32,6 +36,8 @@ class RejectedCandidate:
 
 @dataclass(frozen=True)
 class EligibilityResult:
+    """本次资格筛选保留和排除的两组候选。"""
+
     eligible: tuple[EligibleCandidate, ...]
     rejected: tuple[RejectedCandidate, ...]
 

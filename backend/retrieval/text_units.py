@@ -12,6 +12,8 @@ CLOSING_MARKS = frozenset("”’」』】）》")
 
 
 def _trim_span(text: str, start: int, end: int) -> tuple[int, int]:
+    """将候选片段两侧的空白排除在查询区间之外。"""
+
     while start < end and text[start].isspace():
         start += 1
     while end > start and text[end - 1].isspace():
@@ -20,6 +22,8 @@ def _trim_span(text: str, start: int, end: int) -> tuple[int, int]:
 
 
 def _has_semantic_text(text: str, end_marks: frozenset[str]) -> bool:
+    """判断片段是否包含非空白、非分隔标记的有效文本。"""
+
     return any(
         not ch.isspace() and ch not in end_marks and ch not in CLOSING_MARKS
         for ch in text
@@ -58,10 +62,10 @@ def _split_spans(
 
 
 def split_sentence_spans(text: str) -> Iterator[tuple[int, int, str]]:
-    """以 。！？!? 等句末标点划分句子区间。"""
+    """以句末标点切分句子，并保留原文起止位置。"""
     yield from _split_spans(text, SENTENCE_END)
 
 
 def split_clause_spans(text: str) -> Iterator[tuple[int, int, str]]:
-    """以逗号、分号和句末标点划分分句区间。"""
+    """按逗号、分号及句末标点切分短句，保留原文位置。"""
     yield from _split_spans(text, CLAUSE_END)

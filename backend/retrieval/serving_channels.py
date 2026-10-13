@@ -79,6 +79,8 @@ class QwenQueryEncoder:
             self._cache.clear()
 
     def encode_many(self, queries: Sequence[str]):
+        """批量编码未缓存的 Query，并返回与输入顺序一致的向量矩阵。"""
+
         np = _require_numpy()
         with self._lock:
             missing = list(
@@ -118,6 +120,8 @@ class QwenQueryEncoder:
 
 
 class FaissDenseChannel:
+    """常驻 FAISS 索引：将 Query 向量映射到 Chunk 并回查作品元数据。"""
+
     def __init__(
         self,
         *,
@@ -142,6 +146,7 @@ class FaissDenseChannel:
         self._local = threading.local()
         self._index_lock = threading.Lock()
 
+        # 启动时比较 Embedding 与 FAISS 的来源签名，禁止错配资产参与检索。
         embedding_manifest = _load_json(
             embedding_dir / "manifest.json"
         )
@@ -206,6 +211,8 @@ class FaissDenseChannel:
             raise ValueError("top_k 必须为正整数")
         if not queries:
             return []
+
+        # --- 1. 编码查询并搜索常驻 FAISS 索引 ---
 
         started = time.perf_counter()
         encode_started = time.perf_counter()
@@ -275,6 +282,8 @@ class FaissDenseChannel:
 
 
 class SentenceBm25Channel:
+    """只读 SQLite FTS5 索引：按字符 n-gram 执行 BM25 词项检索。"""
+
     def __init__(self, index_dir: Path):
         self.descriptor = ChannelDescriptor(
             name="lexical_bm25_sentence",
@@ -317,6 +326,8 @@ class SentenceBm25Channel:
             raise ValueError("top_k 必须为正整数")
         if not queries:
             return []
+
+        # --- 1. 只读打开 FTS5 数据库，逐个 Query 查排名结果 ---
 
         started = time.perf_counter()
         connection = sqlite3.connect(

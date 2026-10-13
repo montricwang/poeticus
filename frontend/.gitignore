@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# 编辑器生成的目录和文件
 .vscode/*
 !.vscode/extensions.json
 .idea

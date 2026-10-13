@@ -313,7 +313,7 @@ test('两栏之间的竖线由布局层持有，并同伴读区共享实测位�
   assert.match(companion, /observer\.observe\(content\)/)
   assert.match(companion, /observer\.observe\(stage\)/)
   assert.match(companion, /--companion-panel-max-height/)
-  // Divider and content are siblings in one grid, not nested in the chat pane.
+  // 分隔线和内容区是同一个 Grid 下的同级元素，分隔线不嵌套在聊天面板里。
   const readerIndex = companion.indexOf('{reader}')
   const boundaryIndex = companion.indexOf('<VerticalEditorialDivider')
   const contentIndex = companion.indexOf('ref={stageRef}')

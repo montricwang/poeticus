@@ -25,6 +25,8 @@ RetrievalStatus = Literal["ok", "no_hit"]
 
 @dataclass(frozen=True)
 class TextRetrievalResult:
+    """保存本次候选、淘汰原因和查询计划，供 Serving 与诊断使用。"""
+
     status: RetrievalStatus
     candidates: tuple[EligibleCandidate, ...]
     rejected: tuple[RejectedCandidate, ...]
@@ -74,6 +76,8 @@ class TextRetrievalService:
         target_dynasty: str | None,
         current_work_ids: Collection[str] | None = None,
     ) -> TextRetrievalResult:
+        """对同一查询依次完成多粒度规划、多通道检索、融合与资格过滤。"""
+
         plan = tuple(build_query_plan(text))
         channel_results = execute_query_fanout(
             plan,

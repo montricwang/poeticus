@@ -5,6 +5,7 @@ import type { PoemFilters, PoemPage } from '@/data/poem-library'
 
 const PAGE_SIZE = 20
 
+/** 加载分页作品目录，维护筛选条件并取消过期请求。 */
 export function usePoemCatalog(setPoemId: Dispatch<SetStateAction<string | null>>) {
   const [catalog, setCatalog] = useState<PoemPage | null>(null)
   const [filters, setFilters] = useState<PoemFilters>({

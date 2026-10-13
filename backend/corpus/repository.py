@@ -12,6 +12,8 @@ from psycopg.rows import DictRow
 
 
 class _PoemRows(Protocol):
+    """只描述查询返回行的读取接口，便于在测试中替代游标。"""
+
     def fetchone(self) -> Mapping[str, object] | None: ...
     def fetchall(self) -> list[dict[str, object]]: ...
 
@@ -25,6 +27,8 @@ class PoemReader(Protocol):
 
 
 def _filters(author: str | None, cipai: str | None, q: str | None):
+    """生成参数化 WHERE 子句和参数，供计数与分页查询共同使用。"""
+
     terms: list[sql.Composable] = []
     values: list[str] = []
     if author:

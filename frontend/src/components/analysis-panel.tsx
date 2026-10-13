@@ -27,6 +27,7 @@ type AnalysisResultProps = {
   onAnimationStarted: () => void
 }
 
+/** 展示赏析结果，动画状态在挂载时固定。 */
 function AnalysisResult({ analysis, animateResult, onAnimationStarted }: AnalysisResultProps) {
   // 结果节点只在赏析真正返回后挂载；在这里把本次是否需要动画固定下来，
   // 这样父层登记“已经播过”后，不会中途把正在播放的逐字动画取消。
@@ -127,6 +128,7 @@ function AnalysisResult({ analysis, animateResult, onAnimationStarted }: Analysi
   )
 }
 
+/** 管理赏析视图的加载、结果和滚动位置。 */
 export function AnalysisPanel({
   analysis,
   analyzing,
@@ -150,7 +152,7 @@ export function AnalysisPanel({
     setHasContentBelow(remaining > 8)
   }, [])
 
-  // The content can grow after its first paint; update fade edges as it resizes.
+  // 首次绘制后内容仍可能增长，需要随高度变化更新滚动区域的淡出边缘。
   useEffect(() => {
     const element = scrollportRef.current
     if (!element) return

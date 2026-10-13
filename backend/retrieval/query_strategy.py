@@ -14,6 +14,8 @@ QueryLevel = Literal["passage", "sentence", "clause"]
 
 @dataclass(frozen=True)
 class QueryOrigin:
+    """一个查询片段在原文中的粒度及起止位置。"""
+
     level: QueryLevel
     start: int
     end: int
@@ -21,11 +23,15 @@ class QueryOrigin:
 
 @dataclass(frozen=True)
 class QueryVariant:
+    """去重后的查询文本及其可能对应的多个原文位置。"""
+
     text: str
     origins: tuple[QueryOrigin, ...]
 
 
 def _trim_outer_whitespace(text: str) -> tuple[int, int]:
+    """返回剔除首尾空白后的原文区间，不改变原字符串。"""
+
     start = 0
     end = len(text)
     while start < end and text[start].isspace():

@@ -14,12 +14,16 @@ router = APIRouter()
 
 
 class AnalyzeRequest(BaseModel):
+    """整首赏析接口的请求正文与可选作品上下文。"""
+
     poem: str = Field(max_length=AI_MAX_POEM_CHARS)
     context: PoemContext | None = None
 
 
 @router.post("/api/analyze", response_model=PoemAnalysis)
 def analyze(request: AnalyzeRequest):
+    """校验原文，调用赏析模型，并将已知生成错误转为 HTTP 502。"""
+
     if not request.poem.strip():
         raise HTTPException(status_code=422, detail="诗歌原文不能为空")
     try:

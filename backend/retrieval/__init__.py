@@ -1,1 +1,1 @@
-"""Text retrieval helpers shared by offline tooling and the future Agent service."""
+"""诗词文本检索模块：提供在线检索与离线构建、诊断共用的能力。"""

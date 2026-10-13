@@ -6,6 +6,7 @@ import { loadPoemConversation } from '@/lib/chat-storage'
 import { validSelectionForPoem } from '@/lib/selection-offset'
 import type { SelectedText } from '@/types/poem'
 
+/** 根据当前作品 ID 加载正文，并校验本地恢复的引用选区。 */
 export function usePoemDetail(
   poemId: string | null,
   setSelected: Dispatch<SetStateAction<SelectedText | null>>,

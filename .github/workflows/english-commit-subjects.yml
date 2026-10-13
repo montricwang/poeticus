@@ -3,6 +3,8 @@ name: English commit subjects
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -17,12 +19,41 @@ jobs:
         with:
           script: |
             const ascii = /^[\x20-\x7E]+$/;
-            const commits = await github.paginate(github.rest.pulls.listCommits, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-              per_page: 100,
-            });
+            let commits = [];
+
+            if (context.eventName === 'pull_request') {
+              commits = await github.paginate(github.rest.pulls.listCommits, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                per_page: 100,
+              });
+            } else if (context.eventName === 'push') {
+              const before = context.payload.before;
+              if (!before || /^0+$/.test(before)) {
+                core.setFailed('Cannot establish the preceding main commit.');
+                return;
+              }
+
+              const comparison = await github.rest.repos.compareCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                base: before,
+                head: context.sha,
+                per_page: 100,
+              });
+              commits = comparison.data.commits;
+              if (comparison.data.total_commits > commits.length) {
+                core.setFailed('Too many pushed commits to verify in one page.');
+                return;
+              }
+            }
+
+            if (!commits.length) {
+              core.setFailed('No commits were returned for the subject check.');
+              return;
+            }
+
             const invalid = [];
             for (const commit of commits) {
               const subject = commit.commit.message.split('\n')[0];

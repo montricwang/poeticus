@@ -40,7 +40,7 @@
 
   --radius: 0.625rem;
 
-  /* One geometric thickness for every editorial rule, including grid tracks. */
+  /* 所有装饰分隔线（包括 Grid 分隔列）共用同一厚度。 */
   --editorial-divider-thickness: 2px;
 
   /*
@@ -50,7 +50,7 @@
    * - 不同交互的动效时长集中配置，但只作用于对应组件。
    */
   --motion-ease-settle: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Component-specific timing. These are shared tokens, not a page-wide animation. */
+  /* 各组件共用动画时长变量，但不将它们套用为全页面统一动画。 */
   --motion-poem-swap: 360ms;
   --motion-chat-history-resize: 500ms;
   --motion-companion-reflow: 520ms;
@@ -76,14 +76,14 @@
   --motion-discussion-tablet-slide: 400ms;
 
   /*
-   * Desktop width contract: the two columns divide the available stage, not
-   * the viewport. Opening the 320px catalog simply reduces the stage track.
+   * 桌面双列按可用舞台宽度分配，不按整个浏览器视口分配；
+   * 打开 320px 目录仅会缩小舞台的可用宽度。
    */
   --reading-stage-max-width: 82rem;
   --reader-column-share: 0.95fr;
   --companion-column-share: 1.05fr;
 
-  /* Desktop panels share the space their parent grid actually allocates. */
+  /* 桌面面板只使用父级 Grid 实际分配的空间。 */
   --companion-panel-default-max-height: 38rem;
   --companion-panel-max-height: var(--companion-panel-default-max-height);
 
@@ -388,8 +388,8 @@ html.theme-transition #root * {
   }
 
   /*
-   * Only visibility changes while scrolling. Track width, inset, rounding,
-   * and the WebKit standard-property reset above remain the production baseline.
+   * 滚动时仅改变滑块可见性。滑轨宽度、缩进、圆角以及上方的
+   * WebKit 标准属性重置保持不变。
    */
   @supports not selector(::-webkit-scrollbar) {
     .poeticus-scrollport {
@@ -418,8 +418,8 @@ html.theme-transition #root * {
   }
 
   /*
-   * Quote entry, replacement and exit share one height transition. The value
-   * comes from the content's measured height instead of a guessed line count.
+   * 引用的进入、替换和退出使用同一高度动画；
+   * 动画高度来自实际内容测量，不按猜测的行数计算。
    */
   .poeticus-quote-transition {
     height: 0;
@@ -447,9 +447,8 @@ html.theme-transition #root * {
   }
 
   /*
-   * The input and its footer share a single animated width; the button follows
-   * text growth until the companion column's actual width is reached.
-   * The quote above keeps the full available column width.
+   * 输入框及底部按钮共用一个动画宽度，随文字增长而扩展，
+   * 但不超过伴读列的实际可用宽度；上方引用区仍使用整列宽度。
    */
   .poeticus-composer-frame {
     --composer-min-width: min(100%, max(22rem, 72%));
@@ -471,7 +470,7 @@ html.theme-transition #root * {
     }
   }
 
-  /* The composer itself fades only where its text is actually clipped. */
+  /* 输入区只在文字实际被裁剪的边缘显示渐隐效果。 */
   .poeticus-input-fade-top {
     -webkit-mask-image: linear-gradient(to bottom, transparent, black 14px);
     mask-image: linear-gradient(to bottom, transparent, black 14px);

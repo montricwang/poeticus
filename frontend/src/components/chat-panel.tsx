@@ -31,6 +31,7 @@ type ChatPanelProps = {
   className?: string
 }
 
+/** 渲染对话列表与输入区，并维护滚动位置、编辑状态和未读提醒。 */
 export function ChatPanel({
   poemId,
   swapPhase,
@@ -68,8 +69,7 @@ export function ChatPanel({
   const [editingTurnId, setEditingTurnId] = useState<number | null>(null)
   const [editDraft, setEditDraft] = useState('')
 
-  // Keep the toolbar/composer mounted while only the message viewport grows
-  // or shrinks. The measured height is capped at the visible companion budget.
+  // 只调整消息区高度，输入区保持挂载；消息区不得超过伴读区可用高度。
   useLayoutEffect(() => {
     if (fillAvailableHeight) return
     const section = sectionRef.current
@@ -103,8 +103,7 @@ export function ChatPanel({
     }
   }, [fillAvailableHeight, turns.length, viewportRef])
 
-  // On poem switches the same component preserves the input region, but resets
-  // the saved scroll-position initialization for the newly restored conversation.
+  // 切换作品时复用输入区组件，但需要重置新恢复会话的滚动位置初始化状态。
   useLayoutEffect(() => {
     if (previousPoemRef.current === poemId) return
     previousPoemRef.current = poemId
@@ -152,6 +151,7 @@ export function ChatPanel({
     return () => window.cancelAnimationFrame(frame)
   }, [turns, viewportRef])
 
+  /** 保存阅读位置；只有用户停留在底部时才允许回复自动跟随。 */
   function handleScroll(list: HTMLDivElement) {
     const distanceToBottom = list.scrollHeight - list.scrollTop - list.clientHeight
     const atBottom = distanceToBottom <= 64
@@ -166,6 +166,7 @@ export function ChatPanel({
     }
   }
 
+  /** 响应用户操作主动滚动到底部并清除未读提示。 */
   function scrollToBottom() {
     const list = chatListRef.current
     if (!list) return
@@ -284,7 +285,7 @@ export function ChatPanel({
         ))}
       </ChatMessageList>
 
-      {/* Phone/tablet keeps a permanent composer boundary; desktop follows history height. */}
+      {/* 手机和平板始终保留输入区分界；桌面布局随消息历史高度调整。 */}
       <div
         aria-hidden="true"
         className={
