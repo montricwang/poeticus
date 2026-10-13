@@ -46,11 +46,11 @@ AGENT_MAX_TOOL_CALLS = 2
 # 因为 FAISS、BM25 索引及 Query 编码模型远大于 Web 应用本身。
 # 未配置服务地址时，Agent 不会看到对应检索工具。
 TEXT_RETRIEVAL_BASE_URL = os.getenv(
-    "POETICUS_TEXT_RETRIEVAL_URL",
+    "POETICUS_RETRIEVAL_URL",
     "",
 ).strip().rstrip("/")
 TEXT_RETRIEVAL_API_TOKEN = os.getenv(
-    "POETICUS_TEXT_RETRIEVAL_TOKEN",
+    "POETICUS_RETRIEVAL_TOKEN",
     "",
 ).strip()
 TEXT_RETRIEVAL_TIMEOUT_SECONDS = 15.0

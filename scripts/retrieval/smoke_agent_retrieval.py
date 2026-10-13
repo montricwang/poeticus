@@ -198,7 +198,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--api-token",
-        default=os.getenv("POETICUS_TEXT_RETRIEVAL_TOKEN", ""),
+        default=os.getenv("POETICUS_RETRIEVAL_TOKEN", ""),
     )
     parser.add_argument(
         "--metadata-manifest",
@@ -239,9 +239,9 @@ def main() -> None:
         ) from exc
 
     # Agent 客户端在模块导入时读取这些环境变量。
-    os.environ["POETICUS_TEXT_RETRIEVAL_URL"] = retrieval_url
+    os.environ["POETICUS_RETRIEVAL_URL"] = retrieval_url
     if args.api_token:
-        os.environ["POETICUS_TEXT_RETRIEVAL_TOKEN"] = args.api_token
+        os.environ["POETICUS_RETRIEVAL_TOKEN"] = args.api_token
 
     metadata_manifest = args.metadata_manifest.expanduser().resolve()
     if not metadata_manifest.is_file():

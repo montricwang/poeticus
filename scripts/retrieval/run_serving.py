@@ -42,7 +42,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8787)
     parser.add_argument(
         "--api-token",
-        default=os.getenv("POETICUS_TEXT_RETRIEVAL_TOKEN", ""),
+        default=os.getenv("POETICUS_RETRIEVAL_TOKEN", ""),
     )
     args = parser.parse_args()
 
