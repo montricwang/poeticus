@@ -1,4 +1,4 @@
-"""将 Text Retrieval 的多路结果按 Work 进行 RRF 融合。
+"""将 Poem Retrieval 的多路结果按 Work 进行 RRF 融合。
 
 每个 QueryVariant × RetrievalChannel 对应一条排名列表。
 同一列表中属于同一 Work 的多个 Chunk 先去重，

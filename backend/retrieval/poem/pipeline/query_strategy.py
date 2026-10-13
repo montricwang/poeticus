@@ -1,4 +1,4 @@
-"""Text Retrieval 的确定性多 Query 规划。
+"""Poem Retrieval 的确定性多 Query 规划。
 
 无需 LLM 改写，将选中的文本分别切成 passage、sentence、clause 级 Query。
 相同查询文本只检索一次，同时保留每种粒度在原文中的位置。"""

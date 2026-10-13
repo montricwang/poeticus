@@ -1,4 +1,4 @@
-"""全量 Hybrid Retrieval 的常驻运行与流程编排。
+"""Poem Retrieval 的常驻运行与流程编排。
 
 Runtime 启动时加载并验证 Serving 资产，收到查询后通过
 TextRetrievalService 组合常驻的检索通道。FAISS、Qwen 编码和
