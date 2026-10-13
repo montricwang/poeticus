@@ -32,7 +32,9 @@ import { useChatSession } from '@/hooks/use-chat-session'
 
 import type { SelectedText } from '@/types/poem'
 
+/** 组装目录、阅读器、聊天和赏析；跨作品切换由此协调。 */
 function App() {
+  // --- 1. 初始化作品、目录及会话状态 ---
   const [initialChatState] = useState(loadInitialChatState)
   const [poemId, setPoemId] = useState<string | null>(initialChatState.poemId)
 
@@ -191,6 +193,7 @@ function App() {
     }, motionDurationMs('--motion-view-fade'))
   }
 
+  /** 切换作品时协调预取、过渡动画和旧会话保存。 */
   function handlePoemChange(nextId: string) {
     if (inFlightRef.current || analyzing || !nextId || nextId === poemId) return
 
@@ -204,7 +207,7 @@ function App() {
       .then(async (work) => {
         if (controller.signal.aborted) return
 
-        // Avoid a blank screen during network waits; fade only after data arrives.
+        // 等待网络请求时保持旧作品可见；取得新作品后才开始淡出。
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
         if (!reduceMotion) {
           setPoemSwapPhase('leaving')
@@ -235,8 +238,8 @@ function App() {
         }
 
         if (!reduceMotion) {
-          // Commit the restored poem, messages, composer and quote while hidden.
-          // Two frames give React and companion layout effects time to measure.
+          // 在页面隐藏期间更新作品、消息、输入区和引用内容；
+          // 留出两帧供 React 绘制及伴读区重新测量布局。
           setPoemSwapPhase('arriving')
           await new Promise<void>((resolve) => {
             window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()))
@@ -285,7 +288,7 @@ function App() {
   }
 
   const poemReady = !!activePoem && activePoem.id === poemId
-  // Old poem stays visible during fetch; both columns use the same swap phase.
+  // 请求新作品期间保留旧内容，阅读区和伴读区共用切换阶段。
   const poemTransitionClass =
     'transition-[opacity,transform] duration-[var(--motion-poem-swap)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
     (poemSwapPhase === 'leaving'
@@ -298,6 +301,7 @@ function App() {
     updateReaderScrollEdges(element)
   }
 
+  /** 根据当前视图组装聊天或赏析面板，供不同屏幕布局共用。 */
   function renderDiscussionContent(fillAvailableHeight: boolean) {
     if (!poemReady) {
       return (
@@ -352,6 +356,7 @@ function App() {
     )
   }
 
+  /** 组装作品阅读区及前后篇导航。 */
   function renderReaderContent() {
     if (poemReady) {
       return (

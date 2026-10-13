@@ -11,6 +11,7 @@ type AnalysisOptions = {
   switchControllerRef: RefObject<AbortController | null>
 }
 
+/** 管理整首赏析请求和结果，仅在当前作品未切换时允许发起请求。 */
 export function usePoemAnalysis({ poemId, activePoem, switchControllerRef }: AnalysisOptions) {
   const [analysis, setAnalysis] = useState<PoemAnalysis | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
@@ -18,6 +19,7 @@ export function usePoemAnalysis({ poemId, activePoem, switchControllerRef }: Ana
   const [analysisLimitNotice, setAnalysisLimitNotice] = useState(false)
   const poem = activePoem ? poemText(activePoem) : ''
 
+  /** 调用非流式赏析接口，并区分额度提示与其他失败。 */
   async function analyzePoem() {
     if (!activePoem || activePoem.id !== poemId || switchControllerRef.current) return
     setAnalyzing(true)

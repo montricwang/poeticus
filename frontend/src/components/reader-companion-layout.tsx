@@ -24,12 +24,10 @@ type CompanionGeometry = {
 }
 
 /**
- * Owns the reader/companion boundary. The divider is a grid sibling, never
- * nested inside the companion content, so it cannot inherit its scroll clips,
- * opacity transitions or text layout. All three grid tracks share one parent.
+ * 管理阅读区和伴读区的分界。分隔线与两侧内容处于同一级 Grid，
+ * 不嵌入伴读内容，因此不会受到内部滚动裁剪、透明度动画或文本排版影响。
  *
- * Only the companion's content is measured. Its position and the boundary
- * divider's position/height are derived from the same geometry.
+ * 只测量伴读内容的实际尺寸，并据此统一计算面板位置及分隔线的位置和高度。
  */
 export function ReaderCompanionLayout({
   reader,
@@ -51,8 +49,8 @@ export function ReaderCompanionLayout({
     const content = contentRef.current
     if (!stage || !content) return
 
-    // CompanionPane is a Fragment: its first DOM child must remain ViewToolbar.
-    // Do not wrap that pane in another element without updating this measurement.
+    // CompanionPane 使用 Fragment，首个 DOM 子元素必须是 ViewToolbar；
+    // 如果新增包装元素，这里的工具栏高度测量也必须同步调整。
     const toolbar = content.firstElementChild
     const measure = () => {
       const stageHeight = Math.ceil(stage.getBoundingClientRect().height)
@@ -89,8 +87,8 @@ export function ReaderCompanionLayout({
     return () => window.clearTimeout(timer)
   }, [ready])
 
-  // One measured stage determines the panel's maximum height, its vertical
-  // alignment, and the divider's bounds. Never guess an independent vh offset.
+  // 统一使用测量出的舞台高度计算面板上限、纵向位置及分隔线边界，
+  // 不另外猜测一个以 vh 为单位的偏移量。
   const panelAvailableHeight = Math.max(0, layout.stageHeight - layout.toolbarHeight - 8)
   const stageCenter = layout.stageHeight * (idle ? 0.42 : 0.5)
   const verticalOffset = Math.max(
@@ -115,7 +113,7 @@ export function ReaderCompanionLayout({
     >
       <div className="min-h-0 min-w-0">{reader}</div>
 
-      {/* The boundary belongs to the layout, not to either content column. */}
+      {/* 分隔线归布局组件管理，不属于任一侧内容列。 */}
       <div className={motionClass} style={{ marginTop: verticalOffset }}>
         <VerticalEditorialDivider
           className={

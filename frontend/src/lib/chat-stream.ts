@@ -31,6 +31,7 @@ export async function readChatStream(
   let buffer = ''
   let completed = false
 
+  /** 解析完整 SSE 事件，分派 token/done/error 并校验负载结构。 */
   function processEvent(block: string): void {
     let event = 'message'
     const data: string[] = []
@@ -71,6 +72,7 @@ export async function readChatStream(
     }
   }
 
+  // 逐块读取网络数据：累积到空行边界才解析一条完整 SSE 事件。
   try {
     while (!completed) {
       const { done, value } = await reader.read()

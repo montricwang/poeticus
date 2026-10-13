@@ -20,6 +20,8 @@ def _clean_filter(value: str | None) -> str | None:
 
 
 class PoemSummary(BaseModel):
+    """目录页的一条作品摘要，不包含全文。"""
+
     id: UUID
     source_order: int
     collection: str
@@ -32,6 +34,8 @@ class PoemSummary(BaseModel):
 
 
 class PoemPage(BaseModel):
+    """带总数和分页信息的作品目录响应。"""
+
     items: list[PoemSummary]
     total: int
     limit: int
@@ -39,11 +43,15 @@ class PoemPage(BaseModel):
 
 
 class PoemNeighbors(BaseModel):
+    """按原书顺序排列的相邻作品 ID。"""
+
     previous_id: UUID | None
     next_id: UUID | None
 
 
 class PoemDetail(BaseModel):
+    """阅读页使用的作品正文、序文及展示元数据。"""
+
     id: UUID
     source_order: int
     collection: str

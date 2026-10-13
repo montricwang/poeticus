@@ -1,6 +1,6 @@
 /**
- * Read one timing token shared by CSS transitions and JavaScript sequencing.
- * Missing/invalid values fall back to zero so a switch never gets stuck.
+ * 读取 CSS 动画与 JavaScript 执行顺序共用的时长变量。
+ * 缺失或无效时返回零，避免界面切换一直等待。
  */
 export function motionDurationMs(token: string): number {
   const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim()

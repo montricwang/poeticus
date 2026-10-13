@@ -4,6 +4,7 @@ Agent 基于当前作品、用户选区、对话历史作答，必要时调用�
 工具执行后将结果追加到本次消息，再交还 Agent 决定下一步。
 普通回答和 SSE 流式回答共用这套图，不在这里处理 HTTP 请求校验。
 """
+
 import asyncio
 import logging
 import json
@@ -33,6 +34,8 @@ from backend.retrieval.client import (
     text_retrieval_client,
 )
 
+# ===== 1. 模型输出保护与工具配置 =====
+
 logger = logging.getLogger(__name__)
 
 _FINAL_AFTER_TOOL_BUDGET = (
@@ -42,13 +45,13 @@ _FINAL_AFTER_TOOL_BUDGET = (
     "如果仍不能可靠确认，就明确说明不能确认。"
 )
 _TOOL_PROTOCOL_FALLBACK = (
-    "这次检索流程没有形成可可靠展示的最终回答；"
-    "我暂时不把未核实的内容当作结论。"
+    "这次检索流程没有形成可可靠展示的最终回答；我暂时不把未核实的内容当作结论。"
 )
 
 
 def _looks_like_tool_protocol(text: str) -> bool:
     """拦截模型把内部工具协议当普通正文吐出的情况。"""
+
     return "DSML" in text and ("invoke" in text or "calls" in text)
 
 
@@ -56,14 +59,13 @@ def _final_messages_without_tools(
     messages: list[ChatCompletionMessageParam],
 ) -> list[ChatCompletionMessageParam]:
     """工具预算耗尽后，明确切换到只能产出最终正文的模式。"""
+
     final_messages = [dict(message) for message in messages]
 
     if final_messages and final_messages[0].get("role") == "system":
         content = final_messages[0].get("content")
         if isinstance(content, str):
-            final_messages[0]["content"] = (
-                f"{content}\n\n{_FINAL_AFTER_TOOL_BUDGET}"
-            )
+            final_messages[0]["content"] = f"{content}\n\n{_FINAL_AFTER_TOOL_BUDGET}"
 
     return cast(
         list[ChatCompletionMessageParam],
@@ -72,17 +74,22 @@ def _final_messages_without_tools(
 
 
 def _safe_final_answer(answer: str) -> str:
+    """检查最终回答中的工具协议残留，返回可以展示的正文。"""
+
     if _looks_like_tool_protocol(answer):
         return _TOOL_PROTOCOL_FALLBACK
+
     return answer
 
 
+# 创建典故与出处查询服务，供工具执行节点使用。
 evidence_service = EvidenceService(
     {
         "cnkgraph": CNKGraphProvider(),
     }
 )
 
+# 定义向模型公开的证据查询工具及其参数格式。
 TOOLS: list[ChatCompletionFunctionToolParam] = [
     {
         "type": "function",
@@ -141,9 +148,10 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
                 "additionalProperties": False,
             },
         },
-    }
+    },
 ]
 
+# 本地诗词语料检索工具，根据服务配置决定是否向模型开放。
 TEXT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
@@ -179,23 +187,34 @@ TEXT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
 
 def _available_tools() -> list[ChatCompletionFunctionToolParam]:
     """仅在配置了本地语料检索服务地址时，才向模型开放这个工具。"""
+
     if text_retrieval_client.enabled:
         return [*TOOLS, TEXT_RETRIEVAL_TOOL]
+
     return list(TOOLS)
 
 
+# ===== 2. 消息、工具调用与工作流状态 =====
+
+
 class HistoryMessage(TypedDict):
+    """一次历史对话中的用户或助手消息。"""
+
     role: Literal["user", "assistant"]
     content: str
 
 
 class ToolCall(TypedDict):
+    """模型提出的工具调用，包括调用 ID、工具名和 JSON 参数。"""
+
     id: str
     name: str
     arguments: str
 
 
 class ToolResult(TypedDict):
+    """一次工具调用的结果，以调用 ID 对应原始请求。"""
+
     id: str
     content: str
 
@@ -210,13 +229,15 @@ class _ToolQuery:
 
 
 def _parse_tool_query(call: ToolCall) -> _ToolQuery:
-    """把模型提供的 JSON 参数转换成已校验的内部查询。"""
+    """解析工具名称和 JSON 参数，生成已校验的查询及结果数量上限。"""
+
     raw: object = json.loads(call["arguments"])
     if not isinstance(raw, dict):
         raise ValueError("工具参数必须是对象")
     # JSON 对象的 key 均为字符串，字段值仍在下方按工具契约校验。
     arguments = cast(dict[str, object], raw)
 
+    # 根据工具名称选取查询字段、证据类型和返回条数。
     if call["name"] == "lookup_allusion":
         query = arguments.get("term")
         evidence_type = "allusion"
@@ -235,6 +256,7 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
     else:
         raise ValueError(f"未知工具：{call['name']}")
 
+    # 每次工具查询都需要有效且长度受限的文本。
     if not isinstance(query, str) or not query.strip() or len(query) > 120:
         raise ValueError(invalid_message)
 
@@ -246,6 +268,8 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
 
 
 class RouterState(TypedDict):
+    """LangGraph 运行时的共享状态，保存问题、消息、工具结果和回答。"""
+
     poem: str
     question: str
     context: NotRequired[PoemContext | None]
@@ -271,7 +295,12 @@ class RouterUpdate(TypedDict, total=False):
     tool_results: list[ToolResult]
 
 
+# ===== 3. Agent 输入与模型请求 =====
+
+
 def _agent_user_message(state: RouterState) -> str:
+    """将当前作品、选区、阅读上下文和问题拼成用户消息。"""
+
     return (
         f"{format_poem_context(state.get('context'))}"
         f"当前诗歌：\n{state['poem']}\n\n"
@@ -285,12 +314,14 @@ def _stream_agent_decision(
     messages: list[ChatCompletionMessageParam],
     tools_enabled: bool,
 ) -> tuple[str, list[ToolCall]]:
+    """流式请求模型，收集正文和工具调用，并通过 Graph 发送正文 token。"""
+
+    # --- 3.1 准备请求消息与工具选项 ---
+
     writer = get_stream_writer()
 
     request_messages = (
-        messages
-        if tools_enabled
-        else _final_messages_without_tools(messages)
+        messages if tools_enabled else _final_messages_without_tools(messages)
     )
 
     request_kwargs: CompletionCreateParamsStreaming = {
@@ -304,11 +335,15 @@ def _stream_agent_decision(
         request_kwargs["tools"] = _available_tools()
         request_kwargs["tool_choice"] = "auto"
 
+    # --- 3.2 初始化正文与工具调用分片缓存 ---
+
     parts: list[str] = []
     pending: dict[int, ToolCall] = {}
     finish_reason = None
     stream = None
     tool_calls_started = False
+
+    # --- 3.3 读取模型流式响应并拼接分片 ---
 
     try:
         stream = client.chat.completions.create(
@@ -349,6 +384,7 @@ def _stream_agent_decision(
 
             # 工具仍可用时保持正常流式输出；预算耗尽后的最后一轮
             # 先缓冲全文，避免内部协议片段直接泄漏到 SSE。
+            # 普通正文按需即时发出；工具调用开始后继续收集工具参数。
             if delta.content and not tool_calls_started:
                 parts.append(delta.content)
 
@@ -369,6 +405,8 @@ def _stream_agent_decision(
     finally:
         if stream is not None:
             stream.close()
+
+    # --- 3.4 验证并返回工具调用或最终回答 ---
 
     if pending:
         if not tools_enabled:
@@ -401,9 +439,17 @@ def _stream_agent_decision(
     return answer, []
 
 
+# ===== 4. Agent 决策与工作流路由 =====
+
+
 def agent_decide(state: RouterState) -> RouterUpdate:
+    """准备本轮对话，调用模型，并返回最终回答或工具调用请求。"""
+
+    # --- 4.1 首次进入时建立模型消息历史 ---
+
     # 第一次进入 Agent 时建立消息历史；
     # 再次进入时沿用已有记录。
+
     messages = list(state.get("messages") or [])
 
     if not messages:
@@ -441,18 +487,19 @@ def agent_decide(state: RouterState) -> RouterUpdate:
         messages,
     )
 
+    # --- 4.2 根据工具预算及响应模式选择模型调用方式 ---
+
     tools_enabled = state.get("tool_count", 0) < AGENT_MAX_TOOL_CALLS
 
     stream_reply = state.get("stream_reply", False)
     tool_calls: list[ToolCall]
 
+    # 流式请求逐步接收事件，普通请求一次获取完整模型响应。
     if stream_reply:
         answer, tool_calls = _stream_agent_decision(messages, tools_enabled)
     else:
         request_messages = (
-            messages
-            if tools_enabled
-            else _final_messages_without_tools(messages)
+            messages if tools_enabled else _final_messages_without_tools(messages)
         )
         request_kwargs: CompletionCreateParamsNonStreaming = {
             "model": LLM_MODEL,
@@ -477,6 +524,7 @@ def agent_decide(state: RouterState) -> RouterUpdate:
 
         message = response.choices[0].message
 
+        # 将模型提出的工具调用整理成内部 ToolCall 数据。
         if message.tool_calls and tools_enabled:
             tool_calls = []
             for call in message.tool_calls:
@@ -497,6 +545,9 @@ def agent_decide(state: RouterState) -> RouterUpdate:
             tool_calls = []
             answer = _safe_final_answer(message.content or "")
 
+    # --- 4.3 将决策结果写回工作流状态 ---
+
+    # 模型选择工具时保存调用信息，交给工具节点执行。
     if tool_calls:
         messages.append(
             {
@@ -515,11 +566,13 @@ def agent_decide(state: RouterState) -> RouterUpdate:
                 ],
             }
         )
+
         return {
             "messages": messages,
             "tool_calls": tool_calls,
         }
 
+    # 模型直接回答时保存正文，供工作流结束后返回给 API。
     if not answer or not answer.strip():
         raise RuntimeError("模型既没有回答，也没有调用工具")
 
@@ -529,6 +582,7 @@ def agent_decide(state: RouterState) -> RouterUpdate:
             "content": answer,
         }
     )
+
     return {
         "messages": messages,
         "reply": answer,
@@ -537,12 +591,22 @@ def agent_decide(state: RouterState) -> RouterUpdate:
 
 
 def route_agent(state: RouterState) -> Literal["tools", "done"]:
+    """根据模型是否提出工具调用，选择工具节点或结束本轮。"""
+
     if state.get("tool_calls"):
         return "tools"
+
     return "done"
 
 
+# ===== 5. 工具执行与结果回传 =====
+
+
 def execute_tools(state: RouterState) -> RouterUpdate:
+    """执行模型请求的工具，将查询结果和工具消息写回工作流状态。"""
+
+    # --- 5.1 获取工具调用并检查调用 ID ---
+
     calls = state.get("tool_calls") or []
 
     if not calls:
@@ -557,9 +621,13 @@ def execute_tools(state: RouterState) -> RouterUpdate:
         raise RuntimeError("工具调用 ID 重复")
 
     async def run_tools() -> tuple[list[ToolResult], list[dict[str, object]], int]:
+        """依次执行查询，汇总工具响应、证据及调用次数。"""
+
         results: list[ToolResult] = []
         all_evidences: list[dict[str, object]] = []
         count = tool_count
+
+        # --- 5.2 检查预算、解析参数并执行各项工具调用 ---
 
         for call in calls:
             result: dict[str, object]
@@ -578,6 +646,7 @@ def execute_tools(state: RouterState) -> RouterUpdate:
                     evidence_type = validated.evidence_type
                     max_items = validated.max_items
 
+                    # 本地文本检索使用 Retrieval Client，典故与出处查询使用证据服务。
                     if evidence_type == "text_retrieval":
                         context = state.get("context")
                         retrieval = await text_retrieval_client.search(

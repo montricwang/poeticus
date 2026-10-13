@@ -7,7 +7,7 @@ type EditorialDividerProps = {
   style?: CSSProperties
 }
 
-/** Shared editorial rule. Geometry comes from one CSS token. */
+/** 通用横向分隔线，厚度由统一 CSS 变量控制。 */
 export function HorizontalEditorialDivider({ className, style }: EditorialDividerProps) {
   return (
     <div
@@ -21,7 +21,7 @@ export function HorizontalEditorialDivider({ className, style }: EditorialDivide
   )
 }
 
-/** Vertical editorial rule with the same geometric thickness. */
+/** 纵向分隔线，与横向分隔线保持相同厚度。 */
 export function VerticalEditorialDivider({ className, style }: EditorialDividerProps) {
   return (
     <div

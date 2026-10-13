@@ -13,6 +13,7 @@ type PersistenceOptions = {
   selected: SelectedText | null
 }
 
+/** 对每首作品分别保存聊天、输入草稿和选区；页面关闭时补存最新状态。 */
 export function useConversationPersistence({
   poemId,
   readyPoemId,
@@ -82,6 +83,7 @@ export function useConversationPersistence({
     return () => window.removeEventListener('pagehide', handlePageHide)
   }, [])
 
+  /** 切换作品前同步保存当前可用会话，避免只依赖延迟写入。 */
   function persistCurrentConversation() {
     if (!poemId || readyPoemId !== poemId) return
     saveLastActivePoemId(poemId)

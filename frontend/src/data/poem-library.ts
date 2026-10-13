@@ -11,6 +11,7 @@ export type PoemSummary = {
   review_status: string
 }
 
+/** 作品详情：标题元数据沿用目录契约，正文与序文另行按 UUID 获取。 */
 export type Poem = Omit<PoemSummary, 'incipit'> & {
   body_segments: string[]
   prefaces: string[]
@@ -71,6 +72,7 @@ export function poemText(work: Poem): string {
   return work.body_segments.join('\n\n')
 }
 
+/** 构造 AI 请求用的阅读上下文，不从作品所属词集推断朝代。 */
 export function poemContext(work: Poem): PoemContext {
   return {
     id: work.id,
@@ -82,6 +84,7 @@ export function poemContext(work: Poem): PoemContext {
   }
 }
 
+/** 统一处理作品 API 的 HTTP 错误，并允许切换作品时取消请求。 */
 async function readJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, { signal })
   if (!response.ok) {
@@ -93,6 +96,7 @@ async function readJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   return (await response.json()) as T
 }
 
+/** 只获取当前筛选和分页的轻量作品目录。 */
 export async function fetchPoemPage(filters: PoemFilters, signal?: AbortSignal): Promise<PoemPage> {
   const params = new URLSearchParams({
     limit: String(filters.limit),

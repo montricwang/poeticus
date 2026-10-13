@@ -13,9 +13,9 @@ type ReaderPaneProps = {
 }
 
 /**
- * Owns the desktop reading scrollport and its boundary with navigation.
- * The separator is not part of ReaderNavigation, so it cannot inherit
- * button/navigation effects or be clipped by the poem scrollport.
+ * 管理桌面阅读区的滚动容器及其与篇目导航之间的边界。
+ * 分隔线独立于 ReaderNavigation，不受导航按钮样式影响，
+ * 也不会被正文滚动容器裁剪。
  */
 export function ReaderPane({
   children,

@@ -22,7 +22,7 @@ function maxTurnId(turns: ChatTurn[]): number {
   return turns.reduce((max, turn) => Math.max(max, turn.id), 0)
 }
 
-// Previously saved turns are not new messages: render them all at once on load.
+// 已保存的历史轮次不是新消息，恢复时直接显示，不重新播放入场动画。
 function restoredAnimationIds(turns: ChatTurn[]): Set<string> {
   const ids = new Set<string>()
   for (const turn of turns) {
@@ -41,6 +41,7 @@ type ChatSessionOptions = {
   switchControllerRef: RefObject<AbortController | null>
 }
 
+/** 管理当前作品的多轮聊天、流式生成、重试、改问和会话恢复。 */
 export function useChatSession({
   initialChatState,
   poemId,
@@ -70,6 +71,7 @@ export function useChatSession({
     [setSelected, switchControllerRef],
   )
 
+  /** 切换作品时恢复各自的草稿和历史，重置滚动及动画标记。 */
   function restoreForPoem(work: Poem) {
     const storedConversation = loadPoemConversation(work.id)
     const nextTurns = storedConversation?.turns ?? []
@@ -83,6 +85,7 @@ export function useChatSession({
     chatViewportRef.current = { scrollTop: 0, atBottom: true }
   }
 
+  /** 发起一次 SSE 生成，按 token 更新对应轮次并区分正常生成和重新生成。 */
   async function requestReply(turn: ChatTurn, regenerate = false) {
     if (
       inFlightRef.current ||
@@ -124,6 +127,7 @@ export function useChatSession({
       }),
     )
 
+    // --- 请求前构造当前作品上下文与受限对话历史 ---
     try {
       const capabilities = await loadServiceCapabilities()
       const history = buildHistory(turns, turn.id, capabilities.chat.maxHistoryTurns)
@@ -140,6 +144,7 @@ export function useChatSession({
         }),
       })
 
+      // --- 流式更新本轮可见正文（重新生成时先保留旧答案）---
       await readChatStream(response, (token) => {
         received += token
         setTurns((previous) =>
@@ -178,6 +183,7 @@ export function useChatSession({
         ),
       )
     } catch (error) {
+      // --- 按请求类型保留已收到的内容和失败信息 ---
       const message = error instanceof Error ? error.message : '消息发送失败'
       setTurns((previous) =>
         previous.map((item) => {
@@ -209,6 +215,7 @@ export function useChatSession({
     }
   }
 
+  /** 新建对话轮次并发送当前草稿。 */
   function handleSend() {
     if (!question.trim() || inFlightRef.current || switchControllerRef.current || !activePoem)
       return
@@ -234,6 +241,7 @@ export function useChatSession({
     void requestReply(turn)
   }
 
+  /** 重试失败轮次，并丢弃它之后的历史。 */
   function handleRetry(id: number) {
     if (inFlightRef.current) return
 
@@ -248,6 +256,7 @@ export function useChatSession({
     void requestReply(turn)
   }
 
+  /** 重新生成已完成轮次，成功前保留旧答案。 */
   function handleRegenerate(id: number) {
     if (inFlightRef.current) return
 
@@ -264,6 +273,7 @@ export function useChatSession({
     void requestReply(turn, true)
   }
 
+  /** 修改某轮提问，从该轮重新开始对话。 */
   function handleEdit(id: number, nextQuestion: string) {
     if (inFlightRef.current || !nextQuestion.trim()) return
     const index = turns.findIndex((item) => item.id === id)

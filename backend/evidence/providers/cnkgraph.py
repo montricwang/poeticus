@@ -1,7 +1,8 @@
 """CNKGraph 的外部 HTTP 适配器。
 
 本模块将第三方典故/出处响应整理为内部 EvidenceItem；
-HTTP 404 表示该查询没有命中，其他 HTTP/网络/JSON 错误会显式报错。
+当前实现将 HTTP 404 转为未命中，其他 HTTP/网络/JSON 错误显式报错；
+404 的实际接口语义仍需核查。
 """
 import os
 import httpx
@@ -15,11 +16,17 @@ class CNKGraphError(RuntimeError):
 
 
 class CNKGraphProvider:
+    """按证据类型查询 CNKGraph，并转换为统一的 EvidenceItem。"""
+
     def __init__(self):
+        """读取 API 地址，并设置请求超时为 10 秒。"""
+
         self.base_url = os.getenv("CNKGRAPH_BASE_URL", "https://api.cnkgraph.com")
         self.timeout = 10.0
 
     async def _request_json(self, path: str, payload: dict[str, object]):
+        """向指定路径发送 POST，解析 JSON，并转换已知网络异常。"""
+
         try:
             async with httpx.AsyncClient(
                 base_url=self.base_url,
@@ -30,6 +37,7 @@ class CNKGraphProvider:
                 return response.json()
 
         except httpx.HTTPStatusError as exc:
+            # 当前把 404 视为未命中；具体业务语义待核实。
             if exc.response.status_code == 404:
                 return None
 
@@ -52,6 +60,8 @@ class CNKGraphProvider:
         query: str,
         evidence_type: str | None = None,
     ) -> list[EvidenceItem]:
+        """根据证据类型选择典故或出处查询。"""
+
         if evidence_type in (None, "allusion"):
             return await self._search_allusion(query)
         if evidence_type == "reference":
@@ -59,6 +69,10 @@ class CNKGraphProvider:
         raise ValueError("当前仅支持典故或出处查询")
 
     async def _search_allusion(self, query: str) -> list[EvidenceItem]:
+        """查询典故释义和引文，转换成候选证据。"""
+
+        # --- 1. 请求典故接口并检查响应结构 ---
+
         raw = await self._request_json(
             "/api/glossary/典故/find",
             {
@@ -73,6 +87,8 @@ class CNKGraphProvider:
             raw = [raw] if raw else []
         if not isinstance(raw, list):
             raise CNKGraphError("CNKGraph 典故响应结构异常")
+
+        # --- 2. 从每条典故中提取释义、引文和书名 ---
 
         results = []
 
@@ -127,6 +143,10 @@ class CNKGraphProvider:
         return results
 
     async def _search_reference(self, query: str) -> list[EvidenceItem]:
+        """查询诗句出处候选，转换成包含作品信息的证据。"""
+
+        # --- 1. 请求出处接口并检查响应结构 ---
+
         raw = await self._request_json(
             "/api/tool/reference",
             {"content": query},
@@ -136,9 +156,13 @@ class CNKGraphProvider:
         if not isinstance(raw, dict):
             raise CNKGraphError("CNKGraph 出处响应结构异常")
 
+        # --- 2. 读取句子及每句对应的出处候选 ---
+
         sentences = raw.get("Sentences") or []
         if not isinstance(sentences, list):
             raise CNKGraphError("CNKGraph 出处响应缺少 Sentences")
+
+        # --- 3. 提取诗句、作品信息和来源标识 ---
 
         results = []
 

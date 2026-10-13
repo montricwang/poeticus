@@ -35,6 +35,8 @@ def _required_positive_int(manifest: dict[str, object], field: str) -> int:
 def _embedding_source_signature(
     manifest: dict[str, object],
 ) -> dict[str, object]:
+    """提取索引与 Embedding 必须一致的来源签名字段。"""
+
     keys = (
         "model",
         "model_fingerprint",

@@ -7,7 +7,7 @@ type ViewToolbarProps = {
   onViewChange: (view: ActiveView) => void
 }
 
-/** Switches only; its underline is a separate neighboring component. */
+/** 仅负责切换对话与赏析视图；下方分隔线由相邻组件绘制。 */
 export function ViewToolbar({ activeView, onViewChange }: ViewToolbarProps) {
   return (
     <div className="mb-3 flex w-fit shrink-0 items-center gap-2" role="group" aria-label="讨论视图">

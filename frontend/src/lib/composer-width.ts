@@ -1,4 +1,4 @@
-/** Measure text only; CSS owns the minimum and maximum composer widths. */
+/** 只测量输入文字宽度；输入区的最小和最大宽度由 CSS 控制。 */
 export function composerWidthForLines(
   question: string,
   measureText: (text: string) => number,
@@ -7,6 +7,6 @@ export function composerWidthForLines(
     .split(/\r?\n/)
     .reduce((widest, line) => Math.max(widest, measureText(line)), 0)
 
-  // Textarea padding and a little room for the caret.
+  // 额外预留 Textarea 内边距和光标空间。
   return Math.ceil(longestLine + 32)
 }

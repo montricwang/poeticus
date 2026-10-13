@@ -21,6 +21,7 @@ export function selectionForPython(
   }
 }
 
+/** 只恢复确实属于当前原文的选区，防止切换作品后引用错位。 */
 export function validSelectionForPoem(
   selection: SelectedText | null,
   poem: string,
