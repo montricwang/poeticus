@@ -36,6 +36,10 @@ updates:
       # Avoid repeated floor-only updates without a specific need.
       - dependency-name: "mcp"
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+      # These pinned retrieval libraries need real-model regression verification.
+      # Upgrade them in a dedicated, supervised retrieval maintenance PR.
+      - dependency-name: "sentence-transformers"
+      - dependency-name: "modelscope"
 
   - package-ecosystem: github-actions
     directory: /
