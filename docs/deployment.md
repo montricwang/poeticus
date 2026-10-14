@@ -90,13 +90,14 @@ Railway PostgreSQL
 
 ```bash
 # 在 WSL，先进入 Poeticus 仓库并激活可用的 Python 环境
-export POETICUS_RETRIEVAL_TOKEN="<本地与 Railway 一致的私有随机凭据>"
+# 预先在 ~/.config/poeticus/retrieval.env 中保存与 Railway 一致的 Bearer Token
+source ~/.config/poeticus/retrieval.env
 python -m scripts.retrieval.run_serving --device cpu
 # 另一个 WSL 终端
 curl -i http://127.0.0.1:8787/health
 ```
 
-实际 Token 不得写入仓库、截图或公共文档；更推荐使用私有的环境注入方式，且启动脚本不会自动读取工作目录的 `.env`。服务默认监听 WSL 内 `127.0.0.1:8787`，不直接暴露公网。当前 Windows 端 `cloudflared` 转发到 `http://localhost:8787`；Windows → WSL 的 localhost 转发已在该开发机验证，换设备需重新检查。
+实际 Token 不得写入仓库、截图或公共文档。私有 `retrieval.env` 应位于仓库外，权限设为 `600`，文件内通过 `export POETICUS_RETRIEVAL_TOKEN=...` 提供变量；`source` 只对当前终端及它启动的子进程有效。启动脚本不会自动读取工作目录的 `.env`。**缺失或空白 Token 会在加载模型和索引前拒绝启动**；`create_app()` 也会拒绝空 Token。`/health` 继续公开，`/v1/retrieval/profile` 和 `/v1/retrieval/search` 必须携带正确 Bearer Token。服务默认监听 WSL 内 `127.0.0.1:8787`，不直接暴露公网。当前 Windows 端 `cloudflared` 转发到 `http://localhost:8787`；Windows → WSL 的 localhost 转发已在该开发机验证，换设备需重新检查。
 
 Windows 另行运行 Cloudflare **命名 Tunnel** `poeticus-retrieval` 的连接器。当前采用 Cloudflare 管理界面提供的 **Token 方式**，与依赖 `cert.pem` 的本地管理凭据方式不同；不要把 `cloudflared tunnel run poeticus-retrieval` 当成等价的恢复命令。可在 Cloudflare Zero Trust 的 Tunnel 详情中获取对应连接器的 Windows 启动方式；Token 是另一份凭据，**不同于** `POETICUS_RETRIEVAL_TOKEN`，不放进 Railway 或 Retrieval 进程。当前若在终端前台运行，关闭该终端就可能使 Tunnel 离线；尚未将自动启动列为已完成项。
 

@@ -74,9 +74,14 @@ class SearchRuntime(Protocol):
 def create_app(
     runtime: SearchRuntime,
     *,
-    api_token: str = "",
+    api_token: str,
 ) -> FastAPI:
-    """把给定检索 Runtime 包装成带可选令牌认证的 FastAPI 服务。"""
+    """为检索 Runtime 创建必须使用 Bearer Token 的 HTTP 服务。"""
+
+    # 此 HTTP 服务可能经 Tunnel 对公网开放，不能将缺失配置解释为无需认证。
+    if not api_token.strip():
+        raise ValueError("Retrieval API Token 不能为空")
+    api_token = api_token.strip()
 
     app = FastAPI(
         title="Poeticus Text Retrieval Service",
@@ -86,8 +91,6 @@ def create_app(
     def require_token(
         authorization: Annotated[str | None, Header()] = None,
     ) -> None:
-        if not api_token:
-            return
         expected = f"Bearer {api_token}"
         if authorization is None or not hmac.compare_digest(
             authorization,
