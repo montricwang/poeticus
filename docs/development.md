@@ -196,7 +196,7 @@ python -m scripts.retrieval.inspect_serving_bundle
 python -m scripts.retrieval.run_serving --device cpu
 ```
 
-服务默认监听 WSL 内 `127.0.0.1:8787`。本地开发 Web／Agent 只需要前端和后端，`POETICUS_TEXT_RETRIEVAL_URL` 留空则不注册自建检索工具；在本地独立调试 Retrieval 时，只需启动 WSL Serving，不必开启公网 Tunnel。
+服务默认监听 WSL 内 `127.0.0.1:8787`。本地开发 Web／Agent 只需要前端和后端，`POETICUS_RETRIEVAL_URL` 留空则不注册自建检索工具；在本地独立调试 Retrieval 时，只需启动 WSL Serving，不必开启公网 Tunnel。
 
 当需要让**线上 Railway Agent** 使用本地 Retrieval 时，另须保持 WSL Serving 和 Windows `cloudflared` 命名 Tunnel 连接器同时运行；无需额外启动本地前端、Web 后端，也不需要把 LangSmith 当成本地服务。Tunnel Token 只供 `cloudflared` 使用，独立于 WSL／Railway 一致设置的 Retrieval Bearer Token。不要把任一 Token 提交到仓库。
 

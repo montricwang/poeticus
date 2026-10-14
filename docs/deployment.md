@@ -52,8 +52,8 @@ Web、Agent 和阅读数据库运行在 Railway；独立的 Text Retrieval 仍�
 
 - `LLM_API_KEY`
 - `POETICUS_DATABASE_URL`
-- `POETICUS_TEXT_RETRIEVAL_URL`
-- `POETICUS_TEXT_RETRIEVAL_TOKEN`
+- `POETICUS_RETRIEVAL_URL`
+- `POETICUS_RETRIEVAL_TOKEN`
 - `POETICUS_AI_IP_HASH_SECRET`
 - AI 配额与并发参数
 - `POETICUS_VERSION`
@@ -90,7 +90,7 @@ Railway PostgreSQL
 
 ```bash
 # 在 WSL，先进入 Poeticus 仓库并激活可用的 Python 环境
-export POETICUS_TEXT_RETRIEVAL_TOKEN="<本地与 Railway 一致的私有随机凭据>"
+export POETICUS_RETRIEVAL_TOKEN="<本地与 Railway 一致的私有随机凭据>"
 python -m scripts.retrieval.run_serving --device cpu
 # 另一个 WSL 终端
 curl -i http://127.0.0.1:8787/health
@@ -98,7 +98,7 @@ curl -i http://127.0.0.1:8787/health
 
 实际 Token 不得写入仓库、截图或公共文档；更推荐使用私有的环境注入方式，且启动脚本不会自动读取工作目录的 `.env`。服务默认监听 WSL 内 `127.0.0.1:8787`，不直接暴露公网。当前 Windows 端 `cloudflared` 转发到 `http://localhost:8787`；Windows → WSL 的 localhost 转发已在该开发机验证，换设备需重新检查。
 
-Windows 另行运行 Cloudflare **命名 Tunnel** `poeticus-retrieval` 的连接器。当前采用 Cloudflare 管理界面提供的 **Token 方式**，与依赖 `cert.pem` 的本地管理凭据方式不同；不要把 `cloudflared tunnel run poeticus-retrieval` 当成等价的恢复命令。可在 Cloudflare Zero Trust 的 Tunnel 详情中获取对应连接器的 Windows 启动方式；Token 是另一份凭据，**不同于** `POETICUS_TEXT_RETRIEVAL_TOKEN`，不放进 Railway 或 Retrieval 进程。当前若在终端前台运行，关闭该终端就可能使 Tunnel 离线；尚未将自动启动列为已完成项。
+Windows 另行运行 Cloudflare **命名 Tunnel** `poeticus-retrieval` 的连接器。当前采用 Cloudflare 管理界面提供的 **Token 方式**，与依赖 `cert.pem` 的本地管理凭据方式不同；不要把 `cloudflared tunnel run poeticus-retrieval` 当成等价的恢复命令。可在 Cloudflare Zero Trust 的 Tunnel 详情中获取对应连接器的 Windows 启动方式；Token 是另一份凭据，**不同于** `POETICUS_RETRIEVAL_TOKEN`，不放进 Railway 或 Retrieval 进程。当前若在终端前台运行，关闭该终端就可能使 Tunnel 离线；尚未将自动启动列为已完成项。
 
 依赖边界：电脑关机、WSL Serving 停止、`cloudflared` 退出或 Tunnel 离线时，主站和阅读数据库仍可用，但需要自建前代文本检索的 Agent 请求会失败或降级；当前降级体验仍见 [#180](https://github.com/montricwang/poeticus/issues/180)。
 
@@ -171,10 +171,12 @@ throughput      ≈ 1.78 req/s
 - **主站**：`poeticus.app` 在 Cloudflare 管理 DNS，经 Railway 的自定义域名配置映射到 `poeticus-web`。Railway 自定义域名要求按平台给出的 CNAME 目标和 `_railway-verify` TXT 记录完成路由与所有权验证；不要把 Railway 默认公共网址直接当作其要求的 CNAME 目标。2026-10-11 使用 Railway → Cloudflare Domain Connect 授权配置，HTTPS 访问已返回 200。浏览器到 Cloudflare、Cloudflare 到 Railway 是独立的 HTTPS 连接。
 - **检索入口**：`retrieval.poeticus.app` 是命名 Tunnel `poeticus-retrieval` 的公网 hostname，转发到开发机的 `http://localhost:8787`。它不是 Railway 自定义域名，也不需要把 Retrieval 模型部署到 Cloudflare。
 - **Tunnel Token**：提供给 Windows `cloudflared`，用于连接器加入指定的 Cloudflare Tunnel；不要提交、复制到 Railway，或和 API Bearer Token 混用。
-- **Retrieval Bearer Token**：环境变量 `POETICUS_TEXT_RETRIEVAL_TOKEN`，必须在 WSL Retrieval 进程和 Railway Web 侧一致。受保护接口无认证预期为 HTTP 401；`/health` 不能代替认证验证。
-- **Railway 服务地址**：`POETICUS_TEXT_RETRIEVAL_URL=https://retrieval.poeticus.app`（不加接口路径），HTTP 客户端会向 `/v1/retrieval/search` 发送带 Bearer 的 POST。只有变更完成部署后，运行中的 Agent 才按新值工作。URL 若留空则不注册自建检索工具。
+- **Retrieval Bearer Token**：环境变量 `POETICUS_RETRIEVAL_TOKEN`，必须在 WSL Retrieval 进程和 Railway Web 侧一致。受保护接口无认证预期为 HTTP 401；`/health` 不能代替认证验证。
+- **Railway 服务地址**：`POETICUS_RETRIEVAL_URL=https://retrieval.poeticus.app`（不加接口路径），HTTP 客户端会向 `/v1/retrieval/search` 发送带 Bearer 的 POST。只有变更完成部署后，运行中的 Agent 才按新值工作。URL 若留空则不注册自建检索工具。
 
 Cloudflare Tunnel 让本地连接器**向外主动建立连接**，不用对家庭路由器配置端口映射，也不要开放本地 `8787`。原腾讯云 Nginx／Let's Encrypt IP 证书属于历史部署，不再存在有效的证书续期任务。
+
+**环境变量改名时的部署顺序**：先在 Railway 添加新名称的 URL、Token（保留旧变量），然后部署已读取新名称的 Web 代码；本地 WSL 只有在更新启动脚本并设置 `POETICUS_RETRIEVAL_TOKEN` 后才能安全重启 Retrieval Serving。新配置经过无 Token 返回 401、正常检索返回 200 的验证后，才删除 Railway 的旧变量。域名、HTTP API 路径和 Bearer Token 的值均无需改变。
 
 ## 8. Retrieval 代码部署
 
@@ -219,7 +221,7 @@ Agent 调用 Retrieval 时，如果 `current.dynasty=null`：
 
 1. Railway 最新 Deployment 为 SUCCESS，`https://poeticus.app/health` 返回 HTTP 200；
 2. 首页、`/api/poems?limit=1`、`/api/info` 正常；
-3. Railway 变量名包含 `POETICUS_TEXT_RETRIEVAL_URL` 和 `POETICUS_TEXT_RETRIEVAL_TOKEN`，且已部署预期值；**变量存在不代表可达或认证成功**；
+3. Railway 变量名包含 `POETICUS_RETRIEVAL_URL` 和 `POETICUS_RETRIEVAL_TOKEN`，且已部署预期值；**变量存在不代表可达或认证成功**；
 4. 测试真实问答和 SSE，观察工具是否成功返回候选、Agent 是否引用候选，不能只凭首页可访问判断 Retrieval 正常。
 
 ### WSL + Tunnel
