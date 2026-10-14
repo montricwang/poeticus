@@ -45,6 +45,11 @@ def main() -> None:
         default=os.getenv("POETICUS_RETRIEVAL_TOKEN", ""),
     )
     args = parser.parse_args()
+    if not args.api_token.strip():
+        parser.error(
+            "Retrieval API Token 不能为空；"
+            "请设置 POETICUS_RETRIEVAL_TOKEN 或指定 --api-token"
+        )
 
     paths = default_paths(
         args.data_root,

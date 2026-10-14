@@ -1,3 +1,6 @@
+import sys
+
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.retrieval.poem.server import create_app
@@ -57,10 +60,11 @@ class FakeRuntime:
 
 def test_retrieval_server_matches_agent_client_contract():
     runtime = FakeRuntime()
-    client = TestClient(create_app(runtime))
+    client = TestClient(create_app(runtime, api_token="secret"))
 
     response = client.post(
         "/v1/retrieval/search",
+        headers={"Authorization": "Bearer secret"},
         json={
             "text": "片片轻鸥落晚沙",
             "top_k": 8,
@@ -117,6 +121,20 @@ def test_retrieval_server_checks_bearer_token():
     )
     assert unauthorized.status_code == 401
 
+    incorrect = client.post(
+        "/v1/retrieval/search",
+        headers={"Authorization": "Bearer incorrect"},
+        json={"text": "甲", "current": {"text": "乙"}},
+    )
+    assert incorrect.status_code == 401
+    assert client.get("/v1/retrieval/profile").status_code == 401
+    assert client.get(
+        "/v1/retrieval/profile",
+        headers={"Authorization": "Bearer secret"},
+    ).status_code == 200
+    assert client.get("/health").status_code == 200
+    assert runtime.calls == []
+
     authorized = client.post(
         "/v1/retrieval/search",
         headers={"Authorization": "Bearer secret"},
@@ -126,3 +144,42 @@ def test_retrieval_server_checks_bearer_token():
         },
     )
     assert authorized.status_code == 200
+
+    assert runtime.calls == [
+        {
+            "text": "甲",
+            "current_text": "乙",
+            "current_author": None,
+            "target_dynasty": None,
+            "final_top_k": 8,
+        }
+    ]
+
+
+@pytest.mark.parametrize("token", ["", " ", "\t"])
+def test_retrieval_server_rejects_empty_token(token):
+    with pytest.raises(ValueError, match="Token 不能为空"):
+        create_app(FakeRuntime(), api_token=token)
+
+
+@pytest.mark.parametrize(
+    ("env_token", "cli_args"),
+    [
+        ("", []),
+        ("   ", []),
+        ("secret", ["--api-token", " "]),
+    ],
+)
+def test_retrieval_serving_cli_rejects_empty_token_before_loading_indices(
+    monkeypatch, capsys, env_token, cli_args
+):
+    from scripts.retrieval import run_serving
+
+    monkeypatch.setenv("POETICUS_RETRIEVAL_TOKEN", env_token)
+    monkeypatch.setattr(sys, "argv", ["run_serving", *cli_args])
+
+    with pytest.raises(SystemExit) as error:
+        run_serving.main()
+
+    assert error.value.code == 2
+    assert "POETICUS_RETRIEVAL_TOKEN" in capsys.readouterr().err
