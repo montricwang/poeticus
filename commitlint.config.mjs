@@ -1,4 +1,4 @@
-// Poeticus commit format: English Conventional Commits with a required scope.
+// Poeticus commit format: English Conventional Commits with an optional scope.
 const ascii = /^[\x20-\x7E]*$/;
 export default {
   rules: {
@@ -8,7 +8,6 @@ export default {
       ['build', 'chore', 'ci', 'docs', 'feat', 'fix', 'perf', 'refactor', 'revert', 'style', 'test'],
     ],
     'type-empty': [2, 'never'],
-    'scope-empty': [2, 'never'],
     'subject-empty': [2, 'never'],
     'subject-case': [2, 'never', ['start-case', 'pascal-case', 'upper-case']],
     'header-max-length': [2, 'always', 100],
