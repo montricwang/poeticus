@@ -1,0 +1,33 @@
+name: PR language
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, edited, ready_for_review]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  pr-language:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Chinese PR title and description
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request?.title ?? '';
+            const body = context.payload.pull_request?.body ?? '';
+            const countHan = (value) => (value.match(/\p{Script=Han}/gu) ?? []).length;
+            // Ignore code blocks, inline code, and hidden PR template comments.
+            const prose = body
+              .replace(/<!--[\s\S]*?-->/g, '')
+              .replace(/(?:^|\n)\s*```[\s\S]*?```/g, '')
+              .replace(/(?:^|\n)\s*~~~[\s\S]*?~~~/g, '')
+              .replace(/`[^`\n]*`/g, '')
+              .replace(/^\s{0,3}#{1,6}.*$/gm, '')
+              .replace(/https?:\/\/[^\s)]+/g, '');
+            const errors = [];
+            if (countHan(title) < 2) errors.push('PR title must contain a Chinese description (at least two Han characters).');
+            if (countHan(prose) < 2) errors.push('PR body must include Chinese prose outside headings and code blocks.');
+            if (errors.length) core.setFailed(errors.join('\n'));
+            else core.info('Chinese PR title and body checks passed.');
