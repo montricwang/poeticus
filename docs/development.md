@@ -235,4 +235,12 @@ python -m scripts.retrieval.run_serving --device cpu
 - `docs/releases/`：版本对外说明；
 - `docs/data-management.md`：`poeticus-data/` 私有资产布局和恢复规则。
 
+### GitHub Issue 的生命周期与层级
+
+- **先查再建**：遇到新想法，先搜索开放／已关闭的 Issue、PR 和现行设计。目标与验收相同就修改旧 Issue；旧任务被新方案替代时，提取有用约束、写明去向，再关闭旧单。不要因一次讨论或一个新术语就机械新建 Issue。
+- **分清三种关系**：父 Issue 负责较大目标；原生 **Sub-issue** 负责可以独立实施、Review 或验收的任务；正文 `- [ ]` Checklist 只记录本任务内部的检查步骤。仅在确有执行先后阻塞时添加 Dependency，不把普通「相关」误标为「依赖」。子 Issue 的完成进度由 GitHub 状态计算，Markdown 链接不能冒充原生父子关系。
+- **开放 Issue 保持可执行**：标题和正文开头说明**当前目标、最小下一步、验收标准**，过时的设计与实验过程可作为历史保留。长期架构事实进入代码、ADR 或架构文档，不靠永不关闭的巨型讨论 Issue 维持。
+- **合并与关闭前再核对**：有 PR 的任务引用 PR、测试或真实交互验收证据。关闭前逐项处理尚未打勾的 Checklist：已做的据证据勾选；取消的写明 `out of scope`／`not planned`；仍需做的迁移到合适的开放 Issue 并留链接。**不能因为 CI 通过就假定真实 UI 已验收，也不能因为已关闭就把所有历史 `[ ]` 改成 `[x]`。**
+- **结束后的清理**：对过期部署、重复提案和已被实施的旧实验选择合适关闭原因，正文保留简短结论及新入口；无明确近期实施条件的灵感可以折叠进相关 Issue 的「未来复查」而非永远保持开放。清理不是追求最低 Issue 数量：真正独立的缺陷和实验应继续单独跟踪。
+
 AI 协作、教学节奏和阶段复盘方式统一维护在 [GPT Finishing School《教学与开发协作手册》](https://github.com/montricwang/gpt-finishing-school/blob/main/审校与工作流/教学与开发协作手册.md)。
