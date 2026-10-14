@@ -8,7 +8,9 @@ __pycache__/
 .env
 
 # 编辑器与操作系统文件
-.vscode/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
 .DS_Store
 Thumbs.db
 
