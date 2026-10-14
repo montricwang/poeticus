@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter, defaultdict
-from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT
 from scripts.corpus.scan_normalized_compositions import PREFIX, normalize_poem
@@ -71,9 +70,12 @@ def main() -> None:
         covered = sum(end-start for start,end,_ in matches)
         fraction = covered/len(text)
         totals["hosts_with_two_or_more_members"] += 1
-        if fraction >= .8:totals["covered_at_least_80pct"] += 1
-        if fraction >= .95:totals["covered_at_least_95pct"] += 1
-        if fraction < .8:continue
+        if fraction >= .8:
+            totals["covered_at_least_80pct"] += 1
+        if fraction >= .95:
+            totals["covered_at_least_95pct"] += 1
+        if fraction < .8:
+            continue
         # 仅供人工核对，不直接加关系。
         result.append({
             "parent_work_id": host_id, "title": title, "author": author,
