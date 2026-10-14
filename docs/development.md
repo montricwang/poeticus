@@ -137,7 +137,7 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 
 ### Commitlint 与本地提交检查
 
-Git Commit 统一采用英文 **Conventional Commits**：`type(scope): subject`（允许 breaking change 的 `!` 标记）。`type`、`scope`、`subject` 均为必填，例：`feat(retrieval): add poem search filters`、`fix(backend): handle missing retrieval token`。允许的类型为 `build`、`chore`、`ci`、`docs`、`feat`、`fix`、`perf`、`refactor`、`revert`、`style`、`test`；标题必须为 ASCII，最长 100 字符，正文及 Footer（如有）也要求 ASCII 英文。PR 标题及说明必须使用中文，允许夹带技术标识；`.github/workflows/pr-language.yml` 在创建、编辑或更新 PR 后检查正文中是否包含中文表述（汉字判定不能严格识别自然语言）。
+Git Commit 统一采用英文 **Conventional Commits**：`type: subject` 或 `type(scope): subject`（允许 breaking change 的 `!` 标记）。`type` 和 `subject` 必填，**`scope` 可选**；仅在能清楚标识模块时填写，无需为 `docs`、`ci`、`chore` 等类型硬加作用域。例：`ci: update GitHub workflows`、`feat(retrieval): add poem search filters`、`fix(backend): handle missing retrieval token`。允许的类型为 `build`、`chore`、`ci`、`docs`、`feat`、`fix`、`perf`、`refactor`、`revert`、`style`、`test`；标题必须为 ASCII，最长 100 字符，正文及 Footer（如有）也要求 ASCII 英文。PR 标题及说明必须使用中文，允许夹带技术标识；`.github/workflows/pr-language.yml` 在创建、编辑或更新 PR 后检查正文中是否包含中文表述（汉字判定不能严格识别自然语言）。
 
 仓库根目录的 `commitlint.config.mjs` 是唯一规则配置；`.github/workflows/commitlint.yml` 在**所有分支的 Push** 及 PR 创建／更新时执行 Commitlint。现有 `english-commit-subjects.yml` 暂时保留，独立检查标题 ASCII。Push 检查属于**事后审计**：发现不合规 Commit 会报告失败，但不会撤销已经推送的 Commit。要强制禁止不合格 PR 合并，仓库管理员还需在 GitHub 的 **Settings → Rules → Rulesets** 对 `main` 配置 `Require status checks to pass` 并将 `commitlint` 设为必需检查（检查名称以 Actions 页面实际 Job 为准）；若要阻止绕过 PR 直接写入 `main`，还需要启用 `Require a pull request before merging`。这些管理员设置不能仅通过提交仓库文件实现；在 GitHub 上真正创建并启用规则前，不能视为合并门禁已生效。还应将 `pr-language` 设为必需检查。
 
@@ -149,7 +149,7 @@ git config --local core.hooksPath .githooks
 
 之后每次 `git commit` 会通过 `.githooks/commit-msg` 调用 Commitlint（Node.js / npm 必需；首次运行 `npx` 可能下载依赖）。此设置只作用于当前本地仓库，不会自动影响其他克隆。需要关闭时执行 `git config --local --unset core.hooksPath`。本地 Hook 不能代替 GitHub PR 检查；Squash Merge 时仍需确保最终 Commit message 为英文格式。
 
-**Squash 合并须显式设置英文 `type(scope): subject`**，不能让 GitHub 自动把中文 PR 标题变成合并提交信息。例如：`gh pr merge <PR编号> --squash --subject "feat(retrieval): improve poem search" --body "Improve search scoring and tests."`。AI 调用 GitHub API 合并时也必须显式传入英文 `commit_title` 和 `commit_message`。只有 GitHub Ruleset 的 commit metadata 限制能在合并前约束最终提交标题；仅凭 PR 检查不能保证 Squash 时不会填错。
+**Squash 合并须显式设置英文 `type: subject` 或 `type(scope): subject`**，不能让 GitHub 自动把中文 PR 标题变成合并提交信息。例如：`gh pr merge <PR编号> --squash --subject "feat(retrieval): improve poem search" --body "Improve search scoring and tests."`。AI 调用 GitHub API 合并时也必须显式传入英文 `commit_title` 和 `commit_message`。只有 GitHub Ruleset 的 commit metadata 限制能在合并前约束最终提交标题；仅凭 PR 检查不能保证 Squash 时不会填错。
 
 这项约定的跨项目来源是 [《教学与开发协作手册》Git 协作章节](https://github.com/montricwang/gpt-finishing-school/blob/main/审校与工作流/教学与开发协作手册.md)，项目执行入口以本节为准；无需让其他项目继承 Poeticus 的特例。
 
