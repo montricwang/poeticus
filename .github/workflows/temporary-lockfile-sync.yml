@@ -1,0 +1,34 @@
+name: Temporary frontend lockfile sync
+
+on:
+  push:
+    branches: [ci/frontend-quality-gates]
+
+permissions:
+  contents: write
+
+jobs:
+  generate-lockfile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Regenerate package-lock from committed package.json
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund --prefix frontend
+      - name: Commit deterministic lockfile
+        run: |
+          if git diff --quiet -- frontend/package-lock.json; then
+            echo 'Lockfile is already current'
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/package-lock.json
+          git commit -m "build(frontend): synchronize quality tool dependencies"
+          git push origin HEAD:refs/heads/ci/frontend-quality-gates
