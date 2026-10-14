@@ -25,7 +25,7 @@
 - [Agent / LangGraph](architecture/langgraph.md)：工具调用、Graph State、流式回答；
 - [Conversation State](architecture/conversation-state.md)：作品/会话生命周期与浏览器存储；
 - [Corpus Database](architecture/corpus-database.md)：私人导入、公开白名单、数据身份；
-- [Poem Retrieval](architecture/text-retrieval.md)：Work/Chunk、Qwen/FAISS/BM25、RRF、Eligibility 与 Serving。
+- [Poem Retrieval](architecture/text-retrieval.md)：Work/Chunk、Qwen/FAISS/BM25、RRF、Eligibility、Werneror 拼接去重与 Serving。
 
 ## 当前重要决策
 
