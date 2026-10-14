@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline BERT-CCPoem + K-means exploration of the 3491-work Poeticus reading corpus.
+"""Offline BERT-CCPoem / Qwen + K-means exploration of the 3491-work Poeticus reading corpus.
 
 Artifacts stay in poeticus-data, not the tracked Poeticus repository.
 Reruns reuse the saved embeddings and projections.
@@ -14,6 +14,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Any
 
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "4")
@@ -151,7 +152,7 @@ def compute(
 
     labels: dict[str, list[int]] = {}
     cluster_summaries: dict[str, dict] = {}
-    metrics: dict[str, object] = {
+    metrics: dict[str, Any] = {
         "corpus_count": len(poems),
         "corpus_sha256": corpus_sha256,
         "embedding_model": model_name,
@@ -178,7 +179,7 @@ def compute(
     }
     for k in GROUPS:
         start = time.perf_counter()
-        km = KMeans(n_clusters=k, n_init=10, random_state=SEED, max_iter=300)
+        km = KMeans(n_clusters=k, n_init=10, random_state=SEED, max_iter=300)  # pyright: ignore[reportArgumentType] -- sklearn stub wrongly types n_init as str
         yy = km.fit_predict(vectors)
         sil = silhouette_score(
             vectors, yy, metric="cosine", sample_size=900, random_state=SEED
@@ -474,7 +475,7 @@ Plotly.newPlot(plot,[renderedTrace()],initialLayout,{responsive:true,scrollZoom:
 
 
 def render_html(data: dict, metrics: dict, model_key: str = "bert") -> Path:
-    from plotly.offline import get_plotlyjs
+    from plotly.offline import get_plotlyjs  # pyright: ignore[reportMissingImports] -- optional local visualization dependency
 
     bundle = get_plotlyjs()
     html_content = PAGE.replace("BERT-CCPoem", metrics["embedding_model"])

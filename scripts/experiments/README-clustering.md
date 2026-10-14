@@ -1,8 +1,8 @@
-# 阅读词库无监督聚类实验
+# 阅读词库无监督聚类实验：BERT 与 Qwen（阶段收口）
 
-> 研究性质的离线可视化；不修改线上数据库、Poem Retrieval 和 Reader。关联 [#157](https://github.com/montricwang/poeticus/issues/157)。
+> 2026-10-14 阶段收口；研究性质的离线可视化，不修改线上数据库、Poem Retrieval 和 Reader。关联 [#157](https://github.com/montricwang/poeticus/issues/157)。
 
-当前使用本地 BERT-CCPoem v1，对 `poeticus-data/reading-corpus/normalized/all_normalized.json` 中 **3,491 首词的原文**编码，得到 512 维向量后用 scikit-learn K-means 聚类。未使用标题、作者、评论、注释或人工标签作为模型输入。
+先使用本地 BERT-CCPoem v1，对 `poeticus-data/reading-corpus/normalized/all_normalized.json` 中 **3,491 首词的原文**编码，得到 512 维向量后用 scikit-learn K-means 聚类；另用 AutoDL GPU 生成 Qwen3-Embedding-0.6B 的 1024 维向量，同参数对照。未使用标题、作者、评论、注释或人工标签作为模型输入。
 
 ## 打开交互式散点图
 
@@ -10,7 +10,8 @@
 
 ```bash
 cd ~/projects/poeticus-clustering
-bash scripts/experiments/open_cluster_explorer.sh
+bash scripts/experiments/open_cluster_explorer.sh bert
+bash scripts/experiments/open_cluster_explorer.sh qwen
 ```
 
 脚本在 Windows 中打开本地 `poeticus-data/reports/recommendations/cluster_full/cluster-explorer.html`。这个 HTML **已经生成，打开时无需启动服务或联网**。也可自行从 Windows 文件管理器打开。
@@ -23,7 +24,7 @@ bash scripts/experiments/open_cluster_explorer.sh
 - **作品搜索与浏览**：搜作者、词牌或正文，点击散点在右侧查看全文、原始向量空间中相似的跨作者作品，以及所属组；
 - **分组目录**：按组查看数量、主要作者与中心附近的代表作品，按按钮筛选某一组。
 
-网页里展示的相似度是 BERT 向量余弦，不是文学价值概率。二维点距离受投影算法影响；**K-means 聚类是在 512 维上运行，而不是二维坐标上**。
+网页展示的是各自模型原始高维空间的余弦相似度，**跨模型分数绝对值不能直接比较**，也不是文学相似的概率。二维点距离受投影算法影响；**K-means 聚类不在二维坐标上运行**。
 
 ## 重新计算
 
@@ -80,3 +81,24 @@ bash scripts/experiments/open_cluster_explorer.sh
 Qwen 三个 K 值下的高维 cosine silhouette 为 0.0219 / 0.0114 / 0.0066，BERT 为 0.0910 / 0.0586 / 0.0493。K=16 时两个模型的 Adjusted Rand Index 为 0.1457，跨作者前五近邻平均只有 0.28 个重叠。这说明模型几何分群和近邻排序不同，不能推出哪个模型的文学理解能力更强。两模型 cosine 分数的绝对值也不可直接比较。
 
 本轮只做离线调查，暂不接入产品推荐；后续用人工判断的作品相似性小样本检验近邻实用性。
+
+
+## 阶段判断：自动诗学标签未得到验证
+
+本轮使用同一 3491 首词原文，仅以 BERT-CCPoem 和 Qwen3 的 Embedding 配合 K-means 无监督聚类。高维 cosine silhouette 分别为：
+
+| 模型 | K=8 | K=16 | K=24 |
+| --- | ---: | ---: | ---: |
+| BERT-CCPoem v1 | 0.0910 | 0.0586 | 0.0493 |
+| Qwen3-Embedding-0.6B | 0.0219 | 0.0114 | 0.0066 |
+
+K=16 时跨模型分组 ARI=0.1457；排除同作者后，每首词的 top-5 近邻平均仅重叠 0.28 首。两个模型都有作者集中问题。**结果不支持将 K-means 分组直接解释为「清空」「沉郁」「婉约」等文学风格标签。** 但尚未开展重采样／随机种子下的分组稳定性测试，也未用人工风格标注验证分类准确率，因此不能把这次失败说成「证明标签不稳定」或「向量无法找到文学近邻」。
+
+阶段结束，不再为提高轮廓系数盲目调整参数，不将离线散点图或自动标签接入产品。后续沿 #156、#157，采用小样本人工评测推进：
+
+- 题材／情感分类：调研现代古典诗歌多标签数据集（如 CCPD），**先核对论文、许可、完整类目与宋词适用性**，目前只是参考候选。
+- 意象与表达手法：支持多标签及对应的原文证据，避免将「月、秋、愁」直接当作审美风格。
+- 传统审美术语：按《词源》《白雨斋词话》《人间词话》及现代词学研究核对概念用法；区分作者总体评价、具体作品评价及评论家个人立场，不先冻结全量词表。
+- 50–100 首小样本：覆盖跨作者、非典型作品和反例，评估人工共识、LLM 推断可靠性以及推荐近邻是否具有阅读价值。
+
+完整工作与结果见 #156、#157、PR #287。原始语料、模型权重、向量、报告和生成的交互 HTML 仅保留在本地 poeticus-data。
