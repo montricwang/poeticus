@@ -88,8 +88,23 @@ def main() -> None:
     if not np.isfinite(vectors).all():
         raise RuntimeError("Result contains NaN/Inf")
     norms = np.linalg.norm(vectors, axis=1)
-    if not np.allclose(norms, 1.0, atol=0.0003):
-        raise RuntimeError("Vectors not L2-normalized")
+    print(
+        "Raw vector L2 norms:",
+        f"min={norms.min():.7f}",
+        f"median={np.median(norms):.7f}",
+        f"max={norms.max():.7f}",
+        f"outside_tolerance={np.count_nonzero(np.abs(norms - 1.0) > 0.0003)}",
+        flush=True,
+    )
+    if np.any(norms < 1e-8):
+        raise RuntimeError("One or more vectors have near-zero norm; cannot normalize")
+    # SentenceTransformer requests normalization; repeat it in float32 to fix
+    # imprecision in the model/runtime, without changing cosine similarity.
+    vectors = vectors / norms[:, None]
+    if not np.allclose(np.linalg.norm(vectors, axis=1), 1.0, atol=0.0003):
+        raise RuntimeError(
+            "Vectors still not L2-normalized after float32 normalization"
+        )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     outfile = args.output_dir / f"qwen3_all_{len(ids)}.npy"
