@@ -7,6 +7,7 @@ Reruns reuse the saved embeddings and projections.
 
 from __future__ import annotations
 
+import argparse
 import collections
 import hashlib
 import json
@@ -105,21 +106,30 @@ def encode_full_poems(poems: list[dict]) -> np.ndarray:
     return vectors
 
 
-def compute(poems: list[dict], vectors: np.ndarray) -> tuple[dict, dict]:
-    json_file = OUT / "cluster_explorer_data.json"
-    if json_file.exists():
+def compute(
+    poems: list[dict],
+    vectors: np.ndarray,
+    *,
+    model_key: str = "bert",
+    embedding_sha256: str | None = None,
+) -> tuple[dict, dict]:
+    prefix = "qwen_" if model_key == "qwen" else ""
+    model_name = "Qwen3-Embedding-0.6B" if model_key == "qwen" else "BERT-CCPoem v1"
+    json_file = OUT / f"{prefix}cluster_explorer_data.json"
+    metrics_file = OUT / f"{prefix}cluster_metrics.json"
+    corpus_sha256 = hashlib.sha256(CORPUS.read_bytes()).hexdigest()
+    if json_file.exists() and metrics_file.exists():
         d = json.loads(json_file.read_text(encoding="utf-8"))
+        previous = json.loads(metrics_file.read_text(encoding="utf-8"))
         if (
             d["n"] == len(poems)
-            and json.loads((OUT / "cluster_metrics.json").read_text(encoding="utf-8"))[
-                "corpus_sha256"
-            ]
-            == hashlib.sha256(CORPUS.read_bytes()).hexdigest()
+            and previous["corpus_sha256"] == corpus_sha256
+            and previous["embedding_model"] == model_name
+            and previous.get("vector_dimensions", 512) == vectors.shape[1]
+            and previous.get("embedding_file_sha256") == embedding_sha256
         ):
             print("复用已计算的 K-means / PCA / t-SNE", flush=True)
-            return d, json.loads(
-                (OUT / "cluster_metrics.json").read_text(encoding="utf-8")
-            )
+            return d, previous
 
     t = time.perf_counter()
     decomposer = PCA(n_components=50, svd_solver="randomized", random_state=SEED)
@@ -143,9 +153,15 @@ def compute(poems: list[dict], vectors: np.ndarray) -> tuple[dict, dict]:
     cluster_summaries: dict[str, dict] = {}
     metrics: dict[str, object] = {
         "corpus_count": len(poems),
-        "corpus_sha256": hashlib.sha256(CORPUS.read_bytes()).hexdigest(),
-        "embedding_model": "BERT-CCPoem v1",
-        "representation": "all original poem text; full sequence masked mean pooling; L2 normalized; 512d",
+        "corpus_sha256": corpus_sha256,
+        "embedding_model": model_name,
+        "embedding_file_sha256": embedding_sha256,
+        "vector_dimensions": int(vectors.shape[1]),
+        "representation": (
+            "all original poem text; Qwen SentenceTransformer encode; L2 normalized; 1024d"
+            if model_key == "qwen"
+            else "all original poem text; full sequence masked mean pooling; L2 normalized; 512d"
+        ),
         "projection": "PCA-50; t-SNE-2 on PCA-50",
         "pca_explained_variance_2d": round(
             float(sum(decomposer.explained_variance_ratio_[:2])), 5
@@ -229,12 +245,12 @@ def compute(poems: list[dict], vectors: np.ndarray) -> tuple[dict, dict]:
         "labels": labels,
         "cluster_summaries": cluster_summaries,
         "neighbors": top_neighbors,
-        "model": "BERT-CCPoem v1",
+        "model": model_name,
     }
     json_file.write_text(
         json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
     )
-    (OUT / "cluster_metrics.json").write_text(
+    metrics_file.write_text(
         json.dumps(metrics, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return data, metrics
@@ -457,11 +473,15 @@ Plotly.newPlot(plot,[renderedTrace()],initialLayout,{responsive:true,scrollZoom:
 """
 
 
-def render_html(data: dict, metrics: dict) -> Path:
+def render_html(data: dict, metrics: dict, model_key: str = "bert") -> Path:
     from plotly.offline import get_plotlyjs
 
     bundle = get_plotlyjs()
-    html_content = PAGE.replace("/* PLOTLY_BUNDLE */", bundle)
+    html_content = PAGE.replace("BERT-CCPoem", metrics["embedding_model"])
+    html_content = html_content.replace(
+        "512 维", f"{metrics.get('vector_dimensions', 512)} 维"
+    )
+    html_content = html_content.replace("/* PLOTLY_BUNDLE */", bundle)
     data_inline = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace(
         "</", "<\\/"
     )
@@ -470,7 +490,9 @@ def render_html(data: dict, metrics: dict) -> Path:
     ).replace("</", "<\\/")
     html_content = html_content.replace("/* EMBEDDED_DATA */", data_inline)
     html_content = html_content.replace("/* EMBEDDED_METRICS */", metrics_inline)
-    output = OUT / "cluster-explorer.html"
+    output = OUT / (
+        "qwen-cluster-explorer.html" if model_key == "qwen" else "cluster-explorer.html"
+    )
     output.write_text(html_content, encoding="utf-8")
     print(
         "浏览器可打开：",
@@ -484,6 +506,11 @@ def render_html(data: dict, metrics: dict) -> Path:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Compare BERT and Qwen clustering of 3491 ci poems."
+    )
+    parser.add_argument("--model", choices=("bert", "qwen"), default="bert")
+    args = parser.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     raw = json.loads(CORPUS.read_text(encoding="utf-8"))
     poems = []
@@ -500,6 +527,14 @@ if __name__ == "__main__":
         )
     assert len(poems) == 3491
     print("源语料", CORPUS, len(poems), "首", flush=True)
-    embeddings = encode_full_poems(poems)
-    data, metrics = compute(poems, embeddings)
-    render_html(data, metrics)
+    if args.model == "qwen":
+        from verify_qwen_gpu_output import verify_output
+
+        embeddings, embedding_sha256 = verify_output(OUT / "autodl_transfer", CORPUS)
+        print("复用已校验的 AutoDL Qwen 向量", embeddings.shape, flush=True)
+    else:
+        embeddings, embedding_sha256 = encode_full_poems(poems), None
+    data, metrics = compute(
+        poems, embeddings, model_key=args.model, embedding_sha256=embedding_sha256
+    )
+    render_html(data, metrics, model_key=args.model)

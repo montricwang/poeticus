@@ -54,3 +54,29 @@ bash scripts/experiments/open_cluster_explorer.sh
 - BERT 编码向量 `(3491, 512)`；PCA 与 t-SNE 形成 3491 对坐标；各 K 的标签、分组汇总及跨作者近邻均为 3491 条；
 - 网页内置 Plotly 的 JS Bundle 及作品数据，离线可打开；
 - Windows Edge headless 实际渲染验证：生成散点图层和 16 张聚类目录卡片；交互按钮/搜索的完整人工操作仍由实际浏览器体验验收。
+
+
+## AutoDL Qwen 全量对照（2026-10-14）
+
+本轮复用原始 3491 首词语料，通过 AutoDL RTX 4090D 生成 Qwen3-Embedding-0.6B 的 1024 维向量。模型使用全文、无 query instruction、L2 归一化的编码设置；GPU 编码实测 6.34 秒（不包含首次下载与准备）。
+
+生成物均存放在 poeticus-data/reports/recommendations/cluster_full/，不提交 Git：
+
+- autodl_transfer/qwen3_all_3491.npy（原始向量）及 _manifest.json（ID 顺序与 SHA-256）。
+- qwen_cluster_explorer_data.json、qwen_cluster_metrics.json（本地聚类与报告）。
+- qwen-cluster-explorer.html（可单独打开的离线交互图）。
+
+打开 Qwen 图：
+
+    cd ~/projects/poeticus-clustering
+    bash scripts/experiments/open_cluster_explorer.sh qwen
+
+不带 qwen 参数则打开原 BERT 图。两张图支持相同的 PCA/t-SNE、K=8/16/24、按作者着色、作品搜索和跨作者近邻。
+
+需要重算 Qwen 聚类时执行（不需要 GPU）：
+
+    ../poeticus/.venv/bin/python scripts/experiments/cluster_reading_corpus.py --model qwen
+
+Qwen 三个 K 值下的高维 cosine silhouette 为 0.0219 / 0.0114 / 0.0066，BERT 为 0.0910 / 0.0586 / 0.0493。K=16 时两个模型的 Adjusted Rand Index 为 0.1457，跨作者前五近邻平均只有 0.28 个重叠。这说明模型几何分群和近邻排序不同，不能推出哪个模型的文学理解能力更强。两模型 cosine 分数的绝对值也不可直接比较。
+
+本轮只做离线调查，暂不接入产品推荐；后续用人工判断的作品相似性小样本检验近邻实用性。

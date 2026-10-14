@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
-HTML="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/poeticus-data/reports/recommendations/cluster_full/cluster-explorer.html"
+MODEL="${1:-bert}"
+case "$MODEL" in
+  ""|bert) FILENAME="cluster-explorer.html" ;;
+  qwen) FILENAME="qwen-cluster-explorer.html" ;;
+  *) printf '用法：bash %s [bert|qwen]\n' "$0" >&2; exit 2 ;;
+esac
+HTML="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/poeticus-data/reports/recommendations/cluster_full/$FILENAME"
 if [[ ! -f "$HTML" ]]; then
   printf '聚类图尚未生成：%s\n' "$HTML" >&2
   exit 1

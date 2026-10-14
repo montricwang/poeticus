@@ -9,18 +9,14 @@ from pathlib import Path
 import numpy as np
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dir", type=Path, required=True)
-    parser.add_argument("--corpus", type=Path, required=True)
-    args = parser.parse_args()
-
+def verify_output(data_dir: Path, corpus_path: Path) -> tuple[np.ndarray, str]:
+    """Return vectors and SHA256 after validating the AutoDL transfer and row mapping."""
     filename = "qwen3_all_3491"
-    matrix_path = args.data_dir / f"{filename}.npy"
-    metadata_path = args.data_dir / f"{filename}_manifest.json"
-    prepared_input = args.data_dir / "qwen_gpu_input.jsonl"
+    matrix_path = data_dir / f"{filename}.npy"
+    metadata_path = data_dir / f"{filename}_manifest.json"
+    prepared_input = data_dir / "qwen_gpu_input.jsonl"
     manifest = json.loads(metadata_path.read_text(encoding="utf-8"))
-    corpus = json.loads(args.corpus.read_text(encoding="utf-8"))
+    corpus = json.loads(corpus_path.read_text(encoding="utf-8"))
     source_ids = [work["id"] for work in corpus]
 
     if manifest["source_ids"] != source_ids:
@@ -30,7 +26,8 @@ def main() -> None:
         != manifest["input_sha256"]
     ):
         raise ValueError("AutoDL input checksum mismatch")
-    if hashlib.sha256(matrix_path.read_bytes()).hexdigest() != manifest["file_sha256"]:
+    vector_sha256 = hashlib.sha256(matrix_path.read_bytes()).hexdigest()
+    if vector_sha256 != manifest["file_sha256"]:
         raise ValueError("Downloaded vector file checksum mismatch")
 
     matrix = np.load(matrix_path, allow_pickle=False)
@@ -40,6 +37,15 @@ def main() -> None:
         raise ValueError("Nonfinite vectors")
     if not np.allclose(np.linalg.norm(matrix, axis=1), 1, atol=0.0003):
         raise ValueError("Vectors are not normalized")
+    return matrix, vector_sha256
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-dir", type=Path, required=True)
+    parser.add_argument("--corpus", type=Path, required=True)
+    args = parser.parse_args()
+    matrix, _ = verify_output(args.data_dir, args.corpus)
     print(
         "PASS",
         matrix.shape,
