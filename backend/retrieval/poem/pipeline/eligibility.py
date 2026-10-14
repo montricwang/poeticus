@@ -1,4 +1,4 @@
-"""多路检索和融合后的候选资格筛选。
+"""Poem Retrieval 的作品资格规则（融合前、融合后共用）。
 
 仅剔除现有元数据足以明确排除的候选。朝代标签过于粗略，
 无法确定同朝代作品或年代重叠作品的先后关系；
@@ -15,6 +15,22 @@ from backend.retrieval.poem.chronology import (
 from backend.retrieval.poem.pipeline.fusion import FusedCandidate
 
 RejectionReason = Literal["self_hit", "clearly_later"]
+
+
+def classify_work_eligibility(
+    work_id: str,
+    dynasty: str | None,
+    *,
+    self_work_ids: Collection[str],
+    target_dynasty: str | None,
+) -> tuple[ChronologyStatus, RejectionReason | None]:
+    """判断一个诗歌 Work 是否可作为候选，供两种排序顺序复用。"""
+    chronology_status = classify_dynasty_relation(dynasty, target_dynasty)
+    if work_id in self_work_ids:
+        return chronology_status, "self_hit"
+    if chronology_status == "clearly_later":
+        return chronology_status, "clearly_later"
+    return chronology_status, None
 
 
 @dataclass(frozen=True)
@@ -62,26 +78,17 @@ def apply_candidate_eligibility(
         self_work_ids.add(current_work_id)
 
     for candidate in candidates:
-        chronology_status = classify_dynasty_relation(
+        chronology_status, reason = classify_work_eligibility(
+            candidate.work_id,
             candidate.dynasty,
-            target_dynasty,
+            self_work_ids=self_work_ids,
+            target_dynasty=target_dynasty,
         )
-
-        if candidate.work_id in self_work_ids:
+        if reason is not None:
             rejected.append(
                 RejectedCandidate(
                     candidate=candidate,
-                    reason="self_hit",
-                    chronology_status=chronology_status,
-                )
-            )
-            continue
-
-        if chronology_status == "clearly_later":
-            rejected.append(
-                RejectedCandidate(
-                    candidate=candidate,
-                    reason="clearly_later",
+                    reason=reason,
                     chronology_status=chronology_status,
                 )
             )
