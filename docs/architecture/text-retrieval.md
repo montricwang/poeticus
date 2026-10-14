@@ -26,12 +26,25 @@ Work-level RRF
         ↓
 Candidate Eligibility
         ↓
+Work Composition Filter（可选，检查已验证的组诗重复关系）
+        ↓
 Top-K candidates
         ↓
 Agent 判断
 ```
 
 Agent 对“借了谁哪一句 / 化用了哪段前代文本”优先使用自建 Corpus Tool。第一轮结果弱时，允许在 2 次工具预算内换文本锚点再检索。
+
+### Werneror 组诗重复关系（#151，Draft PR #286）
+
+2026-10-14 对 853,385 条 Work 做全量扫描，利用同作者、同朝代的完整正文拼接识别到 **75,327** 条严格拼接合集；忽略标点／空白／全半角后再找到 **6** 条，共 **75,333** 条合集、**269,556** 条成员关系。另有 **231** 条只匹配部分成员的可疑长记录，**146** 条正文覆盖率至少 80%，**不纳入自动过滤**；一两字异文也不凭编辑距离直接入表。
+
+- 离线扫描：`scripts/corpus/werneror_group_audit.py`、`scan_normalized_compositions.py`；疑似残缺／夹序候选由 `scan_partial_compositions.py` 产生仅供复核的报告。
+- 快照导出：`scripts/corpus/export_work_compositions.py`；每行含合集 Work ID、成员 Work ID、顺序、原文位置和 match_kind。私有快照保存在 `poeticus-data/retrieval/relationships/v3/`，其中 `work_compositions.sqlite3` 用于当前 WSL Serving，`work_compositions.csv` 可供后续导入专用 PostgreSQL。PostgreSQL DDL 模板：`scripts/corpus/work_compositions_postgres.sql`，**不属于阅读库 poems 表的迁移**。
+- 在线接入采用**显式启用**，旧启动方式不改变行为。WSL 启动参数：`python -m scripts.retrieval.run_serving --composition-db ../poeticus-data/retrieval/relationships/v3/work_compositions.sqlite3`（还需要原有的 Bearer Token、模型和索引资产）。启动检查来源 Corpus SHA-256 和关系行数，不匹配就拒绝启用。
+- Filter 在原 Eligibility 后，对 Top-32 候选查关系并重新取 Top-K，保持 RRF 原始相对顺序。已识别当前独立作品 ID 时，只排除**实际命中文本也落在当前作品全文里**的合集；同一次召回 parent 与 member 时，也只有返回片段重合才去重。避免标题相似导致误删。
+- 本地 CPU 真实 Serving A/B 中，陆游《鹧鸪天·其六》、杜牧《赠别二首》对应的自我合集被排除；晏殊另一首《破阵子》被保留。这个验证**不等于已重启 WSL 常驻服务、更不等于 Railway→Tunnel→Agent 端到端验收**；不应据此声称线上已生效。源 Work JSONL、Embedding、FAISS、BM25 均未变更。
+
 
 ### Full Corpus
 
