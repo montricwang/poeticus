@@ -36,6 +36,10 @@ def main() -> None:
         default=DEFAULT_MODEL_ROOT,
     )
     parser.add_argument("--device")
+    parser.add_argument(
+        "--composition-db", type=Path, default=None,
+        help="启用组诗关系去重：指定完整验证并带 manifest 的 SQLite 快照",
+    )
     parser.add_argument("--search-k", type=int, default=100)
     parser.add_argument("--rrf-k", type=int, default=60)
     parser.add_argument("--host", default="127.0.0.1")
@@ -60,6 +64,7 @@ def main() -> None:
         device=args.device,
         search_k=args.search_k,
         rrf_k=args.rrf_k,
+        composition_db=args.composition_db,
     )
     app = create_app(
         runtime,

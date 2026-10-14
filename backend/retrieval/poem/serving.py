@@ -7,11 +7,12 @@ BM25 的实现位于 serving_channels.py。
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
 
 from backend.retrieval.poem.chronology import KNOWN_DYNASTIES
+from backend.retrieval.poem.composition_filter import WorkCompositionLookup, filter_compositions
 from backend.retrieval.poem.metadata_store import MetadataStore
 from backend.retrieval.poem.service import RetrievalStatus, TextRetrievalService
 from backend.retrieval.poem.serving_channels import (
@@ -128,6 +129,7 @@ class RetrievalServingRuntime:
         search_k: int = 100,
         rrf_k: int = 60,
         stage_callback: Callable[[str], None] | None = None,
+        composition_db: Path | None = None,
     ):
         if search_k <= 0:
             raise ValueError("search_k 必须为正整数")
@@ -205,6 +207,15 @@ class RetrievalServingRuntime:
         self.startup_profile["metadata_ready_ms"] = (
             time.perf_counter() - started
         ) * 1000
+        self.compositions = (
+            WorkCompositionLookup(
+                composition_db, work_sha256=metadata_stats["work_sha256"],
+            )
+            if composition_db is not None else None
+        )
+        self.startup_profile["composition_relations"] = (
+            str(self.compositions.relation_rows) if self.compositions else "disabled"
+        )
         if stage_callback:
             stage_callback("metadata")
 
@@ -314,7 +325,7 @@ class RetrievalServingRuntime:
                 self.lexical,
             ],
             per_channel_top_k=self.search_k,
-            final_top_k=final_top_k,
+            final_top_k=max(final_top_k, 32) if self.compositions else final_top_k,
             rrf_k=self.rrf_k,
         )
 
@@ -364,18 +375,32 @@ class RetrievalServingRuntime:
                 )
             )
 
+        composition_ms = 0.0
+        if self.compositions is not None:
+            filter_started = time.perf_counter()
+            filtered = filter_compositions(
+                candidates, aliases, self.compositions,
+                current_text=current_text, final_top_k=final_top_k,
+            )
+            candidates = [
+                replace(item, rank=rank)
+                for rank, item in enumerate(filtered, 1)
+            ]
+            composition_ms = (time.perf_counter() - filter_started) * 1000
+
         timings: dict[str, object] = {
             "current_alias_lookup_ms": alias_ms,
             "target_dynasty": effective_target_dynasty,
             "target_dynasty_source": dynasty_source,
             "service_total_ms": service_ms,
+            "composition_filter_ms": composition_ms,
             "orchestration_ms": max(0.0, service_ms - channel_total),
             "channels": profiles,
-            "total_ms": alias_ms + service_ms,
+            "total_ms": alias_ms + service_ms + composition_ms,
         }
 
         return ServingSearchResult(
-            status=result.status,
+            status="ok" if candidates else "no_hit",
             query=query,
             candidates=tuple(candidates),
             current_work_aliases=tuple(sorted(aliases)),

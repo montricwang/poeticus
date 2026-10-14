@@ -19,7 +19,8 @@ workspace/
     │   ├── embeddings/           # 离线计算向量及每批 manifest
     │   ├── faiss/                # FAISS 索引及 manifest
     │   ├── lexical/              # BM25 / SQLite 索引
-    │   └── serving/              # Retrieval metadata SQLite 及 manifest
+    │   ├── serving/              # Retrieval metadata SQLite 及 manifest
+    │   └── relationships/         # 组诗去重快照 v3：SQLite、CSV、manifest
     ├── models/                   # Qwen / BERT 等模型
     └── reports/
         ├── epub-import/          # EPUB 诊断、审计及复核材料
@@ -44,6 +45,7 @@ workspace/
 | `retrieval/corpus/*.jsonl` | 完整 Werneror 作品和 Chunk 中间数据，用于离线重建 | 保留，重建索引时可能需要 |
 | `retrieval/embeddings/` | 原始数千万 float16 向量，重建成本高 | **重点保护** |
 | `retrieval/faiss/`、`lexical/`、`serving/` | 线上可用的检索索引与元数据 | **必须保留可用 Serving 版本** |
+| `retrieval/relationships/v3/` | 组诗重复过滤的 SQLite 快照、导入 CSV 与来源指纹 manifest；不是原始语料，也不是 Railway PostgreSQL 表 | **与当前 Serving 一起保留／备份**，避免启动时缺失或版本不匹配 |
 | `models/` | 模型权重及指纹 | 保护与 Embedding manifest 匹配的模型 |
 | `reports/` | 诊断、Benchmark、历史研究记录 | 按证据价值归档；不要求永久保留每次运行 |
 
@@ -70,7 +72,7 @@ workspace/
 
 **不要在目标已有同名文件时覆盖，不要用 `git clean -fdx` 清理私人数据。** 先确认两个文件树中的文件、大小、hash 与用途，再移动。大目录建议在同一磁盘分区内移动；迁移途中保持原资料备份，迁移前停止读写相应数据的进程。原始数据、原始 Embedding 和 Serving Bundle 不应在迁移步骤中被自动重建。
 
-**重要：当前腾讯云生产机还使用旧 `/opt/poeticus-data/output/retrieval` 布局。** 未在该主机完成数据迁移前，不要向它部署会按新目录查找索引的 Retrieval 代码；历史主机信息见 [部署文档](deployment.md)。
+**历史说明**：曾经的腾讯云 Retrieval 主机已销毁；旧 `/opt/poeticus-data/output/retrieval` 不是现在的生产路径，切勿照此向旧节点部署。当前实际运行在 WSL，按 [部署文档](deployment.md) 使用 `poeticus-data/retrieval/relationships/v3/`。
 
 ## 4. 重新生成与验证
 
@@ -92,7 +94,7 @@ python -m scripts.corpus.db_import --import
 python -m scripts.retrieval.inspect_serving_bundle
 ```
 
-正常加载后，再运行 Retrieval E2E 和 benchmark；**文件存在不等于索引能加载或召回正确**。完整模型与向量构建需要额外 `requirements-retrieval.txt` 依赖。
+正式启动时还需确认 `retrieval/relationships/v3/work_compositions.sqlite3` 与相邻 `work_compositions_manifest.json` 同时存在，并与当前 Werneror Corpus 指纹相符。完整的合集关系表可由 `scripts/corpus/export_work_compositions.py` 根据已有审计报告重新导出（归一化补漏需传 `--normalized-audit`），但是**首次缺失快照时不要直接重跑向量或索引**。正常加载后，再运行 Retrieval E2E 和 benchmark；**文件存在不等于索引能加载或召回正确**。完整模型与向量构建需要额外 `requirements-retrieval.txt` 依赖。
 
 ## 5. 脚本和报告的保留约定
 

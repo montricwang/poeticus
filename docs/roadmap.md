@@ -1,7 +1,8 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-09  
-> 当前状态：v0.3.0 发布基线已经形成。公开阅读、Agent、AI Eval、Hybrid Text Retrieval 和独立 Retrieval Serving 均已跑通真实线上链路。
+> 更新日期：2026-10-14
+>
+> 当前状态：v0.4.0 公网版；公开阅读、Agent、AI Eval 与 Poem Retrieval 已具备真实线上链路。2026-10-14 完成 Werneror 拼接关系去重与正式站点验收；WSL/Tunnel 是按需运行的检索依赖，而不是已迁往云端的常驻节点。
 
 Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog 和 ADR；具体任务继续进入 GitHub Issues。
 
@@ -27,9 +28,10 @@ Poeticus 已经走通：
 - deterministic Query Plan；
 - Work-level RRF；
 - chronology Candidate Eligibility；
+- 组诗重复拼接关系查表过滤（PR #286、已关闭 #151）；
 - FAISS IVFPQ Serving；
 - 独立 Text Retrieval HTTP Service；
-- 腾讯云 2C8G CPU production node；
+- WSL CPU Retrieval Serving + Cloudflare 命名 Tunnel（原腾讯云 2C8G 节点已销毁）；
 - Railway Agent → HTTPS → Retrieval → candidate → final answer 的真实 E2E。
 
 Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、更多 Chunk、更多 sparse ranking 变体做惯性扩张。
@@ -38,15 +40,11 @@ Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、
 
 ### 2.1 Production hygiene
 
-优先完成已经暴露的运维边界：
+当前部署是 Railway Web/Agent + Cloudflare 命名 Tunnel + WSL Retrieval，不再维护已销毁腾讯云节点的公网 IP 证书、Nginx 或 2C8G 扩容规划。
 
-- #167：验证 Let’s Encrypt 公网 IP 证书自动续期和 Nginx reload；
-- #151：Corpus duplicate / variant self-hit profiling；
-- 观察 Railway SFO → 腾讯云上海的长期 latency / timeout；
-- 记录真实流量以后，再判断是否需要 4C8G；
-- 只有 Retrieval 更新频率开始造成维护负担，再建设完整 CI/CD。
-
-当前 2C8G 没有持续 swap / OOM，扩容不作为预防性动作。
+- [#151](https://github.com/montricwang/poeticus/issues/151) 已完成：Werneror 的完整拼接自我重复由关系表过滤，并在正式页面验收；少量异文和不完整拼接依约留待真实 Case。
+- 当前运维重点是 WSL CPU Serving 和 Windows `cloudflared` 的重启恢复、Bearer 鉴权、Railway ↔ Tunnel 的真实可用性及错误降级（[#180](https://github.com/montricwang/poeticus/issues/180)）。
+- 未来确有长期可用性或流量需求，再考虑独立云主机、性能基线、容量及必要的 Retrieval CI/CD。
 
 ### 2.2 工程基础补课
 

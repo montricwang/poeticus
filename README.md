@@ -22,7 +22,7 @@ Poeticus 是一个面向中国古典诗词的 AI 辅助阅读器。读者可以�
 - **划词追问**：选中诗词中的字词或句子，将引用、作品信息和问题一起交给 AI。
 - **连续讨论**：围绕同一作品保留最近几轮有效问答作为上下文；阅读历史和草稿在当前浏览器本地保存。
 - **典故查证**：Agent 根据问题决定是否使用 CNKGraph 典故检索。检索结果是参考线索，需要继续结合原文判断。
-- **前代文本检索**：询问“这句借了谁哪一句、可能化用了什么前代文本”时，Agent 可以调用自建 Hybrid Retrieval；候选由 Qwen sentence/clause Dense Retrieval、character n-gram BM25、Work-level RRF 与 chronology filtering 共同产生。当前检索运行在开发机 WSL，经 Cloudflare Tunnel 供线上按需调用，电脑或 Tunnel 离线时不可用。
+- **前代文本检索**：询问“这句借了谁哪一句、可能化用了什么前代文本”时，Agent 可以调用自建 Hybrid Retrieval；候选由 Qwen sentence/clause Dense Retrieval、character n-gram BM25、Work-level RRF 与 chronology filtering 共同产生。当前检索运行在开发机 WSL，经 Cloudflare Tunnel 供线上按需调用；已启用 Werneror 组诗拼接去重，以免同一首作品被合集重复收录后误导 Agent（[PR #286](https://github.com/montricwang/poeticus/pull/286)）。电脑或 Tunnel 离线时不可用。
 - **整首赏析**：生成现代汉语译文、词语解释和作品赏析；AI 回答支持流式呈现。
 
 Poeticus 尝试让**作品成为阅读中心，AI 成为可以随时交谈的伴读者**。界面仍在持续调整，见 [设计讨论 #63](https://github.com/montricwang/poeticus/issues/63)。

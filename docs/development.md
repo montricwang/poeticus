@@ -177,7 +177,8 @@ python -m pip install -r requirements-retrieval.txt
 - compact SQLite metadata；
 - deterministic Query Plan；
 - Work-level RRF；
-- Candidate Eligibility。
+- Candidate Eligibility；
+- **可选 Work Composition Filter**：通过已验证的 Werneror 合集↔独立诗篇关系表压制重复命中；只有指定 `--composition-db` 才启用。
 
 完整架构见 [Poem Retrieval 架构](architecture/text-retrieval.md)。
 
@@ -209,8 +210,11 @@ python -m pytest tests/retrieval/test_serving_paths.py tests/retrieval/test_meta
 
 ```bash
 python -m scripts.retrieval.inspect_serving_bundle
-python -m scripts.retrieval.run_serving --device cpu
+python -m scripts.retrieval.run_serving --device cpu \
+  --composition-db ../poeticus-data/retrieval/relationships/v3/work_compositions.sqlite3
 ```
+
+`--composition-db` 对应的只读 SQLite 快照及 manifest 属于**私人运行资产**，与 `serving/` 的 Metadata SQLite 是两份不同数据；不会自动创建 PostgreSQL 表。遗漏该参数时服务可正常启动，但组诗去重不会启用。2026-10-14 已在带该参数的真实 WSL Runtime 与正式 `poeticus.app` Agent 页面验收陆游→杜甫检索；操作和退化检查见 [部署文档](deployment.md)。
 
 服务默认监听 WSL 内 `127.0.0.1:8787`。本地开发 Web／Agent 只需要前端和后端，`POETICUS_RETRIEVAL_URL` 留空则不注册自建检索工具；在本地独立调试 Retrieval 时，只需启动 WSL Serving，不必开启公网 Tunnel。
 
