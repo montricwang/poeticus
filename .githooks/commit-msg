@@ -1,0 +1,3 @@
+#!/bin/sh
+# Optional local hook: enable once with git config --local core.hooksPath .githooks
+npx --yes --package=@commitlint/cli@21.2.3 commitlint --config commitlint.config.mjs --edit "$1"
