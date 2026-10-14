@@ -1,6 +1,6 @@
 -- 未来独立 Poem Retrieval PostgreSQL 的关系表模板。
 -- 不适用于阅读语料库 poems 的现有迁移。
--- 此表只记录 Werneror Work 的 exact_concatenation 关系，不修改原始作品。
+-- 此表记录 Werneror 的完整逐字拼接与格式归一化完整拼接关系，不修改原始作品。
 
 CREATE TABLE IF NOT EXISTS retrieval_work_compositions (
     parent_work_id TEXT NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS retrieval_work_compositions (
     member_order INTEGER NOT NULL CHECK (member_order >= 1),
     start_char INTEGER NOT NULL CHECK (start_char >= 0),
     end_char INTEGER NOT NULL CHECK (end_char > start_char),
-    match_kind TEXT NOT NULL CHECK (match_kind = 'exact_concatenation'),
+    match_kind TEXT NOT NULL CHECK (match_kind IN ('exact_concatenation', 'normalized_concatenation')),
     PRIMARY KEY (parent_work_id, member_order),
     CHECK (parent_work_id <> member_work_id)
 );

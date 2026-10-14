@@ -19,9 +19,11 @@ from collections.abc import Iterator
 from pathlib import Path
 
 from backend.data_paths import RETRIEVAL_CORPUS_ROOT, RETRIEVAL_REPORTS_ROOT, RETRIEVAL_ROOT
+from scripts.corpus.scan_normalized_compositions import normalize_poem
 
 DEFAULT_WORKS = RETRIEVAL_CORPUS_ROOT / "werneror_works.jsonl"
 DEFAULT_AUDIT = RETRIEVAL_REPORTS_ROOT / "werneror_group_audit_matches.jsonl"
+DEFAULT_NORMALIZED_AUDIT = RETRIEVAL_REPORTS_ROOT / "werneror_group_normalized_matches.jsonl"
 DEFAULT_OUTPUT_DIR = RETRIEVAL_ROOT / "relationships"
 
 CSV_COLUMNS = (
@@ -39,7 +41,7 @@ CREATE TABLE work_compositions (
     member_order INTEGER NOT NULL CHECK (member_order >= 1),
     start_char INTEGER NOT NULL CHECK (start_char >= 0),
     end_char INTEGER NOT NULL CHECK (end_char > start_char),
-    match_kind TEXT NOT NULL CHECK (match_kind = 'exact_concatenation'),
+    match_kind TEXT NOT NULL CHECK (match_kind IN ('exact_concatenation', 'normalized_concatenation')),
     PRIMARY KEY (parent_work_id, member_order),
     CHECK (parent_work_id <> member_work_id)
 );
@@ -64,22 +66,27 @@ def _source_to_work_id(source_id: str) -> str:
     return f"werneror_poetry:{source_id}"
 
 
-def _wanted_work_ids(audit_path: Path) -> tuple[set[str], int]:
+def _wanted_work_ids(audit_paths: tuple[Path, ...]) -> tuple[set[str], int]:
     wanted: set[str] = set()
     parents: set[str] = set()
-    for item in _audit_rows(audit_path):
-        parent = item["work_id"]
-        source_ids = item["member_source_record_ids"]
-        if not isinstance(parent, str) or not isinstance(source_ids, list) or len(source_ids) < 2:
-            raise ValueError("audit 缺少合集 Work ID 或至少两个成员")
-        if parent in parents:
-            raise ValueError(f"合集在审计中重复出现：{parent}")
-        parents.add(parent)
-        wanted.add(parent)
-        for source_id in source_ids:
-            if not isinstance(source_id, str):
-                raise ValueError(f"合集 {parent} 的成员来源 ID 无效")
-            wanted.add(_source_to_work_id(source_id))
+    for path in audit_paths:
+        for item in _audit_rows(path):
+            parent = item["work_id"]
+            source_ids = item["member_source_record_ids"]
+            if (
+                not isinstance(parent, str)
+                or not isinstance(source_ids, list)
+                or len(source_ids) < 2
+            ):
+                raise ValueError("audit 缺少合集 Work ID 或至少两个成员")
+            if parent in parents:
+                raise ValueError(f"合集在审计中重复出现：{parent}")
+            parents.add(parent)
+            wanted.add(parent)
+            for source_id in source_ids:
+                if not isinstance(source_id, str):
+                    raise ValueError(f"合集 {parent} 的成员来源 ID 无效")
+                wanted.add(_source_to_work_id(source_id))
     return wanted, len(parents)
 
 
@@ -118,6 +125,25 @@ def _validated_members(
     parent = works[parent_id]
     if parent["source_record_id"] != item["source_record_id"]:
         raise ValueError(f"合集来源 ID 不一致：{parent_id}")
+    kind = item.get("match_kind", "exact_concatenation")
+    if kind not in ("exact_concatenation", "normalized_concatenation"):
+        raise ValueError(f"未知拼接关系类型：{kind}")
+    parent_text = parent["content"]
+    # 归一化后的索引不等于原文偏移，记录每个有效字符来自哪个原文位置。
+    if kind == "normalized_concatenation":
+        import unicodedata
+
+        positions = [
+            index
+            for index, original in enumerate(parent_text)
+            for character in unicodedata.normalize("NFKC", original)
+            if character.isalnum()
+        ]
+        comparable = normalize_poem(parent_text)
+    else:
+        positions = []
+        comparable = parent_text
+
     offset = 0
     for order, source_id in enumerate(source_ids, 1):
         if not isinstance(source_id, str):
@@ -125,20 +151,26 @@ def _validated_members(
         member_id = _source_to_work_id(source_id)
         member = works[member_id]
         text = member["content"]
+        piece = normalize_poem(text) if kind == "normalized_concatenation" else text
         if (
             member_id == parent_id
-            or len(text) < min_member_chars
-            or len(text) >= len(parent["content"])
+            or len(piece) < min_member_chars
+            or len(piece) >= len(comparable)
             or member["author"] != parent["author"]
             or member["dynasty"] != parent["dynasty"]
             or member["source_record_id"] != source_id
-            or not parent["content"].startswith(text, offset)
+            or not comparable.startswith(piece, offset)
         ):
-            raise ValueError(f"成员不能在此位置逐字匹配：{parent_id} / {member_id} / {offset}")
-        end = offset + len(text)
-        yield parent_id, member_id, order, offset, end, "exact_concatenation"
+            raise ValueError(
+                f"成员不能在此位置逐字匹配：{parent_id} / {member_id} / {offset}"
+            )
+        end = offset + len(piece)
+        start_char = positions[offset] if positions else offset
+        # 起止偏移均位于原文。中段包含该段末尾的分隔标点，最后一段以末尾有效字结束。
+        end_char = (positions[end] if end < len(positions) else positions[end - 1] + 1) if positions else end
+        yield parent_id, member_id, order, start_char, end_char, kind
         offset = end
-    if offset != len(parent["content"]):
+    if offset != len(comparable):
         raise ValueError(f"成员拼接后未覆盖合集全文：{parent_id}")
 
 
@@ -156,9 +188,15 @@ def export(
     audit_path: Path,
     output_dir: Path,
     min_member_chars: int = 24,
+    normalized_audit_path: Path | None = None,
 ) -> dict[str, object]:
     """从两份只读材料生成附带来源指纹的 SQLite 和 PostgreSQL CSV 快照。"""
-    wanted, expected_parents = _wanted_work_ids(audit_path)
+    audit_paths = (
+        (audit_path, normalized_audit_path)
+        if normalized_audit_path is not None
+        else (audit_path,)
+    )
+    wanted, expected_parents = _wanted_work_ids(audit_paths)
     works = _load_selected_works(works_path, wanted)
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "work_compositions.sqlite3"
@@ -171,6 +209,7 @@ def export(
 
     count = 0
     parents = 0
+    kind_counts: dict[str, int] = {}
     used_members: set[str] = set()
     conn = sqlite3.connect(db_path)
     try:
@@ -179,29 +218,38 @@ def export(
             writer = csv.writer(stream)
             writer.writerow(CSV_COLUMNS)
             with conn:
-                for item in _audit_rows(audit_path):
-                    relations = list(
-                        _validated_members(item, works, min_member_chars=min_member_chars)
-                    )
-                    if len(relations) < 2:
-                        raise ValueError("合法合集至少要有两个成员")
-                    conn.executemany(
-                        "INSERT INTO work_compositions VALUES (?, ?, ?, ?, ?, ?)",
-                        relations,
-                    )
-                    writer.writerows(relations)
-                    count += len(relations)
-                    parents += 1
-                    used_members.update(row[1] for row in relations)
+                for audit_file in audit_paths:
+                    for item in _audit_rows(audit_file):
+                        relations = list(
+                            _validated_members(
+                                item, works, min_member_chars=min_member_chars
+                            )
+                        )
+                        if len(relations) < 2:
+                            raise ValueError("合法合集至少要有两个成员")
+                        conn.executemany(
+                            "INSERT INTO work_compositions VALUES (?, ?, ?, ?, ?, ?)",
+                            relations,
+                        )
+                        writer.writerows(relations)
+                        count += len(relations)
+                        parents += 1
+                        kind = relations[0][5]
+                        kind_counts[kind] = kind_counts.get(kind, 0) + 1
+                        used_members.update(row[1] for row in relations)
 
         db_count = conn.execute("SELECT COUNT(*) FROM work_compositions").fetchone()[0]
         if count != db_count or parents != expected_parents:
             raise ValueError("写出行数与审计记录数不符")
 
         manifest: dict[str, object] = {
-            "relation_kind": "exact_concatenation",
+            "relation_kinds": kind_counts,
             "corpus_sha256": _sha256(works_path),
             "audit_sha256": _sha256(audit_path),
+            "normalized_audit_sha256": (
+                _sha256(normalized_audit_path)
+                if normalized_audit_path is not None else None
+            ),
             "csv_sha256": _sha256(csv_path),
             "min_member_chars": min_member_chars,
             "parent_works": parents,
@@ -211,7 +259,7 @@ def export(
             "sqlite_path": str(db_path),
             "notes": [
                 "成员位置采用 Python Unicode 字符索引，起点含、终点不含。",
-                "匹配的是精确正文拼接，不代表已校勘文学组诗关系。",
+                "仅有完整逐字或格式归一化后完整拼接，不代表已校勘文学组诗关系。",
                 "同一独立 Work 可以在合集的不同位置重复出现。",
                 "只供 Poem Retrieval 的业务候选校验；不与阅读库 poems UUID 关联。",
             ],
@@ -229,6 +277,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--works", type=Path, default=DEFAULT_WORKS)
     parser.add_argument("--audit", type=Path, default=DEFAULT_AUDIT)
+    parser.add_argument(
+        "--normalized-audit", type=Path, default=None,
+        help="经复核的格式差异拼接候选；未指定时仅导出逐字相同关系",
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--min-member-chars", type=int, default=24)
     args = parser.parse_args()
@@ -239,6 +291,7 @@ def main() -> None:
         audit_path=args.audit,
         output_dir=args.output_dir,
         min_member_chars=args.min_member_chars,
+        normalized_audit_path=args.normalized_audit,
     )
     print(json.dumps(report, ensure_ascii=False, indent=2))
 

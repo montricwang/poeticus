@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from scripts.corpus.export_work_compositions import export
+from scripts.corpus.scan_normalized_compositions import normalize_poem
 
 
 def _fixture(tmp_path: Path, *, broken: bool = False) -> tuple[Path, Path]:
@@ -59,7 +60,7 @@ def test_export_creates_queryable_relation_table_and_postgres_csv(tmp_path: Path
     assert report["parent_works"] == 2
     assert report["relation_rows"] == 4
     assert report["distinct_member_works"] == 2
-    assert report["relation_kind"] == "exact_concatenation"
+    assert report["relation_kinds"] == {"exact_concatenation": 2}
     assert corpus.read_bytes() == source_before
 
     db = sqlite3.connect(tmp_path / "output/work_compositions.sqlite3")
@@ -126,3 +127,55 @@ def test_unknown_work_and_duplicate_host_are_rejected(tmp_path: Path):
     audit.write_text(text.replace("宋.csv:2", "宋.csv:missing"), encoding="utf-8")
     with pytest.raises(ValueError, match="缺少审计中的 Work ID"):
         export(works_path=corpus, audit_path=audit, output_dir=tmp_path / "output")
+
+
+def test_normalized_exact_concatenation_validates_offsets(tmp_path: Path):
+    """仅标点变化仍是完整拼接；偏移必须返回原文字符的位置。"""
+    corpus, audit = _fixture(tmp_path)
+    records = [json.loads(line) for line in corpus.read_text(encoding="utf8").splitlines()]
+    a = records[0]["content"]
+    b = records[1]["content"]
+    # parent 不使用全角标点，且在首尾添加分隔符。
+    long_record = {
+        "work_id": "werneror_poetry:宋.csv:6",
+        "source_record_id": "宋.csv:6",
+        "content": "【" + a.replace("。", "，") + b + "】",
+        "author": "陆游",
+        "dynasty": "宋",
+    }
+    with corpus.open("a", encoding="utf8") as stream:
+        stream.write(json.dumps(long_record, ensure_ascii=False) + "\n")
+    normalized_audit = tmp_path / "normalized.jsonl"
+    normalized_audit.write_text(
+        json.dumps({
+            "work_id": long_record["work_id"],
+            "source_record_id": long_record["source_record_id"],
+            "member_source_record_ids": ["宋.csv:1", "宋.csv:2"],
+            "match_kind": "normalized_concatenation",
+        }, ensure_ascii=False) + "\n",
+        encoding="utf8",
+    )
+    manifest = export(
+        works_path=corpus,
+        audit_path=audit,
+        normalized_audit_path=normalized_audit,
+        output_dir=tmp_path / "output",
+    )
+    assert manifest["relation_kinds"] == {
+        "exact_concatenation": 2,
+        "normalized_concatenation": 1,
+    }
+    db = sqlite3.connect(tmp_path / "output/work_compositions.sqlite3")
+    try:
+        rows = db.execute(
+            "SELECT member_order, start_char, end_char, match_kind "
+            "FROM work_compositions WHERE parent_work_id=? ORDER BY member_order",
+            (long_record["work_id"],),
+        ).fetchall()
+        assert [r[0] for r in rows] == [1, 2]
+        assert all(r[3] == "normalized_concatenation" for r in rows)
+        assert 0 < rows[0][1] < rows[0][2] <= rows[1][1] < rows[1][2]
+        for (_, start, end, _), original in zip(rows, (a, b)):
+            assert normalize_poem(long_record["content"][start:end]) == normalize_poem(original)
+    finally:
+        db.close()
