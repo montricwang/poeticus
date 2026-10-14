@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from backend.retrieval.poem.chronology import DYNASTY_PERIODS
+from backend.retrieval.poem.chronology import KNOWN_DYNASTIES
 from backend.retrieval.poem.metadata_store import MetadataStore
 from backend.retrieval.poem.service import RetrievalStatus, TextRetrievalService
 from backend.retrieval.poem.serving_channels import (
@@ -71,7 +71,7 @@ def _dominant_known_dynasty(counts: dict[str, int]) -> str | None:
         (
             (dynasty, count)
             for dynasty, count in counts.items()
-            if dynasty in DYNASTY_PERIODS and count > 0
+            if dynasty in KNOWN_DYNASTIES and count > 0
         ),
         key=lambda item: (-item[1], item[0]),
     )

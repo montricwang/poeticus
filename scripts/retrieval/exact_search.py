@@ -26,7 +26,6 @@ from backend.retrieval.poem.embedding_artifact import (
     ExactShard as ExactShard,
 )
 from backend.retrieval.poem.chronology import (
-    DYNASTY_PERIODS as DYNASTY_PERIODS,
     candidate_prior_dynasties,
 )
 
