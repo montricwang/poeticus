@@ -36,7 +36,7 @@ Poeticus 已经走通：
 
 Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、更多 Chunk、更多 sparse ranking 变体做惯性扩张。
 
-## 2. v0.3.0 之后的近期事项
+## 2. v0.4.0 之后的近期事项
 
 ### 2.1 Production hygiene
 
@@ -95,6 +95,14 @@ Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、
 - SSE 中断 / 重试体验；
 - 目录与阅读区细节；
 - 赏析和对话之间的切换。
+
+10 月 14 日的桌面固定双栏、单行目录、自适应分页和提示框统一，已在独立 `feat/frontend-20261014` Worktree 做本地浏览器验证，**尚未合并／上线**。待用户完成视觉验收后，再作为前端 PR 收口并更新现行前端架构说明；不要把开发预览当作线上现状。
+
+### 2.6 诗学画像与推荐（研究阶段）
+
+[#156](https://github.com/montricwang/poeticus/issues/156)／[#157](https://github.com/montricwang/poeticus/issues/157) 的 3491 首词双模型实验见 [10 月 14 日开发日志](devlog/2026-10-14.md) 和 [聚类复现实验](../scripts/experiments/README-clustering.md)。BERT-CCPoem 与 Qwen3 Embedding 的无监督 K-means 分组没有得到可直接命名的稳定文学风格，**不接生产推荐或自动贴标签**。
+
+下一步先选 50–100 首典型与反例，分别论证题材／情感、意象、可举证写法与传统审美术语的文本证据和标注一致性；近邻是否有助于真实阅读由人工判断，暂不因已有向量就训练分类器。
 
 ## 3. 下一批能力候选
 
@@ -162,22 +170,19 @@ Document Corpus 与实时业务数据继续分开。订单、库存、余额一�
 
 > 做过 → 遇到过问题 → 能解释为什么这样做，以及没有这样做会怎样。
 
-v0.3.0 已经可以完整讲一条：
+v0.4.0 的当前真实链路应能讲清楚（不再是已销毁的腾讯云 VPS 方案）：
 
 ```text
-Frontend
-→ FastAPI
-→ LangGraph Agent
-→ Tool routing
-→ HTTP Retrieval Service
-→ Query Plan
-→ Dense + BM25
-→ RRF
-→ chronology filtering
-→ FAISS Serving
-→ Linux VPS
-→ Nginx / HTTPS
-→ production E2E
+Frontend（Railway Web）
+→ FastAPI / LangGraph Agent
+→ Tool routing / HTTP Retrieval Client
+→ HTTPS / Cloudflare Tunnel
+→ WSL CPU Poem Retrieval Service（按需启动）
+→ Query Plan / FAISS Dense + BM25 Sparse
+→ Work-level RRF / Chronology Eligibility
+→ Werneror 重复合集过滤
+→ Evidence 回传 / Agent 输出
+→ 网站上的实际提问与验证
 ```
 
 接下来学习重点从“再多做一个 Retrieval 组件”转向：
