@@ -3,39 +3,52 @@ updates:
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "09:00"
       timezone: Asia/Shanghai
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 2
     commit-message:
       prefix: "chore(deps)"
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    # Major upgrades need a separate compatibility review.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
   - package-ecosystem: pip
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "09:00"
       timezone: Asia/Shanghai
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "chore(deps)"
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Existing broad ranges already permit compatible MCP releases.
+      # Avoid repeated floor-only updates without a specific need.
+      - dependency-name: "mcp"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: "09:00"
       timezone: Asia/Shanghai
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "ci(actions)"
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
