@@ -1,6 +1,6 @@
 # Poeticus｜当前生产部署
 
-本文记录截至 2026-10-11 的生产部署、已验证的 Retrieval 接入方式和当前可执行的运维检查。原腾讯云检索节点已销毁；旧节点性能数据保留为历史基线。历史实验见 [开发日志](devlog/)、Release notes 与 [ADR-0001](adr/0001-separate-text-retrieval-service.md)。
+本文记录截至 2026-10-14 的生产部署、已验证的 Retrieval 接入方式和当前可执行的运维检查。原腾讯云检索节点已销毁；旧节点性能数据保留为历史基线。历史实验见 [开发日志](devlog/)、Release notes 与 [ADR-0001](adr/0001-separate-text-retrieval-service.md)。
 
 ## 1. 当前混合部署拓扑
 
@@ -28,7 +28,7 @@ Railway poeticus-web（FastAPI 同源托管 frontend/dist）
 
 Web、Agent 和阅读数据库运行在 Railway；独立的 Text Retrieval 仍运行在开发机 WSL。Cloudflare 同时承担主站域名入口与 Retrieval Tunnel 入口，但二者的 DNS／路由配置和故障边界不同。Tunnel **不是**运行检索模型的服务：Windows `cloudflared` 负责转发，WSL Serving 才执行模型与索引查询；两者必须各自运行。
 
-2026-10-11 已验证 `https://poeticus.app` 经 Cloudflare 到达 Railway 并返回 HTTP 200，命名 Tunnel `poeticus-retrieval` 曾离线（Cloudflare 1033），随后由操作者恢复。Railway 已配置 Retrieval URL／Token 变量，Agent 会尝试调用远程工具；**恢复 Tunnel 在线不等于已验证最新一次检索成功**：恢复时段的 Railway 日志仍出现过 `Text Retrieval Service 请求失败`，需按第 11 节重新做在线检索验收。
+2026-10-11 命名 Tunnel `poeticus-retrieval` 曾离线（Cloudflare 1033）后恢复，期间出现过 Retrieval 请求失败；这是**历史故障**。**2026-10-14 已重新验收**：带关系表的 WSL Retrieval 四组带鉴权 HTTP 检索成功（200、Top-8 正常），`https://retrieval.poeticus.app/health` 公网健康检查成功，正式网站 `https://poeticus.app` 上陆游《鹧鸪天》问答的 `POST /api/chat/stream` 返回 200，Agent 正确列出杜甫《小寒食舟中作》且不再把重复合集误作另一首陆游作品。该次验收未保存 Railway/Tunnel/WSL 三段关联 Trace。
 
 2026-10-11 更早曾使用临时 Cloudflare Quick Tunnel 完成两次 Railway → WSL 检索（HTTP 200），但实验结束时一度将 Railway URL 留空。这是历史测试，不是当前命名 Tunnel 的验收证据。
 
@@ -92,10 +92,13 @@ Railway PostgreSQL
 # 在 WSL，先进入 Poeticus 仓库并激活可用的 Python 环境
 # 预先在 ~/.config/poeticus/retrieval.env 中保存与 Railway 一致的 Bearer Token
 source ~/.config/poeticus/retrieval.env
-python -m scripts.retrieval.run_serving --device cpu
+python -m scripts.retrieval.run_serving --device cpu \
+  --composition-db ../poeticus-data/retrieval/relationships/v3/work_compositions.sqlite3
 # 另一个 WSL 终端
 curl -i http://127.0.0.1:8787/health
 ```
+
+组诗重复关系表是**独立于 Serving Metadata 的只读 SQLite 快照**：`../poeticus-data/retrieval/relationships/v3/work_compositions.sqlite3`，同目录的 `work_compositions_manifest.json` 记录 Corpus SHA-256 和行数。2026-10-14 的生产进程已通过 `--composition-db` 启用；该参数是**显式开关**，忘记添加也能启动，但**不会执行组诗去重**。来源指纹或行数不一致时启动失败；不要通过删除校验绕过资产版本不匹配。正式数据包含 75,333 条拼接合集、269,556 条成员关系；本地另有 PostgreSQL CSV/DDL 模板，但**没有向 Railway PostgreSQL 建表或导入**。生产阅读数据库 UUID 与检索 Work ID 不是同一身份，勿混用。详情见 [Poem Retrieval 架构](architecture/text-retrieval.md)。
 
 实际 Token 不得写入仓库、截图或公共文档。私有 `retrieval.env` 应位于仓库外，权限设为 `600`，文件内通过 `export POETICUS_RETRIEVAL_TOKEN=...` 提供变量；`source` 只对当前终端及它启动的子进程有效。启动脚本不会自动读取工作目录的 `.env`。**缺失或空白 Token 会在加载模型和索引前拒绝启动**；`create_app()` 也会拒绝空 Token。`/health` 继续公开，`/v1/retrieval/profile` 和 `/v1/retrieval/search` 必须携带正确 Bearer Token。服务默认监听 WSL 内 `127.0.0.1:8787`，不直接暴露公网。当前 Windows 端 `cloudflared` 转发到 `http://localhost:8787`；Windows → WSL 的 localhost 转发已在该开发机验证，换设备需重新检查。
 
@@ -227,7 +230,7 @@ Agent 调用 Retrieval 时，如果 `current.dynasty=null`：
 
 ### WSL + Tunnel
 
-1. WSL 内启动 `python -m scripts.retrieval.run_serving --device cpu`，检查 `http://127.0.0.1:8787/health` 为 200。
+1. WSL 内按第 4 节使用 `--device cpu --composition-db ../poeticus-data/retrieval/relationships/v3/work_compositions.sqlite3` 启动（并先加载私有 Bearer Token），检查 `http://127.0.0.1:8787/health` 为 200；注意 **health=200 不证明去重表已启用**。
 2. 在 Cloudflare Zero Trust 检查 `poeticus-retrieval` 为 `Healthy`，并确认 Windows `cloudflared` 进程持续运行。
 3. 从 Windows 或其他网络执行 `curl.exe -i https://retrieval.poeticus.app/v1/retrieval/profile`；**无 Token 时预期 401**，并在 WSL 看到对应 GET。Cloudflare `1033` 通常表示找不到在线 Tunnel；`502` 还需核对本地 Serving。
 4. 从正式域名发起一个应触发 `search_predecessor_texts` 的问题，确认 WSL 日志出现 `POST /v1/retrieval/search` 且返回 HTTP 200；Railway 不再有对应工具错误，并检查 Agent 最终回答。这才是命名 Tunnel 的端到端验收。
@@ -236,9 +239,11 @@ Agent 调用 Retrieval 时，如果 `current.dynasty=null`：
 
 ## 12. 当前运维边界
 
-已确认：本地 WSL Retrieval 能加载约 8.02 GiB Serving Bundle 并返回真实候选；**早期 Quick Tunnel** 测试中 Railway Agent 两次 `POST /v1/retrieval/search` 返回 HTTP 200；**当前**主站 `poeticus.app` 已通过 Cloudflare／Railway 返回 HTTP 200，Railway 配置了命名 Tunnel 的 Retrieval URL／Token，命名 Tunnel 曾因离线返回 1033 后恢复。尚未确认的是：恢复后命名 Tunnel 下 Railway 发起的检索 POST 是否在 WSL 返回 200、Agent 是否正确使用结果；恢复附近仍观察到工具请求失败，不能把过去 Quick Tunnel 的成功当成本次验收。
+2026-10-14 **已验收当前组诗去重链路**：WSL 进程命令确有 `--composition-db`；本机 8787 端口四组 Bearer 查询均返回 HTTP 200／8 条候选，陆游《鹧鸪天》两句与杜牧《赠别二首》的重复合集被排除，杜甫及晏殊独立作品保留；公网 Tunnel `/health` 返回 200。`https://poeticus.app` 已经实测打开陆游《鹧鸪天》并向 Agent 追问「片片轻鸥落晚沙」，浏览器网络请求 `POST /api/chat/stream` 返回 200，模型突出杜甫《小寒食舟中作》而没有旧的重复作品判断。**这不等于已在 Railway/WSL 日志中为同一请求建立完整关联 Trace**，也不能作为电脑关机后仍在线的保证。
+
+回归检查应使用这一真实 Case：提供陆游完整词文和作者信息、检索「片片轻鸥落晚沙」，返回候选里不得再有 Work `werneror_poetry:宋_4.csv:51342`，但杜甫《小寒食舟中作》要保留；杜牧《赠别二首》和晏殊另一首《破阵子·春景》作为相邻对照。无 `--composition-db` 的旧启动命令会**静默恢复旧的重复候选行为**，因此排障首先核对进程命令，不要仅看健康检查。
 
 `TEXT_RETRIEVAL_TIMEOUT_SECONDS = 15.0` 是 HTTP 客户端各阶段的超时设置，并非整个 Agent 请求的硬截止时间。连接、超时和响应错误会变成工具 `status:error`，目前没有自动熔断；断连后模型能否如实说明未检索仍需真实交互验收，见 [#180](https://github.com/montricwang/poeticus/issues/180)。
 
-旧 2C8G 数据仅作为新实例选型参考。已销毁节点的证书续期 [#167](https://github.com/montricwang/poeticus/issues/167) 不再是当前线上维护任务；重复语料与版本 self-hit 另见 [#151](https://github.com/montricwang/poeticus/issues/151)。
+旧 2C8G 数据仅作为新实例选型参考。已销毁节点的证书续期 [#167](https://github.com/montricwang/poeticus/issues/167) 不再是当前线上维护任务；完整拼接重复 self-hit 已由 [#151](https://github.com/montricwang/poeticus/issues/151) 修复并在正式页面验收；未确认异文与题名错配仍见 [#173](https://github.com/montricwang/poeticus/issues/173)。
 

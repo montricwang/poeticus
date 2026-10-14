@@ -22,7 +22,7 @@ Poeticus 的目标是帮助用户阅读中国古典诗词，必要时查阅**可
 | --- | --- | --- | --- |
 | **字词训诂** | “绸缪在这首词里作何解释？” | LLM 可以直接解释；`/api/analyze` 由模型输出 `glosses` | **部分具备**：缺独立、可追溯的古汉语义项证据；先由 [#24](https://github.com/montricwang/poeticus/issues/24) 验证词典增益，不预先接多个 Provider |
 | **典故考证** | “‘前度刘郎’是什么故事、有哪些典源？” | `lookup_allusion` → CNKGraph；模型结合当前作品判断 | **已实现查询，质量待评估**：歧义、变体、未命中、实际典源及授权；相关 [#24](https://github.com/montricwang/poeticus/issues/24)、[#32](https://github.com/montricwang/poeticus/issues/32) |
-| **文本互文** | “‘片片轻鸥落晚沙’与杜甫有什么关系？” | `lookup_reference`；另有条件开放的 `search_predecessor_texts` → 自建 Hybrid Retrieval | **检索已实现，解释证据仍有缺口**：候选正文上下文、作品归属、年代标签与“相似≠化用”；[#174](https://github.com/montricwang/poeticus/issues/174)、[#175](https://github.com/montricwang/poeticus/issues/175) |
+| **文本互文** | “‘片片轻鸥落晚沙’与杜甫有什么关系？” | `lookup_reference`；另有条件开放的 `search_predecessor_texts` → 自建 Poem Retrieval（已启用 Werneror 拼接去重，[PR #286](https://github.com/montricwang/poeticus/pull/286)） | **检索与去重已验收，解释证据仍有缺口**：候选全文上下文、年代标签与“相似≠化用”；[#174](https://github.com/montricwang/poeticus/issues/174)、[#175](https://github.com/montricwang/poeticus/issues/175) |
 | **古籍原文查证** | “这句话在《庄子》哪一篇？前后文是什么？” | CNKGraph 部分典故/成句可提供线索；没有统一的通用古籍全文查证 Tool | **待验证**：是否存在具备稳定定位、合法使用条件的外部搜索 API；归 [#184](https://github.com/montricwang/poeticus/issues/184)，不先复制整库 |
 | **文学史事实** | “苏轼写这首词时在何处？相关人物是谁？” | 主要依赖 LLM 既有知识和作品上下文 | **待验证**：高风险年代、人物关系需有出处；Web Search、CBDB 等只是候选，见 [#154](https://github.com/montricwang/poeticus/issues/154)、[#184](https://github.com/montricwang/poeticus/issues/184) |
 | **历代评论对读** | “张炎与王国维怎样分别评价姜夔？” | LLM 可讨论；尚无正式 Commentary Retrieval | **尚未实现可追溯评论检索**：文献获取、卷则定位、评论者与对象、回到原文；[#133](https://github.com/montricwang/poeticus/issues/133)、[#147](https://github.com/montricwang/poeticus/issues/147) |
@@ -37,7 +37,7 @@ Poeticus 的目标是帮助用户阅读中国古典诗词，必要时查阅**可
 - `backend/config.py` 的 `AGENT_MAX_TOOL_CALLS = 2` 是**单次用户请求累计真实工具调用次数**，不是固定两轮推理；预算耗尽后仍应给出回答。
 - `backend/evidence/provider.py` 已有最小 `EvidenceProvider` 接口；不能因为候选变多就提前扩展成所有外部资源的万能 Provider。
 - `backend/ai/model.py::analyze_poem` 的整首赏析目前单独调用模型，**并不自动经过上述 Agent 工具循环**。
-- Retrieval 曾完成真实 E2E，但旧部署节点已销毁；**当前环境是否可调用**须独立核对，见 [#180](https://github.com/montricwang/poeticus/issues/180)。具体数据流以 [LangGraph 架构](langgraph.md) 与 [Text Retrieval 架构](text-retrieval.md) 为准。
+- 2026-10-14 已在 WSL 真实 HTTP、Cloudflare Tunnel 公网健康与 `poeticus.app` 正式 Agent 问答中验收陆游→杜甫检索及重复合集排除（[#151](https://github.com/montricwang/poeticus/issues/151) 已关闭）。**运行环境仍依赖当前 WSL 与 Tunnel 进程**，未来连通性与故障降级继续按 [#180](https://github.com/montricwang/poeticus/issues/180) 核对。数据流见 [LangGraph 架构](langgraph.md) 与 [Poem Retrieval 架构](text-retrieval.md)。
 
 ## 4. 自建、复用与选型判断
 

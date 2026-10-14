@@ -2,18 +2,18 @@
 
 > **业务边界（2026-10-13）**：当前实现位于 `backend/retrieval/poem/`，是针对本地诗歌语料的 **Poem Retrieval**：以诗歌作品为候选单位，包含作品自身排除、朝代先后判断和 Work-level RRF。`Text Retrieval` 保留在既有服务类名、HTTP 接口及配置中作为历史名称；未来针对词话、古籍、现代书籍或辞书的通用本地 Text Retrieval 尚未实现，不应直接复用这些诗歌业务规则。
 
-> 检索实现基线：v0.3.0（2026-10-08）。原腾讯云节点已销毁；2026-10-11 在 WSL 恢复 Serving，先通过 Quick Tunnel 完成真实检索测试，随后配置 `retrieval.poeticus.app` 命名 Tunnel，并在 Railway 启用检索地址。命名 Tunnel 恢复后的真实检索仍须按 [Deployment](../deployment.md) 验收；下述 v0.3.0 性能数据是历史基线。
+> **当前状态（2026-10-14）**：WSL CPU Serving 经 Cloudflare 命名 Tunnel 为 `poeticus.app` 提供检索。Werneror 拼接关系表已经在 WSL 运行进程中启用，并通过真实检索 API 与正式站点 Agent 问答验收。[PR #286](https://github.com/montricwang/poeticus/pull/286) 已合并，[#151](https://github.com/montricwang/poeticus/issues/151) 已关闭。以下 v0.3.0 性能数字仅作为历史基线；是否在线仍取决于 WSL Serving 与 Windows `cloudflared`。
 
 ## 0. v0.3.0 检索基线与当前状态
 
-截至 2026-10-08，Text Retrieval 曾接入线上 Agent；原检索主机随后销毁。现存检索算法与 HTTP Service 已在 WSL 恢复。2026-10-11 的临时 Quick Tunnel 测试已经成功，当前使用命名 Tunnel 将 Railway 与本地 Retrieval 连接；在线状态取决于本地 Serving 和连接器，尚不能仅凭 Tunnel 在线宣称检索链路已验收。
+2026-10-11 在 WSL 恢复模型、索引及 HTTP Serving，并切换到命名 Tunnel。2026-10-14 使用关系表快照 v3 重启后，本地带鉴权检索、命名 Tunnel 公网健康与正式站点 Agent 问答均已验证。**一次验收成功不意味着电脑关机、Tunnel 断开后依然可用**。
 
 ### 运行期链路
 
 ```text
 Agent search_predecessor_texts
         ↓ HTTPS + Bearer
-Text Retrieval Service
+Poem Retrieval Service
         ↓
 deterministic Query Plan
         ↓
@@ -26,25 +26,24 @@ Work-level RRF
         ↓
 Candidate Eligibility
         ↓
-Work Composition Filter（可选，检查已验证的组诗重复关系）
+Work Composition Filter（显式启用，按组诗拼接关系去重）
         ↓
 Top-K candidates
         ↓
 Agent 判断
 ```
 
-Agent 对“借了谁哪一句 / 化用了哪段前代文本”优先使用自建 Corpus Tool。第一轮结果弱时，允许在 2 次工具预算内换文本锚点再检索。
+Agent 对“借了谁哪一句／化用了哪段前代文本”优先使用自建 Corpus Tool；检索候选是**可比较的文本证据**，不等于文学上的有意化用已经坐实。
 
-### Werneror 组诗重复关系（#151，Draft PR #286）
+### Werneror 拼接关系去重（PR #286／已完成 #151）
 
-2026-10-14 对 853,385 条 Work 做全量扫描，利用同作者、同朝代的完整正文拼接识别到 **75,327** 条严格拼接合集；忽略标点／空白／全半角后再找到 **6** 条，共 **75,333** 条合集、**269,556** 条成员关系。另有 **231** 条只匹配部分成员的可疑长记录，**146** 条正文覆盖率至少 80%，**不纳入自动过滤**；一两字异文也不凭编辑距离直接入表。
+2026-10-14 全量扫描 853,385 条 Work：同作者、同朝代的完整逐字拼接得到 **75,327** 条合集；忽略标点、空白、全半角差异后再新增 **6** 条，共 **75,333 个合集、269,556 条合集成员关系**。另发现 231 条至少包含两首独立作品的非完整拼接候选，其中 146 条正文覆盖率至少 80%，**仅供复核，不入自动过滤表**；一两个字的异文也不凭相似度自动排除。
 
-- 离线扫描：`scripts/corpus/werneror_group_audit.py`、`scan_normalized_compositions.py`；疑似残缺／夹序候选由 `scan_partial_compositions.py` 产生仅供复核的报告。
-- 快照导出：`scripts/corpus/export_work_compositions.py`；每行含合集 Work ID、成员 Work ID、顺序、原文位置和 match_kind。私有快照保存在 `poeticus-data/retrieval/relationships/v3/`，其中 `work_compositions.sqlite3` 用于当前 WSL Serving，`work_compositions.csv` 可供后续导入专用 PostgreSQL。PostgreSQL DDL 模板：`scripts/corpus/work_compositions_postgres.sql`，**不属于阅读库 poems 表的迁移**。
-- 在线接入采用**显式启用**，旧启动方式不改变行为。WSL 启动参数：`python -m scripts.retrieval.run_serving --composition-db ../poeticus-data/retrieval/relationships/v3/work_compositions.sqlite3`（还需要原有的 Bearer Token、模型和索引资产）。启动检查来源 Corpus SHA-256 和关系行数，不匹配就拒绝启用。
-- Filter 在原 Eligibility 后，对 Top-32 候选查关系并重新取 Top-K，保持 RRF 原始相对顺序。已识别当前独立作品 ID 时，只排除**实际命中文本也落在当前作品全文里**的合集；同一次召回 parent 与 member 时，也只有返回片段重合才去重。避免标题相似导致误删。
-- 本地 CPU 真实 Serving A/B 中，陆游《鹧鸪天·其六》、杜牧《赠别二首》对应的自我合集被排除；晏殊另一首《破阵子》被保留。这个验证**不等于已重启 WSL 常驻服务、更不等于 Railway→Tunnel→Agent 端到端验收**；不应据此声称线上已生效。源 Work JSONL、Embedding、FAISS、BM25 均未变更。
-
+- 检测：`scripts/corpus/werneror_group_audit.py`、`scan_normalized_compositions.py`；`scan_partial_compositions.py` 只输出待审阅报告。
+- 只读关系快照：`../poeticus-data/retrieval/relationships/v3/work_compositions.sqlite3`；同目录有 PostgreSQL 导入用的 `work_compositions.csv` 和校验清单 `work_compositions_manifest.json`。每行记录合集 Work ID、成员 Work ID、序号、原文位置及匹配类型。导出器 `scripts/corpus/export_work_compositions.py` 重新核验整篇拼接；`scripts/corpus/work_compositions_postgres.sql` 仅是**未来检索库**的建表模板，**没有向 Railway PostgreSQL 导入**，也不关联阅读库的 UUID。
+- **启用方式**：在 WSL 启动时显式指定 `--composition-db ../poeticus-data/retrieval/relationships/v3/work_compositions.sqlite3`；未指定仍是旧检索行为。启动检查快照对应的 Corpus SHA-256 和关系行数，校验不通过拒绝加载。
+- **筛选边界**：原 Eligibility 后，在最多 32 条候选中查询关系，再按原 RRF 顺序补足 Top-K。仅当当前 Work 身份已确认、合集本次命中片段也与当前作品正文重合，或者同次召回合集及成员且证据片段重合时，压制重复合集。**不是全库删除合集 Work，也不是仅凭标题“其一”“几首”删除**；不向 Agent 额外输出“所属组诗”字段。
+- **实际验收**：当前 `127.0.0.1:8787` 的带鉴权 HTTP 四组查询全部返回 200 和完整 Top-8：陆游《鹧鸪天·其六》的两句、杜牧《赠别二首》的重复合集不再出现，杜甫《小寒食舟中作》及晏殊另一首《破阵子·春景》被保留。公网 `https://retrieval.poeticus.app/health` 可达；正式 `https://poeticus.app` 的 `POST /api/chat/stream` 返回 200，陆游「片片轻鸥落晚沙」的回答正确突出杜甫，不再误判“陆游在另一首词中重复使用”。未逐请求采集跨 Railway、Tunnel、WSL 的关联 Trace，不将单次成功外推为持续稳定。**原始语料、Embedding、FAISS、BM25 均未改动**。
 
 ### Full Corpus
 
@@ -135,7 +134,7 @@ Windows cloudflared（连接器）
 WSL Text Retrieval Service（127.0.0.1:8787）
 ```
 
-Windows 连接器和 WSL Serving 是两个独立进程；Tunnel Token 用于连接器认证，Retrieval Bearer Token 用于 HTTP API 认证。Cloudflare 只转发请求，不执行 Qwen／FAISS 检索。当前命名 Tunnel 的真实 Agent POST 仍需重新验收；更早 Quick Tunnel 的检索成功仅作为历史证据。旧腾讯云 Nginx 入口已退役。
+Windows 连接器和 WSL Serving 是两个独立进程；Tunnel Token 用于连接器认证，Retrieval Bearer Token 用于 HTTP API 认证。Cloudflare 只转发请求，不执行 Qwen／FAISS 检索。2026-10-14 已完成命名 Tunnel 公网健康及正式站点 Agent 问答的实际验收；早期 Quick Tunnel 只作历史记录。旧腾讯云 Nginx 入口已退役。
 
 历史腾讯云 2C8G Linux single worker 的 full Corpus benchmark：
 
@@ -163,11 +162,11 @@ Windows 连接器和 WSL Serving 是两个独立进程；Tunnel Token 用于连�
 chronology_status=clearly_earlier
 ```
 
-历史线上 Agent 曾正确使用杜甫候选，并把“文本对应很强”与“缺少明确引用记载”同时交代。2026-10-11 Quick Tunnel 的 E2E 也成功返回杜甫候选；此测试不能代替之后切换至命名 Tunnel 的在线验收。
+历史线上 Agent 曾正确使用杜甫候选，并把“文本对应很强”与“缺少明确引用记载”同时交代。2026-10-11 Quick Tunnel 的 E2E 也成功返回杜甫候选；2026-10-14 已在命名 Tunnel 和正式页面重新验证这条候选。
 
 ### 当前已知边界
 
-- duplicate / variant self-hit：#151；
+- 完整拼接导致的重复 self-hit 已由 [#151](https://github.com/montricwang/poeticus/issues/151) 修复；异文／部分拼接／题序仍可能漏检，题名正文错配另见 [#173](https://github.com/montricwang/poeticus/issues/173)；
 - 粗 dynasty overlap 会保留部分晚于目标作者的候选；
 - Werneror dynasty 不能承担精细历史断代；
 - transformed-use 仍可能需要 Agent query reformulation；
@@ -523,14 +522,14 @@ Werneror/Poetry 适合作为大规模候选发现语料，但不能把其中的�
 
 ## 10. 当前已定事项与仍开放的边界
 
-**v0.3.0 已完成**：sentence / clause Qwen Dense、sentence character 2–3 gram BM25、deterministic Query Plan、Work-level RRF、Candidate Eligibility、FAISS IVFPQ、compact metadata v2、独立 HTTP Retrieval Service，以及当时的 Railway Agent Tool 与真实 E2E。这些仍是已经实现的技术能力，但当前没有常驻线上 Retrieval 节点。历史资源基线见第 0 节，现行状态见 [Deployment](../deployment.md)。
+**已实现且运行中**：Qwen sentence/clause Dense、BM25、Query Plan、RRF、Eligibility、FAISS IVFPQ、compact metadata、独立 HTTP Serving 和可选 Werneror 拼接去重。当前 WSL 经命名 Tunnel 为 Railway Agent 按需服务，**并非长期托管云节点**；历史性能见第 0 节，最新启动与验收命令见 [Deployment](../deployment.md)。
 
 **待解决或待观察**：
 
-- #151：同一作品重复版本或异本导致的 self-hit；
+- [#151](https://github.com/montricwang/poeticus/issues/151) 已完成：完整拼接造成的重复 self-hit；未覆盖异文仍属边界；
 - 粗粒度朝代与同朝先后无法提供准确 chronology，可靠逐首年代数据仍待补；
-- #167：原节点 IP 证书续期任务已失去适用主机，待按现行部署整理；
-- 未来常驻部署的网络稳定性、延迟及新主机并发上限；
+- #167 涉及已销毁的旧云节点证书，不能作为当前 WSL/Tunnel 的操作步骤；
+- WSL/Tunnel 的持续可用性、重启恢复与未来独立主机的稳定性和并发上限；
 - 全文 multi-span evidence、curated 文献 RAG，以及必要时的 Agent / Retrieval Eval 增量；
 - #163：唐宋 Serving Profile 属 deferred，不是本版发布阻塞项。
 
