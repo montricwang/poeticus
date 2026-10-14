@@ -139,7 +139,7 @@ CI 使用合成数据和替身依赖，不代表私人 EPUB 或真实生产环�
 
 提交标题采用 Conventional Commits 格式，如 `feat: add poem search filters`、`fix: handle missing retrieval token`。允许的类型为 `build`、`chore`、`ci`、`docs`、`feat`、`fix`、`perf`、`refactor`、`revert`、`style`、`test`；标题必须使用英文 ASCII 字符，长度最多 100 字符。Commit 正文也按约定使用英文；PR 和 Issue 仍使用中文。
 
-仓库根目录的 `commitlint.config.mjs` 是唯一规则配置；`.github/workflows/commitlint.yml` 在 PR 和 `main` 推送后运行 Commitlint。现有 `english-commit-subjects.yml` 暂时保留，独立检查标题 ASCII。GitHub Actions 的 `main` push 检查属于事后审计；若要禁止不合格提交进入主分支，还需在 GitHub Rulesets 中将对应 PR 检查设为必需，并约束直接推送。
+仓库根目录的 `commitlint.config.mjs` 是唯一规则配置；`.github/workflows/commitlint.yml` 在**所有分支的 Push** 及 PR 创建／更新时执行 Commitlint。现有 `english-commit-subjects.yml` 暂时保留，独立检查标题 ASCII。Push 检查属于**事后审计**：发现不合规 Commit 会报告失败，但不会撤销已经推送的 Commit。要强制禁止不合格 PR 合并，仓库管理员还需在 GitHub 的 **Settings → Rules → Rulesets** 对 `main` 配置 `Require status checks to pass` 并将 `commitlint` 设为必需检查（检查名称以 Actions 页面实际 Job 为准）；若要阻止绕过 PR 直接写入 `main`，还需要启用 `Require a pull request before merging`。这些管理员设置不能仅通过提交仓库文件实现；在 GitHub 上真正创建并启用规则前，不能视为合并门禁已生效。
 
 需要在本地提交时立即拦截，可在仓库根目录执行一次：
 
