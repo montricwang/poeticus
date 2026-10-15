@@ -3,6 +3,10 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+const desktopLayout = readFileSync(
+  new URL('../src/components/desktop-layout.tsx', import.meta.url),
+  'utf8',
+)
 const styles = readFileSync(new URL('../src/index.css', import.meta.url), 'utf8')
 const companion = readFileSync(
   new URL('../src/components/reader-companion-layout.tsx', import.meta.url),
@@ -23,7 +27,10 @@ const companionPane = readFileSync(
 
 test('桌面阅读区使用剩余视口高度，正文在本栏滚动', () => {
   assert.match(app, /flex h-dvh min-h-0 flex-col overflow-hidden/)
-  assert.match(app, /flex min-h-0 w-full max-w-\[1600px\] flex-1 flex-col overflow-hidden/)
+  assert.match(
+    desktopLayout,
+    /flex min-h-0 w-full max-w-\[1600px\] flex-1 flex-col overflow-hidden/,
+  )
   assert.match(companion, /grid h-full min-h-0 min-w-0/)
   assert.match(
     readerPane,
@@ -237,10 +244,10 @@ test('固定双栏的桌面目录与对话共用右侧工作区', () => {
   assert.match(styles, /--reading-stage-max-width: 1200px/)
   assert.match(styles, /--reader-column-share: 500fr/)
   assert.match(styles, /--companion-column-share: 650fr/)
-  assert.match(app, /max-w-\[var\(--reading-stage-max-width\)\]/)
-  assert.match(app, /<ReaderCompanionLayout/)
-  assert.match(app, /catalog=\{renderCatalog\(catalogOpen, true\)\}/)
-  assert.match(app, /\{renderDiscussionContent\(false\)\}/)
+  assert.match(desktopLayout, /max-w-\[var\(--reading-stage-max-width\)\]/)
+  assert.match(desktopLayout, /<ReaderCompanionLayout/)
+  assert.match(desktopLayout, /catalog=\{catalog.content\}/)
+  assert.match(app, /discussion=\{renderDiscussionContent\(false\)\}/)
   assert.match(companion, /absolute inset-0 min-h-0 min-w-0 transition-opacity/)
   assert.match(companion, /aria-hidden=\{!catalogOpen\}/)
   assert.match(companion, /inert=\{!catalogOpen\}/)
@@ -283,7 +290,7 @@ test('阅读与伴读分割线由共同父 Pane 管理，不混入子组件', ()
     'utf8',
   )
   const chat = readFileSync(new URL('../src/components/chat-panel.tsx', import.meta.url), 'utf8')
-  assert.match(app, /<ReaderPane/)
+  assert.match(desktopLayout, /<ReaderPane/)
   assert.match(app, /<CompanionPane/)
   assert.match(app, /<ReaderNavigation[^>]*embedded/)
   assert.match(readerPane, /<HorizontalEditorialDivider/)
@@ -362,7 +369,7 @@ test('竖线是独立 Grid 列，按右栏内容高度变化而不推动阅读�
   const dividerIndex = companion.indexOf('<VerticalEditorialDivider')
   const stageIndex = companion.indexOf('<div ref={stageRef}')
   assert.ok(readerIndex >= 0 && readerIndex < dividerIndex && dividerIndex < stageIndex)
-  assert.ok(app.includes('catalogOpen={catalogOpen}'))
+  assert.ok(desktopLayout.includes('catalogOpen={catalog.open}'))
 })
 
 test('桌面目录选择保留工作区、从右上角进入，并让交叉淡入淡出不卸载对话', () => {
@@ -370,11 +377,15 @@ test('桌面目录选择保留工作区、从右上角进入，并让交叉淡�
     new URL('../src/components/poem-catalog.tsx', import.meta.url),
     'utf8',
   )
-  assert.ok(app.includes('import { ArrowLeft, MessageCircle, PanelLeft, PanelRight }'))
-  assert.ok(app.includes('{wideDiscussionLayout && catalogToggle}'))
-  assert.match(app, /size=\{wideDiscussionLayout \? 'sm' : 'icon'\}/)
-  assert.match(app, /<PanelRight className="size-4" aria-hidden="true" \/>\s*目录/)
-  assert.match(app, /<PanelLeft className="size-5" aria-hidden="true" \/>/)
+  const mobileLayout = readFileSync(
+    new URL('../src/components/mobile-layout.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.ok(desktopLayout.includes('import { PanelRight }'))
+  assert.match(desktopLayout, /onClick=\{catalog.onToggle\}/)
+  assert.match(desktopLayout, /size="sm"/)
+  assert.match(desktopLayout, /<PanelRight className="size-4" aria-hidden="true" \/>\s*目录/)
+  assert.match(mobileLayout, /<PanelLeft className="size-5" aria-hidden="true" \/>/)
   assert.ok(app.includes('if (!wideDiscussionLayout) closeCatalog()'))
   assert.ok(app.includes('if (!wideDiscussionLayout && catalogOpen) closeCatalog()'))
   assert.match(styles, /--motion-catalog-switch: 220ms/)
@@ -404,4 +415,18 @@ test('桌面目录选择保留工作区、从右上角进入，并让交叉淡�
     dividerIndex > catalog.indexOf('</form>') && dividerIndex < catalog.indexOf('ref={listRef}'),
   )
   assert.match(catalog, /title=\{embedded \? undefined : work\.incipit\}/)
+})
+
+test('手机与桌面外壳只组装视图，不各自维护业务状态', () => {
+  const mobileLayout = readFileSync(
+    new URL('../src/components/mobile-layout.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.match(app, /<MobileLayout/)
+  assert.match(app, /<DesktopLayout/)
+  assert.match(mobileLayout, /inert=\{discussion.open \|\| catalog.open\}/)
+  assert.match(desktopLayout, /catalogOpen=\{catalog.open\}/)
+  for (const shell of [mobileLayout, desktopLayout]) {
+    assert.doesNotMatch(shell, /useState|useChatSession|usePoemDetail|usePoemCatalog/)
+  }
 })
