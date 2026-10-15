@@ -32,6 +32,17 @@ test('桌面阅读区使用剩余视口高度，正文在本栏滚动', () => {
   assert.doesNotMatch(app, /lg:h-auto lg:min-h-dvh lg:overflow-visible/)
 })
 
+test('阅读书页与底部分割线、导航共用阅读栏中心线', () => {
+  // 阅读正文滚动区保留总共 8px 的滚动留白，但必须两侧对称。
+  assert.match(readerPane, /overflow-y-auto overscroll-contain px-1/)
+  assert.doesNotMatch(readerPane, /overscroll-contain pr-2/)
+  assert.match(readerPane, /lg:max-w-\[27rem\] lg:px-4/)
+  assert.match(
+    readerPane,
+    /<HorizontalEditorialDivider className="mb-3 hidden w-full lg:block" \/>/,
+  )
+})
+
 test('伴读栏取父容器实际高度，并为输入框留出空间', () => {
   assert.match(companion, /observer\.observe\(stage\)/)
   assert.match(companion, /layout\.stageHeight - layout\.toolbarHeight - 8/)
@@ -141,6 +152,34 @@ test('独立动画共用参数来源，历史消息与输入框不随整栏闪�
   assert.doesNotMatch(companion, /Math\.min\(608,/)
 })
 
+test('小序与底部分割线共用 400px 行宽上限，自然换行且短序居中', () => {
+  const reader = readFileSync(new URL('../src/components/poem-reader.tsx', import.meta.url), 'utf8')
+  assert.match(reader, /poem-reader-preface whitespace-pre-line font-serif text-muted-foreground/)
+  assert.match(
+    styles,
+    /\.poem-reader-preface \{[^}]*width: fit-content;[^}]*max-width: min\(100%, 25rem\);[^}]*margin-inline: auto;[^}]*text-align: left;/,
+  )
+  assert.match(styles, /--reader-preface-line-height: 1\.7;/)
+  assert.doesNotMatch(styles, /\.poem-reader-preface \{[^}]*text-wrap: balance;/)
+  assert.doesNotMatch(styles, /\.poem-reader-preface \{[^}]*text-indent:/)
+  assert.doesNotMatch(styles, /\.poem-reader-preface-indented/)
+  assert.doesNotMatch(reader, /function PoemPreface\(/)
+})
+
+test('桌面短词上下留白自动伸缩，书页整体偏上且不改变手机阅读', () => {
+  const reader = readFileSync(new URL('../src/components/poem-reader.tsx', import.meta.url), 'utf8')
+  assert.match(
+    reader,
+    /className="poem-reader-content bg-transparent lg:flex lg:flex-1 lg:flex-col"/,
+  )
+  assert.doesNotMatch(reader, /lg:justify-center/)
+  assert.match(styles, /@media \(min-width: 64rem\) \{\s*\/\* 书页上下留白按剩余高度伸缩/)
+  assert.match(styles, /\.poem-reader-content::before,\s*\.poem-reader-content::after \{/)
+  assert.match(styles, /\.poem-reader-content::before \{\s*flex-grow: 0\.42/)
+  assert.match(styles, /\.poem-reader-content::after \{\s*flex-grow: 0\.58/)
+  assert.match(styles, /\.poem-reader-content > \.poem-reader-page \{\s*flex-shrink: 0/)
+})
+
 test('引文和消息列表都有退场状态，内容不会立即连同容器一起卸载', () => {
   const quote = readFileSync(
     new URL('../src/components/quote-preview.tsx', import.meta.url),
@@ -179,35 +218,38 @@ test('输入区有初始宽度，文字增长只扩展输入与发送按钮', ()
     new URL('../src/components/chat-composer.tsx', import.meta.url),
     'utf8',
   )
-  assert.match(composer, /composerWidthForLines/)
-  assert.match(composer, /poeticus-composer-frame/)
-  assert.match(composer, /--composer-content-width/)
-  assert.match(composer, /context\.measureText/)
-  assert.match(styles, /--motion-composer-width: 320ms/)
-  assert.match(styles, /--composer-min-width: min\(100%, max\(22rem, 72%\)\)/)
-  assert.match(styles, /width: max\(var\(--composer-min-width\)/)
-  assert.match(styles, /var\(--composer-content-width, 0px\)/)
-  assert.match(styles, /max-width: 100%/)
-  assert.doesNotMatch(styles, /max-width: min\(/)
-  // Don't modify the shared divider to customize the editor.
+  assert.match(composer, /poeticus-composer-frame bg-transparent py-1/)
+  assert.doesNotMatch(composer, /composerWidthForLines|composerWidth|--composer-content-width/)
+  assert.match(styles, /\.poeticus-composer-frame \{\s*width: 100%;\s*max-width: 100%/)
+  assert.doesNotMatch(styles, /--motion-companion-width|--motion-composer-width/)
   assert.match(divider, /h-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
 })
 
-test('阅读栏和伴读栏共用目录变化后的剩余空间', () => {
-  assert.match(styles, /--reading-stage-max-width: 82rem/)
-  assert.match(styles, /--reader-column-share: 0\.95fr/)
-  assert.match(styles, /--companion-column-share: 1\.05fr/)
+test('固定双栏的桌面目录与对话共用右侧工作区', () => {
+  const catalog = readFileSync(
+    new URL('../src/components/poem-catalog.tsx', import.meta.url),
+    'utf8',
+  )
+  const responsive = readFileSync(
+    new URL('../src/lib/responsive-layout.ts', import.meta.url),
+    'utf8',
+  )
+  assert.match(styles, /--reading-stage-max-width: 1200px/)
+  assert.match(styles, /--reader-column-share: 500fr/)
+  assert.match(styles, /--companion-column-share: 650fr/)
   assert.match(app, /max-w-\[var\(--reading-stage-max-width\)\]/)
   assert.match(app, /<ReaderCompanionLayout/)
-  assert.match(companion, /gridTemplateColumns:/)
-  assert.doesNotMatch(app, /<DesktopCompanionStage/)
-  assert.doesNotMatch(styles, /\.poeticus-reading-columns/)
-  assert.match(app, /2xl:grid-cols-\[320px_minmax\(0,1fr\)\]/)
-  assert.match(app, /2xl:transition-\[grid-template-columns\]/)
-  assert.match(app, /--motion-catalog-grid-resize/)
-  assert.doesNotMatch(app, /max-w-\[74rem\]/)
-  assert.doesNotMatch(app, /0\.85fr/)
-  assert.doesNotMatch(app, /1\.15fr/)
+  assert.match(app, /catalog=\{renderCatalog\(catalogOpen, true\)\}/)
+  assert.match(app, /\{renderDiscussionContent\(false\)\}/)
+  assert.match(companion, /absolute inset-0 min-h-0 min-w-0 transition-opacity/)
+  assert.match(companion, /aria-hidden=\{!catalogOpen\}/)
+  assert.match(companion, /inert=\{!catalogOpen\}/)
+  assert.ok(app.includes('const [catalogOpen, setCatalogOpen] = useState(false)'))
+  assert.match(catalog, /embedded\?: boolean/)
+  assert.ok(catalog.includes('embedded ?'))
+  assert.doesNotMatch(app, /2xl:grid-cols-|2xl:transition-\[grid-template-columns\]/)
+  assert.doesNotMatch(responsive, /PERSISTENT_CATALOG/)
+  assert.match(responsive, /OVERLAY_CATALOG_MEDIA/)
 })
 
 test('视图短线独立成组件，引文关闭按钮仍紧邻文字', () => {
@@ -232,7 +274,6 @@ test('视图短线独立成组件，引文关闭按钮仍紧邻文字', () => {
   assert.match(quote, /inline-flex w-fit max-w-full/)
   assert.match(quote, /flex-\[0_1_auto\]/)
   assert.doesNotMatch(quote, /min-w-0 flex-1 overflow-y-auto/)
-  assert.match(styles, /--composer-min-width: min\(100%, max\(22rem, 72%\)\)/)
   assert.match(divider, /h-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
 })
 
@@ -286,37 +327,81 @@ test('手机阅读导航保留提示，前后按钮各自贴近两端', () => {
   assert.doesNotMatch(navigation, /mx-auto mt-6 w-full max-w-\[27rem\]/)
 })
 
-test('发送按钮和操作提示使用全宽脚注，输入框宽度独立动画', () => {
+test('已有对话时输入区随讨论正文展开，换诗时不用宽度动画', () => {
   const composer = readFileSync(
     new URL('../src/components/chat-composer.tsx', import.meta.url),
     'utf8',
   )
-  const frame = composer.indexOf('className="poeticus-composer-frame')
-  const frameEnd = composer.indexOf('</div>', frame)
+  const chatPanel = readFileSync(
+    new URL('../src/components/chat-panel.tsx', import.meta.url),
+    'utf8',
+  )
+  const frame = composer.indexOf('poeticus-composer-frame bg-transparent py-1')
   const controls = composer.indexOf('className="flex w-full items-center justify-between px-2"')
   const button = composer.indexOf('aria-label="发送消息"')
-  assert.ok(frame >= 0 && frameEnd > frame)
-  assert.ok(controls > frameEnd && button > controls)
-  assert.match(styles, /--motion-composer-width: 320ms/)
-  assert.match(divider, /h-\[var\(--editorial-divider-thickness\)\].*bg-border\/80/)
+  assert.ok(frame >= 0 && controls > frame && button > controls)
+  assert.ok(chatPanel.includes("!fillAvailableHeight && 'w-full max-w-[37.5rem]'"))
+  assert.doesNotMatch(chatPanel, /max-w-\[25rem\]|transition-\[max-width\]/)
+  assert.doesNotMatch(composer, /poeticus-composer-expanded|poeticus-composer-switching/)
+  assert.ok(composer.includes('className="rounded-md lg:w-20 lg:gap-1.5 lg:px-3"'))
 })
 
-test('两栏之间的竖线由布局层持有，并同伴读区共享实测位置', () => {
-  assert.match(app, /<ReaderCompanionLayout/)
-  assert.doesNotMatch(app, /<VerticalEditorialDivider/)
+test('竖线是独立 Grid 列，按右栏内容高度变化而不推动阅读区', () => {
   assert.match(companion, /<VerticalEditorialDivider/)
-  assert.match(companion, /const stageCenter = layout\.stageHeight/)
-  assert.match(companion, /const verticalOffset = Math\.max/)
-  assert.match(companion, /const dividerHeight = Math\.max/)
-  assert.match(companion, /style=\{\{ marginTop: verticalOffset \}\}/)
-  assert.match(companion, /style=\{\{ height: dividerHeight \}\}/)
-  assert.match(companion, /observer\.observe\(content\)/)
+  assert.ok(companion.includes('const dividerHeight = catalogOpen'))
   assert.match(companion, /observer\.observe\(stage\)/)
-  assert.match(companion, /--companion-panel-max-height/)
-  // 分隔线和内容区是同一个 Grid 下的同级元素，分隔线不嵌套在聊天面板里。
+  assert.match(companion, /observer\.observe\(content\)/)
+  assert.match(companion, /marginTop: catalogOpen \? 0 : verticalOffset/)
+  assert.ok(
+    companion.includes(
+      'minmax(0, var(--reader-column-share)) var(--editorial-divider-thickness) minmax(0, var(--companion-column-share))',
+    ),
+  )
+  assert.match(companion, /gap-x-6/)
   const readerIndex = companion.indexOf('{reader}')
-  const boundaryIndex = companion.indexOf('<VerticalEditorialDivider')
-  const contentIndex = companion.indexOf('ref={stageRef}')
-  assert.ok(readerIndex >= 0 && readerIndex < boundaryIndex && boundaryIndex < contentIndex)
-  assert.doesNotMatch(app, /desktop-companion-stage/)
+  const dividerIndex = companion.indexOf('<VerticalEditorialDivider')
+  const stageIndex = companion.indexOf('<div ref={stageRef}')
+  assert.ok(readerIndex >= 0 && readerIndex < dividerIndex && dividerIndex < stageIndex)
+  assert.ok(app.includes('catalogOpen={catalogOpen}'))
+})
+
+test('桌面目录选择保留工作区、从右上角进入，并让交叉淡入淡出不卸载对话', () => {
+  const catalog = readFileSync(
+    new URL('../src/components/poem-catalog.tsx', import.meta.url),
+    'utf8',
+  )
+  assert.ok(app.includes('import { ArrowLeft, MessageCircle, PanelLeft, PanelRight }'))
+  assert.ok(app.includes('{wideDiscussionLayout && catalogToggle}'))
+  assert.match(app, /size=\{wideDiscussionLayout \? 'sm' : 'icon'\}/)
+  assert.match(app, /<PanelRight className="size-4" aria-hidden="true" \/>\s*目录/)
+  assert.match(app, /<PanelLeft className="size-5" aria-hidden="true" \/>/)
+  assert.ok(app.includes('if (!wideDiscussionLayout) closeCatalog()'))
+  assert.ok(app.includes('if (!wideDiscussionLayout && catalogOpen) closeCatalog()'))
+  assert.match(styles, /--motion-catalog-switch: 220ms/)
+  assert.match(companion, /duration-\[var\(--motion-catalog-switch\)\]/)
+  assert.match(companion, /aria-hidden=\{catalogOpen\}/)
+  assert.match(companion, /inert=\{catalogOpen\}/)
+  assert.match(catalog, /embedded \? 'flex h-14 items-center gap-3 ' : 'block py-3 '/)
+  assert.match(catalog, /poeticus-catalog-title max-w-\[62%\]/)
+  assert.match(styles, /font-family: 'Noto Sans SC Variable', 'Source Han Sans SC'/)
+  assert.match(catalog, /Math\.floor\(list\.clientHeight \/ 56\)/)
+  assert.match(catalog, /Math\.floor\(filters\.offset \/ limit\) \* limit/)
+  assert.match(catalog, /aria-label="上一页"/)
+  assert.match(catalog, /aria-label="下一页"/)
+  assert.match(catalog, /<ChevronUp className="size-4" aria-hidden="true" \/>/)
+  assert.equal((catalog.match(/<ChevronRight className=/g) ?? []).length, 1)
+  assert.doesNotMatch(catalog, /ActionTooltip/)
+  assert.match(catalog, /import \{ HorizontalEditorialDivider \}/)
+  assert.equal((catalog.match(/<HorizontalEditorialDivider/g) ?? []).length, 2)
+  assert.match(catalog, /max-w-130/)
+  // Search and title size themselves; the bounded divider gap centers its line,
+  // while the flexible list receives the remaining panel height.
+  assert.match(catalog, /embedded \? 'px-3 pt-3' : 'border-b border-border\/50 p-3'/)
+  assert.match(catalog, /h-\[clamp\(1rem,3vh,2\.5rem\)\] shrink-0 items-center justify-center/)
+  assert.match(catalog, /poeticus-scrollport min-h-0 flex-1 overscroll-contain/)
+  const dividerIndex = catalog.indexOf('h-[clamp(1rem,3vh,2.5rem)]')
+  assert.ok(
+    dividerIndex > catalog.indexOf('</form>') && dividerIndex < catalog.indexOf('ref={listRef}'),
+  )
+  assert.match(catalog, /title=\{embedded \? undefined : work\.incipit\}/)
 })

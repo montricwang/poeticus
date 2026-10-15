@@ -56,7 +56,6 @@
   --motion-companion-reflow: 520ms;
   --motion-companion-ready-delay: 300ms;
   --motion-quote-enter: 460ms;
-  --motion-composer-width: 320ms;
   --motion-message-enter: 380ms;
   --motion-message-actions: 150ms;
   --motion-chat-content-enter: 420ms;
@@ -71,17 +70,14 @@
   --motion-catalog-phone-fade: 720ms;
   --motion-catalog-backdrop-fade: 520ms;
   --motion-catalog-drawer-slide: 620ms;
-  --motion-catalog-grid-resize: 600ms;
+  --motion-catalog-switch: 220ms;
   --motion-discussion-phone-fade: 520ms;
   --motion-discussion-tablet-slide: 400ms;
 
-  /*
-   * 桌面双列按可用舞台宽度分配，不按整个浏览器视口分配；
-   * 打开 320px 目录仅会缩小舞台的可用宽度。
-   */
-  --reading-stage-max-width: 82rem;
-  --reader-column-share: 0.95fr;
-  --companion-column-share: 1.05fr;
+  /* 1200px 版心扣除 50px 中线与留白：阅读 500px，辅助 650px；窄屏等比收缩。 */
+  --reading-stage-max-width: 1200px;
+  --reader-column-share: 500fr;
+  --companion-column-share: 650fr;
 
   /* 桌面面板只使用父级 Grid 实际分配的空间。 */
   --companion-panel-default-max-height: 38rem;
@@ -223,6 +219,11 @@ html.theme-transition #root * {
 }
 
 @layer components {
+  /* 目录题名先用内置的思源黑体同源字体，避免 Inter 将间隔号排成半角宽。 */
+  .poeticus-catalog-title {
+    font-family: 'Noto Sans SC Variable', 'Source Han Sans SC', 'Noto Sans SC', sans-serif;
+  }
+
   /*
    * 阅读器排版调参区。
    * 结构布局仍由组件负责；字号、字重、行高、字距和垂直节奏集中在这里，
@@ -253,7 +254,7 @@ html.theme-transition #root * {
     --reader-header-body-gap: 1.25rem;
 
     --reader-preface-size: 0.9375rem;
-    --reader-preface-line-height: 1.9;
+    --reader-preface-line-height: 1.7;
     --reader-preface-weight: 400;
     --reader-preface-body-gap: 1.25rem;
 
@@ -266,6 +267,28 @@ html.theme-transition #root * {
   .poem-reader-page {
     padding-top: var(--reader-page-padding-top);
     padding-bottom: var(--reader-page-padding-bottom);
+  }
+
+  @media (min-width: 64rem) {
+    /* 书页上下留白按剩余高度伸缩；短词偏上，长词自然占满滚动区域。 */
+    .poem-reader-content::before,
+    .poem-reader-content::after {
+      content: '';
+      flex-basis: 0;
+      min-height: 0;
+    }
+
+    .poem-reader-content::before {
+      flex-grow: 0.42;
+    }
+
+    .poem-reader-content::after {
+      flex-grow: 0.58;
+    }
+
+    .poem-reader-content > .poem-reader-page {
+      flex-shrink: 0;
+    }
   }
 
   .poem-reader-header {
@@ -311,7 +334,12 @@ html.theme-transition #root * {
   }
 
   .poem-reader-preface {
+    /* 与阅读页脚横线同为 400px 版心；短序按文字宽度居中，长序自然换行。 */
+    width: fit-content;
+    max-width: min(100%, 25rem);
+    margin-inline: auto;
     margin-bottom: var(--reader-preface-body-gap);
+    text-align: left;
     font-size: var(--reader-preface-size);
     font-weight: var(--reader-preface-weight);
     line-height: var(--reader-preface-line-height);
@@ -446,28 +474,10 @@ html.theme-transition #root * {
     }
   }
 
-  /*
-   * 输入框及底部按钮共用一个动画宽度，随文字增长而扩展，
-   * 但不超过伴读列的实际可用宽度；上方引用区仍使用整列宽度。
-   */
+  /* 输入区与底部发送按钮固定为伴读正文宽度，不再随对话内容横向伸缩。 */
   .poeticus-composer-frame {
-    --composer-min-width: min(100%, max(22rem, 72%));
     width: 100%;
     max-width: 100%;
-  }
-
-  @media (min-width: 64rem) {
-    .poeticus-composer-frame {
-      width: max(var(--composer-min-width), var(--composer-content-width, 0px));
-      max-width: 100%;
-      transition: width var(--motion-composer-width) var(--motion-ease-settle);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .poeticus-composer-frame {
-      transition: none;
-    }
   }
 
   /* 输入区只在文字实际被裁剪的边缘显示渐隐效果。 */

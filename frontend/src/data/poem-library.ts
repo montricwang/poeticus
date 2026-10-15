@@ -56,7 +56,7 @@ export function poemTitle(work: Pick<PoemSummary, 'cipai' | 'yusheng_title' | 't
   return work.title ? `${tune}·${work.title}` : tune
 }
 
-/** 目录第一行仅显示题录；正文首句固定放在第二行。 */
+/** 返回结构化作品名称，具体单行或双行布局由目录视图决定。 */
 export function poemLabel(work: PoemSummary): string {
   return poemTitle(work)
 }

@@ -206,6 +206,7 @@ export function ChatPanel({
       aria-label="阅读讨论"
       className={cn(
         'flex min-h-0 min-w-0 flex-col bg-transparent',
+        !fillAvailableHeight && 'w-full max-w-[37.5rem]',
         fillAvailableHeight
           ? 'flex-1'
           : 'max-h-[var(--companion-panel-max-height)] overflow-hidden',

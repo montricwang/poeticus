@@ -12,9 +12,12 @@ import { motionDurationMs } from '@/lib/motion'
 
 type ReaderCompanionLayoutProps = {
   reader: ReactNode
+  catalog: ReactNode
   children: ReactNode
   ready: boolean
   idle: boolean
+  catalogOpen: boolean
+  swapPhase: 'steady' | 'leaving' | 'arriving'
 }
 
 type CompanionGeometry = {
@@ -24,16 +27,17 @@ type CompanionGeometry = {
 }
 
 /**
- * 管理阅读区和伴读区的分界。分隔线与两侧内容处于同一级 Grid，
- * 不嵌入伴读内容，因此不会受到内部滚动裁剪、透明度动画或文本排版影响。
- *
- * 只测量伴读内容的实际尺寸，并据此统一计算面板位置及分隔线的位置和高度。
+ * 固定双栏书页：竖线占据独立的 Grid 列，既不属于阅读器也不属于右栏内容。
+ * 中线高度跟随当前右栏内容；目录打开时占用右侧整栏，不改变左侧位置。
  */
 export function ReaderCompanionLayout({
   reader,
+  catalog,
   children,
   ready,
   idle,
+  catalogOpen,
+  swapPhase,
 }: ReaderCompanionLayoutProps) {
   const stageRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -49,13 +53,12 @@ export function ReaderCompanionLayout({
     const content = contentRef.current
     if (!stage || !content) return
 
-    // CompanionPane 使用 Fragment，首个 DOM 子元素必须是 ViewToolbar；
-    // 如果新增包装元素，这里的工具栏高度测量也必须同步调整。
-    const toolbar = content.firstElementChild
+    // 目录是同级覆盖层，不影响讨论区的高度或工具栏测量。
+    const toolbar = content.querySelector('[role="group"][aria-label="讨论视图"]')
     const measure = () => {
       const stageHeight = Math.ceil(stage.getBoundingClientRect().height)
       const contentHeight = Math.ceil(content.getBoundingClientRect().height)
-      const currentToolbar = content.firstElementChild
+      const currentToolbar = content.querySelector('[role="group"][aria-label="讨论视图"]')
       const toolbarHeight = currentToolbar
         ? Math.ceil(currentToolbar.getBoundingClientRect().height) +
           Number.parseFloat(window.getComputedStyle(currentToolbar).marginBottom || '0')
@@ -87,7 +90,7 @@ export function ReaderCompanionLayout({
     return () => window.clearTimeout(timer)
   }, [ready])
 
-  // 统一使用测量出的舞台高度计算面板上限、纵向位置及分隔线边界，
+  // 统一使用测量出的舞台高度计算面板上限及纵向位置，
   // 不另外猜测一个以 vh 为单位的偏移量。
   const panelAvailableHeight = Math.max(0, layout.stageHeight - layout.toolbarHeight - 8)
   const stageCenter = layout.stageHeight * (idle ? 0.42 : 0.5)
@@ -95,10 +98,9 @@ export function ReaderCompanionLayout({
     0,
     Math.min(layout.stageHeight - layout.contentHeight, stageCenter - layout.contentHeight / 2),
   )
-  const dividerHeight = Math.max(
-    0,
-    Math.min(layout.contentHeight - 8, layout.stageHeight - verticalOffset - 8),
-  )
+  const dividerHeight = catalogOpen
+    ? Math.max(0, layout.stageHeight - 8)
+    : Math.max(0, Math.min(layout.contentHeight - 8, layout.stageHeight - verticalOffset - 8))
   const motionClass = animateLayout
     ? 'transition-[margin-top] duration-[var(--motion-companion-reflow)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none'
     : ''
@@ -113,8 +115,8 @@ export function ReaderCompanionLayout({
     >
       <div className="min-h-0 min-w-0">{reader}</div>
 
-      {/* 分隔线归布局组件管理，不属于任一侧内容列。 */}
-      <div className={motionClass} style={{ marginTop: verticalOffset }}>
+      {/* 中线是两栏的公共分隔；只由布局层测量和绘制。 */}
+      <div className={motionClass} style={{ marginTop: catalogOpen ? 0 : verticalOffset }}>
         <VerticalEditorialDivider
           className={
             'mt-1 ' +
@@ -126,18 +128,43 @@ export function ReaderCompanionLayout({
         />
       </div>
 
-      <div ref={stageRef} className="h-full min-h-0 min-w-0">
+      <div ref={stageRef} className="relative h-full min-h-0 min-w-0">
         <div className={'min-w-0 ' + motionClass} style={{ marginTop: verticalOffset }}>
           <div
-            ref={contentRef}
-            style={
-              {
-                '--companion-panel-max-height': `min(var(--companion-panel-default-max-height), ${panelAvailableHeight}px)`,
-              } as CSSProperties
+            aria-hidden={catalogOpen}
+            inert={catalogOpen}
+            className={
+              'transition-opacity duration-[var(--motion-catalog-switch)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+              (catalogOpen ? 'pointer-events-none opacity-0' : 'opacity-100')
             }
           >
-            {children}
+            <div
+              ref={contentRef}
+              className={
+                'transition-opacity duration-[var(--motion-poem-swap)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+                (swapPhase === 'steady' ? 'opacity-100' : 'opacity-0')
+              }
+              style={
+                {
+                  '--companion-panel-max-height': `min(var(--companion-panel-default-max-height), ${panelAvailableHeight}px)`,
+                } as CSSProperties
+              }
+            >
+              {children}
+            </div>
           </div>
+        </div>
+
+        {/* 目录独立覆盖整个右栏；关闭时仍保持高度，完成淡出后再隐去。 */}
+        <div
+          aria-hidden={!catalogOpen}
+          inert={!catalogOpen}
+          className={
+            'absolute inset-0 min-h-0 min-w-0 transition-opacity duration-[var(--motion-catalog-switch)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
+            (catalogOpen ? 'opacity-100' : 'pointer-events-none opacity-0')
+          }
+        >
+          {catalog}
         </div>
       </div>
     </div>

@@ -18,7 +18,7 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
     <div className="poem-reader min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       <div
         ref={readerRef}
-        className="bg-transparent lg:flex lg:flex-1 lg:flex-col lg:justify-center"
+        className="poem-reader-content bg-transparent lg:flex lg:flex-1 lg:flex-col"
       >
         <article className="poem-reader-page mx-auto w-full min-w-0 px-4 sm:px-8">
           <header className="poem-reader-header text-center">
