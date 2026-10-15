@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ArrowLeft, MessageCircle, PanelLeft, PanelRight } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { ThemeSwitcher } from '@/components/theme-switcher'
 import { PoemReader } from '@/components/poem-reader'
 import { ReaderNavigation } from '@/components/reader-navigation'
 import { PoemCatalog } from '@/components/poem-catalog'
-import { ReaderCompanionLayout } from '@/components/reader-companion-layout'
+import { MobileLayout } from '@/components/mobile-layout'
+import { DesktopLayout } from '@/components/desktop-layout'
 import { ChatPanel } from '@/components/chat-panel'
 import { AnalysisPanel } from '@/components/analysis-panel'
-import { MobileDiscussionScreen } from '@/components/mobile-discussion-screen'
 import { CompanionPane } from '@/components/companion-pane'
-import { ReaderPane } from '@/components/reader-pane'
 import type { ActiveView } from '@/components/view-toolbar'
 
 import { fetchPoem } from '@/data/poem-library'
@@ -411,210 +408,60 @@ function App() {
     )
   }
 
-  const showReaderHeader = wideDiscussionLayout || !mobileDiscussionOpen
-  const catalogToggle = (
-    <Button
-      ref={catalogToggleRef}
-      type="button"
-      size={wideDiscussionLayout ? 'sm' : 'icon'}
-      variant="ghost"
-      aria-label={catalogOpen ? '收起作品目录' : '展开作品目录'}
-      aria-controls="poem-catalog"
-      aria-expanded={catalogOpen}
-      onClick={() => setCatalogOpen((current) => !current)}
-    >
-      {wideDiscussionLayout ? (
-        <>
-          <PanelRight className="size-4" aria-hidden="true" />
-          目录
-        </>
-      ) : (
-        <PanelLeft className="size-5" aria-hidden="true" />
-      )}
-    </Button>
-  )
+  const catalogLayout = {
+    open: catalogOpen,
+    content: renderCatalog(catalogOpen, wideDiscussionLayout),
+    onToggle: () => setCatalogOpen((current) => !current),
+    onClose: closeCatalog,
+  }
+  const readerLayout = {
+    content: renderReaderContent(),
+    onScroll: handleReaderScroll,
+    hasContentAbove: readerHasContentAbove,
+    hasContentBelow: readerHasContentBelow,
+    ready: poemReady,
+    switching: !!switchTarget,
+    switchError,
+    transitionClass: poemTransitionClass,
+  }
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
-      <header className="shrink-0 border-b border-border/50">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
-          {showReaderHeader ? (
-            <>
-              <div className="flex items-center gap-2">
-                {!wideDiscussionLayout && catalogToggle}
-                <span className="text-lg font-semibold tracking-tight">Poeticus</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {wideDiscussionLayout && catalogToggle}
-                <ThemeSwitcher />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  aria-label="返回阅读"
-                  onClick={closeMobileDiscussion}
-                >
-                  <ArrowLeft className="size-5" aria-hidden="true" />
-                </Button>
-                <span className="text-base font-semibold tracking-tight">阅读讨论</span>
-              </div>
-              <div className="size-9" aria-hidden="true" />
-            </>
-          )}
-        </div>
-      </header>
-
-      {!wideDiscussionLayout && (
-        <main className="relative min-h-0 flex-1 overflow-hidden">
-          <section
-            aria-label="诗词阅读"
-            aria-hidden={mobileDiscussionOpen}
-            inert={mobileDiscussionOpen || catalogOpen}
-            className={
-              'absolute inset-0 z-10 bg-background ' +
-              'md:transition-transform md:duration-[var(--motion-discussion-tablet-slide)] md:ease-[var(--motion-ease-settle)] ' +
-              'motion-reduce:transition-none ' +
-              (mobileDiscussionOpen ? 'md:-translate-x-full' : 'md:translate-x-0')
-            }
-          >
-            {/* 给底部正文留出空间，避免被悬浮的讨论按钮遮挡。 */}
-            <div
-              className={
-                'poeticus-scrollport poeticus-reader-scrollport h-full overflow-y-auto overscroll-contain px-5 pb-24 pt-7 md:px-8 ' +
-                (readerHasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
-                (readerHasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
-              }
-              ref={readerScrollRef}
-              onScroll={(event) => handleReaderScroll(event.currentTarget)}
-            >
-              {switchError && (
-                <div role="alert" className="mb-3 text-sm text-destructive">
-                  作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
-                </div>
-              )}
-
-              <div className="relative min-w-0" aria-busy={!!switchTarget}>
-                <div inert={!!switchTarget} className={poemTransitionClass}>
-                  {renderReaderContent()}
-                </div>
-              </div>
-            </div>
-
-            {poemReady && (
-              <Button
-                type="button"
-                size="lg"
-                variant="outline"
-                className="absolute right-4 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 rounded-md bg-background/95 px-4 shadow-sm backdrop-blur-sm"
-                aria-controls="mobile-discussion-screen"
-                aria-expanded={mobileDiscussionOpen}
-                aria-label={selected ? '打开讨论并使用已选诗句提问' : '打开阅读讨论'}
-                onClick={openMobileDiscussion}
-              >
-                <MessageCircle className="size-4" aria-hidden="true" />
-                <span>{selected ? '提问' : '对话'}</span>
-                {hasUnreadReply && (
-                  <span className="size-2 rounded-full bg-violet-300" aria-label="有新回复" />
-                )}
-              </Button>
-            )}
-          </section>
-
-          <MobileDiscussionScreen open={mobileDiscussionOpen}>
-            <div className="flex min-h-0 flex-1 flex-col">{renderDiscussionContent(true)}</div>
-          </MobileDiscussionScreen>
-
-          <div
-            aria-hidden={!catalogOpen}
-            inert={!catalogOpen}
-            className={
-              'absolute inset-0 z-40 transition-opacity duration-[var(--motion-catalog-phone-fade)] ' +
-              'ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
-              'md:transition-none md:opacity-100 ' +
-              (catalogOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0')
-            }
-          >
-            <button
-              type="button"
-              tabIndex={-1}
-              aria-label="关闭作品目录遮罩"
-              className={
-                'absolute inset-0 bg-black/55 md:transition-opacity md:duration-[var(--motion-catalog-backdrop-fade)] ' +
-                'md:ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
-                (catalogOpen
-                  ? 'pointer-events-auto md:opacity-100'
-                  : 'pointer-events-none md:opacity-0')
-              }
-              onClick={closeCatalog}
-            />
-
-            <div
-              className={
-                'relative h-full w-screen md:w-[min(88vw,420px)] ' +
-                'md:transform md:transition-transform md:duration-[var(--motion-catalog-drawer-slide)] ' +
-                'md:ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
-                (catalogOpen
-                  ? 'pointer-events-auto md:translate-x-0'
-                  : 'pointer-events-none md:-translate-x-full')
-              }
-            >
-              {renderCatalog(catalogOpen)}
-            </div>
-          </div>
-        </main>
-      )}
-
-      {wideDiscussionLayout && (
-        <main className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col overflow-hidden px-5 pb-7 pt-7 md:px-8">
-          {/* 目录与讨论共用右栏；两栏和中线的横向位置不受目录开关影响。 */}
-          <div className="mx-auto h-full w-full min-h-0 min-w-0 max-w-[var(--reading-stage-max-width)]">
-            <div className="relative h-full min-h-0 min-w-0" aria-busy={!!switchTarget}>
-              {switchError && (
-                <div role="alert" className="mb-3 text-sm text-destructive">
-                  作品切换失败：{switchError}。原作品仍可阅读，请重新选择。
-                </div>
-              )}
-
-              <div inert={!!switchTarget} className="h-full min-h-0 min-w-0">
-                <ReaderCompanionLayout
-                  ready={poemReady}
-                  idle={activeView === 'chat' ? turns.length === 0 : !analysis}
-                  catalogOpen={catalogOpen}
-                  catalog={renderCatalog(catalogOpen, true)}
-                  swapPhase={poemSwapPhase}
-                  reader={
-                    <ReaderPane
-                      scrollRef={readerScrollRef}
-                      onScroll={handleReaderScroll}
-                      hasContentAbove={readerHasContentAbove}
-                      hasContentBelow={readerHasContentBelow}
-                      poemTransitionClass={poemTransitionClass}
-                      navigation={
-                        poemReady ? (
-                          <ReaderNavigation
-                            embedded
-                            neighbors={neighbors}
-                            disabled={chatLoading || analyzing || !!switchTarget}
-                            onNavigate={handlePoemChange}
-                          />
-                        ) : null
-                      }
-                    >
-                      {renderReaderContent()}
-                    </ReaderPane>
-                  }
-                >
-                  {renderDiscussionContent(false)}
-                </ReaderCompanionLayout>
-              </div>
-            </div>
-          </div>
-        </main>
+      {wideDiscussionLayout ? (
+        <DesktopLayout
+          catalog={catalogLayout}
+          reader={readerLayout}
+          catalogToggleRef={catalogToggleRef}
+          readerScrollRef={readerScrollRef}
+          discussion={renderDiscussionContent(false)}
+          navigation={
+            poemReady ? (
+              <ReaderNavigation
+                embedded
+                neighbors={neighbors}
+                disabled={chatLoading || analyzing || !!switchTarget}
+                onNavigate={handlePoemChange}
+              />
+            ) : null
+          }
+          idle={activeView === 'chat' ? turns.length === 0 : !analysis}
+          swapPhase={poemSwapPhase}
+        />
+      ) : (
+        <MobileLayout
+          catalog={catalogLayout}
+          reader={readerLayout}
+          catalogToggleRef={catalogToggleRef}
+          readerScrollRef={readerScrollRef}
+          discussion={{
+            content: renderDiscussionContent(true),
+            open: mobileDiscussionOpen,
+            onOpen: openMobileDiscussion,
+            onClose: closeMobileDiscussion,
+            hasSelection: !!selected,
+            hasUnreadReply,
+          }}
+        />
       )}
     </div>
   )
