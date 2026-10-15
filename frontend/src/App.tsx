@@ -6,6 +6,7 @@ import { ReaderNavigation } from '@/components/reader-navigation'
 import { PoemCatalog } from '@/components/poem-catalog'
 import { MobileLayout } from '@/components/mobile-layout'
 import { DesktopLayout } from '@/components/desktop-layout'
+import { HomeScreen } from '@/components/home-screen'
 import { ChatPanel } from '@/components/chat-panel'
 import { AnalysisPanel } from '@/components/analysis-panel'
 import { CompanionPane } from '@/components/companion-pane'
@@ -22,12 +23,17 @@ import { loadInitialChatState } from '@/lib/chat-initial-state'
 import { motionDurationMs } from '@/lib/motion'
 import { WIDE_DISCUSSION_MEDIA } from '@/lib/responsive-layout'
 import { useChatSession } from '@/hooks/use-chat-session'
+import { useFeaturedPoem } from '@/hooks/use-featured-poem'
 
 import type { SelectedText } from '@/types/poem'
 
 /** 组装目录、阅读器、聊天和赏析；跨作品切换由此协调。 */
 function App() {
   // --- 1. 初始化作品、目录及会话状态 ---
+  const [screen, setScreen] = useState<'home' | 'reader'>(() =>
+    window.location.hash === '#reader' ? 'reader' : 'home',
+  )
+  const { featured, loading: featuredLoading, error: featuredError } = useFeaturedPoem()
   const [initialChatState] = useState(loadInitialChatState)
   const [poemId, setPoemId] = useState<string | null>(initialChatState.poemId)
 
@@ -109,6 +115,28 @@ function App() {
   })
 
   useEffect(() => {
+    const followHistory = () => setScreen(window.location.hash === '#reader' ? 'reader' : 'home')
+    window.addEventListener('popstate', followHistory)
+    window.addEventListener('hashchange', followHistory)
+    return () => {
+      window.removeEventListener('popstate', followHistory)
+      window.removeEventListener('hashchange', followHistory)
+    }
+  }, [])
+
+  function navigateTo(next: 'home' | 'reader') {
+    const hash = next === 'reader' ? '#reader' : ''
+    if (window.location.hash !== hash) {
+      window.history.pushState(null, '', window.location.pathname + window.location.search + hash)
+    }
+    setScreen(next)
+    if (next === 'home') {
+      setCatalogOpen(false)
+      setMobileDiscussionOpen(false)
+    }
+  }
+
+  useEffect(() => {
     return () => {
       switchControllerRef.current?.abort()
       if (viewSwitchTimerRef.current !== null) window.clearTimeout(viewSwitchTimerRef.current)
@@ -138,7 +166,7 @@ function App() {
       active = false
       observer.disconnect()
     }
-  }, [activePoem, poemId, wideDiscussionLayout, updateReaderScrollEdges])
+  }, [activePoem, poemId, screen, wideDiscussionLayout, updateReaderScrollEdges])
 
   useEffect(() => {
     const query = window.matchMedia(WIDE_DISCUSSION_MEDIA)
@@ -408,6 +436,32 @@ function App() {
     )
   }
 
+  function openHomePoem(id: string) {
+    if (chatLoading || analyzing || !!switchTarget) return
+    if (id !== poemId) handlePoemChange(id)
+    navigateTo('reader')
+  }
+
+  if (screen === 'home') {
+    return (
+      <HomeScreen
+        featured={featured}
+        featuredLoading={featuredLoading}
+        featuredError={featuredError}
+        catalog={catalog}
+        filters={filters}
+        query={searchInput}
+        loading={catalogLoading}
+        error={catalogError}
+        selectionBlocked={chatLoading || analyzing || !!switchTarget}
+        onQueryChange={setSearchInput}
+        onFiltersChange={updateCatalogFilters}
+        onSelect={openHomePoem}
+        onEnterReader={() => navigateTo('reader')}
+      />
+    )
+  }
+
   const catalogLayout = {
     open: catalogOpen,
     content: renderCatalog(catalogOpen, wideDiscussionLayout),
@@ -431,6 +485,7 @@ function App() {
         <DesktopLayout
           catalog={catalogLayout}
           reader={readerLayout}
+          onGoHome={() => navigateTo('home')}
           catalogToggleRef={catalogToggleRef}
           readerScrollRef={readerScrollRef}
           discussion={renderDiscussionContent(false)}
@@ -451,6 +506,7 @@ function App() {
         <MobileLayout
           catalog={catalogLayout}
           reader={readerLayout}
+          onGoHome={() => navigateTo('home')}
           catalogToggleRef={catalogToggleRef}
           readerScrollRef={readerScrollRef}
           discussion={{

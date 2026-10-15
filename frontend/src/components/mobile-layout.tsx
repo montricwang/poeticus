@@ -9,6 +9,7 @@ import type { LayoutCatalog, LayoutReader } from '@/components/page-layout-props
 type MobileLayoutProps = {
   catalog: LayoutCatalog
   reader: LayoutReader
+  onGoHome: () => void
   catalogToggleRef: RefObject<HTMLButtonElement | null>
   readerScrollRef: RefObject<HTMLDivElement | null>
   discussion: {
@@ -26,6 +27,7 @@ export function MobileLayout({
   catalog,
   reader,
   discussion,
+  onGoHome,
   catalogToggleRef,
   readerScrollRef,
 }: MobileLayoutProps) {
@@ -48,7 +50,13 @@ export function MobileLayout({
                 >
                   <PanelLeft className="size-5" aria-hidden="true" />
                 </Button>
-                <span className="text-lg font-semibold tracking-tight">Poeticus</span>
+                <button
+                  type="button"
+                  onClick={onGoHome}
+                  className="text-lg font-semibold tracking-tight hover:opacity-65 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+                >
+                  Poeticus
+                </button>
               </div>
               <div className="flex items-center gap-2">
                 <ThemeSwitcher />

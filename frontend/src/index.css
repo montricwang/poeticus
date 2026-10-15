@@ -248,9 +248,6 @@ html.theme-transition #root * {
     --reader-author-size: 0.875rem;
     --reader-author-weight: 400;
 
-    --reader-status-margin-top: 0.25rem;
-    --reader-status-size: 0.75rem;
-
     --reader-header-body-gap: 1.25rem;
 
     --reader-preface-size: 0.9375rem;
@@ -328,11 +325,6 @@ html.theme-transition #root * {
     font-weight: var(--reader-author-weight);
   }
 
-  .poem-reader-status {
-    margin-top: var(--reader-status-margin-top);
-    font-size: var(--reader-status-size);
-  }
-
   .poem-reader-preface {
     /* 与阅读页脚横线同为 400px 版心；短序按文字宽度居中，长序自然换行。 */
     width: fit-content;
@@ -353,6 +345,29 @@ html.theme-transition #root * {
   /* 原文中连续换行对应的段间留白。 */
   .poem-reader-source-gap {
     margin-block-start: 0.9em;
+  }
+
+  /* 首页古籍式预览：连排自然换列，圈点附在字的右侧，不占用正文格子。 */
+  .home-classic-body {
+    height: calc(11 * var(--reader-poem-size) * 1.12);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .home-classic-glyph {
+    position: relative;
+    display: inline-block;
+  }
+
+  .home-classic-mark {
+    position: absolute;
+    inset-inline-end: -0.4em;
+    inset-block-start: -0.25em;
+    font-size: 0.55em;
+    line-height: 1;
+    color: color-mix(in srgb, var(--foreground) 45%, transparent);
+    pointer-events: none;
   }
 
   /* 只降低标点文字颜色的不透明度，避免对整段元素和选区应用 opacity。 */
@@ -377,6 +392,7 @@ html.theme-transition #root * {
 
     :is(html, .poeticus-scrollport)::-webkit-scrollbar {
       width: 8px;
+      height: 8px;
     }
 
     :is(html, .poeticus-scrollport)::-webkit-scrollbar-track {
