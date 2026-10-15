@@ -10,6 +10,7 @@ import type { LayoutCatalog, LayoutReader } from '@/components/page-layout-props
 type DesktopLayoutProps = {
   catalog: LayoutCatalog
   reader: LayoutReader
+  onGoHome: () => void
   catalogToggleRef: RefObject<HTMLButtonElement | null>
   readerScrollRef: RefObject<HTMLDivElement | null>
   discussion: ReactNode
@@ -22,6 +23,7 @@ type DesktopLayoutProps = {
 export function DesktopLayout({
   catalog,
   reader,
+  onGoHome,
   catalogToggleRef,
   readerScrollRef,
   discussion,
@@ -34,7 +36,13 @@ export function DesktopLayout({
       <header className="shrink-0 border-b border-border/50">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold tracking-tight">Poeticus</span>
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="text-lg font-semibold tracking-tight hover:opacity-65 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              Poeticus
+            </button>
           </div>
           <div className="flex items-center gap-2">
             <Button
