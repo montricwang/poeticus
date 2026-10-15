@@ -253,7 +253,7 @@ export function AnalysisPanel({
           <div
             className={cn(
               'flex items-center justify-center text-center',
-              fillAvailableHeight ? 'h-full' : 'py-8',
+              fillAvailableHeight ? 'h-full' : 'py-3.5',
             )}
           >
             <div className="space-y-3">

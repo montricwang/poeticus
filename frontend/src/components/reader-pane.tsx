@@ -30,7 +30,7 @@ export function ReaderPane({
     <div className="relative flex h-full min-h-0 min-w-0 flex-col">
       <div
         className={
-          'poeticus-scrollport poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain pr-2 ' +
+          'poeticus-scrollport poeticus-reader-scrollport flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain px-1 ' +
           (hasContentAbove ? 'poeticus-scroll-fade-top ' : '') +
           (hasContentBelow ? 'poeticus-scroll-fade-bottom' : '')
         }

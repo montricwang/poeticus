@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronUp, Search, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { poemIncipit, poemLabel } from '@/data/poem-library'
 import type { PoemFilters, PoemPage } from '@/data/poem-library'
 import { OVERLAY_CATALOG_MEDIA } from '@/lib/responsive-layout'
@@ -19,6 +20,7 @@ type PoemCatalogProps = {
   onSelect: (id: string) => void
   onClose: () => void
   open: boolean
+  embedded?: boolean
 }
 
 /** 展示分页目录和筛选框；窄屏抽屉打开时约束键盘焦点。 */
@@ -35,8 +37,10 @@ export function PoemCatalog({
   onSelect,
   onClose,
   open,
+  embedded = false,
 }: PoemCatalogProps) {
   const panelRef = useRef<HTMLElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -68,6 +72,28 @@ export function PoemCatalog({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose, open])
 
+  // 桌面单行书目固定为 56px。按列表可用高度翻页，保留原浏览位置附近的作品。
+  useEffect(() => {
+    if (!embedded || !open) return
+    const list = listRef.current
+    if (!list) return
+
+    const resize = () => {
+      const limit = Math.max(1, Math.floor(list.clientHeight / 56))
+      if (limit === filters.limit) return
+      onFiltersChange({
+        ...filters,
+        limit,
+        offset: Math.floor(filters.offset / limit) * limit,
+      })
+    }
+
+    resize()
+    const observer = new ResizeObserver(resize)
+    observer.observe(list)
+    return () => observer.disconnect()
+  }, [embedded, open, filters, onFiltersChange])
+
   const hasQuery = !!filters.q?.trim()
   const page = catalog ? Math.floor(catalog.offset / filters.limit) + 1 : 1
 
@@ -76,9 +102,19 @@ export function PoemCatalog({
       id="poem-catalog"
       ref={panelRef}
       aria-label="作品目录"
-      className="flex h-full min-h-0 w-screen flex-col sm:w-[min(88vw,420px)] border-r border-border bg-background 2xl:relative 2xl:top-0 2xl:h-full 2xl:max-h-none 2xl:w-full 2xl:border-0 2xl:bg-transparent"
+      className={
+        'flex h-full min-h-0 flex-col ' +
+        (embedded
+          ? 'w-full border-0 bg-transparent'
+          : 'w-screen border-r border-border bg-background sm:w-[min(88vw,420px)]')
+      }
     >
-      <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
+      <div
+        className={
+          'flex items-center justify-between px-4 py-3 ' +
+          (embedded ? '' : 'border-b border-border/60')
+        }
+      >
         <div className="flex min-w-0 items-baseline gap-2">
           <h2 className="font-medium">作品目录</h2>
           <span className="text-xs text-muted-foreground" aria-live="polite">
@@ -92,13 +128,16 @@ export function PoemCatalog({
           aria-label="收起作品目录"
           onClick={onClose}
         >
-          <X className="size-4 2xl:hidden" aria-hidden="true" />
-          <ChevronLeft className="hidden size-4 2xl:block" aria-hidden="true" />
+          {embedded ? (
+            <ChevronUp className="size-4" aria-hidden="true" />
+          ) : (
+            <X className="size-4" aria-hidden="true" />
+          )}
         </Button>
       </div>
 
       <form
-        className="border-b border-border/50 p-3"
+        className={embedded ? 'px-3 pt-3' : 'border-b border-border/50 p-3'}
         role="search"
         onSubmit={(event) => {
           event.preventDefault()
@@ -119,11 +158,20 @@ export function PoemCatalog({
             查找
           </Button>
         </div>
-        <p className="mt-2 px-1 text-xs text-muted-foreground">空格分隔多个词，全部匹配即可</p>
       </form>
 
+      {embedded && (
+        <div className="flex h-[clamp(1rem,3vh,2.5rem)] shrink-0 items-center justify-center">
+          <HorizontalEditorialDivider className="w-full max-w-130" />
+        </div>
+      )}
+
       <div
-        className="poeticus-scrollport min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        ref={listRef}
+        className={
+          'poeticus-scrollport min-h-0 flex-1 overscroll-contain ' +
+          (embedded ? 'overflow-hidden' : 'overflow-y-auto')
+        }
         aria-busy={loading}
       >
         {error ? (
@@ -148,55 +196,107 @@ export function PoemCatalog({
           </p>
         ) : (
           <ul aria-label={hasQuery ? '搜索结果' : '作品列表'}>
-            {(catalog?.items ?? []).map((work) => (
-              <li key={work.id} className="border-b border-border/40 last:border-0">
+            {(catalog?.items ?? []).map((work) => {
+              const entry = (
                 <button
                   type="button"
                   disabled={selectionBlocked}
                   aria-current={work.id === activePoemId ? 'true' : undefined}
                   onClick={() => onSelect(work.id)}
                   className={
-                    'block w-full border-l-2 border-transparent px-4 py-3 text-left transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 ' +
+                    'w-full border-l-2 border-transparent px-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 ' +
+                    (embedded ? 'flex h-14 items-center gap-3 ' : 'block py-3 ') +
                     (work.id === activePoemId ? 'border-l-foreground/70 bg-muted/40 ' : '')
                   }
                 >
-                  <div className="flex min-w-0 items-baseline gap-2">
-                    <span
-                      className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
-                      title={poemLabel(work)}
-                    >
-                      {poemLabel(work)}
-                    </span>
-                    <span
-                      className="max-w-20 shrink-0 truncate text-xs text-muted-foreground"
-                      title={work.author ?? '作者未核实'}
-                    >
-                      {work.author ?? '佚名'}
-                    </span>
-                  </div>
-                  <span
-                    className="mt-1.5 block truncate font-serif text-sm text-muted-foreground"
-                    title={work.incipit}
-                  >
-                    {poemIncipit(work)}
-                  </span>
+                  {embedded ? (
+                    <>
+                      <span
+                        className="poeticus-catalog-title max-w-[62%] shrink-0 truncate text-base font-medium text-foreground"
+                        title={embedded ? undefined : poemLabel(work)}
+                      >
+                        {poemLabel(work)}
+                      </span>
+                      <span
+                        className="min-w-0 flex-1 truncate font-serif text-sm text-muted-foreground"
+                        title={embedded ? undefined : work.incipit}
+                      >
+                        {poemIncipit(work)}
+                      </span>
+                      <span
+                        className="max-w-20 shrink-0 truncate text-xs text-muted-foreground"
+                        title={embedded ? undefined : (work.author ?? '作者未核实')}
+                      >
+                        {work.author ?? '佚名'}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <span
+                          className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+                          title={embedded ? undefined : poemLabel(work)}
+                        >
+                          {poemLabel(work)}
+                        </span>
+                        <span
+                          className="max-w-20 shrink-0 truncate text-xs text-muted-foreground"
+                          title={embedded ? undefined : (work.author ?? '作者未核实')}
+                        >
+                          {work.author ?? '佚名'}
+                        </span>
+                      </div>
+                      <span
+                        className="mt-1.5 block truncate font-serif text-sm text-muted-foreground"
+                        title={embedded ? undefined : work.incipit}
+                      >
+                        {poemIncipit(work)}
+                      </span>
+                    </>
+                  )}
                 </button>
-              </li>
-            ))}
+              )
+              return (
+                <li
+                  key={work.id}
+                  className={embedded ? '' : 'border-b border-border/40 last:border-0'}
+                >
+                  {entry}
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-border/60 px-3 py-2">
-        <span className="text-xs text-muted-foreground">
-          {catalog ? `第 ${page} 页` : '—'}
-          {loading ? ' · 加载中' : ''}
-        </span>
-        <div className="flex items-center gap-1">
+      <div
+        className={
+          embedded
+            ? 'shrink-0'
+            : 'flex items-center justify-between gap-2 border-t border-border/60 px-3 py-2'
+        }
+      >
+        {embedded && <HorizontalEditorialDivider className="mx-auto mb-3 w-full max-w-130" />}
+        <div
+          className={
+            embedded
+              ? 'mx-auto flex w-full max-w-130 items-center justify-between gap-2'
+              : 'contents'
+          }
+        >
+          <span className="mr-auto text-xs text-muted-foreground lg:order-2 lg:mr-0 lg:text-sm">
+            {catalog
+              ? embedded
+                ? `第 ${page} / ${Math.max(1, Math.ceil(catalog.total / filters.limit))} 页`
+                : `第 ${page} 页`
+              : '—'}
+            {loading ? ' · 加载中' : ''}
+          </span>
           <Button
+            className="lg:order-1"
             type="button"
             variant="ghost"
-            size="icon-sm"
+            size={embedded ? 'sm' : 'icon-sm'}
             aria-label="上一页"
             disabled={loading || filters.offset === 0}
             onClick={() =>
@@ -207,11 +307,13 @@ export function PoemCatalog({
             }
           >
             <ChevronLeft className="size-4" aria-hidden="true" />
+            {embedded && '上一页'}
           </Button>
           <Button
+            className="lg:order-3"
             type="button"
             variant="ghost"
-            size="icon-sm"
+            size={embedded ? 'sm' : 'icon-sm'}
             aria-label="下一页"
             disabled={loading || !catalog || filters.offset + filters.limit >= catalog.total}
             onClick={() =>
@@ -221,6 +323,7 @@ export function PoemCatalog({
               })
             }
           >
+            {embedded && '下一页'}
             <ChevronRight className="size-4" aria-hidden="true" />
           </Button>
         </div>

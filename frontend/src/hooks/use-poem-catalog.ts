@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 
 import { fetchPoemPage } from '@/data/poem-library'
 import type { PoemFilters, PoemPage } from '@/data/poem-library'
@@ -35,12 +35,12 @@ export function usePoemCatalog(setPoemId: Dispatch<SetStateAction<string | null>
     return () => controller.abort()
   }, [filters, setPoemId])
 
-  function updateCatalogFilters(next: PoemFilters) {
+  const updateCatalogFilters = useCallback((next: PoemFilters) => {
     // 上一页目录在请求期间继续存在，避免空列表导致侧栏重排。
     setCatalogLoading(true)
     setCatalogError('')
     setFilters(next)
-  }
+  }, [])
 
   return {
     catalog,
