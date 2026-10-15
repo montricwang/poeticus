@@ -1,5 +1,6 @@
+import { realpathSync } from 'node:fs'
 import path from 'node:path'
-import { defineConfig } from 'vite'
+import { defineConfig, searchForWorkspaceRoot } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -13,6 +14,13 @@ export default defineConfig({
   },
 
   server: {
+    // 多工作树共享 node_modules 时，允许读取软链接实际指向的字体文件。
+    fs: {
+      allow: [
+        searchForWorkspaceRoot(import.meta.dirname),
+        realpathSync(path.resolve(import.meta.dirname, 'node_modules')),
+      ],
+    },
     proxy: {
       // 本地开发与生产环境统一使用 /api/*，不再维护旧的无前缀接口。
       '/api': {

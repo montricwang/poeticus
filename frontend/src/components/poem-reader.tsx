@@ -41,9 +41,6 @@ export function PoemReader({ work, onSelect }: PoemReaderProps) {
             <p className="poem-reader-author text-muted-foreground">
               {work.author ?? '作者未核实'}
             </p>
-            {work.review_status !== 'reviewed' && (
-              <p className="poem-reader-status text-muted-foreground/75">正文待校勘</p>
-            )}
           </header>
 
           {work.prefaces.map((preface, index) => (
