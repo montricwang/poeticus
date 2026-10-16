@@ -86,6 +86,8 @@ Vite 开发代理将前端的 `/api/*` 请求转发到本地 FastAPI。生产环
 - `GET /api/capabilities`
 - `GET /api/poems`
 - `GET /api/poems/{UUID}`
+- `GET /api/poems/{UUID}/neighbors`
+- `GET /api/poems/daily`
 - `POST /api/chat`
 - `POST /api/chat/stream`
 - `POST /api/analyze`

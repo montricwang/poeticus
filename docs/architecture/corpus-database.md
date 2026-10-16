@@ -105,8 +105,10 @@ backend/app.py                 组装 FastAPI 路由
 - `GET /api/poems?author=...&cipai=...`
 - `GET /api/poems?q=...`
 - `GET /api/poems/{UUID}`
+- `GET /api/poems/{UUID}/neighbors`
+- `GET /api/poems/daily`
 
-目录接口只返回列表需要的摘要字段；详情接口返回阅读正文等字段。API 不暴露来源 hash、源段落、私人注评或数据库凭证。
+目录接口只返回列表需要的摘要字段；详情与每日推荐接口返回阅读正文。每日推荐按北京时间日期的 SHA-256 结果，在按 `source_order` 排列的完整阅读库中取一首；同一日期结果稳定。API 不暴露来源 hash、源段落、私人注评或数据库凭证。
 
 本地运行：
 

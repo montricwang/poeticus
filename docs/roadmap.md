@@ -1,8 +1,8 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-14
+> 更新日期：2026-10-16
 >
-> 当前状态：v0.4.0 公网版；公开阅读、Agent、AI Eval 与 Poem Retrieval 已具备真实线上链路。2026-10-14 完成 Werneror 拼接关系去重与正式站点验收；WSL/Tunnel 是按需运行的检索依赖，而不是已迁往云端的常驻节点。
+> 当前状态：v0.5.0 公网版。首页每日一词、馆藏搜索、阅读版心与响应式布局已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持现有线上链路。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
 
 Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog 和 ADR；具体任务继续进入 GitHub Issues。
 
@@ -11,6 +11,8 @@ Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release�
 Poeticus 已经走通：
 
 - React / TypeScript / Vite 阅读界面；
+- 首页竖排每日一词与馆藏搜索（日期稳定推荐，公开词库 3491 首）；
+- 阅读页桌面双栏、动态目录分页和手机／桌面独立布局外壳；
 - 手机、平板、桌面响应式阅读 / 讨论工作区；
 - FastAPI 同源后端；
 - PostgreSQL 公开作品库与 3491 首词作；
@@ -36,7 +38,7 @@ Poeticus 已经走通：
 
 Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、更多 Chunk、更多 sparse ranking 变体做惯性扩张。
 
-## 2. v0.4.0 之后的近期事项
+## 2. v0.5.0 之后的近期事项
 
 ### 2.1 Production hygiene
 
@@ -96,7 +98,7 @@ Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、
 - 目录与阅读区细节；
 - 赏析和对话之间的切换。
 
-10 月 14 日的桌面固定双栏、单行目录、自适应分页和提示框统一，已在独立 `feat/frontend-20261014` Worktree 做本地浏览器验证，**尚未合并／上线**。待用户完成视觉验收后，再作为前端 PR 收口并更新现行前端架构说明；不要把开发预览当作线上现状。
+10 月 15 日已合并桌面阅读版心与目录改进（PR #291）、手机／桌面布局外壳拆分（PR #292）及首页推荐和馆藏搜索（PR #293）；10 月 16 日合并 Safari 竖排修复（PR #295）与每日一词（PR #297）。iPhone Safari 在不同视口下的断行差异仍由 [#294](https://github.com/montricwang/poeticus/issues/294) 跟进。首页信息架构 [#113](https://github.com/montricwang/poeticus/issues/113) 还有作者入口、导航与阅读进度等待设计和实现。
 
 ### 2.6 诗学画像与推荐（研究阶段）
 
@@ -170,7 +172,7 @@ Document Corpus 与实时业务数据继续分开。订单、库存、余额一�
 
 > 做过 → 遇到过问题 → 能解释为什么这样做，以及没有这样做会怎样。
 
-v0.4.0 的当前真实链路应能讲清楚（不再是已销毁的腾讯云 VPS 方案）：
+v0.5.0 沿用的检索链路应能讲清楚（原腾讯云 VPS 已销毁）：
 
 ```text
 Frontend（Railway Web）

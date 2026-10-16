@@ -1,6 +1,6 @@
 # Poeticus｜当前生产部署
 
-本文记录截至 2026-10-14 的生产部署、已验证的 Retrieval 接入方式和当前可执行的运维检查。原腾讯云检索节点已销毁；旧节点性能数据保留为历史基线。历史实验见 [开发日志](devlog/)、Release notes 与 [ADR-0001](adr/0001-separate-text-retrieval-service.md)。
+本文记录截至 2026-10-16 的生产部署、已验证的 Retrieval 接入方式和当前可执行的运维检查。原腾讯云检索节点已销毁；旧节点性能数据保留为历史基线。历史实验见 [开发日志](devlog/)、Release notes 与 [ADR-0001](adr/0001-separate-text-retrieval-service.md)。
 
 ## 1. 当前混合部署拓扑
 
@@ -62,7 +62,7 @@ Web、Agent 和阅读数据库运行在 Railway；独立的 Text Retrieval 仍�
 
 ## 3. Railway PostgreSQL
 
-生产阅读库公开 3491 首词作。
+生产阅读库公开 3491 首词作。首页每日一词使用 `GET /api/poems/daily`，由服务端按北京时间日期计算稳定序号，查询完整词库并返回当天的作品正文。
 
 这批作品包含宋代以外的作者，因此文档不再把整库统一称为“3491 首宋词”。生产数据库当前仍没有可靠的逐首 dynasty 字段。
 
@@ -224,7 +224,7 @@ Agent 调用 Retrieval 时，如果 `current.dynasty=null`：
 ### 网站与 Railway
 
 1. Railway 最新 Deployment 为 SUCCESS，`https://poeticus.app/health` 返回 HTTP 200；
-2. 首页、`/api/poems?limit=1`、`/api/info` 正常；
+2. 首页、`/api/poems?limit=1`、`/api/poems/daily`、`/api/info` 正常；发布版本时核对 `/api/info` 与目标版本一致；
 3. Railway 变量名包含 `POETICUS_RETRIEVAL_URL` 和 `POETICUS_RETRIEVAL_TOKEN`，且已部署预期值；**变量存在不代表可达或认证成功**；
 4. 测试真实问答和 SSE，观察工具是否成功返回候选、Agent 是否引用候选，不能只凭首页可访问判断 Retrieval 正常。
 
