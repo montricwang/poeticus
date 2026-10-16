@@ -2,61 +2,30 @@
 
 **在诗词中阅读，也在诗词中追问。**
 
-Poeticus 是一个面向中国古典诗词的 AI 辅助阅读器。读者可以在阅读作品时直接划选字句、提出问题，围绕原文展开连续讨论；不必为了查询一个典故或理解一处措辞而反复离开阅读页面。
+Poeticus 是一款面向中国古典诗词的 AI 辅助阅读器。读者可以从一首词出发，阅读原文、查找作品、划词提问，也可以与 AI 讨论典故、措辞和作品之间的联系。
 
-**项目状态：v0.5.0 公网版。** 网站已面向访客开放，无需账号或自备 API Key；作品 API 的 **3491 首词作**已通过公网读取验收。AI 问答和赏析使用服务端共享的每日额度及限流保护。前代文本问题还可以调用 Poeticus 自建 Poem Retrieval Service，从约 85 万首外部古典诗词中寻找候选来源。
-
-## 在线体验
-
-**[打开 Poeticus 在线阅读器](https://poeticus.app/)**
-
-直接打开即可搜索、阅读、划词提问或请求整首赏析。AI 使用免费体验额度，服务端设置全站每日请求上限；超额时仍可正常阅读作品。公开只读链路的 [GitHub Actions 外网验收记录](https://github.com/montricwang/poeticus/actions/runs/37176951820) 已通过。
+**[在线体验 poeticus.app](https://poeticus.app/)** · [最新版本](https://github.com/montricwang/poeticus/releases/latest)
 
 ## 阅读体验
 
-- **首页每日一词**：从 3491 首公开词作中，按北京时间的日期选出一首推荐作品；点击印章进入阅读室。
-- **首页馆藏搜索**：通过词人、词牌或词句查找作品；首页采用竖排推荐与简洁的搜索入口。
-- **逐句分行与光学居中**：词作按句读排成视觉诗行，根据实际长短句分布动态居中；保留原文复制和划词引用。
-- **前后首浏览**：阅读页直接切换上一首、下一首，使用数据库原书顺序，不受目录分页限制。
-- **暖白／炭黑主题**：设置菜单支持浅色、深色及跟随系统；阅读、对话和赏析的分割线与滚动体验已统一。
+- **每日一词**：每天从 3491 首公开词作中推荐一首，以竖排呈现，点击即可进入阅读室。
+- **馆藏阅读**：按词人、词牌或诗句搜索；阅读页提供逐句排版、前后首切换，以及适配手机和桌面的布局与深浅主题。
+- **对话伴读**：划选词句直接提问，围绕当前作品连续讨论，也可以生成整首词的译文、词语解释与赏析。
+- **文学线索**：AI 可以按需查询典故，并在约 85 万首古典诗词构成的检索库中寻找可能的前代文本联系，供进一步阅读和辨析。
 
-- **3491 首公开词作**：从 PostgreSQL 读取目录与正文，支持分页、词人/词牌检索和划词阅读；当前数据包含晚唐、五代与宋代作者，正文均保留 `imported_unreviewed` 状态。
-- **划词追问**：选中诗词中的字词或句子，将引用、作品信息和问题一起交给 AI。
-- **连续讨论**：围绕同一作品保留最近几轮有效问答作为上下文；阅读历史和草稿在当前浏览器本地保存。
-- **典故查证**：Agent 根据问题决定是否使用 CNKGraph 典故检索。检索结果是参考线索，需要继续结合原文判断。
-- **前代文本检索**：询问“这句借了谁哪一句、可能化用了什么前代文本”时，Agent 可以调用自建 Hybrid Retrieval；候选由 Qwen sentence/clause Dense Retrieval、character n-gram BM25、Work-level RRF 与 chronology filtering 共同产生。当前检索运行在开发机 WSL，经 Cloudflare Tunnel 供线上按需调用；已启用 Werneror 组诗拼接去重，以免同一首作品被合集重复收录后误导 Agent（[PR #286](https://github.com/montricwang/poeticus/pull/286)）。电脑或 Tunnel 离线时不可用。
-- **整首赏析**：生成现代汉语译文、词语解释和作品赏析；AI 回答支持流式呈现。
+阅读库目前以词作为主，包含晚唐、五代及宋代等时期的作者。作品尚未逐首人工校勘；AI 生成的解释与检索候选也需要结合原文和文献判断。
 
-Poeticus 尝试让**作品成为阅读中心，AI 成为可以随时交谈的伴读者**。界面仍在持续调整，见 [设计讨论 #63](https://github.com/montricwang/poeticus/issues/63)。
+## 技术架构
 
-> 作品库由历史材料整理，保留 `imported_unreviewed` 标识，并不表示已逐首校勘。模型生成的解释和译文可能有误，请结合原作阅读。
+Poeticus 使用 React、TypeScript 和 Vite 构建前端，FastAPI 提供作品、对话及赏析接口，PostgreSQL 保存公开阅读作品。AI 伴读由 LangGraph 组织模型调用与查证工具。
 
-## 工程架构
+前代文本检索使用 Qwen3-Embedding、FAISS 和 SQLite FTS5/BM25 进行混合召回，再按作品汇总候选。检索服务当前运行在开发机 WSL，通过 Cloudflare Tunnel 按需连接线上应用；检索节点离线时，该项能力会受影响。网站及公开作品库部署在 Railway。
 
-| 层次 | 使用的技术 | 主要职责 |
-| --- | --- | --- |
-| 前端 | React、TypeScript、Vite | 作品阅读、划词引用、对话与流式展示 |
-| HTTP 后端 | FastAPI、Pydantic | 作品查询、请求校验、聊天与赏析 API |
-| AI 工作流 | LangGraph、LLM API | 结合作品上下文生成回答，按需调用查证与 Retrieval 工具 |
-| 作品存储 | PostgreSQL、psycopg | 作品目录分页、正文读取、字段搜索 |
-| Poem Retrieval | Qwen3-Embedding、FAISS、SQLite FTS5 BM25、RRF | 从 Werneror 约 85 万首作品中发现前代文本候选 |
-| Retrieval Serving | WSL Ubuntu、FastAPI、Cloudflare Tunnel | 本地承载模型与索引，由 Windows 连接器将 Railway HTTPS + Bearer 请求转发到 WSL |
-| 验证 | pytest、前端 lint/build、Node 测试、AI Eval、生产 E2E | 回归检查、检索增量验证与真实链路验收 |
+## 开发与文档
 
-作品读取采用 `GET /api/poems`、`GET /api/poems/{UUID}` 与每日推荐 `GET /api/poems/daily`；聊天在正式部署中使用同源 `POST /api/chat/stream` SSE；FastAPI 同时提供 Vite 静态文件和作品 API。`GET /health` 用于存活检查，`GET /api/info` 返回非敏感版本元数据。公网 AI 使用量限制及故障保护见 [#77](https://github.com/montricwang/poeticus/issues/77)。
+项目代码与文档公开，作品数据库的私人原始资料及凭据不包含在仓库中。自行运行阅读功能需要准备具有使用权限的作品数据；在线体验无需账号，AI 功能设有共享用量限制。
 
-文档按当前架构、决策、开发操作、私有数据和历史日志分工，先看 [文档导航](docs/README.md)。了解技术细节，可阅读 [LangGraph 架构](docs/architecture/langgraph.md)、[Poem Retrieval 架构](docs/architecture/text-retrieval.md)、[作品数据库架构](docs/architecture/corpus-database.md)、[当前生产部署](docs/deployment.md) 和 [开发日志](docs/devlog/)。
-
-后端实现统一位于 `backend/` 包：`app.py` 组装 FastAPI，`api/` 负责 HTTP 接口，`ai/` 放模型与 LangGraph，`corpus/` 管作品数据，`evidence/` 管典故查证。生产环境直接以 `backend.app:app` 启动，不再保留根目录兼容模块。
-
-## 当前阶段与边界
-
-- 当前以古典词作为主要阅读对象，仍有作品字段与文本尚待核对；AI 解释、典故候选和 Poem Retrieval 候选都需要结合原文与可靠文献继续判断。
-- 会话历史目前存储在**当前浏览器的 localStorage**，没有账号登录、跨设备同步或服务端长期记忆。
-- 公开仓库不包含私有商业 EPUB、来源证据、批量抽取结果、数据库凭证或开发者的本地作品库。要运行数据库阅读功能，需自行准备具有使用权限的作品数据。
-- 云端只含可供阅读的作品字段，不包括私人出版社注评和源书证据；所有内容仍应按具体版本追溯来源，未做逐首校勘。公开 AI 采用服务端请求配额与并发限制，不提供无限免费调用。当前本地检索是按需在线的外部依赖，部署健康与实际检索验收状态以 [生产部署文档](docs/deployment.md) 为准。
-- 第一个公开演示版本的部署、访问限制和发布验收见 [#76](https://github.com/montricwang/poeticus/issues/76)、[#77](https://github.com/montricwang/poeticus/issues/77)、[#78](https://github.com/montricwang/poeticus/issues/78)。v0.3.0 的 Retrieval 生产链见 [#164](https://github.com/montricwang/poeticus/issues/164) 与 [PR #165](https://github.com/montricwang/poeticus/pull/165)。后续功能与缺陷由 [GitHub Issues](https://github.com/montricwang/poeticus/issues) 跟踪。
-
-## 面向开发者
-
-本地环境准备、运行命令、数据库初始化与自动化测试见 [开发者指南](docs/development.md)。正式版本以 `main` 和对应 GitHub Release 中的版本说明为准；其他 Draft PR 不等同于已发布功能。
+- [开发者指南](docs/development.md)：环境准备、启动和测试
+- [架构与文档导航](docs/README.md)：系统结构、数据和设计决策
+- [生产部署](docs/deployment.md)：线上服务与检索节点
+- [版本记录](https://github.com/montricwang/poeticus/releases) · [开发日志](docs/devlog/) · [问题与计划](https://github.com/montricwang/poeticus/issues)
