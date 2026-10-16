@@ -34,23 +34,10 @@ test('homepage uses phrase layout on desktop and continuous layout on mobile', (
   assert.match(seal, /hover:bg-\[#AA381E\]/)
 })
 
-test('home navigation switches between nine real preview poems', () => {
-  for (const tune of [
-    '杨柳枝',
-    '菩萨蛮',
-    '水调歌头',
-    '如梦令',
-    '戚氏',
-    '八声甘州',
-    '满庭芳',
-    '兰陵王',
-    '踏莎行',
-  ]) {
-    assert.ok(featuredHook.includes(`label: '${tune}'`))
-  }
-  assert.match(home, /选择首页测试词作/)
-  assert.match(home, /onPreviewPoemChange\(candidate.id\)/)
-  assert.match(app, /onPreviewPoemChange=\{setPreviewPoemId\}/)
+test('homepage uses fixed recommendation without a preview debug selector', () => {
+  assert.match(featuredHook, /FEATURED_POEM_ID/)
+  assert.doesNotMatch(home, /选择首页测试词作|首页排版测试|PREVIEW_POEMS|onPreviewPoemChange/)
+  assert.doesNotMatch(app, /setPreviewPoemId|previewPoemId/)
 })
 
 test('homepage shares catalog and reader owners', () => {

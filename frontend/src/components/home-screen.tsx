@@ -1,22 +1,18 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 
-import { ArrowRight, ChevronDown } from 'lucide-react'
-import { Popover } from 'radix-ui'
+import { ArrowRight } from 'lucide-react'
 import { DailyRecommendation } from '@/components/daily-recommendation'
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { HomeSearch } from '@/components/home-search'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import type { Poem, PoemFilters, PoemPage } from '@/data/poem-library'
-import { PREVIEW_POEMS } from '@/hooks/use-featured-poem'
 
 type HomeScreenProps = {
   featured: Poem | null
   featuredLoading: boolean
   featuredError: string
-  previewPoemId: string
-  onPreviewPoemChange: (id: string) => void
   catalog: PoemPage | null
   filters: PoemFilters
   query: string
@@ -34,8 +30,6 @@ export function HomeScreen({
   featured,
   featuredLoading,
   featuredError,
-  previewPoemId,
-  onPreviewPoemChange,
   catalog,
   filters,
   query,
@@ -96,38 +90,6 @@ export function HomeScreen({
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-4 sm:px-5 md:px-8">
           <span className="text-base font-semibold tracking-tight sm:text-lg">Poeticus</span>
           <div className="flex items-center gap-1 sm:gap-2">
-            <Popover.Root>
-              <Popover.Trigger asChild>
-                <Button type="button" variant="outline" size="sm" aria-label="选择首页测试词作">
-                  选词 <ChevronDown className="size-3.5" aria-hidden="true" />
-                </Button>
-              </Popover.Trigger>
-              <Popover.Portal>
-                <Popover.Content
-                  align="end"
-                  sideOffset={8}
-                  className="z-50 w-52 rounded-md border border-border bg-popover p-1.5 text-popover-foreground shadow-md outline-none"
-                >
-                  <p className="px-2 py-1 text-xs text-muted-foreground">首页排版测试</p>
-                  {PREVIEW_POEMS.map((candidate) => (
-                    <Popover.Close asChild key={candidate.id}>
-                      <button
-                        type="button"
-                        aria-current={candidate.id === previewPoemId ? 'true' : undefined}
-                        onClick={() => onPreviewPoemChange(candidate.id)}
-                        className={
-                          'flex w-full items-center justify-between rounded-sm px-2 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none ' +
-                          (candidate.id === previewPoemId ? 'bg-accent font-medium' : '')
-                        }
-                      >
-                        <span>{candidate.label}</span>
-                        <span className="text-xs text-muted-foreground">{candidate.author}</span>
-                      </button>
-                    </Popover.Close>
-                  ))}
-                </Popover.Content>
-              </Popover.Portal>
-            </Popover.Root>
             <Button type="button" variant="ghost" size="sm" onClick={onEnterReader}>
               阅读室 <ArrowRight className="size-4 max-[359px]:hidden" aria-hidden="true" />
             </Button>

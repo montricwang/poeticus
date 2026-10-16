@@ -33,13 +33,7 @@ function App() {
   const [screen, setScreen] = useState<'home' | 'reader'>(() =>
     window.location.hash === '#reader' ? 'reader' : 'home',
   )
-  const {
-    featured,
-    loading: featuredLoading,
-    error: featuredError,
-    previewPoemId,
-    setPreviewPoemId,
-  } = useFeaturedPoem()
+  const { featured, loading: featuredLoading, error: featuredError } = useFeaturedPoem()
   const [initialChatState] = useState(loadInitialChatState)
   const [poemId, setPoemId] = useState<string | null>(initialChatState.poemId)
 
@@ -454,8 +448,6 @@ function App() {
         featured={featured}
         featuredLoading={featuredLoading}
         featuredError={featuredError}
-        previewPoemId={previewPoemId}
-        onPreviewPoemChange={setPreviewPoemId}
         catalog={catalog}
         filters={filters}
         query={searchInput}
