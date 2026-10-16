@@ -4,6 +4,8 @@
 私人注评或只供来源核对的内容暴露给 HTTP 响应。
 """
 from collections.abc import Mapping
+from datetime import date
+from hashlib import sha256
 from typing import Protocol
 from uuid import UUID
 
@@ -86,6 +88,24 @@ def list_poems(
         (*params, limit, offset),
     ).fetchall()
     return rows, total
+
+
+def get_daily_poem(conn: Connection[DictRow] | PoemReader, day: date) -> DictRow | None:
+    """用北京时间日期对整张作品表做稳定的伪随机选择，不加载全部作品。"""
+    count_row = conn.execute(sql.SQL("SELECT COUNT(*) AS total FROM poems"), ()).fetchone()
+    if count_row is None or not isinstance(count_row["total"], int):
+        raise RuntimeError("COUNT 查询未返回有效作品总数")
+    total = count_row["total"]
+    if total == 0:
+        return None
+    digest = sha256(day.isoformat().encode("ascii")).digest()
+    offset = int.from_bytes(digest[:8], "big") % total
+    return conn.execute(
+        sql.SQL("""SELECT id, source_order, collection, author, cipai, title, yusheng_title,
+                      body_segments, prefaces, review_status, text_version
+               FROM poems ORDER BY source_order LIMIT 1 OFFSET %s"""),
+        (offset,),
+    ).fetchone()
 
 
 def get_poem(conn: Connection[DictRow], poem_id: UUID) -> DictRow | None:

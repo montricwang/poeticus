@@ -1,4 +1,5 @@
 """使用合成记录测试 API 与 SQL 契约，不需要本地数据库。"""
+from datetime import date
 from uuid import UUID
 
 import psycopg
@@ -86,6 +87,8 @@ class FakeConnection:
             poem_id = params[0]
             assert isinstance(poem_id, UUID)
             return FakeRows(row=self.details.get(poem_id))
+        if "ORDER BY source_order LIMIT 1 OFFSET %s" in query_text:
+            return FakeRows(row=self.details.get(self.pages[params[0]]["id"]) if self.pages else None)
         if "ORDER BY source_order" in query_text:
             return FakeRows(rows=self.pages)
         raise AssertionError("Unexpected SQL in read-only repository")
@@ -291,3 +294,49 @@ def test_neighbors_missing_or_invalid_poem_id(client):
     override_connection(client, FakeConnection())
     assert client.get(f"/api/poems/{ONE}/neighbors").status_code == 404
     assert client.get("/api/poems/not-a-uuid/neighbors").status_code == 422
+
+
+def test_daily_recommendation_is_stable_across_requests(client):
+    fake = FakeConnection(pages=[summary()], details={ONE: full_record()}, count=1)
+    override_connection(client, fake)
+    first = client.get("/api/poems/daily")
+    second = client.get("/api/poems/daily")
+    assert first.status_code == second.status_code == 200
+    assert first.json() == second.json()
+    assert first.json()["id"] == str(ONE)
+    assert "body_segments" in first.json()
+    assert "source_locator" not in first.json()
+    assert fake.calls[-1][1] == (0,)
+
+
+def test_daily_recommendation_uses_entire_corpus_and_date_seed():
+    import hashlib
+
+    class SyntheticCorpus:
+        def __init__(self):
+            self.calls = []
+
+        def execute(self, query, params):
+            self.calls.append((query.as_string(), params))
+            if "COUNT(*)" in query.as_string():
+                return FakeRows(row={"total": 3491})
+            return FakeRows(row=full_record())
+
+    fake = SyntheticCorpus()
+    day = date(2026, 10, 16)
+    assert repository.get_daily_poem(fake, day) is not None
+    expected = int.from_bytes(hashlib.sha256(b"2026-10-16").digest()[:8], "big") % 3491
+    assert fake.calls[-1][1] == (expected,)
+    assert "ORDER BY source_order LIMIT 1 OFFSET %s" in fake.calls[-1][0]
+    repository.get_daily_poem(fake, day)
+    assert fake.calls[-1][1] == (expected,)
+    repository.get_daily_poem(fake, date(2026, 10, 17))
+    assert fake.calls[-1][1] != (expected,)
+    assert all("poem_source_texts" not in query for query, _ in fake.calls)
+
+
+def test_daily_empty_corpus_returns_404(client):
+    fake = FakeConnection(count=0)
+    override_connection(client, fake)
+    response = client.get("/api/poems/daily")
+    assert response.status_code == 404

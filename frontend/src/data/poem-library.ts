@@ -108,6 +108,11 @@ export async function fetchPoemPage(filters: PoemFilters, signal?: AbortSignal):
   return readJson<PoemPage>(`/api/poems?${params}`, signal)
 }
 
+/** 由服务端按北京时间日期，从完整词库中确定当天的一首词。 */
+export function fetchDailyPoem(signal?: AbortSignal): Promise<Poem> {
+  return readJson<Poem>('/api/poems/daily', signal)
+}
+
 export function fetchPoem(id: string, signal?: AbortSignal): Promise<Poem> {
   return readJson<Poem>(`/api/poems/${encodeURIComponent(id)}`, signal)
 }
