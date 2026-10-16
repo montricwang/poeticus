@@ -6,6 +6,9 @@ const source = (path) => readFileSync(new URL(path, import.meta.url), 'utf8')
 const app = source('../src/App.tsx')
 const home = source('../src/components/home-screen.tsx')
 const recommendation = source('../src/components/daily-recommendation.tsx')
+const featuredDisplay = source('../src/components/featured-poem-display.tsx')
+const featuredHook = source('../src/hooks/use-featured-poem.ts')
+const seal = source('../src/components/read-poem-seal.tsx')
 const search = source('../src/components/home-search.tsx')
 
 test('home composes recommendation, divider and search independently', () => {
@@ -16,15 +19,38 @@ test('home composes recommendation, divider and search independently', () => {
   assert.ok(home.indexOf('<HorizontalEditorialDivider') < home.indexOf('<HomeSearch'))
 })
 
-test('homepage preserves classic and phrase layouts without changing the original poem', () => {
-  assert.match(recommendation, /writingMode: 'vertical-rl'/)
-  assert.match(recommendation, /buildPoemLines\(poemText\(poem\)\)/)
-  assert.match(recommendation, /buildPoemTextRuns\(line.text\)/)
-  assert.match(recommendation, /setLayout\('phrases'\)/)
-  assert.match(recommendation, /setLayout\('continuous'\)/)
-  assert.match(recommendation, /poem.body_segments.join\('　　'\)/)
-  assert.match(recommendation, /mobilePreview\(poem.body_segments\)/)
-  assert.doesNotMatch(recommendation, /featuredExcerpt|visibleLines/)
+test('homepage uses phrase layout on desktop and continuous layout on mobile', () => {
+  assert.match(featuredDisplay, /writingMode: 'vertical-rl'/)
+  assert.match(featuredDisplay, /buildPoemLines\(displayedSegments.join/)
+  assert.match(featuredDisplay, /buildPoemTextRuns\(line.text\)/)
+  assert.match(recommendation, /matchMedia/)
+  assert.doesNotMatch(recommendation, /setLayout|样式一|样式二/)
+  assert.match(featuredDisplay, /home-classic-column/)
+  assert.doesNotMatch(featuredDisplay, /home-compact-punctuation/)
+  assert.match(recommendation, /<FeaturedPoemDisplay/)
+  assert.match(recommendation, /<ReadPoemSeal/)
+  assert.match(seal, /#AA381E/)
+  assert.match(seal, /font-sans/)
+  assert.match(seal, /hover:bg-\[#AA381E\]/)
+})
+
+test('home navigation switches between nine real preview poems', () => {
+  for (const tune of [
+    '杨柳枝',
+    '菩萨蛮',
+    '水调歌头',
+    '如梦令',
+    '戚氏',
+    '八声甘州',
+    '满庭芳',
+    '兰陵王',
+    '踏莎行',
+  ]) {
+    assert.ok(featuredHook.includes(`label: '${tune}'`))
+  }
+  assert.match(home, /选择首页测试词作/)
+  assert.match(home, /onPreviewPoemChange\(candidate.id\)/)
+  assert.match(app, /onPreviewPoemChange=\{setPreviewPoemId\}/)
 })
 
 test('homepage shares catalog and reader owners', () => {

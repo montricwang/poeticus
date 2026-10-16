@@ -2,6 +2,23 @@ import { expect, test } from '@playwright/test'
 
 const works = [
   {
+    id: 'e1fe9c90-c29b-468a-910d-973a331da960',
+    source_order: 4,
+    collection: '测试词集',
+    author: '柳永',
+    cipai: '戚氏',
+    title: null,
+    yusheng_title: null,
+    incipit: '晚秋天。一霎微雨洒庭轩。',
+    review_status: 'reviewed',
+    body_segments: [
+      '晚秋天。一霎微雨洒庭轩。槛菊萧疏，井梧零乱惹残烟。凄然。望乡关。',
+      '孤馆度日如年。风露渐变，悄悄至更阑。',
+    ],
+    prefaces: [],
+    text_version: 1,
+  },
+  {
     id: '00000000-0000-0000-0000-000000000001',
     source_order: 1,
     collection: '测试词集',
@@ -88,13 +105,11 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-test('first screen keeps the featured vertical poem inside 390, 1024, and 1440px', async ({
-  page,
-}) => {
+test('homepage poem stays visible across phone, tablet and desktop widths', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: '在诗词中寻一处相逢' })).toBeVisible()
   await expect(page.locator('.home-featured-poem')).not.toBeEmpty()
-  for (const width of [390, 1024, 1440]) {
+  for (const width of [320, 390, 820, 1023, 1024, 1440]) {
     await page.setViewportSize({ width, height: 844 })
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
@@ -104,7 +119,47 @@ test('first screen keeps the featured vertical poem inside 390, 1024, and 1440px
         .locator('.home-featured-poem')
         .evaluate((element) => getComputedStyle(element).writingMode),
     ).toBe('vertical-rl')
+    if (width < 1024) {
+      // Safari 的窄屏首页不依赖 RTL 滚动容器来定位正文。
+      await expect(page.locator('.home-classic-body[class~="lg:hidden"]')).toBeVisible()
+      await expect(page.locator('.home-featured-poem header')).toBeVisible()
+      expect(
+        await page.locator('[data-recommendation-scrollport]').evaluate((element) => ({
+          direction: element.getAttribute('dir'),
+          overflow: getComputedStyle(element).overflowX,
+        })),
+      ).toEqual({ direction: null, overflow: 'hidden' })
+      // 手机采用文字视觉重心居中，印章跟随真实诗文左缘。
+      const layout = await page.locator('[aria-label="推荐作品"]').evaluate((section) => {
+        const poem = section.querySelector('.home-featured-poem')
+        const button = section.querySelector<HTMLButtonElement>('button')
+        if (!poem || !button) throw new Error('Missing recommendation content')
+        const view = section.querySelector('[data-recommendation-scrollport]')
+        if (!view) throw new Error('Missing recommendation viewport')
+        const viewport = view.getBoundingClientRect()
+        const poemRect = poem.getBoundingClientRect()
+        const buttonRect = button.getBoundingClientRect()
+        return {
+          visualOffset: Math.abs(
+            (poemRect.left + poemRect.right) / 2 - (viewport.left + viewport.right) / 2,
+          ),
+          sealGap: poemRect.left - buttonRect.right,
+        }
+      })
+      expect(layout.visualOffset).toBeLessThan(60)
+      expect(layout.sealGap).toBeGreaterThanOrEqual(8)
+      expect(layout.sealGap).toBeLessThanOrEqual(18)
+      await expect(page.locator('.home-classic-body[class~="lg:hidden"]')).toContainText('晚秋天')
+    } else {
+      // 桌面仅保留按句断列的排版。
+      await expect(page.locator('.poem-reader-line').first()).toBeVisible()
+      await expect(page.locator('.home-classic-body[class~="lg:hidden"]')).toHaveCount(0)
+    }
+    await expect(page.getByRole('group', { name: '推荐作品排版方式' })).toHaveCount(0)
   }
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator('.home-classic-body[class~="lg:hidden"]')).toBeVisible()
+
   await page.getByRole('button', { name: '阅读室' }).click()
   await expect(page).toHaveURL(/#reader$/)
   await expect(page.locator('.poem-reader')).toBeVisible()
