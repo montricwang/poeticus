@@ -35,7 +35,7 @@ test('homepage uses phrase layout on desktop and continuous layout on mobile', (
 })
 
 test('homepage uses fixed recommendation without a preview debug selector', () => {
-  assert.match(featuredHook, /FEATURED_POEM_ID/)
+  assert.match(featuredHook, /fetchDailyPoem\(controller.signal\)/)
   assert.doesNotMatch(home, /选择首页测试词作|首页排版测试|PREVIEW_POEMS|onPreviewPoemChange/)
   assert.doesNotMatch(app, /setPreviewPoemId|previewPoemId/)
 })
