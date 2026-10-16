@@ -19,6 +19,15 @@ test('home composes recommendation, divider and search independently', () => {
   assert.ok(home.indexOf('<HorizontalEditorialDivider') < home.indexOf('<HomeSearch'))
 })
 
+test('home search uses editorial heading and an unboxed input with matching underline', () => {
+  assert.match(search, /美要眇兮宜修/)
+  assert.doesNotMatch(search, /在诗词中寻一处相逢|从现有馆藏中搜索，不必知道完整的词题。/)
+  assert.match(search, /<HorizontalEditorialDivider className="w-full peer-focus-within:bg-ring"/)
+  const formOpening = search.match(/<form[\s\S]*?>/)?.[0]
+  assert.ok(formOpening)
+  assert.doesNotMatch(formOpening, /rounded-xl|border-border|shadow-\[/)
+})
+
 test('homepage uses phrase layout on desktop and continuous layout on mobile', () => {
   assert.match(featuredDisplay, /writingMode: 'vertical-rl'/)
   assert.match(featuredDisplay, /buildPoemLines\(displayedSegments.join/)

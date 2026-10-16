@@ -1,6 +1,7 @@
 import { useEffect, useRef, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Search, X } from 'lucide-react'
 
+import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { Button } from '@/components/ui/button'
 import { poemIncipit, poemTitle } from '@/data/poem-library'
 import type { PoemFilters, PoemPage } from '@/data/poem-library'
@@ -61,12 +62,12 @@ export function HomeSearch({
     <>
       <section aria-label="馆藏搜索" className="mx-auto w-full max-w-2xl pb-12 lg:pb-0">
         <h1 className="mb-5 text-center font-serif text-xl font-medium tracking-[0.12em] sm:text-2xl">
-          在诗词中寻一处相逢
+          美要眇兮宜修
         </h1>
         <form
           role="search"
           onSubmit={submitSearch}
-          className="flex min-h-15 items-center gap-3 rounded-xl border border-border bg-background px-4 shadow-[0_5px_26px_-18px_rgba(0,0,0,0.28)] focus-within:border-foreground/35 focus-within:ring-2 focus-within:ring-ring/15 sm:min-h-17 sm:px-5"
+          className="peer flex min-h-15 items-center gap-3 bg-transparent px-4 sm:min-h-17 sm:px-5"
         >
           <Search className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
@@ -93,9 +94,7 @@ export function HomeSearch({
             搜索
           </Button>
         </form>
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          从现有馆藏中搜索，不必知道完整的词题。
-        </p>
+        <HorizontalEditorialDivider className="w-full peer-focus-within:bg-ring" />
       </section>
 
       {hasSearch && (
