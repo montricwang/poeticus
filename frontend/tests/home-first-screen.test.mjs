@@ -6,6 +6,9 @@ const source = (path) => readFileSync(new URL(path, import.meta.url), 'utf8')
 const app = source('../src/App.tsx')
 const home = source('../src/components/home-screen.tsx')
 const recommendation = source('../src/components/daily-recommendation.tsx')
+const featuredDisplay = source('../src/components/featured-poem-display.tsx')
+const featuredHook = source('../src/hooks/use-featured-poem.ts')
+const seal = source('../src/components/read-poem-seal.tsx')
 const search = source('../src/components/home-search.tsx')
 
 test('home composes recommendation, divider and search independently', () => {
@@ -16,15 +19,25 @@ test('home composes recommendation, divider and search independently', () => {
   assert.ok(home.indexOf('<HorizontalEditorialDivider') < home.indexOf('<HomeSearch'))
 })
 
-test('homepage preserves classic and phrase layouts without changing the original poem', () => {
-  assert.match(recommendation, /writingMode: 'vertical-rl'/)
-  assert.match(recommendation, /buildPoemLines\(poemText\(poem\)\)/)
-  assert.match(recommendation, /buildPoemTextRuns\(line.text\)/)
-  assert.match(recommendation, /setLayout\('phrases'\)/)
-  assert.match(recommendation, /setLayout\('continuous'\)/)
-  assert.match(recommendation, /poem.body_segments.join\('　　'\)/)
-  assert.match(recommendation, /mobilePreview\(poem.body_segments\)/)
-  assert.doesNotMatch(recommendation, /featuredExcerpt|visibleLines/)
+test('homepage uses phrase layout on desktop and continuous layout on mobile', () => {
+  assert.match(featuredDisplay, /writingMode: 'vertical-rl'/)
+  assert.match(featuredDisplay, /buildPoemLines\(displayedSegments.join/)
+  assert.match(featuredDisplay, /buildPoemTextRuns\(line.text\)/)
+  assert.match(recommendation, /matchMedia/)
+  assert.doesNotMatch(recommendation, /setLayout|样式一|样式二/)
+  assert.match(featuredDisplay, /home-classic-column/)
+  assert.doesNotMatch(featuredDisplay, /home-compact-punctuation/)
+  assert.match(recommendation, /<FeaturedPoemDisplay/)
+  assert.match(recommendation, /<ReadPoemSeal/)
+  assert.match(seal, /#AA381E/)
+  assert.match(seal, /font-sans/)
+  assert.match(seal, /hover:bg-\[#AA381E\]/)
+})
+
+test('homepage uses fixed recommendation without a preview debug selector', () => {
+  assert.match(featuredHook, /FEATURED_POEM_ID/)
+  assert.doesNotMatch(home, /选择首页测试词作|首页排版测试|PREVIEW_POEMS|onPreviewPoemChange/)
+  assert.doesNotMatch(app, /setPreviewPoemId|previewPoemId/)
 })
 
 test('homepage shares catalog and reader owners', () => {

@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { fetchPoem } from '@/data/poem-library'
 import type { Poem } from '@/data/poem-library'
 
-// 调试首页竖排时固定为辛弃疾《破阵子·为陈同甫赋壮词以寄之》；之后再确定每日推荐规则。
-const PREVIEW_POEM_ID = '2098ddf7-55bb-4923-be66-6af4cae58d78'
+// 临时固定推荐词作；正式推荐策略留待后续功能实现。
+const FEATURED_POEM_ID = 'e1fe9c90-c29b-468a-910d-973a331da960'
 
 export function useFeaturedPoem() {
   const [featured, setFeatured] = useState<Poem | null>(null)
@@ -13,7 +13,7 @@ export function useFeaturedPoem() {
 
   useEffect(() => {
     const controller = new AbortController()
-    void fetchPoem(PREVIEW_POEM_ID, controller.signal)
+    void fetchPoem(FEATURED_POEM_ID, controller.signal)
       .then((poem) => {
         if (!controller.signal.aborted) setFeatured(poem)
       })

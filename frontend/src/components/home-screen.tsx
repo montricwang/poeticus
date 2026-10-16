@@ -1,3 +1,6 @@
+import { useLayoutEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
+
 import { ArrowRight } from 'lucide-react'
 import { DailyRecommendation } from '@/components/daily-recommendation'
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
@@ -38,14 +41,57 @@ export function HomeScreen({
   onSelect,
   onEnterReader,
 }: HomeScreenProps) {
+  const mainRef = useRef<HTMLElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLDivElement>(null)
+  const [mobileBodyMaxHeight, setMobileBodyMaxHeight] = useState<number | null>(null)
+
+  // 直接量取搜索区与推荐区之间的实际占位，避免 Safari 的浏览器栏缩小时压掉正文字高。
+  useLayoutEffect(() => {
+    const main = mainRef.current
+    const content = contentRef.current
+    const search = searchRef.current
+    if (!main || !content || !search) return
+
+    const measure = () => {
+      if (window.matchMedia('(min-width: 64rem)').matches) return
+      const body = main.querySelector<HTMLElement>('.home-classic-body')
+      if (!body) return
+      const bodyRect = body.getBoundingClientRect()
+      if (!bodyRect.height) return
+      const mainRect = main.getBoundingClientRect()
+      const searchRect = search.getBoundingClientRect()
+      const spaceBeforeBody = bodyRect.top - mainRect.top + main.scrollTop
+      const spaceAfterBody = searchRect.bottom - bodyRect.bottom
+      const bottomPadding = Number.parseFloat(getComputedStyle(content).paddingBottom) || 0
+      const available = Math.max(
+        192,
+        Math.floor(main.clientHeight - spaceBeforeBody - spaceAfterBody - bottomPadding - 8),
+      )
+      setMobileBodyMaxHeight((previous) => (previous === available ? previous : available))
+    }
+
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(main)
+    observer.observe(search)
+    window.addEventListener('resize', measure)
+    window.visualViewport?.addEventListener('resize', measure)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+      window.visualViewport?.removeEventListener('resize', measure)
+    }
+  }, [featured])
+
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
       <header className="shrink-0 border-b border-border/50">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 md:px-8">
-          <span className="text-lg font-semibold tracking-tight">Poeticus</span>
-          <div className="flex items-center gap-2">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-4 sm:px-5 md:px-8">
+          <span className="text-base font-semibold tracking-tight sm:text-lg">Poeticus</span>
+          <div className="flex items-center gap-1 sm:gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={onEnterReader}>
-              阅读室 <ArrowRight className="size-4" aria-hidden="true" />
+              阅读室 <ArrowRight className="size-4 max-[359px]:hidden" aria-hidden="true" />
             </Button>
             <ThemeSwitcher />
           </div>
@@ -53,10 +99,19 @@ export function HomeScreen({
       </header>
       <main
         id="home"
+        ref={mainRef}
         className="poeticus-scrollport min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        style={
+          {
+            '--home-classic-max-height': mobileBodyMaxHeight ? `${mobileBodyMaxHeight}px` : '18rem',
+          } as CSSProperties
+        }
       >
-        <div className="mx-auto w-full max-w-6xl px-5 md:px-8 lg:flex lg:min-h-full lg:flex-col lg:justify-center lg:pt-10 lg:pb-[6.5rem]">
-          {/* 底部比顶部多留一个导航栏的高度：整体以视口为中心，长内容也不会被位移裁切。 */}
+        <div
+          ref={contentRef}
+          className="mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-6 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]"
+        >
+          {/* 手机靠上排，桌面仍整体居中；内容超出视口时由 main 滚动。 */}
           <div className="lg:flex lg:flex-col lg:gap-10">
             <DailyRecommendation
               poem={featured}
@@ -65,8 +120,8 @@ export function HomeScreen({
               disabled={selectionBlocked}
               onRead={onSelect}
             />
-            <HorizontalEditorialDivider className="mx-auto my-10 w-full max-w-2xl lg:my-0" />
-            <div className="w-full">
+            <HorizontalEditorialDivider className="mx-auto my-6 w-full max-w-2xl lg:my-0" />
+            <div ref={searchRef} className="w-full">
               <HomeSearch
                 catalog={catalog}
                 filters={filters}

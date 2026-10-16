@@ -347,27 +347,33 @@ html.theme-transition #root * {
     margin-block-start: 0.9em;
   }
 
-  /* 首页古籍式预览：连排自然换列，圈点附在字的右侧，不占用正文格子。 */
+  /* 首页古籍式预览：直接使用浏览器原生竖排标点与自然换列。 */
   .home-classic-body {
-    height: calc(11 * var(--reader-poem-size) * 1.12);
+    /* 手机长词用尽搜索区上方的实际剩余空间；短词按正文长度收起。 */
+    height: max(
+      var(--home-classic-heading-min-height, 0px),
+      clamp(13rem, var(--home-classic-target-height), var(--home-classic-max-height, 18rem))
+    );
     white-space: normal;
     overflow-wrap: anywhere;
     word-break: normal;
   }
 
-  .home-classic-glyph {
-    position: relative;
-    display: inline-block;
+  /* 每个块是一个独立的竖排列；断列边界不插入字符，也不更改标点字格。 */
+  .home-classic-column {
+    display: block;
+    white-space: nowrap;
   }
 
-  .home-classic-mark {
-    position: absolute;
-    inset-inline-end: -0.4em;
-    inset-block-start: -0.25em;
-    font-size: 0.55em;
-    line-height: 1;
-    color: color-mix(in srgb, var(--foreground) 45%, transparent);
-    pointer-events: none;
+  /* 换片恰好换行时才增加横向呼吸感；同一行衔接仍保留原文全角空格。 */
+  .home-classic-column--new-segment {
+    margin-block-start: 0.5em;
+  }
+
+  @media (min-width: 64rem) {
+    .home-classic-body {
+      height: calc(11 * var(--reader-poem-size) * 1.12);
+    }
   }
 
   /* 只降低标点文字颜色的不透明度，避免对整段元素和选区应用 opacity。 */
