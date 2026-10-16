@@ -1,5 +1,7 @@
 """PostgreSQL 作品目录的 HTTP 契约，不包含 AI 或前端逻辑。"""
+from datetime import datetime
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -7,7 +9,7 @@ from psycopg import Connection
 from psycopg.rows import DictRow
 
 from .connection import get_connection
-from .repository import get_poem, get_poem_neighbors, list_poems
+from .repository import get_daily_poem, get_poem, get_poem_neighbors, list_poems
 
 router = APIRouter(prefix="/api/poems", tags=["poems"])
 
@@ -88,6 +90,16 @@ def catalog(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/daily", response_model=PoemDetail)
+def daily(conn: Connection[DictRow] = Depends(get_connection)):
+    """按北京时间选出全词库当天共同的推荐作品。"""
+    today = datetime.now(ZoneInfo("Asia/Shanghai")).date()
+    record = get_daily_poem(conn, today)
+    if record is None:
+        raise HTTPException(status_code=404, detail="作品库暂无可推荐作品")
+    return PoemDetail.model_validate(record)
 
 
 @router.get("/{poem_id}", response_model=PoemDetail)
