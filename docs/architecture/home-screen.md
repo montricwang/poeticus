@@ -9,7 +9,7 @@
 - `frontend/src/components/featured-poem-display.tsx`（`FeaturedPoemDisplay`、`ContinuousPoemBody`）：根据空间决定预览哪些完整片段，并将手机正文断为竖列。纯文本列划分由 `frontend/src/lib/home-preview-columns.ts` 的 `arrangeHomeColumns` 负责。
 - `frontend/src/components/home-search.tsx`：馆藏搜索独立于每日推荐；未提交搜索时搜索区靠近首屏底部，提交后切换到结果视图。
 
-开发环境 `import.meta.env.DEV` 下的「调试」菜单可以从 `frontend/src/lib/home-debug-poems.ts` 指定的十首实际作品中切换预览，或返回「今日推荐」。它不修改服务端每日推荐，生产构建不显示此入口。
+首页不提供测试样本切换按钮；每日推荐统一由上游作品数据决定。排版回归仍通过自动化测试中的固定样本验证。
 
 ## 首页搜索模式（Issue #308）
 
