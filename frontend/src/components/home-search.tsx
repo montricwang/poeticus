@@ -1,4 +1,4 @@
-import { useEffect, useRef, type FormEvent } from 'react'
+import { useEffect, useRef, type FormEvent, type RefObject } from 'react'
 import { ArrowLeft, ArrowRight, Search, X } from 'lucide-react'
 
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
@@ -7,6 +7,7 @@ import { poemIncipit, poemTitle } from '@/data/poem-library'
 import type { PoemFilters, PoemPage } from '@/data/poem-library'
 
 type HomeSearchProps = {
+  searchSectionRef?: RefObject<HTMLElement | null>
   catalog: PoemPage | null
   filters: PoemFilters
   query: string
@@ -20,6 +21,7 @@ type HomeSearchProps = {
 
 /** 首页检索入口与搜索结果；使用已有馆藏分页接口。 */
 export function HomeSearch({
+  searchSectionRef,
   catalog,
   filters,
   query,
@@ -60,7 +62,11 @@ export function HomeSearch({
 
   return (
     <>
-      <section aria-label="馆藏搜索" className="mx-auto w-full max-w-2xl pb-12 lg:pb-0">
+      <section
+        ref={searchSectionRef}
+        aria-label="馆藏搜索"
+        className="mx-auto w-full max-w-2xl pb-12 lg:pb-0"
+      >
         <h1 className="mb-5 text-center font-serif text-xl font-medium tracking-[0.12em] sm:text-2xl">
           美要眇兮宜修
         </h1>

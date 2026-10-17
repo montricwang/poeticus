@@ -119,6 +119,32 @@ export function arrangeHomeColumns(
   return best
 }
 
+/** 布局空间放不下完整诗文时，改为可见节选，而不是退回被 overflow 裁切的原生竖排。 */
+export function fitHomeColumns(
+  text: string,
+  capacity: number,
+  maxColumns: number,
+  options: { minInkLength?: number } = {},
+): { columns: string[]; excerpted: boolean } | null {
+  const full =
+    arrangeHomeColumns(text, capacity, maxColumns, options) ??
+    arrangeHomeColumns(text, capacity, maxColumns)
+  if (full) return { columns: full, excerpted: false }
+  if (capacity < 5 || maxColumns < 1) return null
+
+  const chars = Array.from(text)
+  const limit = Math.min(chars.length - 1, capacity * maxColumns)
+  // 优先在完整句读之后结束节选；实在没有合适句界，才允许截在字间。
+  for (const requirePunctuation of [true, false]) {
+    for (let end = limit; end >= 5; end--) {
+      if (requirePunctuation && !/[，。！？!?、；;]/u.test(chars[end - 1])) continue
+      const columns = arrangeHomeColumns(chars.slice(0, end).join(''), capacity, maxColumns)
+      if (columns) return { columns, excerpted: true }
+    }
+  }
+  return null
+}
+
 function hanCount(text: string) {
   return Array.from(text).filter((char) => !/[\p{P}\s]/u.test(char)).length
 }

@@ -43,10 +43,10 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const mainRef = useRef<HTMLElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-  const searchRef = useRef<HTMLDivElement>(null)
+  const searchRef = useRef<HTMLElement>(null)
   const [mobileBodyMaxHeight, setMobileBodyMaxHeight] = useState<number | null>(null)
 
-  // 直接量取搜索区与推荐区之间的实际占位，避免 Safari 的浏览器栏缩小时压掉正文字高。
+  // 仅测量固定搜索入口；结果列表可滚动，不应反过来缩短上方推荐词。
   useLayoutEffect(() => {
     const main = mainRef.current
     const content = contentRef.current
@@ -64,8 +64,9 @@ export function HomeScreen({
       const spaceBeforeBody = bodyRect.top - mainRect.top + main.scrollTop
       const spaceAfterBody = searchRect.bottom - bodyRect.bottom
       const bottomPadding = Number.parseFloat(getComputedStyle(content).paddingBottom) || 0
+      // 视口太矮时允许首页纵向滚动，不把长词压成每列只有几字的密集短列。
       const available = Math.max(
-        192,
+        288,
         Math.floor(main.clientHeight - spaceBeforeBody - spaceAfterBody - bottomPadding - 8),
       )
       setMobileBodyMaxHeight((previous) => (previous === available ? previous : available))
@@ -121,8 +122,9 @@ export function HomeScreen({
               onRead={onSelect}
             />
             <HorizontalEditorialDivider className="mx-auto my-6 w-full max-w-2xl lg:my-0" />
-            <div ref={searchRef} className="w-full">
+            <div className="w-full">
               <HomeSearch
+                searchSectionRef={searchRef}
                 catalog={catalog}
                 filters={filters}
                 query={query}

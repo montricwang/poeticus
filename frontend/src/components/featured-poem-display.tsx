@@ -3,12 +3,13 @@ import type { CSSProperties } from 'react'
 
 import type { Poem } from '@/data/poem-library'
 import { buildPoemLines, buildPoemTextRuns } from '@/lib/poem-layout'
-import { arrangeHomeColumns } from '@/lib/home-preview-columns'
+import { fitHomeColumns } from '@/lib/home-preview-columns'
 
 /** 作品文本只负责竖排与两种断列规则，不负责按钮和首页留白。 */
 export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuous: boolean }) {
   const poemScrollport = useRef<HTMLDivElement>(null)
   const [previewSegments, setPreviewSegments] = useState<string[] | null>(null)
+  const [bodyExcerpted, setBodyExcerpted] = useState(false)
 
   // 测量浏览器实际竖排宽度；整叠优先，容不下第一叠时才逐句截断。
   useLayoutEffect(() => {
@@ -100,9 +101,10 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
 
   const displayedSegments = previewSegments ?? poem.body_segments
   const excerpted =
-    previewSegments !== null &&
-    (displayedSegments.length !== poem.body_segments.length ||
-      displayedSegments.some((segment, index) => segment !== poem.body_segments[index]))
+    (continuous && bodyExcerpted) ||
+    (previewSegments !== null &&
+      (displayedSegments.length !== poem.body_segments.length ||
+        displayedSegments.some((segment, index) => segment !== poem.body_segments[index])))
 
   // 样式一从最右列开始读；使用标准 LTR scrollLeft，避开 Safari 的 RTL 滚动差异。
   useLayoutEffect(() => {
@@ -192,7 +194,7 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
             </p>
           ))}
           {continuous ? (
-            <ContinuousPoemBody segments={displayedSegments} />
+            <ContinuousPoemBody segments={displayedSegments} onExcerptChange={setBodyExcerpted} />
           ) : (
             <div className="poem-reader-body !mx-0 !w-max max-w-none text-foreground/90 lg:pt-[var(--reader-poem-size)]">
               {buildPoemLines(displayedSegments.join('\n\n')).map((line) => (
@@ -221,10 +223,20 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
   )
 }
 
-function ContinuousPoemBody({ segments }: { segments: string[] }) {
+function ContinuousPoemBody({
+  segments,
+  onExcerptChange,
+}: {
+  segments: string[]
+  onExcerptChange: (excerpted: boolean) => void
+}) {
   const text = segments.join('\u3000')
   const mobileBody = useRef<HTMLDivElement>(null)
-  const [layout, setLayout] = useState<{ columns: string[]; height: number } | null>(null)
+  const [layout, setLayout] = useState<{
+    columns: string[]
+    height: number
+    excerpted: boolean
+  } | null>(null)
 
   useLayoutEffect(() => {
     const body = mobileBody.current
@@ -265,23 +277,24 @@ function ContinuousPoemBody({ segments }: { segments: string[] }) {
       const segmentGapBudget = Math.max(0, segments.length - 1) * fontSize * 0.5
       const maxColumns = Math.floor((available - segmentGapBudget) / lineHeight)
 
-      const chosen =
-        arrangeHomeColumns(text, capacity, maxColumns, { minInkLength }) ??
-        // 太矮的手机上物理空间可能不足，此时优先保证文字可显示。
-        arrangeHomeColumns(text, capacity, maxColumns)
-      if (!chosen) {
+      const fitted = fitHomeColumns(text, capacity, maxColumns, { minInkLength })
+      if (!fitted) {
         setLayout(null)
+        onExcerptChange(false)
         return
       }
+      const { columns: chosen, excerpted } = fitted
+      onExcerptChange(excerpted)
       const longest = Math.max(...chosen.map((column) => Array.from(column).length))
       const height = Math.min(maxHeight, Math.ceil(longest * advance + 3))
       setLayout((previous) =>
         previous &&
         previous.height === height &&
+        previous.excerpted === excerpted &&
         previous.columns.length === chosen.length &&
         previous.columns.every((column, index) => column === chosen[index])
           ? previous
-          : { columns: chosen, height },
+          : { columns: chosen, height, excerpted },
       )
     }
 
@@ -299,7 +312,7 @@ function ContinuousPoemBody({ segments }: { segments: string[] }) {
       mutation.disconnect()
       window.removeEventListener('resize', refresh)
     }
-  }, [text, segments])
+  }, [text, segments, onExcerptChange])
 
   const columns = layout?.columns
   // 动态规划会省去行首的分片空格；用原文下标识别真正的新片起始行。

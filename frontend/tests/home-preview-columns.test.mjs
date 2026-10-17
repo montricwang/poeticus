@@ -1,7 +1,33 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { arrangeHomeColumns, inkCharacterCount } from '../src/lib/home-preview-columns.ts'
+import {
+  arrangeHomeColumns,
+  fitHomeColumns,
+  inkCharacterCount,
+} from '../src/lib/home-preview-columns.ts'
+
+test('高度充足时保留全文，不误标为节选', () => {
+  const text = '宜春苑外最长条，闲袅春风伴舞腰。正是玉人肠绝处，一渠春水赤栏桥。'
+  const result = fitHomeColumns(text, 8, 7)
+  assert.ok(result)
+  assert.equal(result.excerpted, false)
+  assert.equal(result.columns.join(''), text)
+})
+
+test('窄矮视口排不下全文时，优先保留句读完整的节选', () => {
+  const text = '宜春苑外最长条，闲袅春风伴舞腰。正是玉人肠绝处，一渠春水赤栏桥。'
+  const result = fitHomeColumns(text, 8, 3)
+  assert.ok(result)
+  assert.equal(result.excerpted, true)
+  assert.ok(result.columns.join('').length < text.length)
+  assert.match(result.columns.join(''), /[，。！？]$/u)
+  assert.ok(result.columns.length <= 3)
+})
+
+test('物理空间连一列都不足时，明确返回失败而不是伪造成功', () => {
+  assert.equal(fitHomeColumns('清风徐来，水波不兴。', 4, 1), null)
+})
 
 test('杨柳枝由通用断行评分自然选出四行，各为七字加标点', () => {
   const text = '宜春苑外最长条，闲袅春风伴舞腰。正是玉人肠绝处，一渠春水赤栏桥。'

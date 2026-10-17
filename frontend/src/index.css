@@ -209,7 +209,7 @@ html.theme-transition #root * {
 
   body {
     @apply bg-background text-foreground;
-    min-width: 320px;
+    min-width: min(320px, 100%);
     margin: 0;
   }
 
