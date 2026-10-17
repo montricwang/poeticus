@@ -465,6 +465,22 @@ html.theme-transition #root * {
     }
   }
 
+  /* 首页书名号只在视觉上收起，文字仍在 DOM 中；书名左侧画连续波浪线。 */
+  .home-featured-poem .home-book-title-marker {
+    font-size: 0;
+    letter-spacing: 0;
+  }
+
+  .home-featured-poem .home-book-title {
+    text-decoration-line: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: color-mix(in srgb, var(--foreground) 40%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-position: left;
+    text-underline-offset: 0.14em;
+    text-decoration-skip-ink: none;
+  }
+
   /* 只降低标点文字颜色的不透明度，避免对整段元素和选区应用 opacity。 */
   .poem-reader-punctuation {
     color: color-mix(in srgb, var(--foreground) var(--reader-punctuation-opacity), transparent);
