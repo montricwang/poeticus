@@ -28,6 +28,9 @@ type HomeScreenProps = {
   onEnterReader: () => void
 }
 
+// CSS 推荐区和分割线的延迟与搜索入口的 FLIP 位移共用这一时长。
+const HOME_SEARCH_MOVE_DURATION_MS = 600
+
 /** Home is an entry to the existing Reader; it never owns a second conversation. */
 export function HomeScreen({
   featured,
@@ -179,7 +182,7 @@ export function HomeScreen({
     search.getAnimations().forEach((animation) => animation.cancel())
     search.animate(
       [{ transform: `translate(${deltaX}px, ${deltaY}px)` }, { transform: 'translate(0, 0)' }],
-      { duration: 600, easing: 'cubic-bezier(0.42, 0, 0.58, 1)' },
+      { duration: HOME_SEARCH_MOVE_DURATION_MS, easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
     )
   }, [hasSearch])
 
@@ -242,6 +245,7 @@ export function HomeScreen({
         style={
           {
             '--home-classic-max-height': mobileBodyMaxHeight ? `${mobileBodyMaxHeight}px` : '18rem',
+            '--home-search-move-duration': `${HOME_SEARCH_MOVE_DURATION_MS}ms`,
           } as CSSProperties
         }
       >
@@ -281,7 +285,17 @@ export function HomeScreen({
                 />
               </div>
             )}
-            {!hasSearch && <HorizontalEditorialDivider className="mx-auto w-full max-w-2xl" />}
+            {!hasSearch && (
+              <HorizontalEditorialDivider
+                className={
+                  'home-recommendation-divider mx-auto w-full max-w-2xl ' +
+                  (recommendationReturning
+                    ? 'home-divider-returning'
+                    : 'transition-opacity duration-100 ease-out motion-reduce:transition-none ' +
+                      (recommendationLeaving ? 'opacity-0' : 'opacity-100'))
+                }
+              />
+            )}
             <div ref={searchRef} className="w-full shrink-0">
               <HomeSearch
                 catalog={catalog}

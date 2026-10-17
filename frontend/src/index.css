@@ -316,12 +316,19 @@ html.theme-transition #root * {
   }
 
   .home-recommendation-returning {
-    animation: home-results-appear 300ms 600ms ease-out both;
+    animation: home-results-appear 300ms var(--home-search-move-duration) ease-out both;
+  }
+
+  /* 返回时先等待搜索框落位、推荐淡入结束，分割线最后出现。 */
+  .home-divider-returning {
+    animation: home-results-appear 200ms calc(var(--home-search-move-duration) + 350ms) ease-out
+      both;
   }
 
   @media (prefers-reduced-motion: reduce) {
     .home-search-results-enter,
-    .home-recommendation-returning {
+    .home-recommendation-returning,
+    .home-divider-returning {
       animation: none;
     }
   }

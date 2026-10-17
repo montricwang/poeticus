@@ -273,6 +273,41 @@ test('returning recommendation never overlaps the moving search field', async ({
   expect(overlap.finalOpacity).toBe('1')
 })
 
+test('home separator returns only after the search and recommendation animations', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  const divider = page.locator('.home-recommendation-divider')
+  await expect(divider).toHaveCSS('opacity', '1')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  const results = page.getByRole('region', { name: '搜索结果' })
+  await expect(results).toContainText('水调歌头')
+  await expect(divider).toHaveCount(0)
+  await results.getByRole('button', { name: '清除搜索' }).click()
+  await expect(divider).toHaveClass(/home-divider-returning/)
+
+  // 时长由同一变量驱动：搜索框落位 → 推荐词显现 → 分割线显现。
+  const sequence = await page.evaluate(() => {
+    const main = document.querySelector<HTMLElement>('#home')
+    const recommendation = document.querySelector<HTMLElement>('[data-home-recommendation-slot]')
+    const divider = document.querySelector<HTMLElement>('.home-recommendation-divider')
+    if (!main || !recommendation || !divider) throw new Error('Missing homepage sections')
+    const recStyle = getComputedStyle(recommendation)
+    const lineStyle = getComputedStyle(divider)
+    return {
+      move: parseFloat(getComputedStyle(main).getPropertyValue('--home-search-move-duration')),
+      recDelay: parseFloat(recStyle.animationDelay) * 1000,
+      recDuration: parseFloat(recStyle.animationDuration) * 1000,
+      dividerDelay: parseFloat(lineStyle.animationDelay) * 1000,
+    }
+  })
+  expect(sequence.recDelay).toBeGreaterThanOrEqual(sequence.move)
+  expect(sequence.dividerDelay).toBeGreaterThanOrEqual(sequence.recDelay + sequence.recDuration)
+  await expect(divider).toHaveCSS('opacity', '1', { timeout: 2500 })
+})
+
 test('home search results reuse catalog title typography for full-width middle dots', async ({
   page,
 }) => {
