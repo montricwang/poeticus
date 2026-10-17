@@ -47,8 +47,22 @@ test('TC 标点字体文件全部存在且只应用在首页推荐正文', () =>
   assert.match(css, /--reader-punctuation-opacity: 20%/)
 })
 
+test('首页书名线取自 TC U+FE34 的一周期轮廓，按字高平铺且明暗一致', () => {
+  assert.match(css, /background-size:\s*0\.18em 0\.333em/)
+  assert.match(css, /background-repeat:\s*repeat-y/)
+  for (const variant of ['ink', 'paper']) {
+    const asset = `/decorations/book-title-wave-${variant}.svg`
+    assert.ok(css.includes(`url('${asset}')`))
+    const svg = readFileSync(new URL(`../public${asset}`, import.meta.url), 'utf8')
+    assert.match(svg, /Noto Serif TC U\+FE34/)
+    assert.match(svg, /viewBox="0 0 180 333"/)
+    assert.match(svg, /fill-opacity="\.2"/)
+    assert.match(svg, /translate\(0 713\) scale\(1 -1\)/)
+  }
+})
+
 test('首页手机与桌面共用标点分段，保留原文与既有断列算法', () => {
-  assert.match(display, /buildPoemTextRuns\(text\)/)
+  assert.match(display, /buildPoemTextRuns\(value\)/)
   assert.match(display, /<PunctuatedPoemText text=\{line.text\}/)
   assert.match(display, /<PunctuatedPoemText text=\{column.text\}/)
   assert.match(display, /<PunctuatedPoemText text=\{text\}/)

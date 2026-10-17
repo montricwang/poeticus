@@ -471,13 +471,13 @@ html.theme-transition #root * {
     letter-spacing: 0;
   }
 
-  /* 书名线画在文字自身的背景上，避免 iOS Safari 对竖排内联伪元素的定位差异。
-   * 图案首尾衔接，不随正文字距产生断缝；左右主题各有同一线型的 20% 浅色版本。 */
+  /* 书名线提取自 Noto Serif TC U+FE34：每字高 3 个周期，按 em 平铺而非拉伸。
+   * 画在文字背景上，避开 Safari 竖排伪元素的定位差异。 */
   .home-featured-poem .home-book-title {
-    padding-block-end: 0.2em;
+    padding-block-end: 0.18em;
     background-image: url('/decorations/book-title-wave-ink.svg');
     background-position: left top;
-    background-size: 5px 20px;
+    background-size: 0.18em 0.333em;
     background-repeat: repeat-y;
   }
 
