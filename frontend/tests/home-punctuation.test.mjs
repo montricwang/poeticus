@@ -47,18 +47,22 @@ test('TC 标点字体文件全部存在且只应用在首页推荐正文', () =>
   assert.match(css, /--reader-punctuation-opacity: 20%/)
 })
 
-test('首页书名线取自 TC U+FE34 的一周期轮廓，按字高平铺且明暗一致', () => {
-  assert.match(css, /background-size:\s*0\.18em 0\.333em/)
-  assert.match(css, /background-repeat:\s*repeat-y/)
-  for (const variant of ['ink', 'paper']) {
-    const asset = `/decorations/book-title-wave-${variant}.svg`
-    assert.ok(css.includes(`url('${asset}')`))
-    const svg = readFileSync(new URL(`../public${asset}`, import.meta.url), 'utf8')
-    assert.match(svg, /Noto Serif TC U\+FE34/)
-    assert.match(svg, /viewBox="0 0 180 333"/)
-    assert.match(svg, /fill-opacity="\.2"/)
-    assert.match(svg, /translate\(0 713\) scale\(1 -1\)/)
-  }
+test('首页书名线使用 TC U+FE34 轮廓，颜色和透明度由 CSS 变量控制', () => {
+  const asset = '/decorations/book-title-wave-mask.svg'
+  assert.match(css, /padding-block-end:\s*0\.12em/)
+  assert.match(
+    css,
+    /mask:\s*url\('\/decorations\/book-title-wave-mask\.svg'\) left top \/ 0\.18em 0\.333em repeat-y/,
+  )
+  assert.match(css, /--home-book-title-line-color, var\(--foreground\)/)
+  assert.match(css, /--home-book-title-line-opacity, var\(--reader-punctuation-opacity\)/)
+  assert.match(display, /className="home-book-title-line" aria-hidden="true"/)
+  const svg = readFileSync(new URL(`../public${asset}`, import.meta.url), 'utf8')
+  assert.match(svg, /Noto Serif TC U\+FE34/)
+  assert.match(svg, /viewBox="0 0 180 333"/)
+  assert.match(svg, /fill="#000"/)
+  assert.doesNotMatch(svg, /fill-opacity/)
+  assert.match(svg, /translate\(0 713\) scale\(1 -1\)/)
 })
 
 test('首页手机与桌面共用标点分段，保留原文与既有断列算法', () => {

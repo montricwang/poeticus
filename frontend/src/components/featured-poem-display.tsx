@@ -247,6 +247,7 @@ function PunctuatedPoemText({
     if (part.kind === 'title') {
       return (
         <span key={index} className="home-book-title">
+          <span className="home-book-title-line" aria-hidden="true" />
           {punctuated(part.text)}
         </span>
       )

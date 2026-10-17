@@ -471,18 +471,28 @@ html.theme-transition #root * {
     letter-spacing: 0;
   }
 
-  /* 书名线提取自 Noto Serif TC U+FE34：每字高 3 个周期，按 em 平铺而非拉伸。
-   * 画在文字背景上，避开 Safari 竖排伪元素的定位差异。 */
+  /* 书名线沿用 Noto Serif TC U+FE34 轮廓；遮罩只定义形状，颜色与标点独立可调。 */
   .home-featured-poem .home-book-title {
-    padding-block-end: 0.18em;
-    background-image: url('/decorations/book-title-wave-ink.svg');
-    background-position: left top;
-    background-size: 0.18em 0.333em;
-    background-repeat: repeat-y;
+    position: relative;
+    padding-block-end: 0.12em;
   }
 
-  .dark .home-featured-poem .home-book-title {
-    background-image: url('/decorations/book-title-wave-paper.svg');
+  .home-featured-poem .home-book-title-line {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-end: 0;
+    inline-size: 100%;
+    block-size: 0.18em;
+    background-color: color-mix(
+      in srgb,
+      var(--home-book-title-line-color, var(--foreground))
+        var(--home-book-title-line-opacity, var(--reader-punctuation-opacity)),
+      transparent
+    );
+    -webkit-mask: url('/decorations/book-title-wave-mask.svg') left top / 0.18em 0.333em repeat-y;
+    mask: url('/decorations/book-title-wave-mask.svg') left top / 0.18em 0.333em repeat-y;
+    pointer-events: none;
+    user-select: none;
   }
 
   /* 只降低标点文字颜色的不透明度，避免对整段元素和选区应用 opacity。 */
