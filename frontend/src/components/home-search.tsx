@@ -49,14 +49,14 @@ export function HomeSearch({
   return (
     <>
       <section aria-label="馆藏搜索" className="mx-auto w-full max-w-2xl">
-        <h1 className="mb-5 text-center font-serif text-xl font-medium tracking-[0.12em] sm:text-2xl">
+        <h1 className="home-search-intro-title mb-5 text-center font-serif text-xl font-medium tracking-[0.12em] sm:text-2xl">
           美要眇兮宜修
         </h1>
         <form
           role="search"
           onSubmit={submitSearch}
           autoComplete="off"
-          className="peer flex min-h-15 items-center gap-3 bg-transparent px-4 sm:min-h-17 sm:px-5"
+          className="home-search-intro-form peer flex min-h-15 items-center gap-3 bg-transparent px-4 sm:min-h-17 sm:px-5"
         >
           <Search className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
@@ -87,7 +87,7 @@ export function HomeSearch({
             搜索
           </Button>
         </form>
-        <HorizontalEditorialDivider className="w-full peer-focus-within:bg-ring" />
+        <HorizontalEditorialDivider className="home-search-intro-divider w-full peer-focus-within:bg-ring" />
       </section>
 
       {hasSearch && (

@@ -58,6 +58,6 @@
 
 ## 展示测试把实现细节或旧几何假设当作契约
 
-- **现象与原因**：书名分段让 `buildPoemTextRuns(text)` 改为 `buildPoemTextRuns(value)`，旧源码断言因形参名改变而误报；E2E 仍要求波浪线与文字盒子的间距非负，忽略为贴近字形而增加的 `translateX(0.2em)`，也在 CI 失败（PR #300）。
+- **现象与原因**：书名分段让 `buildPoemTextRuns(text)` 改为 `buildPoemTextRuns(value)`，旧源码断言因形参名改变而误报；E2E 仍要求波浪线与文字盒子的间距非负，忽略为贴近字形而增加的 `translateX(0.2em)`，也在 CI 失败（PR #300）。10 月 17 日搜索框入场为分割线新增 `home-search-intro-divider` class 后，`home-first-screen.test.mjs` 仍以完整旧 `className` 匹配 JSX，导致 73 项 Node 测试中 1 项失败；更新断言后恢复通过。
 - **预防方法**：优先检查稳定的渲染行为及正文列宽；源码断言不要绑定局部变量名，几何断言需区分盒子间距与应用 transform 后的视觉位置，设计调整时同步更新回归基准。
 - **验证方式**：`cd frontend && node --experimental-strip-types --test tests/*.test.mjs`；PR 浏览器 CI 在桌面/手机验证最终书名线位置、正文列宽与阅读室隔离。

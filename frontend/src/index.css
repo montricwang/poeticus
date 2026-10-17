@@ -386,9 +386,26 @@ html.theme-transition #root * {
     animation-duration: 270ms;
   }
 
-  /* 推荐和中间横线完成入场后，搜索区才出现；回到首页会重新播放。 */
-  .home-search-intro-revealing {
-    animation: home-results-appear 260ms ease-out both;
+  /* 推荐和中间线完成入场后，标题和搜索控件交错上浮；位移不改变布局。 */
+  @keyframes home-search-float-up {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 题字先起，输入框和它的下划线作为第二拍一起上浮。 */
+  .home-search-intro-revealing .home-search-intro-title {
+    animation: home-search-float-up 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .home-search-intro-revealing .home-search-intro-form,
+  .home-search-intro-revealing .home-search-intro-divider {
+    animation: home-search-float-up 420ms 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   /* 搜索结果只错峰前八项；分页不会因为二十项串行播放而拖慢。 */
@@ -435,7 +452,9 @@ html.theme-transition #root * {
     .home-divider-exiting,
     .home-search-results-enter,
     .home-recommendation-revealing,
-    .home-search-intro-revealing,
+    .home-search-intro-revealing .home-search-intro-title,
+    .home-search-intro-revealing .home-search-intro-form,
+    .home-search-intro-revealing .home-search-intro-divider,
     .home-recommendation-revealing .home-classic-column,
     .home-recommendation-revealing .poem-reader-line,
     .home-recommendation-initial .home-classic-body.max-lg\:hidden,

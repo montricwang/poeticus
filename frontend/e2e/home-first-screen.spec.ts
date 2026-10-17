@@ -192,6 +192,29 @@ test('homepage entrance replays after reader navigation and search appears last'
   await expect(page.locator('.home-divider-initial')).toHaveCSS('animation-delay', '0.85s')
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
   await expect(search).toHaveClass(/home-search-intro-revealing/)
+  const title = search.locator('.home-search-intro-title')
+  const form = search.locator('.home-search-intro-form')
+  const underline = search.locator('.home-search-intro-divider')
+  await expect(title).toHaveCSS('animation-name', 'home-search-float-up')
+  await expect(title).toHaveCSS('animation-duration', '0.42s')
+  await expect(form).toHaveCSS('animation-name', 'home-search-float-up')
+  await expect(form).toHaveCSS('animation-delay', '0.15s')
+  await expect(underline).toHaveCSS('animation-delay', '0.15s')
+  const floatUp = await title.evaluate((element) => {
+    const animation = element
+      .getAnimations()
+      .find((item) => item instanceof CSSAnimation && item.animationName === 'home-search-float-up')
+    const keyframes =
+      animation?.effect instanceof KeyframeEffect ? animation.effect.getKeyframes() : undefined
+    return keyframes?.map((frame) => ({
+      opacity: String(frame.opacity),
+      transform: String(frame.transform),
+    }))
+  })
+  expect(floatUp).toEqual([
+    { opacity: '0', transform: 'translateY(14px)' },
+    { opacity: '1', transform: 'translateY(0px)' },
+  ])
   await expect(search).toHaveCSS('opacity', '1')
   await expect(search).not.toHaveAttribute('inert', '')
 
@@ -202,6 +225,11 @@ test('homepage entrance replays after reader navigation and search appears last'
   await expect(search).toHaveAttribute('inert', '')
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
   await expect(search).toHaveClass(/home-search-intro-revealing/)
+  await expect(search.locator('.home-search-intro-title')).toHaveCSS(
+    'animation-name',
+    'home-search-float-up',
+  )
+  await expect(search.locator('.home-search-intro-form')).toHaveCSS('animation-delay', '0.15s')
   await expect(search).toHaveCSS('opacity', '1')
 
   // A viewport resize changes layout, not the home route, so the intro stays finished.
