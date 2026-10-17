@@ -65,7 +65,7 @@ const works = [
 test.beforeEach(async ({ page }) => {
   // The first-screen test is independent of the local corpus/Postgres service.
   await page.route(/\/api\/poems(?:\/[^?]+)?(?:\?.*)?$/, async (route) => {
-    const url = new URL(route.request().url)
+    const url = new URL(route.request().url())
     const parts = url.pathname.split('/').filter(Boolean)
     if (parts.at(-1) === 'daily') {
       // Today's recommendation is a separate API; keep the UI fixture deterministic.
