@@ -9,6 +9,88 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* 首页仅替换指定标点字形；汉字仍由 Noto Serif SC 绘制，不更改原文。 */
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-123-wght-normal.woff2') format('woff2');
+  unicode-range: U+2014, U+3001-3002, U+FF0C, U+FF1A;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-122-wght-normal.woff2') format('woff2');
+  unicode-range: U+300C-300D, U+FF01, U+FF08-FF09, U+FF1F;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-121-wght-normal.woff2') format('woff2');
+  unicode-range: U+300A-300B;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-119-wght-normal.woff2') format('woff2');
+  unicode-range: U+2026, U+FF1B;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-118-wght-normal.woff2') format('woff2');
+  unicode-range: U+00B7;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-117-wght-normal.woff2') format('woff2');
+  unicode-range: U+300E, U+FF0E;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-116-wght-normal.woff2') format('woff2');
+  unicode-range: U+201C-201D, U+300F;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-113-wght-normal.woff2') format('woff2');
+  unicode-range: U+3008-3009;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+2018-2019;
+}
+
 :root {
   color-scheme: light;
 
@@ -347,6 +429,13 @@ html.theme-transition #root * {
     margin-block-start: 0.9em;
   }
 
+  /* 只作用于首页每日推荐正文，阅读室、题头与搜索仍使用原来的宋体栈。 */
+  .home-featured-poem .poem-reader-body {
+    font-family:
+      'Poeticus Noto Serif TC Punctuation', 'Noto Serif SC Variable', HanaMin, 'Noto Serif SC',
+      'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC', STSong, SimSun, SimSun-ExtB, serif;
+  }
+
   /* 首页古籍式预览：直接使用浏览器原生竖排标点与自然换列。 */
   .home-classic-body {
     /* 手机长词用尽搜索区上方的实际剩余空间；短词按正文长度收起。 */
@@ -374,6 +463,41 @@ html.theme-transition #root * {
     .home-classic-body {
       height: calc(11 * var(--reader-poem-size) * 1.12);
     }
+  }
+
+  /* 首页书名号只在视觉上收起，文字仍在 DOM 中；书名左侧画连续波浪线。 */
+  .home-featured-poem .home-book-title-marker {
+    font-size: 0;
+    letter-spacing: 0;
+  }
+
+  /* 书名线沿用 Noto Serif TC U+FE34 轮廓，文字与线条同在竖排 Flex 中。
+   * 负外边距抵消线宽及间距，不改变任何正文列的宽度。 */
+  .home-featured-poem .home-book-title {
+    --home-book-title-line-gap: 0.02em;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--home-book-title-line-gap);
+    vertical-align: baseline;
+  }
+
+  .home-featured-poem .home-book-title-line {
+    flex: 0 0 0.1em;
+    inline-size: 100%;
+    margin-block-end: calc(-0.1em - var(--home-book-title-line-gap));
+    /* 只将可见波浪线向右移近书名字形，不改变列宽或断列。 */
+    transform: translateX(0.2em);
+    background-color: color-mix(
+      in srgb,
+      var(--home-book-title-line-color, var(--foreground))
+        var(--home-book-title-line-opacity, var(--reader-punctuation-opacity)),
+      transparent
+    );
+    -webkit-mask: url('/decorations/book-title-wave-mask.svg') left top / 0.1em 0.333em repeat-y;
+    mask: url('/decorations/book-title-wave-mask.svg') left top / 0.1em 0.333em repeat-y;
+    pointer-events: none;
+    user-select: none;
   }
 
   /* 只降低标点文字颜色的不透明度，避免对整段元素和选区应用 opacity。 */

@@ -2,6 +2,8 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 import type { Poem } from '@/data/poem-library'
+import { buildHomeBookTitleRuns } from '@/lib/home-book-title'
+import type { HomeBookTitleRun } from '@/lib/home-book-title'
 import { buildPoemLines, buildPoemTextRuns } from '@/lib/poem-layout'
 import { arrangeHomeColumns } from '@/lib/home-preview-columns'
 
@@ -99,6 +101,8 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
   }, [poem, continuous])
 
   const displayedSegments = previewSegments ?? poem.body_segments
+  const desktopLines = continuous ? [] : buildPoemLines(displayedSegments.join('\n\n'))
+  const desktopBookRuns = buildHomeBookTitleRuns(desktopLines.map((line) => line.text))
   const excerpted =
     previewSegments !== null &&
     (displayedSegments.length !== poem.body_segments.length ||
@@ -195,22 +199,14 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
             <ContinuousPoemBody segments={displayedSegments} />
           ) : (
             <div className="poem-reader-body !mx-0 !w-max max-w-none text-foreground/90 lg:pt-[var(--reader-poem-size)]">
-              {buildPoemLines(displayedSegments.join('\n\n')).map((line) => (
+              {desktopLines.map((line, index) => (
                 <span
                   key={line.start}
                   className={
                     'poem-reader-line' + (line.sourceGapBefore ? ' poem-reader-source-gap' : '')
                   }
                 >
-                  {buildPoemTextRuns(line.text).map((run, index) =>
-                    run.punctuation ? (
-                      <span key={index} className="poem-reader-punctuation">
-                        {run.text}
-                      </span>
-                    ) : (
-                      <span key={index}>{run.text}</span>
-                    ),
-                  )}
+                  <PunctuatedPoemText text={line.text} bookRuns={desktopBookRuns[index]} />
                 </span>
               ))}
             </div>
@@ -219,6 +215,45 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
       </div>
     </div>
   )
+}
+
+/** 首页独有的书名线与标点淡化；《》保留在 DOM 中，但不占视觉字格。 */
+function PunctuatedPoemText({
+  text,
+  bookRuns = buildHomeBookTitleRuns([text])[0],
+}: {
+  text: string
+  bookRuns?: HomeBookTitleRun[]
+}) {
+  const punctuated = (value: string) =>
+    buildPoemTextRuns(value).map((run, index) =>
+      run.punctuation ? (
+        <span key={index} className="poem-reader-punctuation">
+          {run.text}
+        </span>
+      ) : (
+        run.text
+      ),
+    )
+
+  return bookRuns.map((part, index) => {
+    if (part.kind === 'marker') {
+      return (
+        <span key={index} className="home-book-title-marker">
+          {part.text}
+        </span>
+      )
+    }
+    if (part.kind === 'title') {
+      return (
+        <span key={index} className="home-book-title">
+          <span className="home-book-title-text">{punctuated(part.text)}</span>
+          <span className="home-book-title-line" aria-hidden="true" />
+        </span>
+      )
+    }
+    return <span key={index}>{punctuated(part.text)}</span>
+  })
 }
 
 function ContinuousPoemBody({ segments }: { segments: string[] }) {
@@ -319,6 +354,9 @@ function ContinuousPoemBody({ segments }: { segments: string[] }) {
     sourceOffset += Array.from(column).length
     return { text: column, beginsSegment }
   })
+  const mobileBookRuns = buildHomeBookTitleRuns(
+    placedColumns?.map((column) => column.text) ?? [text],
+  )
 
   return (
     <>
@@ -327,44 +365,70 @@ function ContinuousPoemBody({ segments }: { segments: string[] }) {
         className="poem-reader-body home-classic-body !mx-0 !w-max max-w-none text-foreground/90 lg:hidden"
         style={layout ? { height: layout.height } : undefined}
       >
-        {placedColumns
-          ? placedColumns.map((column, index) => (
-              <span
-                key={index}
-                className={
-                  'home-classic-column' +
-                  (column.beginsSegment ? ' home-classic-column--new-segment' : '')
-                }
-              >
-                {column.text}
-              </span>
-            ))
-          : text}
+        {placedColumns ? (
+          placedColumns.map((column, index) => (
+            <span
+              key={index}
+              className={
+                'home-classic-column' +
+                (column.beginsSegment ? ' home-classic-column--new-segment' : '')
+              }
+            >
+              <PunctuatedPoemText text={column.text} bookRuns={mobileBookRuns[index]} />
+            </span>
+          ))
+        ) : (
+          <PunctuatedPoemText text={text} bookRuns={mobileBookRuns[0]} />
+        )}
       </div>
       <div className="poem-reader-body home-classic-body !mx-0 !w-max max-w-none text-foreground/90 max-lg:hidden lg:pt-[var(--reader-poem-size)]">
-        {text}
+        <PunctuatedPoemText text={text} bookRuns={buildHomeBookTitleRuns([text])[0]} />
       </div>
     </>
   )
 }
 
-/** 离屏探针复用同一套字体、列高和标点样式，测到的宽度与正文一致。 */
+/** 离屏探针也隐藏书名号，避免把不可见的字格计入预览宽度。 */
 function fillProbeBody(element: HTMLElement, segments: string[], continuous: boolean) {
   element.replaceChildren()
-  if (!continuous) {
-    for (const line of buildPoemLines(segments.join('\n\n'))) {
-      const span = document.createElement('span')
-      span.className = 'poem-reader-line' + (line.sourceGapBefore ? ' poem-reader-source-gap' : '')
-      for (const run of buildPoemTextRuns(line.text)) {
-        const runElement = document.createElement('span')
-        if (run.punctuation) runElement.className = 'poem-reader-punctuation'
-        runElement.textContent = run.text
-        span.append(runElement)
-      }
-      element.append(span)
-    }
-    return
-  }
+  const lines = continuous ? [] : buildPoemLines(segments.join('\n\n'))
+  const chunks = continuous ? [segments.join('\u3000')] : lines.map((line) => line.text)
+  const bookRuns = buildHomeBookTitleRuns(chunks)
 
-  element.textContent = segments.join('\u3000')
+  for (const [index, runs] of bookRuns.entries()) {
+    const line = lines[index]
+    const container = continuous ? element : document.createElement('span')
+    if (line) {
+      container.className =
+        'poem-reader-line' + (line.sourceGapBefore ? ' poem-reader-source-gap' : '')
+    }
+
+    for (const part of runs) {
+      const partElement = document.createElement('span')
+      if (part.kind === 'marker') {
+        partElement.className = 'home-book-title-marker'
+        partElement.textContent = part.text
+      } else {
+        const textElement = part.kind === 'title' ? document.createElement('span') : partElement
+        if (part.kind === 'title') {
+          partElement.className = 'home-book-title'
+          textElement.className = 'home-book-title-text'
+        }
+        for (const run of buildPoemTextRuns(part.text)) {
+          const punctuation = document.createElement('span')
+          if (run.punctuation) punctuation.className = 'poem-reader-punctuation'
+          punctuation.textContent = run.text
+          textElement.append(punctuation)
+        }
+        if (part.kind === 'title') {
+          const lineElement = document.createElement('span')
+          lineElement.className = 'home-book-title-line'
+          lineElement.setAttribute('aria-hidden', 'true')
+          partElement.append(textElement, lineElement)
+        }
+      }
+      container.append(partElement)
+    }
+    if (!continuous) element.append(container)
+  }
 }
