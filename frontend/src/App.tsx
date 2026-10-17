@@ -21,6 +21,7 @@ import { useConversationPersistence } from '@/hooks/use-conversation-persistence
 import { usePoemAnalysis } from '@/hooks/use-poem-analysis'
 import { loadInitialChatState } from '@/lib/chat-initial-state'
 import { motionDurationMs } from '@/lib/motion'
+import { whenFontsReadyOrTimeout } from '@/lib/font-readiness'
 import { WIDE_DISCUSSION_MEDIA } from '@/lib/responsive-layout'
 import { useChatSession } from '@/hooks/use-chat-session'
 import { useFeaturedPoem } from '@/hooks/use-featured-poem'
@@ -334,7 +335,7 @@ function App() {
     let disposed = false
     let frameOne = 0
     let frameTwo = 0
-    void document.fonts.ready.then(() => {
+    const cancelFontWait = whenFontsReadyOrTimeout(() => {
       if (disposed) return
       frameOne = window.requestAnimationFrame(() => {
         frameTwo = window.requestAnimationFrame(() => {
@@ -344,6 +345,7 @@ function App() {
     })
     return () => {
       disposed = true
+      cancelFontWait()
       window.cancelAnimationFrame(frameOne)
       window.cancelAnimationFrame(frameTwo)
     }

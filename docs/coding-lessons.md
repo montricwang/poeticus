@@ -2,6 +2,12 @@
 
 这里只收录**已修复且容易重犯**的工程问题，不记录测试输出或每日调试过程。先修复、复测，再决定是否沉淀；同类问题更新旧条目，优先把预防落实到代码检查或回归测试。执行流程见 [开发者指南](development.md)。
 
+## 入场动画不能无限等待字体就绪
+
+- **现象与原因**：首页和阅读室先以 `opacity: 0` 等待 `document.fonts.ready`，某个字体加载迟滞时 Promise 长时间未完成，诗文已在 DOM 中却一直看不见（[#323](https://github.com/montricwang/poeticus/issues/323)）。
+- **预防方法**：影响内容可见性的字体/动画就绪等待必须有限时，并在超时后显示真实内容；字体加载完成后可按既有测量机制重新排版，不可把显示权限永久交给网络请求。
+- **验证方式**：Playwright 在页面初始化前将 `document.fonts.ready` 模拟为不完成的 Promise；分别验证手机首次首页、直达阅读室和阅读室返回首页的最终透明度及搜索区可交互状态。
+
 ## 浏览器测试的离屏副本干扰选择器
 
 - **现象与原因**：首页推荐诗文的离屏测量会临时复制 DOM，宽泛的 `.home-featured-poem header` 同时命中屏幕上的内容与隐藏副本，Playwright 因 strict mode 失败（[#303](https://github.com/montricwang/poeticus/pull/303)）。
