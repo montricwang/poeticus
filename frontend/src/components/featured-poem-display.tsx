@@ -247,8 +247,8 @@ function PunctuatedPoemText({
     if (part.kind === 'title') {
       return (
         <span key={index} className="home-book-title">
+          <span className="home-book-title-text">{punctuated(part.text)}</span>
           <span className="home-book-title-line" aria-hidden="true" />
-          {punctuated(part.text)}
         </span>
       )
     }
@@ -409,12 +409,22 @@ function fillProbeBody(element: HTMLElement, segments: string[], continuous: boo
         partElement.className = 'home-book-title-marker'
         partElement.textContent = part.text
       } else {
-        if (part.kind === 'title') partElement.className = 'home-book-title'
+        const textElement = part.kind === 'title' ? document.createElement('span') : partElement
+        if (part.kind === 'title') {
+          partElement.className = 'home-book-title'
+          textElement.className = 'home-book-title-text'
+        }
         for (const run of buildPoemTextRuns(part.text)) {
           const punctuation = document.createElement('span')
           if (run.punctuation) punctuation.className = 'poem-reader-punctuation'
           punctuation.textContent = run.text
-          partElement.append(punctuation)
+          textElement.append(punctuation)
+        }
+        if (part.kind === 'title') {
+          const lineElement = document.createElement('span')
+          lineElement.className = 'home-book-title-line'
+          lineElement.setAttribute('aria-hidden', 'true')
+          partElement.append(textElement, lineElement)
         }
       }
       container.append(partElement)

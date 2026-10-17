@@ -471,18 +471,18 @@ html.theme-transition #root * {
     letter-spacing: 0;
   }
 
-  /* 书名线沿用 Noto Serif TC U+FE34 轮廓；遮罩只定义形状，颜色与标点独立可调。 */
+  /* 书名线沿用 Noto Serif TC U+FE34 轮廓；与文字在正常排版中并列，避免 Safari 竖排绝对定位失效。 */
   .home-featured-poem .home-book-title {
-    position: relative;
-    padding-block-end: 0.12em;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.05em;
+    vertical-align: baseline;
   }
 
   .home-featured-poem .home-book-title-line {
-    position: absolute;
-    inset-inline-start: 0;
-    inset-block-end: 0;
+    flex: 0 0 0.18em;
     inline-size: 100%;
-    block-size: 0.18em;
     background-color: color-mix(
       in srgb,
       var(--home-book-title-line-color, var(--foreground))
