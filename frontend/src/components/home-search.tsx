@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Search, X } from 'lucide-react'
 
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { Button } from '@/components/ui/button'
-import { poemIncipit, poemTitle } from '@/data/poem-library'
+import { poemIncipit, poemLabel } from '@/data/poem-library'
 import type { PoemFilters, PoemPage } from '@/data/poem-library'
 
 type HomeSearchProps = {
@@ -128,7 +128,9 @@ export function HomeSearch({
                     disabled={disabled}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{poemTitle(work)}</span>
+                      <span className="poeticus-catalog-title block truncate font-medium">
+                        {poemLabel(work)}
+                      </span>
                       <span className="mt-1 block truncate font-serif text-sm text-muted-foreground">
                         {poemIncipit(work)}
                       </span>

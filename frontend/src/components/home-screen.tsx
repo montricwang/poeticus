@@ -52,6 +52,8 @@ export function HomeScreen({
   const [debugSampleId, setDebugSampleId] = useState<string | null>(null)
   const [debugPoem, setDebugPoem] = useState<Poem | null>(null)
   const [debugError, setDebugError] = useState('')
+  const [contentLeaving, setContentLeaving] = useState(false)
+  const searchTransitionTimerRef = useRef<number | null>(null)
   const hasSearch = !!filters.q?.trim()
 
   // 调试样本只替换首页展示内容，不修改当天推荐，也不触碰阅读器状态。
@@ -73,6 +75,34 @@ export function HomeScreen({
   const visiblePoem = debugging ? (debugPoem?.id === debugSampleId ? debugPoem : null) : featured
   const visibleError = debugging ? debugError : featuredError
   const visibleLoading = debugging ? !visiblePoem && !debugError : featuredLoading
+
+  // 搜索提交只对「首页 ⇄ 结果」两种布局做一次短暂交叉淡入淡出。
+  // 在透明度降为 0 后才切换布局，避免搜索框瞬间从页底跳到页顶。
+  function changeHomeFilters(next: PoemFilters) {
+    if (searchTransitionTimerRef.current !== null) {
+      window.clearTimeout(searchTransitionTimerRef.current)
+      searchTransitionTimerRef.current = null
+    }
+    const switchesView = !!next.q?.trim() !== hasSearch
+    if (!switchesView || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setContentLeaving(false)
+      onFiltersChange(next)
+      return
+    }
+    setContentLeaving(true)
+    searchTransitionTimerRef.current = window.setTimeout(() => {
+      onFiltersChange(next)
+      setContentLeaving(false)
+      searchTransitionTimerRef.current = null
+    }, 160)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (searchTransitionTimerRef.current !== null)
+        window.clearTimeout(searchTransitionTimerRef.current)
+    }
+  }, [])
 
   function selectDebugSample(id: string | null) {
     setDebugSampleId(id)
@@ -183,9 +213,11 @@ export function HomeScreen({
         <div
           ref={contentRef}
           className={
-            hasSearch
+            'transition-opacity duration-150 ease-out motion-reduce:transition-none ' +
+            (contentLeaving ? 'opacity-0 ' : 'opacity-100 ') +
+            (hasSearch
               ? 'mx-auto flex min-h-full w-full max-w-6xl flex-col px-5 pt-8 pb-8 md:px-8 lg:pt-14'
-              : 'mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-4 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]'
+              : 'mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-4 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]')
           }
         >
           {/* 父容器统一管理推荐区、分割线和搜索区的间距；剩余高度只交给推荐区。 */}
@@ -220,7 +252,7 @@ export function HomeScreen({
                 error={error}
                 disabled={selectionBlocked}
                 onQueryChange={onQueryChange}
-                onFiltersChange={onFiltersChange}
+                onFiltersChange={changeHomeFilters}
                 onSelect={onSelect}
               />
             </div>

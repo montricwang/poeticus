@@ -210,6 +210,37 @@ test('submitted home search replaces recommendation and clearing restores it', a
   await expect(page.getByRole('heading', { name: '美要眇兮宜修' })).toBeVisible()
 })
 
+test('home search results reuse catalog title typography for full-width middle dots', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('辛弃疾')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  const title = page.getByRole('region', { name: '搜索结果' }).locator('.poeticus-catalog-title')
+  await expect(title).toHaveText('破阵子·为陈同甫赋壮词以寄之')
+  await expect(title).toHaveCSS('font-family', /Noto Sans SC Variable/)
+
+  await title.evaluate(() => document.fonts.ready)
+  const middleDotWidthRatio = await title.evaluate((element) => {
+    const style = getComputedStyle(element)
+    const context = document.createElement('canvas').getContext('2d')
+    if (!context) throw new Error('Missing canvas context')
+    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+    return context.measureText('·').width / context.measureText('中').width
+  })
+  expect(middleDotWidthRatio).toBeCloseTo(1, 1)
+})
+
+test('home search view transition remains immediate with reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  await expect(page.getByRole('region', { name: '推荐作品' })).toHaveCount(0)
+  await expect(page.getByRole('region', { name: '搜索结果' })).toContainText('水调歌头')
+  await expect(page.locator('#home > div')).toHaveCSS('opacity', '1')
+})
+
 test('search a poet and enter the existing reader', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
