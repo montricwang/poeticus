@@ -52,8 +52,10 @@ export function HomeScreen({
   const [debugSampleId, setDebugSampleId] = useState<string | null>(null)
   const [debugPoem, setDebugPoem] = useState<Poem | null>(null)
   const [debugError, setDebugError] = useState('')
-  const [contentLeaving, setContentLeaving] = useState(false)
+  const [recommendationLeaving, setRecommendationLeaving] = useState(false)
   const searchTransitionTimerRef = useRef<number | null>(null)
+  const searchBeforeLayoutRef = useRef<DOMRect | null>(null)
+  const [recommendationReturning, setRecommendationReturning] = useState(false)
   const hasSearch = !!filters.q?.trim()
 
   // 调试样本只替换首页展示内容，不修改当天推荐，也不触碰阅读器状态。
@@ -76,25 +78,42 @@ export function HomeScreen({
   const visibleError = debugging ? debugError : featuredError
   const visibleLoading = debugging ? !visiblePoem && !debugError : featuredLoading
 
-  // 搜索提交只对「首页 ⇄ 结果」两种布局做一次短暂交叉淡入淡出。
-  // 在透明度降为 0 后才切换布局，避免搜索框瞬间从页底跳到页顶。
+  // 保留同一搜索入口，用 FLIP 动画移动它；不要让整页消失再突然换位置。
   function changeHomeFilters(next: PoemFilters) {
     if (searchTransitionTimerRef.current !== null) {
       window.clearTimeout(searchTransitionTimerRef.current)
       searchTransitionTimerRef.current = null
     }
-    const switchesView = !!next.q?.trim() !== hasSearch
-    if (!switchesView || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setContentLeaving(false)
+    const nextHasSearch = !!next.q?.trim()
+    if (nextHasSearch === hasSearch) {
+      setRecommendationLeaving(false)
       onFiltersChange(next)
       return
     }
-    setContentLeaving(true)
-    searchTransitionTimerRef.current = window.setTimeout(() => {
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const changeLayout = () => {
+      const main = mainRef.current
+      if (main) main.scrollTop = 0
+      const searchSection = searchRef.current?.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
+      searchBeforeLayoutRef.current = reducedMotion
+        ? null
+        : (searchSection?.getBoundingClientRect() ?? null)
+      setRecommendationReturning(!nextHasSearch && !reducedMotion)
+      setRecommendationLeaving(false)
       onFiltersChange(next)
-      setContentLeaving(false)
       searchTransitionTimerRef.current = null
-    }, 160)
+    }
+
+    if (nextHasSearch && !reducedMotion) {
+      // 搜索期间取消返回时的推荐淡入，避免快速重新搜索造成相反动画。
+      setRecommendationReturning(false)
+      // 先让推荐词淡出，再开始移动仍可见的搜索入口。
+      setRecommendationLeaving(true)
+      searchTransitionTimerRef.current = window.setTimeout(changeLayout, 130)
+    } else {
+      changeLayout()
+    }
   }
 
   useEffect(() => {
@@ -143,9 +162,25 @@ export function HomeScreen({
     }
   }, [visiblePoem, hasSearch])
 
-  // 模式切换后从顶部展示搜索入口；不让旧的搜索结果滚动位置留下来。
+  // React 完成新布局但尚未绘制时，反向位移搜索入口，再播放到新位置。
+  // 不改变真实布局盒子，因此搜索结果和搜索输入仍可正常交互。
   useLayoutEffect(() => {
-    if (mainRef.current) mainRef.current.scrollTop = 0
+    const main = mainRef.current
+    if (main) main.scrollTop = 0
+    const before = searchBeforeLayoutRef.current
+    searchBeforeLayoutRef.current = null
+    if (!before) return
+    const search = searchRef.current?.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
+    if (!search) return
+    const after = search.getBoundingClientRect()
+    const deltaY = before.top - after.top
+    const deltaX = before.left - after.left
+    if (Math.abs(deltaY) < 1 && Math.abs(deltaX) < 1) return
+    search.getAnimations().forEach((animation) => animation.cancel())
+    search.animate(
+      [{ transform: `translate(${deltaX}px, ${deltaY}px)` }, { transform: 'translate(0, 0)' }],
+      { duration: 360, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+    )
   }, [hasSearch])
 
   return (
@@ -213,11 +248,9 @@ export function HomeScreen({
         <div
           ref={contentRef}
           className={
-            'transition-opacity duration-150 ease-out motion-reduce:transition-none ' +
-            (contentLeaving ? 'opacity-0 ' : 'opacity-100 ') +
-            (hasSearch
+            hasSearch
               ? 'mx-auto flex min-h-full w-full max-w-6xl flex-col px-5 pt-8 pb-8 md:px-8 lg:pt-14'
-              : 'mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-4 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]')
+              : 'mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-4 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]'
           }
         >
           {/* 父容器统一管理推荐区、分割线和搜索区的间距；剩余高度只交给推荐区。 */}
@@ -231,7 +264,13 @@ export function HomeScreen({
             {!hasSearch && (
               <div
                 data-home-recommendation-slot
-                className="flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none"
+                className={
+                  'flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none ' +
+                  (recommendationReturning
+                    ? 'home-recommendation-returning '
+                    : 'transition-opacity duration-150 ease-out motion-reduce:transition-none ') +
+                  (recommendationLeaving ? 'opacity-0' : 'opacity-100')
+                }
               >
                 <DailyRecommendation
                   poem={visiblePoem}

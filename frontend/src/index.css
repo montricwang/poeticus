@@ -301,6 +301,31 @@ html.theme-transition #root * {
 }
 
 @layer components {
+  /* 搜索框移动由 React 测量实际位置；新区域只淡入，不做交错动画。 */
+  @keyframes home-results-appear {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .home-search-results-enter {
+    animation: home-results-appear 220ms 210ms ease-out both;
+  }
+
+  .home-recommendation-returning {
+    animation: home-results-appear 260ms 170ms ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .home-search-results-enter,
+    .home-recommendation-returning {
+      animation: none;
+    }
+  }
+
   /* 目录题名先用内置的思源黑体同源字体，避免 Inter 将间隔号排成半角宽。 */
   .poeticus-catalog-title {
     font-family: 'Noto Sans SC Variable', 'Source Han Sans SC', 'Noto Sans SC', sans-serif;

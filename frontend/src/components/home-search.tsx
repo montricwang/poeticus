@@ -60,7 +60,10 @@ export function HomeSearch({
         >
           <Search className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
-            type="search"
+            type="text"
+            role="searchbox"
+            inputMode="search"
+            enterKeyHint="search"
             name="q"
             autoComplete="off"
             value={query}
@@ -90,7 +93,7 @@ export function HomeSearch({
       {hasSearch && (
         <section
           aria-label="搜索结果"
-          className="mx-auto mt-10 w-full max-w-4xl scroll-mt-6 px-5 pb-20 md:px-8 lg:mt-12"
+          className="home-search-results-enter mx-auto mt-10 w-full max-w-4xl scroll-mt-6 px-5 pb-20 md:px-8 lg:mt-12"
         >
           <div className="mb-5 flex items-baseline justify-between gap-4 border-b border-border/70 pb-4">
             <div>

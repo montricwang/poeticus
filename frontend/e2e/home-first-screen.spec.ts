@@ -185,8 +185,13 @@ test('submitted home search replaces recommendation and clearing restores it', a
   await expect(recommendation).toBeVisible()
   await expect(results).toHaveCount(0)
   await expect(searchbox).toHaveAttribute('autocomplete', 'off')
+  await expect(searchbox).toHaveAttribute('type', 'text')
+  await expect(searchbox).toHaveAttribute('inputmode', 'search')
+  await expect(searchbox).toHaveAttribute('enterkeyhint', 'search')
 
   await searchbox.fill('苏轼')
+  // 原生搜索框的 X 不再出现，保留本站自己的一个清空按钮。
+  await expect(page.getByRole('button', { name: '清空输入' })).toHaveCount(1)
   // 只有正式提交才进入结果模式；输入和焦点变化均不隐藏推荐。
   await expect(recommendation).toBeVisible()
   await expect(results).toHaveCount(0)
@@ -197,10 +202,13 @@ test('submitted home search replaces recommendation and clearing restores it', a
   await expect(results).toContainText('水调歌头')
   await expect(results).toContainText('找到 1 首作品')
   await expect(searchbox).not.toBeFocused()
-  const searchTop = await page
-    .getByRole('region', { name: '馆藏搜索' })
-    .evaluate((section) => section.getBoundingClientRect().top)
-  expect(searchTop).toBeLessThan(180)
+  await expect
+    .poll(() =>
+      page
+        .getByRole('region', { name: '馆藏搜索' })
+        .evaluate((section) => section.getBoundingClientRect().top),
+    )
+    .toBeLessThan(180)
   expect(await page.locator('#home').evaluate((main) => main.scrollTop)).toBe(0)
 
   await results.getByRole('button', { name: '清除搜索' }).click()
@@ -208,6 +216,27 @@ test('submitted home search replaces recommendation and clearing restores it', a
   await expect(recommendation).toBeVisible()
   await expect(searchbox).toHaveValue('')
   await expect(page.getByRole('heading', { name: '美要眇兮宜修' })).toBeVisible()
+})
+
+test('home search field moves between positions instead of hiding the whole page', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const search = page.getByRole('region', { name: '馆藏搜索' })
+  const initialTop = await search.evaluate((element) => element.getBoundingClientRect().top)
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  await expect(page.getByRole('region', { name: '搜索结果' })).toBeVisible()
+  // FLIP 维持同一个搜索元素，只改变它的屏幕位置，不整页淡出。
+  await expect(page.locator('#home > div')).toHaveCSS('opacity', '1')
+  await expect
+    .poll(() => search.evaluate((element) => element.getBoundingClientRect().top))
+    .toBeLessThan(initialTop - 100)
+  await page.getByRole('button', { name: '清除搜索' }).click()
+  await expect(page.getByRole('region', { name: '推荐作品' })).toBeVisible()
+  await expect
+    .poll(() => search.evaluate((element) => element.getBoundingClientRect().top))
+    .toBeGreaterThan(initialTop - 5)
 })
 
 test('home search results reuse catalog title typography for full-width middle dots', async ({
@@ -229,6 +258,17 @@ test('home search results reuse catalog title typography for full-width middle d
     return context.measureText('·').width / context.measureText('中').width
   })
   expect(middleDotWidthRatio).toBeCloseTo(1, 1)
+})
+
+test('mobile catalog title preserves full-width middle dots', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/#reader')
+  await page.getByRole('button', { name: '展开作品目录' }).click()
+  const title = page
+    .locator('#poem-catalog .poeticus-catalog-title')
+    .filter({ hasText: '破阵子·为陈同甫赋壮词以寄之' })
+  await expect(title).toBeVisible()
+  await expect(title).toHaveCSS('font-family', /Noto Sans SC Variable/)
 })
 
 test('home search view transition remains immediate with reduced motion', async ({ page }) => {
