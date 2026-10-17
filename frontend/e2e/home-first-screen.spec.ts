@@ -242,6 +242,7 @@ test('home search field moves between positions instead of hiding the whole page
 test('moving search overlaps the recommendation fade', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
   const observations = await page.evaluate(async () => {
     document.querySelector<HTMLFormElement>('form[role="search"]')?.requestSubmit()
     const frames: { opacity: number; line: number; moving: boolean }[] = []
