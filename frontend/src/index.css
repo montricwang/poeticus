@@ -386,6 +386,11 @@ html.theme-transition #root * {
     animation-duration: 270ms;
   }
 
+  /* 推荐和中间横线完成入场后，搜索区才出现；回到首页会重新播放。 */
+  .home-search-intro-revealing {
+    animation: home-results-appear 260ms ease-out both;
+  }
+
   /* 搜索结果只错峰前八项；分页不会因为二十项串行播放而拖慢。 */
   .home-search-result-item {
     animation: home-column-rise 270ms calc(240ms + var(--home-stagger-index, 0) * 35ms) ease-out
@@ -430,6 +435,7 @@ html.theme-transition #root * {
     .home-divider-exiting,
     .home-search-results-enter,
     .home-recommendation-revealing,
+    .home-search-intro-revealing,
     .home-recommendation-revealing .home-classic-column,
     .home-recommendation-revealing .poem-reader-line,
     .home-recommendation-initial .home-classic-body.max-lg\:hidden,

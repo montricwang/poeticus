@@ -177,23 +177,52 @@ test('homepage poem stays visible across phone, tablet and desktop widths', asyn
   await expect(page.locator('.poem-reader')).toBeVisible()
 })
 
-test('homepage first entrance staggers once and does not replay when returning', async ({
+test('homepage entrance replays after reader navigation and search appears last', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
+  const search = page.locator('[data-home-search-slot]')
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(1)
+  await expect(search).toHaveCSS('opacity', '0')
+  await expect(search).toHaveAttribute('inert', '')
   const column = page.locator('.home-recommendation-initial .home-classic-column').first()
   await expect(column).toHaveCSS('animation-duration', '0.38s')
   await expect(page.locator('.home-divider-initial')).toHaveCSS('animation-delay', '0.85s')
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
+  await expect(search).toHaveClass(/home-search-intro-revealing/)
+  await expect(search).toHaveCSS('opacity', '1')
+  await expect(search).not.toHaveAttribute('inert', '')
+
   await page.getByRole('button', { name: '阅读室' }).click()
   await page.getByRole('button', { name: 'Poeticus' }).click()
-  await expect(page.getByRole('region', { name: '推荐作品' })).toBeVisible()
-  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(1)
+  await expect(search).toHaveCSS('opacity', '0')
+  await expect(search).toHaveAttribute('inert', '')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
+  await expect(search).toHaveClass(/home-search-intro-revealing/)
+  await expect(search).toHaveCSS('opacity', '1')
+
+  // A viewport resize changes layout, not the home route, so the intro stays finished.
   await page.setViewportSize({ width: 402, height: 874 })
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+  await expect(search).not.toHaveAttribute('inert', '')
+})
+
+test('Poeticus navigation from a direct reader visit replays the home introduction', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/#reader')
+  await page.getByRole('button', { name: 'Poeticus' }).click()
+  const search = page.locator('[data-home-search-slot]')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(1)
+  await expect(search).toHaveCSS('opacity', '0')
+  await expect(search).toHaveAttribute('inert', '')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
+  await expect(search).toHaveCSS('opacity', '1')
+  await expect(search).not.toHaveAttribute('inert', '')
 })
 
 test('reader first entrance reveals lines once and leaves ordinary poem switching unchanged', async ({
@@ -539,8 +568,13 @@ test('first entries are immediate for reduced-motion users', async ({ page }) =>
   await page.goto('/')
   await expect(page.getByRole('region', { name: '推荐作品' })).toBeVisible()
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+  await expect(page.locator('[data-home-search-slot]')).toHaveCSS('opacity', '1')
+  await expect(page.locator('[data-home-search-slot]')).not.toHaveAttribute('inert', '')
   await page.getByRole('button', { name: '阅读室' }).click()
   await expect(page.locator('.reader-intro-waiting, .reader-intro-revealing')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Poeticus' }).click()
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+  await expect(page.locator('[data-home-search-slot]')).toHaveCSS('opacity', '1')
 })
 
 test('home search view transition remains immediate with reduced motion', async ({ page }) => {

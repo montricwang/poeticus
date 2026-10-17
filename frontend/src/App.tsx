@@ -33,16 +33,12 @@ function App() {
   const [screen, setScreen] = useState<'home' | 'reader'>(() =>
     window.location.hash === '#reader' ? 'reader' : 'home',
   )
-  const [homeEntranceSeen, setHomeEntranceSeen] = useState(false)
   const [readerEntrance, setReaderEntrance] = useState<'waiting' | 'revealing' | 'done'>(() =>
     window.location.hash === '#reader' &&
     !window.matchMedia('(prefers-reduced-motion: reduce)').matches
       ? 'waiting'
       : 'done',
   )
-  const onHomeEntranceStarted = useCallback(() => {
-    setHomeEntranceSeen(true)
-  }, [])
   const { featured, loading: featuredLoading, error: featuredError } = useFeaturedPoem()
   const [initialChatState] = useState(loadInitialChatState)
   const [poemId, setPoemId] = useState<string | null>(initialChatState.poemId)
@@ -517,8 +513,6 @@ function App() {
         onFiltersChange={updateCatalogFilters}
         onSelect={openHomePoem}
         onEnterReader={() => navigateTo('reader')}
-        firstEntrance={!homeEntranceSeen}
-        onFirstEntranceStarted={onHomeEntranceStarted}
       />
     )
   }
