@@ -10,6 +10,7 @@
 | **现在**代码和服务怎样组织、数据怎样流动 | [Architecture](architecture/) | 一子系统一份当前说明；变更架构时更新 |
 | 某项重要技术方案**为什么**这样选 | [ADR](adr/README.md) | 一个跨阶段的长期决策一篇；证据/Origin/代价/复审条件 |
 | 如何安装、启动、测试、提交变更 | [开发者指南](development.md) | 仅当前有效的开发操作 |
+| AI 开发时如何避免重复犯过的编码错误 | [编码错误经验本](coding-lessons.md) | 测试／Review 后积累可复用的预防与验证方法 |
 | 如何部署、验证线上健康和排障 | [生产部署](deployment.md) | 仅当前有效的运行环境/操作；不要照历史 Spike 操作 |
 | 私人 `poeticus-data/` 放什么、如何备份迁移 | [私人数据工作区](data-management.md) | 私有资产生命周期、目录契约；非项目架构综述 |
 | 商业 EPUB 的分册规则、数据字段、来源核实结论 | [EPUB 维护地图](corpus/epub-pipeline-maintenance-map.md) | 当前来源特例和代码定位 |
