@@ -64,10 +64,10 @@ export function DailyRecommendation({
   return (
     <section aria-label="推荐作品" className="relative">
       {poem ? (
-        // 两侧对称预留空间：左边放印章，正中只放诗文，宽度随屏幕变化。
+        // 手机端仅在左侧为印章预留 40px，正文向右偏移 20px，使印章＋正文整体居中。
         <div
           ref={recommendationRef}
-          className="relative mx-auto grid w-full max-w-2xl grid-cols-[2rem_minmax(0,1fr)_2rem] items-end lg:grid-cols-[4rem_minmax(0,1fr)_4rem]"
+          className="relative mx-auto grid w-full max-w-2xl grid-cols-[2.5rem_minmax(0,1fr)] items-end lg:grid-cols-[4rem_minmax(0,1fr)_4rem]"
         >
           <div
             ref={sealRef}
@@ -79,7 +79,7 @@ export function DailyRecommendation({
           <div className="col-start-2 min-w-0">
             <FeaturedPoemDisplay poem={poem} continuous={continuous} />
           </div>
-          <div aria-hidden="true" className="col-start-3" />
+          <div aria-hidden="true" className="hidden lg:col-start-3 lg:block" />
         </div>
       ) : (
         <p role="status" className="py-20 text-center text-sm text-muted-foreground">
