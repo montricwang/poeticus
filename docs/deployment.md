@@ -228,6 +228,8 @@ Agent 调用 Retrieval 时，如果 `current.dynasty=null`：
 3. Railway 变量名包含 `POETICUS_RETRIEVAL_URL` 和 `POETICUS_RETRIEVAL_TOKEN`，且已部署预期值；**变量存在不代表可达或认证成功**；
 4. 测试真实问答和 SSE，观察工具是否成功返回候选、Agent 是否引用候选，不能只凭首页可访问判断 Retrieval 正常。
 
+**前端静态资源更新后仍显示旧版**：先确认 Railway 最近一次 Deployment 的 commit 与状态，再用 Railway 原生地址 `https://poeticus-web-production.up.railway.app/<资源路径>` 和正式域名 `https://poeticus.app/<资源路径>` 请求**同一静态文件**，对比响应内容及 `cf-cache-status`、`cache-control`。2026-10-17 的书名线 SVG 曾在 Railway 部署 `57bb65a` 成功后，仍由 Cloudflare 返回旧裁剪范围（`CF-Cache-Status: HIT`，资源缓存约 4 小时）；直接访问 Railway 已是新版。遇到此类问题不要误判为代码未部署，刷新或加查询参数也不保证绕过现有缓存策略。未来需立即更新的静态图案优先采用版本化文件名或构建产物哈希路径，避免长期复用同一 URL。
+
 ### WSL + Tunnel
 
 1. WSL 内按第 4 节使用 `--device cpu --composition-db ../poeticus-data/retrieval/relationships/v3/work_compositions.sqlite3` 启动（并先加载私有 Bearer Token），检查 `http://127.0.0.1:8787/health` 为 200；注意 **health=200 不证明去重表已启用**。
