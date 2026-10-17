@@ -239,6 +239,51 @@ test('home search field moves between positions instead of hiding the whole page
     .toBeGreaterThan(initialTop - 5)
 })
 
+test('delayed FLIP search never flashes at its destination', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  const section = page.getByRole('region', { name: '馆藏搜索' })
+  const origin = await section.evaluate((element) => element.getBoundingClientRect().top)
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  const samples = await section.evaluate((element) => {
+    const animation = element.getAnimations()[0]
+    if (!animation) throw new Error('Missing FLIP animation')
+    animation.pause()
+    const positions: number[] = []
+    for (const time of [0, 20, 59, 60]) {
+      animation.currentTime = time
+      positions.push(element.getBoundingClientRect().top)
+    }
+    animation.play()
+    return { fill: animation.effect?.getTiming().fill, positions }
+  })
+  expect(samples.fill).toBe('backwards')
+  expect(samples.positions.every((top) => Math.abs(top - origin) < 2)).toBe(true)
+})
+
+test('poem float-up does not create a temporary vertical scrollbar', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  await page
+    .getByRole('region', { name: '搜索结果' })
+    .getByRole('button', { name: '清除搜索' })
+    .click()
+  await expect(page.locator('.home-recommendation-revealing')).toBeVisible()
+  const dimensions = await page.locator('[data-recommendation-scrollport]').evaluate((element) => ({
+    overflowX: getComputedStyle(element).overflowX,
+    overflowY: getComputedStyle(element).overflowY,
+    delta: element.scrollHeight - element.clientHeight,
+  }))
+  expect(dimensions.overflowX).toBe('auto')
+  expect(dimensions.overflowY).toBe('hidden')
+  // The 6px translateY can enlarge scrollHeight; it must not activate a scrollbar.
+  expect(dimensions.delta).toBeGreaterThanOrEqual(0)
+})
+
 test('moving search overlaps the recommendation fade', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')

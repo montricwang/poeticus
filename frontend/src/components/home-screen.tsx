@@ -187,6 +187,7 @@ export function HomeScreen({
       {
         duration: HOME_SEARCH_MOVE_DURATION_MS,
         delay: hasSearch ? 60 : 0,
+        fill: 'backwards',
         easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
       },
     )

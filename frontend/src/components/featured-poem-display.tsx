@@ -164,7 +164,7 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
       className={
         continuous
           ? 'min-w-0 flex-1 overflow-hidden lg:w-full lg:flex-none'
-          : 'poeticus-scrollport min-w-0 flex-1 overflow-x-auto lg:w-full lg:flex-none'
+          : 'poeticus-scrollport min-w-0 flex-1 overflow-x-auto overflow-y-hidden lg:w-full lg:flex-none'
       }
     >
       <div className="flex w-full flex-row-reverse justify-center lg:w-max lg:min-w-full lg:flex-row">
