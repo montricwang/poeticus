@@ -234,7 +234,7 @@ export function PoemCatalog({
                     <>
                       <div className="flex min-w-0 items-baseline gap-2">
                         <span
-                          className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+                          className="poeticus-catalog-title min-w-0 flex-1 truncate text-sm font-medium text-foreground"
                           title={embedded ? undefined : poemLabel(work)}
                         >
                           {poemLabel(work)}

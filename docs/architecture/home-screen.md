@@ -7,9 +7,18 @@
 - `frontend/src/components/home-screen.tsx`（`HomeScreen`）：组合导航、推荐槽位、分割线和馆藏搜索；通过 `ResizeObserver` 测量推荐槽位，将剩余高度写入 `--home-classic-max-height`。每日推荐由上游 `featured` 提供，首页不生成另一套推荐或会话。
 - `frontend/src/components/daily-recommendation.tsx`（`DailyRecommendation`）：排布印章与作品，印章点击后进入阅读室。手机端取两者横向组合的视觉中心；桌面端保留独立的三栏布局。
 - `frontend/src/components/featured-poem-display.tsx`（`FeaturedPoemDisplay`、`ContinuousPoemBody`）：根据空间决定预览哪些完整片段，并将手机正文断为竖列。纯文本列划分由 `frontend/src/lib/home-preview-columns.ts` 的 `arrangeHomeColumns` 负责。
-- `frontend/src/components/home-search.tsx`：馆藏搜索独立于每日推荐；首页搜索区靠近首屏底部。
+- `frontend/src/components/home-search.tsx`：馆藏搜索独立于每日推荐；未提交搜索时搜索区靠近首屏底部，提交后切换到结果视图。
 
 开发环境 `import.meta.env.DEV` 下的「调试」菜单可以从 `frontend/src/lib/home-debug-poems.ts` 指定的十首实际作品中切换预览，或返回「今日推荐」。它不修改服务端每日推荐，生产构建不显示此入口。
+
+## 首页搜索模式（Issue #308）
+
+- `filters.q` 是**已提交搜索**的权威状态；输入框的 `query` 只是未提交草稿。聚焦或输入不会切换首页模式，也不会主动隐藏每日推荐。
+- 提交非空搜索时，搜索入口立即进入结果布局并从原位置开始 FLIP 上移；推荐及中间分割线保留为原位置的固定退场层，淡出后卸载，不参与新布局。结果列表随后出现；首页滚动位置归零，不调用 `scrollIntoView`；提交同时失焦协助关闭软键盘。
+- 点击结果区的「清除搜索」同时清除草稿和已提交过滤条件，恢复原始首页；搜索框 `autocomplete="off"`，用 `type="text"`、`role="searchbox"`、`inputMode="search"` 和 `enterKeyHint="search"` 保留搜索语义及移动键盘搜索键，避免浏览器原生 X 与本站自定义清空按钮叠加；不实现站内历史记录。浏览器是否完全遵守该属性由浏览器决定。
+- 搜索/清除共用 600ms 减速 FLIP。提交搜索时，推荐文字约 330ms 淡出的同时搜索框已经上移（起步延后 60ms），中间分割线先淡出，结果列表前八项依次 Fade Up。清除搜索时，搜索框立刻下移；实际越过诗文下缘后，推荐逐列从右往左 Staggered Fade Up（270ms/列、间隔 42ms），中间分割线最后以 Line Reveal 从中心向两侧出现。短词/长词使用真实几何判断，避免过早重叠；`prefers-reduced-motion` 下直接呈现。#319 的首页入场部分在 #308 布局分支试验，阅读室入场留待 #319 独立处理。
+- 首页结果标题和阅读室目录共同使用 `poemLabel` + `.poeticus-catalog-title`，让题名中的间隔号 `·` 使用思源黑体并占一个汉字宽度。由于首页为宽列表、阅读室目录是侧栏，不直接共用整张列表的 UI。
+- 手机 Safari 实际软键盘与滚动行为仍须单独验收，不以桌面模拟取代。
 
 ## 已封板的手机竖屏设计（2026-10-17）
 

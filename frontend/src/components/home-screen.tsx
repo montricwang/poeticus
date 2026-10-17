@@ -28,6 +28,11 @@ type HomeScreenProps = {
   onEnterReader: () => void
 }
 
+// CSS 推荐区和分割线的延迟与搜索入口的 FLIP 位移共用这一时长。
+const HOME_SEARCH_MOVE_DURATION_MS = 600
+const HOME_RECOMMENDATION_FADE_OUT_MS = 330
+const HOME_DIVIDER_FADE_OUT_MS = 130
+
 /** Home is an entry to the existing Reader; it never owns a second conversation. */
 export function HomeScreen({
   featured,
@@ -52,6 +57,21 @@ export function HomeScreen({
   const [debugSampleId, setDebugSampleId] = useState<string | null>(null)
   const [debugPoem, setDebugPoem] = useState<Poem | null>(null)
   const [debugError, setDebugError] = useState('')
+  const [outgoing, setOutgoing] = useState<{
+    recommendation: DOMRect
+    divider: DOMRect
+  } | null>(null)
+  const searchBeforeLayoutRef = useRef<DOMRect | null>(null)
+  const [returnPhase, setReturnPhase] = useState<'none' | 'waiting' | 'revealing'>('none')
+  const revealTimerRef = useRef<number | null>(null)
+  const hasSearch = !!filters.q?.trim()
+
+  useEffect(
+    () => () => {
+      if (revealTimerRef.current !== null) window.clearTimeout(revealTimerRef.current)
+    },
+    [],
+  )
 
   // 调试样本只替换首页展示内容，不修改当天推荐，也不触碰阅读器状态。
   useEffect(() => {
@@ -72,6 +92,42 @@ export function HomeScreen({
   const visiblePoem = debugging ? (debugPoem?.id === debugSampleId ? debugPoem : null) : featured
   const visibleError = debugging ? debugError : featuredError
   const visibleLoading = debugging ? !visiblePoem && !debugError : featuredLoading
+
+  // 切换权威搜索状态的同时保留旧推荐的退出画面；它脱离文档流后，搜索框立刻可以上移。
+  function changeHomeFilters(next: PoemFilters) {
+    if (revealTimerRef.current !== null) {
+      window.clearTimeout(revealTimerRef.current)
+      revealTimerRef.current = null
+    }
+    const nextHasSearch = !!next.q?.trim()
+    if (nextHasSearch === hasSearch) {
+      onFiltersChange(next)
+      return
+    }
+
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const search = searchRef.current?.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
+    searchBeforeLayoutRef.current = reducedMotion ? null : (search?.getBoundingClientRect() ?? null)
+
+    if (nextHasSearch && !reducedMotion) {
+      const recommendation = mainRef.current?.querySelector<HTMLElement>(
+        '[data-home-recommendation-slot]',
+      )
+      const divider = mainRef.current?.querySelector<HTMLElement>('.home-recommendation-divider')
+      setOutgoing(
+        recommendation && divider
+          ? {
+              recommendation: recommendation.getBoundingClientRect(),
+              divider: divider.getBoundingClientRect(),
+            }
+          : null,
+      )
+    } else {
+      setOutgoing(null)
+    }
+    setReturnPhase(!nextHasSearch && !reducedMotion ? 'waiting' : 'none')
+    onFiltersChange(next)
+  }
 
   function selectDebugSample(id: string | null) {
     setDebugSampleId(id)
@@ -110,7 +166,69 @@ export function HomeScreen({
       window.removeEventListener('resize', measure)
       window.visualViewport?.removeEventListener('resize', measure)
     }
-  }, [visiblePoem])
+  }, [visiblePoem, hasSearch])
+
+  // 记录旧位置、渲染新布局、再反向位移（FLIP）。恢复推荐的时机由实际几何关系决定。
+  useLayoutEffect(() => {
+    const main = mainRef.current
+    if (main) main.scrollTop = 0
+    const before = searchBeforeLayoutRef.current
+    searchBeforeLayoutRef.current = null
+    if (!before) return
+    const search = searchRef.current?.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
+    if (!search) return
+    const after = search.getBoundingClientRect()
+    const deltaY = before.top - after.top
+    const deltaX = before.left - after.left
+    search.getAnimations().forEach((animation) => animation.cancel())
+    if (Math.abs(deltaY) < 1 && Math.abs(deltaX) < 1) return
+    const move = search.animate(
+      [{ transform: `translate(${deltaX}px, ${deltaY}px)` }, { transform: 'translate(0, 0)' }],
+      {
+        duration: HOME_SEARCH_MOVE_DURATION_MS,
+        delay: hasSearch ? 60 : 0,
+        fill: 'backwards',
+        easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
+    )
+    if (hasSearch) return
+
+    let frame = 0
+    const reveal = () => {
+      setReturnPhase('revealing')
+      // 入场结束后撤下动画 class，改变窗口尺寸不会让文字列重播。
+      revealTimerRef.current = window.setTimeout(() => {
+        setReturnPhase('none')
+        revealTimerRef.current = null
+      }, 750)
+    }
+    const revealIfClear = () => {
+      const poem = mainRef.current?.querySelector<HTMLElement>(
+        '[data-home-recommendation-slot] .home-featured-poem',
+      )
+      const poemBottom = poem?.getBoundingClientRect().bottom ?? -Infinity
+      // 搜索框真正离开诗文区后才开始揭示；短词、长词及不同视口共用此判定。
+      if (search.getBoundingClientRect().top >= poemBottom + 8 || move.playState === 'finished') {
+        reveal()
+      } else {
+        frame = window.requestAnimationFrame(revealIfClear)
+      }
+    }
+    frame = window.requestAnimationFrame(revealIfClear)
+    return () => window.cancelAnimationFrame(frame)
+  }, [hasSearch])
+
+  const hasRecommendation = !hasSearch || outgoing !== null
+  const recommendationIsReturning = !hasSearch && returnPhase !== 'none'
+  const outStyle = (rect: DOMRect): CSSProperties => ({
+    position: 'fixed',
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+    zIndex: 1,
+    pointerEvents: 'none',
+  })
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
@@ -171,28 +289,70 @@ export function HomeScreen({
         style={
           {
             '--home-classic-max-height': mobileBodyMaxHeight ? `${mobileBodyMaxHeight}px` : '18rem',
+            '--home-search-move-duration': `${HOME_SEARCH_MOVE_DURATION_MS}ms`,
+            '--home-recommendation-fade-duration': `${HOME_RECOMMENDATION_FADE_OUT_MS}ms`,
+            '--home-divider-fade-duration': `${HOME_DIVIDER_FADE_OUT_MS}ms`,
           } as CSSProperties
         }
       >
         <div
           ref={contentRef}
-          className="mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-4 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]"
+          className={
+            hasSearch
+              ? 'mx-auto flex min-h-full w-full max-w-6xl flex-col px-5 pt-8 pb-8 md:px-8 lg:pt-14'
+              : 'mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-4 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]'
+          }
         >
           {/* 父容器统一管理推荐区、分割线和搜索区的间距；剩余高度只交给推荐区。 */}
-          <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-none lg:gap-10">
-            <div
-              data-home-recommendation-slot
-              className="flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none"
-            >
-              <DailyRecommendation
-                poem={visiblePoem}
-                loading={visibleLoading}
-                error={visibleError}
-                disabled={selectionBlocked}
-                onRead={onSelect}
+          <div
+            className={
+              hasSearch
+                ? 'flex flex-col gap-8 lg:gap-10'
+                : 'flex min-h-0 flex-1 flex-col gap-4 lg:flex-none lg:gap-10'
+            }
+          >
+            {hasRecommendation && (
+              <div
+                data-home-recommendation-slot
+                style={outgoing && hasSearch ? outStyle(outgoing.recommendation) : undefined}
+                onAnimationEnd={(event) => {
+                  if (outgoing && event.target === event.currentTarget) setOutgoing(null)
+                }}
+                className={
+                  'flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none ' +
+                  (outgoing && hasSearch
+                    ? 'home-recommendation-exiting'
+                    : returnPhase === 'waiting'
+                      ? 'pointer-events-none opacity-0'
+                      : returnPhase === 'revealing'
+                        ? 'home-recommendation-revealing'
+                        : '')
+                }
+              >
+                <DailyRecommendation
+                  poem={visiblePoem}
+                  loading={visibleLoading}
+                  error={visibleError}
+                  disabled={selectionBlocked}
+                  onRead={onSelect}
+                />
+              </div>
+            )}
+            {hasRecommendation && (
+              <HorizontalEditorialDivider
+                style={outgoing && hasSearch ? outStyle(outgoing.divider) : undefined}
+                className={
+                  'home-recommendation-divider mx-auto w-full max-w-2xl ' +
+                  (outgoing && hasSearch
+                    ? 'home-divider-exiting'
+                    : recommendationIsReturning
+                      ? returnPhase === 'revealing'
+                        ? 'home-divider-growing'
+                        : 'opacity-0'
+                      : '')
+                }
               />
-            </div>
-            <HorizontalEditorialDivider className="mx-auto w-full max-w-2xl" />
+            )}
             <div ref={searchRef} className="w-full shrink-0">
               <HomeSearch
                 catalog={catalog}
@@ -202,7 +362,7 @@ export function HomeScreen({
                 error={error}
                 disabled={selectionBlocked}
                 onQueryChange={onQueryChange}
-                onFiltersChange={onFiltersChange}
+                onFiltersChange={changeHomeFilters}
                 onSelect={onSelect}
               />
             </div>

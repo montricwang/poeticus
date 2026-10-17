@@ -1,9 +1,9 @@
-import { useEffect, useRef, type FormEvent } from 'react'
+import type { CSSProperties, FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Search, X } from 'lucide-react'
 
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { Button } from '@/components/ui/button'
-import { poemIncipit, poemTitle } from '@/data/poem-library'
+import { poemIncipit, poemLabel } from '@/data/poem-library'
 import type { PoemFilters, PoemPage } from '@/data/poem-library'
 
 type HomeSearchProps = {
@@ -30,27 +30,15 @@ export function HomeSearch({
   onFiltersChange,
   onSelect,
 }: HomeSearchProps) {
-  const resultsRef = useRef<HTMLElement>(null)
   const hasSearch = !!filters.q?.trim()
   const page = catalog ? Math.floor(catalog.offset / filters.limit) + 1 : 1
   const pageCount = catalog ? Math.ceil(catalog.total / filters.limit) : 0
 
-  function showResults() {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    resultsRef.current?.scrollIntoView({
-      block: 'start',
-      behavior: reducedMotion ? 'instant' : 'smooth',
-    })
-  }
-
-  useEffect(() => {
-    if (hasSearch) showResults()
-  }, [hasSearch])
-
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    // 手机提交时先收起软键盘，由首页切换布局；不滚动到结果框二次跳动。
+    event.currentTarget.querySelector('input')?.blur()
     onFiltersChange({ q: query.trim(), limit: 20, offset: 0 })
-    if (hasSearch) showResults()
   }
 
   function clearSearch() {
@@ -67,12 +55,17 @@ export function HomeSearch({
         <form
           role="search"
           onSubmit={submitSearch}
+          autoComplete="off"
           className="peer flex min-h-15 items-center gap-3 bg-transparent px-4 sm:min-h-17 sm:px-5"
         >
           <Search className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
-            type="search"
+            type="text"
+            role="searchbox"
+            inputMode="search"
+            enterKeyHint="search"
             name="q"
+            autoComplete="off"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             aria-label="搜索词人、词牌或诗句"
@@ -99,9 +92,8 @@ export function HomeSearch({
 
       {hasSearch && (
         <section
-          ref={resultsRef}
           aria-label="搜索结果"
-          className="mx-auto max-w-4xl scroll-mt-6 px-5 pb-20 md:px-8"
+          className="home-search-results-enter mx-auto mt-10 w-full max-w-4xl scroll-mt-6 px-5 pb-20 md:px-8 lg:mt-12"
         >
           <div className="mb-5 flex items-baseline justify-between gap-4 border-b border-border/70 pb-4">
             <div>
@@ -130,8 +122,12 @@ export function HomeSearch({
           )}
           {!loading && !error && (
             <ul className="divide-y divide-border/50">
-              {catalog?.items.map((work) => (
-                <li key={work.id}>
+              {catalog?.items.map((work, index) => (
+                <li
+                  key={`${filters.q}-${filters.offset}-${work.id}`}
+                  className="home-search-result-item"
+                  style={{ '--home-stagger-index': Math.min(index, 8) } as CSSProperties}
+                >
                   <button
                     type="button"
                     className="group flex w-full min-w-0 items-baseline justify-between gap-6 py-4 text-left hover:text-foreground/70 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
@@ -139,7 +135,9 @@ export function HomeSearch({
                     disabled={disabled}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{poemTitle(work)}</span>
+                      <span className="poeticus-catalog-title block truncate font-medium">
+                        {poemLabel(work)}
+                      </span>
                       <span className="mt-1 block truncate font-serif text-sm text-muted-foreground">
                         {poemIncipit(work)}
                       </span>
