@@ -31,7 +31,7 @@ test('home search uses editorial heading and an unboxed input with matching unde
 test('homepage uses phrase layout on desktop and continuous layout on mobile', () => {
   assert.match(featuredDisplay, /writingMode: 'vertical-rl'/)
   assert.match(featuredDisplay, /buildPoemLines\(displayedSegments.join/)
-  assert.match(featuredDisplay, /buildPoemTextRuns\(text\)/)
+  assert.match(featuredDisplay, /buildPoemTextRuns\(value\)/)
   assert.match(featuredDisplay, /<PunctuatedPoemText text=\{line.text\}/)
   assert.match(featuredDisplay, /<PunctuatedPoemText text=\{column.text\}/)
   assert.match(recommendation, /matchMedia/)
