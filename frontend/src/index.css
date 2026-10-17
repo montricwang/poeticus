@@ -486,6 +486,8 @@ html.theme-transition #root * {
     flex: 0 0 0.1em;
     inline-size: 100%;
     margin-block-end: calc(-0.1em - var(--home-book-title-line-gap));
+    /* 只将可见波浪线向右移近书名字形，不改变列宽或断列。 */
+    transform: translateX(0.1em);
     background-color: color-mix(
       in srgb,
       var(--home-book-title-line-color, var(--foreground))
