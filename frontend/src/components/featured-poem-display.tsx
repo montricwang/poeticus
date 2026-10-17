@@ -30,6 +30,8 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     })
     document.body.append(probe)
     const bodies = [...probe.querySelectorAll<HTMLElement>('.poem-reader-body')]
+    // 测量节点不在 #home 下：不能丢失实际高度预算，也不能沿用克隆时的旧高度。
+    for (const body of bodies) body.style.removeProperty('height')
 
     const measure = (segments: string[]) => {
       for (const body of bodies) fillProbeBody(body, segments, continuous)
@@ -37,6 +39,11 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     }
 
     const refresh = () => {
+      // 随首页推荐槽位的高度同步；否则离屏克隆会退回 18rem，误判长词超宽。
+      probe.style.setProperty(
+        '--home-classic-max-height',
+        getComputedStyle(scrollport).getPropertyValue('--home-classic-max-height'),
+      )
       const available = scrollport.clientWidth - 4
       if (available <= 0) return
       const segments = poem.body_segments
@@ -91,11 +98,15 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     refresh()
     const observer = new ResizeObserver(refresh)
     observer.observe(scrollport)
-    document.fonts.ready.then(() => {
+    const main = scrollport.closest('#home')
+    const budgetObserver = new MutationObserver(refresh)
+    if (main) budgetObserver.observe(main, { attributes: true, attributeFilter: ['style'] })
+    void document.fonts.ready.then(() => {
       if (probe.isConnected) refresh()
     })
     return () => {
       observer.disconnect()
+      budgetObserver.disconnect()
       probe.remove()
     }
   }, [poem, continuous])
