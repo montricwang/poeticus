@@ -24,6 +24,7 @@
 
 ## 当前架构
 
+- [首页推荐排版](architecture/home-screen.md)：手机竖屏布局、五列上限、节选与视觉封板；
 - [Agent / LangGraph](architecture/langgraph.md)：工具调用、Graph State、流式回答；
 - [Conversation State](architecture/conversation-state.md)：作品/会话生命周期与浏览器存储；
 - [Corpus Database](architecture/corpus-database.md)：私人导入、公开白名单、数据身份；
