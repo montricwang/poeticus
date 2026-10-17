@@ -2,14 +2,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 
 import { ArrowRight } from 'lucide-react'
-import { Popover } from 'radix-ui'
 import { DailyRecommendation } from '@/components/daily-recommendation'
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { HomeSearch } from '@/components/home-search'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
-import { HOME_DEBUG_POEMS } from '@/lib/home-debug-poems'
-import { fetchPoem } from '@/data/poem-library'
 import type { Poem, PoemFilters, PoemPage } from '@/data/poem-library'
 
 type HomeScreenProps = {
@@ -53,10 +50,6 @@ export function HomeScreen({
   const contentRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLDivElement>(null)
   const [mobileBodyMaxHeight, setMobileBodyMaxHeight] = useState<number | null>(null)
-  const [debugOpen, setDebugOpen] = useState(false)
-  const [debugSampleId, setDebugSampleId] = useState<string | null>(null)
-  const [debugPoem, setDebugPoem] = useState<Poem | null>(null)
-  const [debugError, setDebugError] = useState('')
   const [outgoing, setOutgoing] = useState<{
     recommendation: DOMRect
     divider: DOMRect
@@ -80,21 +73,6 @@ export function HomeScreen({
     },
     [],
   )
-
-  // 调试样本只替换首页展示内容，不修改当天推荐，也不触碰阅读器状态。
-  useEffect(() => {
-    if (!import.meta.env.DEV || !debugSampleId) return
-    const controller = new AbortController()
-    void fetchPoem(debugSampleId, controller.signal)
-      .then((poem) => {
-        if (!controller.signal.aborted) setDebugPoem(poem)
-      })
-      .catch((cause: unknown) => {
-        if (!controller.signal.aborted)
-          setDebugError(cause instanceof Error ? cause.message : '调试词作加载失败')
-      })
-    return () => controller.abort()
-  }, [debugSampleId])
 
   // 每次进入首页都等推荐数据与字体就绪、浏览器完成两帧布局后才入场。
   useEffect(() => {
@@ -127,11 +105,6 @@ export function HomeScreen({
     }, 1200)
     return () => window.clearTimeout(timer)
   }, [initialEntrance])
-
-  const debugging = import.meta.env.DEV && debugSampleId !== null
-  const visiblePoem = debugging ? (debugPoem?.id === debugSampleId ? debugPoem : null) : featured
-  const visibleError = debugging ? debugError : featuredError
-  const visibleLoading = debugging ? !visiblePoem && !debugError : featuredLoading
 
   // 切换权威搜索状态的同时保留旧推荐的退出画面；它脱离文档流后，搜索框立刻可以上移。
   function changeHomeFilters(next: PoemFilters) {
@@ -169,13 +142,6 @@ export function HomeScreen({
     onFiltersChange(next)
   }
 
-  function selectDebugSample(id: string | null) {
-    setDebugSampleId(id)
-    setDebugPoem(null)
-    setDebugError('')
-    setDebugOpen(false)
-  }
-
   // 直接量取搜索区与推荐区之间的实际占位，避免 Safari 的浏览器栏缩小时压掉正文字高。
   useLayoutEffect(() => {
     const main = mainRef.current
@@ -206,7 +172,7 @@ export function HomeScreen({
       window.removeEventListener('resize', measure)
       window.visualViewport?.removeEventListener('resize', measure)
     }
-  }, [visiblePoem, hasSearch])
+  }, [featured, hasSearch])
 
   // 记录旧位置、渲染新布局、再反向位移（FLIP）。恢复推荐的时机由实际几何关系决定。
   useLayoutEffect(() => {
@@ -260,7 +226,7 @@ export function HomeScreen({
 
   const hasRecommendation = !hasSearch || outgoing !== null
   const recommendationIsReturning = !hasSearch && returnPhase !== 'none'
-  const homeInitialWaiting = initialEntrance === 'waiting' && !!visiblePoem && !hasSearch
+  const homeInitialWaiting = initialEntrance === 'waiting' && !!featured && !hasSearch
   const homeInitialRevealing = initialEntrance === 'revealing' && !hasSearch
   // Unavailable recommendations must never leave the search entry inaccessible.
   const searchAwaitsEntrance =
@@ -284,45 +250,6 @@ export function HomeScreen({
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-4 sm:px-5 md:px-8">
           <span className="text-base font-semibold tracking-tight sm:text-lg">Poeticus</span>
           <div className="flex items-center gap-1 sm:gap-2">
-            {import.meta.env.DEV && (
-              <Popover.Root open={debugOpen} onOpenChange={setDebugOpen}>
-                <Popover.Trigger asChild>
-                  <Button type="button" variant="ghost" size="sm" aria-label="首页词牌排版调试">
-                    调试
-                  </Button>
-                </Popover.Trigger>
-                <Popover.Portal>
-                  <Popover.Content
-                    align="end"
-                    sideOffset={8}
-                    className="z-50 max-h-[70dvh] w-44 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md outline-none"
-                    aria-label="切换首页推荐词牌"
-                  >
-                    <button
-                      type="button"
-                      aria-pressed={debugSampleId === null}
-                      onClick={() => selectDebugSample(null)}
-                      className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-muted aria-pressed:font-semibold"
-                    >
-                      今日推荐
-                    </button>
-                    <div className="my-1 h-px bg-border" />
-                    {HOME_DEBUG_POEMS.map((sample) => (
-                      <button
-                        key={sample.id}
-                        type="button"
-                        aria-pressed={debugSampleId === sample.id}
-                        onClick={() => selectDebugSample(sample.id)}
-                        className="flex w-full items-baseline justify-between gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-muted aria-pressed:font-semibold"
-                      >
-                        <span>{sample.tune}</span>
-                        <span className="text-xs text-muted-foreground">{sample.author}</span>
-                      </button>
-                    ))}
-                  </Popover.Content>
-                </Popover.Portal>
-              </Popover.Root>
-            )}
             <Button type="button" variant="ghost" size="sm" onClick={onEnterReader}>
               阅读室 <ArrowRight className="size-4 max-[359px]:hidden" aria-hidden="true" />
             </Button>
@@ -380,9 +307,9 @@ export function HomeScreen({
                 }
               >
                 <DailyRecommendation
-                  poem={visiblePoem}
-                  loading={visibleLoading}
-                  error={visibleError}
+                  poem={featured}
+                  loading={featuredLoading}
+                  error={featuredError}
                   disabled={selectionBlocked}
                   onRead={onSelect}
                 />

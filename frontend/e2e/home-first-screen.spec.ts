@@ -123,6 +123,7 @@ test.beforeEach(async ({ page }) => {
 
 test('homepage poem stays visible across phone, tablet and desktop widths', async ({ page }) => {
   await page.goto('/')
+  await expect(page.getByRole('button', { name: '首页词牌排版调试' })).toHaveCount(0)
   const recommendation = page.getByRole('region', { name: '推荐作品' })
   await expect(page.getByRole('heading', { name: '美要眇兮宜修' })).toBeVisible()
   await expect(recommendation.locator('.home-featured-poem')).not.toBeEmpty()
