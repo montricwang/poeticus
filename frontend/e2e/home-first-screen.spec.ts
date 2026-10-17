@@ -239,6 +239,40 @@ test('home search field moves between positions instead of hiding the whole page
     .toBeGreaterThan(initialTop - 5)
 })
 
+test('returning recommendation never overlaps the moving search field', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  const results = page.getByRole('region', { name: '搜索结果' })
+  await expect(results).toContainText('水调歌头')
+  await results.getByRole('button', { name: '清除搜索' }).click()
+
+  // 验证实际动画的每一帧；不能只断言动画结束后的布局没有重叠。
+  const overlap = await page.evaluate(async () => {
+    const search = document.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
+    const poem = document.querySelector<HTMLElement>('[aria-label="推荐作品"]')
+    const recommendation = document.querySelector<HTMLElement>('[data-home-recommendation-slot]')
+    if (!search || !poem || !recommendation) throw new Error('Missing homepage sections')
+    const moveDuration = search.getAnimations()[0]?.effect?.getTiming().duration
+    const samples: { searchY: number; poemBottom: number; opacity: number }[] = []
+    const started = performance.now()
+    while (performance.now() - started < 900) {
+      const searchBox = search.getBoundingClientRect()
+      const poemBox = poem.getBoundingClientRect()
+      const opacity = Number(getComputedStyle(recommendation).opacity)
+      if (searchBox.top < poemBox.bottom && searchBox.bottom > poemBox.top && opacity > 0.02) {
+        samples.push({ searchY: searchBox.top, poemBottom: poemBox.bottom, opacity })
+      }
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    }
+    return { samples, moveDuration, finalOpacity: getComputedStyle(recommendation).opacity }
+  })
+  expect(overlap.moveDuration).toBe(600)
+  expect(overlap.samples).toEqual([])
+  expect(overlap.finalOpacity).toBe('1')
+})
+
 test('home search results reuse catalog title typography for full-width middle dots', async ({
   page,
 }) => {

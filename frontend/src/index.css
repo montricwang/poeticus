@@ -316,7 +316,7 @@ html.theme-transition #root * {
   }
 
   .home-recommendation-returning {
-    animation: home-results-appear 300ms 300ms ease-out both;
+    animation: home-results-appear 300ms 600ms ease-out both;
   }
 
   @media (prefers-reduced-motion: reduce) {
