@@ -66,7 +66,7 @@ test('书名线在手机及桌面竖排正文中紧贴文字，且不依赖绝�
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 844 })
     await page.goto('/')
-    const books = page.locator('.home-featured-poem .home-book-title:visible')
+    const books = page.getByRole('region', { name: '推荐作品' }).locator('.home-book-title:visible')
     await expect(books).toHaveCount(2)
 
     for (const title of ['史记', '资治通鉴']) {

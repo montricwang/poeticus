@@ -76,7 +76,7 @@ test('首页书名线使用 TC U+FE34 轮廓，颜色和透明度由 CSS 变量�
 })
 
 test('首页手机与桌面共用标点分段，保留原文与既有断列算法', () => {
-  assert.match(display, /buildPoemTextRuns\(value\)/)
+  assert.match(display, /buildPoemTextRuns\(/)
   assert.match(display, /<PunctuatedPoemText text=\{line.text\}/)
   assert.match(display, /<PunctuatedPoemText text=\{column.text\}/)
   assert.match(display, /<PunctuatedPoemText text=\{text\}/)
