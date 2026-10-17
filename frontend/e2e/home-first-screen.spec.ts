@@ -67,6 +67,11 @@ test.beforeEach(async ({ page }) => {
   await page.route(/\/api\/poems(?:\/[^?]+)?(?:\?.*)?$/, async (route) => {
     const url = new URL(route.request().url)
     const parts = url.pathname.split('/').filter(Boolean)
+    if (parts.at(-1) === 'daily') {
+      // Today's recommendation is a separate API; keep the UI fixture deterministic.
+      await route.fulfill({ json: works[0] })
+      return
+    }
     if (parts.at(-1) === 'neighbors') {
       await route.fulfill({ json: { previous_id: null, next_id: null } })
       return
@@ -107,7 +112,7 @@ test.beforeEach(async ({ page }) => {
 
 test('homepage poem stays visible across phone, tablet and desktop widths', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: '在诗词中寻一处相逢' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '美要眇兮宜修' })).toBeVisible()
   await expect(page.locator('.home-featured-poem')).not.toBeEmpty()
   for (const width of [320, 390, 820, 1023, 1024, 1440]) {
     await page.setViewportSize({ width, height: 844 })
@@ -122,7 +127,7 @@ test('homepage poem stays visible across phone, tablet and desktop widths', asyn
     if (width < 1024) {
       // Safari 的窄屏首页不依赖 RTL 滚动容器来定位正文。
       await expect(page.locator('.home-classic-body[class~="lg:hidden"]')).toBeVisible()
-      await expect(page.locator('.home-featured-poem header')).toBeVisible()
+      await expect(page.getByRole('region', { name: '推荐作品' }).locator('header')).toBeVisible()
       expect(
         await page.locator('[data-recommendation-scrollport]').evaluate((element) => ({
           direction: element.getAttribute('dir'),
@@ -164,7 +169,7 @@ test('homepage poem stays visible across phone, tablet and desktop widths', asyn
   await expect(page).toHaveURL(/#reader$/)
   await expect(page.locator('.poem-reader')).toBeVisible()
   await page.getByRole('button', { name: 'Poeticus' }).click()
-  await expect(page.getByRole('heading', { name: '在诗词中寻一处相逢' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '美要眇兮宜修' })).toBeVisible()
   await page.goBack()
   await expect(page.locator('.poem-reader')).toBeVisible()
 })
