@@ -100,8 +100,8 @@ test('书名线在手机及桌面竖排正文中紧贴文字，且不依赖绝�
       expect(geometry.lineWidth).toBeGreaterThan(0)
       expect(geometry.lineHeight).toBeGreaterThan(0)
       expect(geometry.mask).toContain('book-title-wave-mask.svg')
-      expect(geometry.distance).toBeGreaterThanOrEqual(0)
-      expect(Math.abs(geometry.distance - geometry.fontSize * 0.02)).toBeLessThan(0.8)
+      // 字形右移 0.2em，抵消 0.02em 盒子间距后，会进入书名字格的左侧留白。
+      expect(Math.abs(geometry.distance - geometry.fontSize * (0.02 - 0.2))).toBeLessThan(0.8)
       // 书名线不能让这一列比没有书名线的正文列更宽。
       expect(Math.abs(geometry.columnWidth - geometry.normalColumnWidth)).toBeLessThan(0.8)
     }

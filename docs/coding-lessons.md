@@ -26,8 +26,8 @@
 - **预防方法**：接口或页面主路径改变时，同步检查对应 E2E 的请求拦截与断言；需要稳定样本就明确模拟新端点，不用真实日期/数据库决定 UI 测试结果。
 - **验证方式**：在无本地后端的 GitHub CI 中运行首页 Playwright，用固定推荐与搜索样本验证首页、进入阅读室及手机/桌面路径。
 
-## 静态源码断言绑死局部变量名
+## 展示测试把实现细节或旧几何假设当作契约
 
-- **现象与原因**：首页展示代码将 `buildPoemTextRuns(text)` 改为分段后调用 `buildPoemTextRuns(value)`，功能仍正常，但旧单元测试匹配完整参数名而误报失败（PR #300）。
-- **预防方法**：优先测试渲染结果或稳定的调用关系；确需源码结构检查时，不将局部变量名、格式等非契约细节写入断言。
-- **验证方式**：`cd frontend && node --experimental-strip-types --test tests/*.test.mjs`；E2E 另行验证书名线样式、正文列宽及阅读室隔离。
+- **现象与原因**：书名分段让 `buildPoemTextRuns(text)` 改为 `buildPoemTextRuns(value)`，旧源码断言因形参名改变而误报；E2E 仍要求波浪线与文字盒子的间距非负，忽略为贴近字形而增加的 `translateX(0.2em)`，也在 CI 失败（PR #300）。
+- **预防方法**：优先检查稳定的渲染行为及正文列宽；源码断言不要绑定局部变量名，几何断言需区分盒子间距与应用 transform 后的视觉位置，设计调整时同步更新回归基准。
+- **验证方式**：`cd frontend && node --experimental-strip-types --test tests/*.test.mjs`；PR 浏览器 CI 在桌面/手机验证最终书名线位置、正文列宽与阅读室隔离。
