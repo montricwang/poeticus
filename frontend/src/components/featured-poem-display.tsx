@@ -7,6 +7,8 @@ import type { HomeBookTitleRun } from '@/lib/home-book-title'
 import { buildPoemLines, buildPoemTextRuns } from '@/lib/poem-layout'
 import { arrangeHomeColumns } from '@/lib/home-preview-columns'
 
+const HOME_MAX_BODY_COLUMNS = 5
+
 /** 作品文本只负责竖排与两种断列规则，不负责按钮和首页留白。 */
 export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuous: boolean }) {
   const poemScrollport = useRef<HTMLDivElement>(null)
@@ -30,23 +32,42 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     })
     document.body.append(probe)
     const bodies = [...probe.querySelectorAll<HTMLElement>('.poem-reader-body')]
+    // 测量节点不在 #home 下：不能丢失实际高度预算，也不能沿用克隆时的旧高度。
+    for (const body of bodies) body.style.removeProperty('height')
 
     const measure = (segments: string[]) => {
       for (const body of bodies) fillProbeBody(body, segments, continuous)
       return probe.getBoundingClientRect().width
     }
 
+    const fits = (segments: string[]) => {
+      if (!continuous) return measure(segments) <= scrollport.clientWidth - 4
+      const body = scrollport.querySelector<HTMLElement>('.home-classic-body')
+      const budget = body && getHomeMobileColumnBudget(body, segments)
+      if (!budget) return false
+      const text = segments.join('\u3000')
+      return !!(
+        arrangeHomeColumns(text, budget.capacity, budget.maxColumns, {
+          minInkLength: budget.minInkLength,
+        }) ?? arrangeHomeColumns(text, budget.capacity, budget.maxColumns)
+      )
+    }
+
     const refresh = () => {
-      const available = scrollport.clientWidth - 4
-      if (available <= 0) return
+      // 随首页推荐槽位的高度同步；否则离屏克隆会退回 18rem，误判长词超宽。
+      probe.style.setProperty(
+        '--home-classic-max-height',
+        getComputedStyle(scrollport).getPropertyValue('--home-classic-max-height'),
+      )
+      if (scrollport.clientWidth <= 0) return
       const segments = poem.body_segments
       let chosen = segments
 
-      if (measure(segments) > available) {
+      if (!fits(segments)) {
         chosen = []
         for (let count = 1; count <= segments.length; count++) {
           const candidate = segments.slice(0, count)
-          if (measure(candidate) > available) break
+          if (!fits(candidate)) break
           chosen = candidate
         }
 
@@ -61,7 +82,7 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
           for (const ends of [sentenceEnds, punctuationEnds]) {
             for (const end of ends) {
               const candidate = [first.slice(0, end)]
-              if (measure(candidate) > available) break
+              if (!fits(candidate)) break
               chosen = candidate
             }
             if (chosen.length) break
@@ -71,7 +92,7 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
             let high = first.length
             while (low <= high) {
               const middle = Math.floor((low + high) / 2)
-              if (measure([first.slice(0, middle)]) <= available) {
+              if (fits([first.slice(0, middle)])) {
                 chosen = [first.slice(0, middle)]
                 low = middle + 1
               } else {
@@ -91,11 +112,15 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     refresh()
     const observer = new ResizeObserver(refresh)
     observer.observe(scrollport)
-    document.fonts.ready.then(() => {
+    const main = scrollport.closest('#home')
+    const budgetObserver = new MutationObserver(refresh)
+    if (main) budgetObserver.observe(main, { attributes: true, attributeFilter: ['style'] })
+    void document.fonts.ready.then(() => {
       if (probe.isConnected) refresh()
     })
     return () => {
       observer.disconnect()
+      budgetObserver.disconnect()
       probe.remove()
     }
   }, [poem, continuous])
@@ -256,6 +281,48 @@ function PunctuatedPoemText({
   })
 }
 
+/** 节选与真实排版使用同一套列数/高度预算，避免宽度测量与断列结果分叉。 */
+function getHomeMobileColumnBudget(body: HTMLElement, segments: string[]) {
+  const scrollport = body.closest<HTMLElement>('[data-recommendation-scrollport]')
+  const heading = body.closest('article')?.querySelector('header')
+  const firstRow = heading?.querySelector('.flex')
+  const main = body.closest<HTMLElement>('#home')
+  if (!scrollport || !heading || !firstRow || !main) return null
+
+  const computed = getComputedStyle(body)
+  const fontSize = Number.parseFloat(computed.fontSize)
+  const spacing = Number.parseFloat(computed.letterSpacing) || 0
+  const lineHeight = Number.parseFloat(computed.lineHeight)
+  const advance = fontSize + spacing
+  const budget = Number.parseFloat(
+    getComputedStyle(main).getPropertyValue('--home-classic-max-height'),
+  )
+  const maxHeight = Number.isFinite(budget) && budget > 0 ? budget : body.clientHeight
+  const capacity = Math.floor((maxHeight - 3 + spacing) / advance)
+
+  const headingInk = [...firstRow.children]
+    .filter((child) => getComputedStyle(child).display !== 'none')
+    .map((child) => child.getBoundingClientRect())
+  const titleHeight = headingInk.length
+    ? Math.max(...headingInk.map((rect) => rect.bottom)) -
+      Math.min(...headingInk.map((rect) => rect.top))
+    : 0
+  const minInkLength = Math.floor(titleHeight / advance) + 1
+
+  const headerMargin = Number.parseFloat(getComputedStyle(heading).marginLeft) || 0
+  const available =
+    scrollport.clientWidth - heading.getBoundingClientRect().width - headerMargin - 8
+  const segmentGapBudget = Math.max(0, segments.length - 1) * fontSize * 0.5
+  const physicalColumns = Math.floor((available - segmentGapBudget) / lineHeight)
+  return {
+    capacity,
+    minInkLength,
+    maxColumns: Math.min(HOME_MAX_BODY_COLUMNS, physicalColumns),
+    maxHeight,
+    advance,
+  }
+}
+
 function ContinuousPoemBody({ segments }: { segments: string[] }) {
   const text = segments.join('\u3000')
   const mobileBody = useRef<HTMLDivElement>(null)
@@ -268,37 +335,9 @@ function ContinuousPoemBody({ segments }: { segments: string[] }) {
 
     const refresh = () => {
       if (window.matchMedia('(min-width: 1024px)').matches) return
-      const scrollport = body.closest<HTMLElement>('[data-recommendation-scrollport]')
-      const heading = body.closest('article')?.querySelector('header')
-      const firstRow = heading?.querySelector('.flex')
-      if (!scrollport || !heading || !firstRow || !main) return
-
-      const computed = getComputedStyle(body)
-      const fontSize = Number.parseFloat(computed.fontSize)
-      const spacing = Number.parseFloat(computed.letterSpacing) || 0
-      const lineHeight = Number.parseFloat(computed.lineHeight)
-      const advance = fontSize + spacing
-      const budget = Number.parseFloat(
-        getComputedStyle(main).getPropertyValue('--home-classic-max-height'),
-      )
-      const maxHeight = Number.isFinite(budget) && budget > 0 ? budget : body.clientHeight
-      const capacity = Math.floor((maxHeight - 3 + spacing) / advance)
-
-      // 第一行的实际文字高度，不取会被正文撑长的 header 外盒。
-      const headingInk = [...firstRow.children]
-        .filter((child) => getComputedStyle(child).display !== 'none')
-        .map((child) => child.getBoundingClientRect())
-      const titleHeight = headingInk.length
-        ? Math.max(...headingInk.map((rect) => rect.bottom)) -
-          Math.min(...headingInk.map((rect) => rect.top))
-        : 0
-      const minInkLength = Math.floor(titleHeight / advance) + 1
-
-      const headerMargin = Number.parseFloat(getComputedStyle(heading).marginLeft) || 0
-      const available =
-        scrollport.clientWidth - heading.getBoundingClientRect().width - headerMargin - 8
-      const segmentGapBudget = Math.max(0, segments.length - 1) * fontSize * 0.5
-      const maxColumns = Math.floor((available - segmentGapBudget) / lineHeight)
+      const budget = getHomeMobileColumnBudget(body, segments)
+      if (!budget) return
+      const { capacity, minInkLength, maxColumns, maxHeight, advance } = budget
 
       const chosen =
         arrangeHomeColumns(text, capacity, maxColumns, { minInkLength }) ??

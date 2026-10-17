@@ -8,6 +8,12 @@
 - **预防方法**：交互测试定位到真实可见的语义容器（如 `getByRole('region', { name: '推荐作品' })`），不要依赖可能匹配隐藏探针的全局 CSS 选择器。
 - **验证方式**：在真实浏览器运行推荐区的桌面/移动 Playwright 用例，确保无重复 locator；只跑 TypeScript 编译不够。
 
+## 离屏测量未继承实际容器的 CSS 约束
+
+- **现象与原因**：测量用的 `article` 克隆挂到 `document.body`，因此不再继承首页 `#home` 的 `--home-classic-max-height`。真实手机区域足够展示《青玉案》全词，克隆却按默认 18rem 高度计算出过大的横向宽度，导致错误「节选」（[#302](https://github.com/montricwang/poeticus/issues/302)）。克隆还可能保留上次排版留下的固定高度。
+- **预防方法**：凡是脱离原容器的隐藏探针，必须核对实际继承的 CSS 变量、计算后的几何尺寸、动态高度变化；能共用物理预算和断列算法，就不要让测量与实际排版各自得出结论。
+- **验证方式**：用同一首词在真实推荐槽位和离屏探针下比较宽度；在 320/390/402/430px 改变视口与内容后，确认实际正文列数不超过上限、是否完整展示与「节选」一致。
+
 ## E2E 测试代码没有纳入 TypeScript 检查
 
 - **现象与原因**：Playwright 误用 `route.request().url`（应为 `url()`），运行时抛 `Invalid URL`；原 `tsc -b` 只检查应用源码，漏掉了 `e2e/` 的类型错误（[#306](https://github.com/montricwang/poeticus/pull/306)）。
