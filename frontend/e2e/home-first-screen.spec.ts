@@ -239,6 +239,48 @@ test('home search field moves between positions instead of hiding the whole page
     .toBeGreaterThan(initialTop - 5)
 })
 
+test('outgoing recommendation fully fades before divider and search move', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+
+  // 从提交表单开始逐帧采样，以免仅检查最终 DOM 而漏掉瞬间消失的诗文。
+  const sequence = await page.evaluate(async () => {
+    const form = document.querySelector<HTMLFormElement>('form[role="search"]')
+    if (!form) throw new Error('Missing home search form')
+    const states: { poem: number | null; divider: number | null; moving: boolean }[] = []
+    form.requestSubmit()
+    for (let frame = 0; frame < 95; frame++) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      const recommendation = document.querySelector<HTMLElement>('[data-home-recommendation-slot]')
+      const divider = document.querySelector<HTMLElement>('.home-recommendation-divider')
+      const search = document.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
+      states.push({
+        poem: recommendation ? Number(getComputedStyle(recommendation).opacity) : null,
+        divider: divider ? Number(getComputedStyle(divider).opacity) : null,
+        moving: !!search?.getAnimations().some((animation) => animation.playState === 'running'),
+      })
+      if (states.at(-1)?.moving) break
+    }
+    const poemFading = states.findIndex((state) => state.poem !== null && state.poem < 0.85)
+    const dividerFading = states.findIndex(
+      (state) => state.divider !== null && state.divider < 0.85,
+    )
+    const moving = states.findIndex((state) => state.moving)
+    return { states, poemFading, dividerFading, moving }
+  })
+  expect(sequence.poemFading).toBeGreaterThanOrEqual(0)
+  expect(sequence.dividerFading).toBeGreaterThan(sequence.poemFading)
+  expect(sequence.moving).toBeGreaterThan(sequence.dividerFading)
+  // 分割线开始消失时，推荐已经几乎完全透明。
+  expect(sequence.states[sequence.dividerFading].poem ?? 1).toBeLessThan(0.05)
+  // 移动前存在明显可见的渐隐过程，不能刚提交就直接卸载整个推荐区。
+  expect(
+    sequence.states.some((state) => state.poem !== null && state.poem > 0.15 && state.poem < 0.7),
+  ).toBe(true)
+  await expect(page.getByRole('region', { name: '搜索结果' })).toContainText('水调歌头')
+})
+
 test('returning recommendation never overlaps the moving search field', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')

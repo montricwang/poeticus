@@ -30,6 +30,8 @@ type HomeScreenProps = {
 
 // CSS 推荐区和分割线的延迟与搜索入口的 FLIP 位移共用这一时长。
 const HOME_SEARCH_MOVE_DURATION_MS = 600
+const HOME_RECOMMENDATION_FADE_OUT_MS = 420
+const HOME_DIVIDER_FADE_OUT_MS = 140
 
 /** Home is an entry to the existing Reader; it never owns a second conversation. */
 export function HomeScreen({
@@ -56,6 +58,7 @@ export function HomeScreen({
   const [debugPoem, setDebugPoem] = useState<Poem | null>(null)
   const [debugError, setDebugError] = useState('')
   const [recommendationLeaving, setRecommendationLeaving] = useState(false)
+  const [dividerLeaving, setDividerLeaving] = useState(false)
   const searchTransitionTimerRef = useRef<number | null>(null)
   const searchBeforeLayoutRef = useRef<DOMRect | null>(null)
   const [recommendationReturning, setRecommendationReturning] = useState(false)
@@ -90,6 +93,7 @@ export function HomeScreen({
     const nextHasSearch = !!next.q?.trim()
     if (nextHasSearch === hasSearch) {
       setRecommendationLeaving(false)
+      setDividerLeaving(false)
       onFiltersChange(next)
       return
     }
@@ -104,6 +108,7 @@ export function HomeScreen({
         : (searchSection?.getBoundingClientRect() ?? null)
       setRecommendationReturning(!nextHasSearch && !reducedMotion)
       setRecommendationLeaving(false)
+      setDividerLeaving(false)
       onFiltersChange(next)
       searchTransitionTimerRef.current = null
     }
@@ -111,9 +116,16 @@ export function HomeScreen({
     if (nextHasSearch && !reducedMotion) {
       // 搜索期间取消返回时的推荐淡入，避免快速重新搜索造成相反动画。
       setRecommendationReturning(false)
-      // 先让推荐词淡出，再开始移动仍可见的搜索入口。
+      // 严格按顺序退出：推荐文字渐隐 → 中间分割线渐隐 → 搜索框上移。
+      setDividerLeaving(false)
       setRecommendationLeaving(true)
-      searchTransitionTimerRef.current = window.setTimeout(changeLayout, 130)
+      searchTransitionTimerRef.current = window.setTimeout(() => {
+        setDividerLeaving(true)
+        searchTransitionTimerRef.current = window.setTimeout(
+          changeLayout,
+          HOME_DIVIDER_FADE_OUT_MS + 20,
+        )
+      }, HOME_RECOMMENDATION_FADE_OUT_MS + 20)
     } else {
       changeLayout()
     }
@@ -246,6 +258,8 @@ export function HomeScreen({
           {
             '--home-classic-max-height': mobileBodyMaxHeight ? `${mobileBodyMaxHeight}px` : '18rem',
             '--home-search-move-duration': `${HOME_SEARCH_MOVE_DURATION_MS}ms`,
+            '--home-recommendation-fade-duration': `${HOME_RECOMMENDATION_FADE_OUT_MS}ms`,
+            '--home-divider-fade-duration': `${HOME_DIVIDER_FADE_OUT_MS}ms`,
           } as CSSProperties
         }
       >
@@ -272,7 +286,7 @@ export function HomeScreen({
                   'flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none ' +
                   (recommendationReturning
                     ? 'home-recommendation-returning '
-                    : 'transition-opacity duration-150 ease-out motion-reduce:transition-none ') +
+                    : 'transition-opacity duration-[var(--home-recommendation-fade-duration)] ease-in-out motion-reduce:transition-none ') +
                   (recommendationLeaving ? 'opacity-0' : 'opacity-100')
                 }
               >
@@ -291,8 +305,8 @@ export function HomeScreen({
                   'home-recommendation-divider mx-auto w-full max-w-2xl ' +
                   (recommendationReturning
                     ? 'home-divider-returning'
-                    : 'transition-opacity duration-100 ease-out motion-reduce:transition-none ' +
-                      (recommendationLeaving ? 'opacity-0' : 'opacity-100'))
+                    : 'transition-opacity duration-[var(--home-divider-fade-duration)] ease-out motion-reduce:transition-none ' +
+                      (dividerLeaving ? 'opacity-0' : 'opacity-100'))
                 }
               />
             )}
