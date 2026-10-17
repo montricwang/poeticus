@@ -624,7 +624,7 @@ test('font readiness can stall without hiding mobile home and reader forever', a
 
   await page.getByRole('button', { name: '阅读室' }).click()
   const reader = page.getByRole('region', { name: '诗词阅读' }).locator('.poem-reader')
-  await expect(reader).toContainText('小山重叠金明灭')
+  await expect(reader).toContainText('晚秋天')
   await expect(reader).toHaveCSS('opacity', '1', { timeout: 4000 })
 
   await page.getByRole('button', { name: 'Poeticus' }).click()
@@ -644,7 +644,7 @@ test('direct mobile reader entry does not wait indefinitely for fonts', async ({
   })
   await page.goto('/#reader')
   const reader = page.getByRole('region', { name: '诗词阅读' }).locator('.poem-reader')
-  await expect(reader).toContainText('小山重叠金明灭')
+  await expect(reader).toContainText('晚秋天')
   await expect(reader).toHaveCSS('opacity', '1', { timeout: 4000 })
 })
 
