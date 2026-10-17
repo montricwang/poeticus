@@ -483,9 +483,9 @@ html.theme-transition #root * {
   }
 
   .home-featured-poem .home-book-title-line {
-    flex: 0 0 0.1em;
+    flex: 0 0 0.124em;
     inline-size: 100%;
-    margin-block-end: calc(-0.1em - var(--home-book-title-line-gap));
+    margin-block-end: calc(-0.124em - var(--home-book-title-line-gap));
     /* 只将可见波浪线向右移近书名字形，不改变列宽或断列。 */
     transform: translateX(0.2em);
     background-color: color-mix(
@@ -494,8 +494,8 @@ html.theme-transition #root * {
         var(--home-book-title-line-opacity, var(--reader-punctuation-opacity)),
       transparent
     );
-    -webkit-mask: url('/decorations/book-title-wave-mask.svg') left top / 0.1em 0.333em repeat-y;
-    mask: url('/decorations/book-title-wave-mask.svg') left top / 0.1em 0.333em repeat-y;
+    -webkit-mask: url('/decorations/book-title-wave-mask.svg') left top / 0.124em 0.333em repeat-y;
+    mask: url('/decorations/book-title-wave-mask.svg') left top / 0.124em 0.333em repeat-y;
     pointer-events: none;
     user-select: none;
   }

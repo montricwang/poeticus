@@ -4,4 +4,4 @@
 
 `frontend/src/index.css` 通过 `@font-face` 的 `unicode-range` 只将这些字形用于标点，汉字仍由 Noto Serif SC 绘制。勿将整个 Noto Serif TC 无限制地设为首页正文字体，以免改变汉字字形。
 
-首页书名线的 `frontend/public/decorations/book-title-wave-mask.svg` 也取自该字体：截取 U+FE34 原始字形中 y=380–713 的一个周期（全字高约三周期），将 SVG 水平方向裁至 x=40–140 以去除书名线旁的透明留白，作为 CSS mask 平铺而非拉伸；线条颜色与透明度由 CSS 变量控制，同样遵循此处的 OFL 许可。
+首页书名线的 `frontend/public/decorations/book-title-wave-mask.svg` 也取自该字体：截取 U+FE34 原始字形中 y=380–713 的一个周期（全字高约三周期），将 SVG 水平方向裁至 x=28–152，保留波峰曲线的完整轮廓并留出防裁切空间，作为 CSS mask 平铺而非拉伸；线条颜色与透明度由 CSS 变量控制，同样遵循此处的 OFL 许可。
