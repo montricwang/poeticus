@@ -312,11 +312,11 @@ html.theme-transition #root * {
   }
 
   .home-search-results-enter {
-    animation: home-results-appear 220ms 210ms ease-out both;
+    animation: home-results-appear 300ms 260ms ease-out both;
   }
 
   .home-recommendation-returning {
-    animation: home-results-appear 260ms 170ms ease-out both;
+    animation: home-results-appear 300ms 300ms ease-out both;
   }
 
   @media (prefers-reduced-motion: reduce) {

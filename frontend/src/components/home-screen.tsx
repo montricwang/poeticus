@@ -179,7 +179,7 @@ export function HomeScreen({
     search.getAnimations().forEach((animation) => animation.cancel())
     search.animate(
       [{ transform: `translate(${deltaX}px, ${deltaY}px)` }, { transform: 'translate(0, 0)' }],
-      { duration: 360, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      { duration: 600, easing: 'cubic-bezier(0.42, 0, 0.58, 1)' },
     )
   }, [hasSearch])
 
