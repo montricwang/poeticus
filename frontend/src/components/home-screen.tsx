@@ -8,6 +8,7 @@ import { HomeSearch } from '@/components/home-search'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import type { Poem, PoemFilters, PoemPage } from '@/data/poem-library'
+import { HOME_INITIAL_REVEAL_MS } from '@/lib/entrance-motion'
 import { whenFontsReadyOrTimeout } from '@/lib/font-readiness'
 
 type HomeScreenProps = {
@@ -104,7 +105,7 @@ export function HomeScreen({
     const timer = window.setTimeout(() => {
       setInitialEntrance('done')
       setEntranceCompleted(true)
-    }, 1200)
+    }, HOME_INITIAL_REVEAL_MS)
     return () => window.clearTimeout(timer)
   }, [initialEntrance])
 

@@ -358,11 +358,11 @@ html.theme-transition #root * {
     animation: home-results-appear 250ms ease-out both;
   }
 
-  /* 首次进首页更从容；正文逐列上浮，题头与印章一起渐显。 */
+  /* 入场：手机五列最迟 440ms 完成，桌面正文 460ms 完成；随后分割线至 580ms。 */
   .home-recommendation-revealing.home-recommendation-initial .home-classic-column,
   .home-recommendation-revealing.home-recommendation-initial .poem-reader-line {
-    animation-duration: 380ms;
-    animation-delay: calc(var(--home-stagger-index, 0) * 70ms);
+    animation-duration: 240ms;
+    animation-delay: calc(var(--home-stagger-index, 0) * 50ms);
   }
 
   /* 桌面端正文自动分栏，按从右到左的方向渐进揭示而不改断列算法。 */
@@ -378,12 +378,12 @@ html.theme-transition #root * {
   }
 
   .home-recommendation-initial .home-classic-body.max-lg\:hidden {
-    animation: home-desktop-text-reveal 920ms ease-out both;
+    animation: home-desktop-text-reveal 460ms ease-out both;
   }
 
   .home-divider-growing.home-divider-initial {
-    animation-delay: 850ms;
-    animation-duration: 270ms;
+    animation-delay: 470ms;
+    animation-duration: 110ms;
   }
 
   /* 推荐和中间线完成入场后，标题和搜索控件交错上浮；位移不改变布局。 */
@@ -400,12 +400,12 @@ html.theme-transition #root * {
 
   /* 题字先起，输入框和它的下划线作为第二拍一起上浮。 */
   .home-search-intro-revealing .home-search-intro-title {
-    animation: home-search-float-up 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: home-search-float-up 190ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .home-search-intro-revealing .home-search-intro-form,
   .home-search-intro-revealing .home-search-intro-divider {
-    animation: home-search-float-up 420ms 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: home-search-float-up 195ms 60ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   /* 搜索结果只错峰前八项；分页不会因为二十项串行播放而拖慢。 */
@@ -430,21 +430,21 @@ html.theme-transition #root * {
   }
 
   .reader-intro-revealing {
-    animation: home-results-appear 260ms ease-out both;
+    animation: home-results-appear 220ms ease-out both;
   }
 
   .reader-intro-revealing .poem-reader-header,
   .reader-intro-revealing .poem-reader-preface {
-    animation: home-column-rise 300ms ease-out both;
+    animation: home-column-rise 225ms ease-out both;
   }
 
   .reader-intro-revealing .poem-reader-line {
-    animation: home-column-rise 300ms calc(130ms + var(--reader-stagger-index, 0) * 50ms) ease-out
+    animation: home-column-rise 210ms calc(70ms + var(--reader-stagger-index, 0) * 30ms) ease-out
       both;
   }
 
   .reader-screen-entering .reader-companion-stage {
-    animation: home-results-appear 230ms 140ms ease-out both;
+    animation: home-results-appear 180ms 100ms ease-out both;
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { HOME_INITIAL_REVEAL_MS, READER_INITIAL_REVEAL_MS } from '../src/lib/entrance-motion'
 
 const works = [
   {
@@ -200,18 +201,48 @@ test('homepage entrance replays after reader navigation and search appears last'
   await expect(search).toHaveCSS('opacity', '0')
   await expect(search).toHaveAttribute('inert', '')
   const column = page.locator('.home-recommendation-initial .home-classic-column').first()
-  await expect(column).toHaveCSS('animation-duration', '0.38s')
-  await expect(page.locator('.home-divider-initial')).toHaveCSS('animation-delay', '0.85s')
+  await expect(column).toHaveCSS('animation-duration', '0.24s')
+  await expect(page.locator('.home-divider-initial')).toHaveCSS('animation-delay', '0.47s')
+  const homeTiming = await page.evaluate(() => {
+    const columns = [
+      ...document.querySelectorAll<HTMLElement>(
+        '.home-recommendation-initial .home-classic-column',
+      ),
+    ]
+    const divider = document.querySelector<HTMLElement>('.home-divider-initial')
+    if (!columns.length || !divider) throw new Error('Missing initial entrance columns or divider')
+    const secondsToMs = (time: string) => Number.parseFloat(time) * 1000
+    const lastColumnEnd = Math.max(
+      ...columns.map((column) => {
+        const css = getComputedStyle(column)
+        return secondsToMs(css.animationDelay) + secondsToMs(css.animationDuration)
+      }),
+    )
+    const line = getComputedStyle(divider)
+    const dividerStart = secondsToMs(line.animationDelay)
+    return {
+      lastColumnEnd,
+      dividerStart,
+      dividerEnd: dividerStart + secondsToMs(line.animationDuration),
+    }
+  })
+  expect(homeTiming.lastColumnEnd).toBeLessThan(homeTiming.dividerStart)
+  expect(homeTiming.dividerEnd).toBeLessThan(HOME_INITIAL_REVEAL_MS)
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
   await expect(search).toHaveClass(/home-search-intro-revealing/)
   const title = search.locator('.home-search-intro-title')
   const form = search.locator('.home-search-intro-form')
   const underline = search.locator('.home-search-intro-divider')
   await expect(title).toHaveCSS('animation-name', 'home-search-float-up')
-  await expect(title).toHaveCSS('animation-duration', '0.42s')
+  await expect(title).toHaveCSS('animation-duration', '0.19s')
   await expect(form).toHaveCSS('animation-name', 'home-search-float-up')
-  await expect(form).toHaveCSS('animation-delay', '0.15s')
-  await expect(underline).toHaveCSS('animation-delay', '0.15s')
+  await expect(form).toHaveCSS('animation-delay', '0.06s')
+  await expect(underline).toHaveCSS('animation-delay', '0.06s')
+  const searchFinishAfterReveal = await form.evaluate((element) => {
+    const css = getComputedStyle(element)
+    return 1000 * (Number.parseFloat(css.animationDuration) + Number.parseFloat(css.animationDelay))
+  })
+  expect(HOME_INITIAL_REVEAL_MS + searchFinishAfterReveal).toBeLessThan(1000)
   const floatUp = await title.evaluate((element) => {
     const animation = element
       .getAnimations()
@@ -241,13 +272,33 @@ test('homepage entrance replays after reader navigation and search appears last'
     'animation-name',
     'home-search-float-up',
   )
-  await expect(search.locator('.home-search-intro-form')).toHaveCSS('animation-delay', '0.15s')
+  await expect(search.locator('.home-search-intro-form')).toHaveCSS('animation-delay', '0.06s')
   await expect(search).toHaveCSS('opacity', '1')
 
   // A viewport resize changes layout, not the home route, so the intro stays finished.
   await page.setViewportSize({ width: 402, height: 874 })
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
   await expect(search).not.toHaveAttribute('inert', '')
+})
+
+test('desktop initial poem reveal completes before the divider and search phase', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(1)
+  const desktopBody = page.locator(
+    '.home-recommendation-initial [class~="max-lg:hidden"].home-classic-body',
+  )
+  const divider = page.locator('.home-divider-initial')
+  await expect(desktopBody).toHaveCSS('animation-duration', '0.46s')
+  await expect(divider).toHaveCSS('animation-delay', '0.47s')
+  await expect(divider).toHaveCSS('animation-duration', '0.11s')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
+  const search = page.locator('[data-home-search-slot]')
+  await expect(search).not.toHaveAttribute('inert', '')
+  await expect(search.locator('.home-search-intro-form')).toHaveCSS('animation-duration', '0.195s')
 })
 
 test('Poeticus navigation from a direct reader visit replays the home introduction', async ({
@@ -280,6 +331,21 @@ test('reader first entrance reveals lines once and leaves ordinary poem switchin
     'animation-name',
     'home-column-rise',
   )
+  const readerLastLineEnd = await page
+    .locator('.reader-intro-revealing .poem-reader-line')
+    .evaluateAll((lines) =>
+      Math.max(
+        ...lines.map((line) => {
+          const css = getComputedStyle(line)
+          return (
+            1000 *
+            (Number.parseFloat(css.animationDelay) + Number.parseFloat(css.animationDuration))
+          )
+        }),
+      ),
+    )
+  expect(readerLastLineEnd).toBeLessThan(READER_INITIAL_REVEAL_MS)
+  expect(READER_INITIAL_REVEAL_MS).toBeLessThan(1000)
   await expect(page.locator('.reader-intro-revealing')).toHaveCount(0, { timeout: 4000 })
   await expect(page.getByRole('heading', { name: '水调歌头' })).toBeVisible()
   await page.setViewportSize({ width: 390, height: 844 })
