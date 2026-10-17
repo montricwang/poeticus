@@ -246,7 +246,11 @@ function PunctuatedPoemText({
     }
     if (part.kind === 'title') {
       return (
-        <span key={index} className="home-book-title">
+        <span
+          key={index}
+          className="home-book-title"
+          data-book-line={'︴'.repeat(Array.from(part.text.replace(/[\r\n]/gu, '')).length)}
+        >
           {punctuated(part.text)}
         </span>
       )

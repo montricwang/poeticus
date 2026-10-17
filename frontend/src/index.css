@@ -9,6 +9,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* 竖排书名线使用本地台湾思源宋体字形 U+FE34，避免 Safari 与 Chrome 各自画波浪线。 */
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Book Line';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-11-wght-normal.woff2') format('woff2');
+  unicode-range: U+FE34;
+}
+
 /* 首页仅替换指定标点字形；汉字仍由 Noto Serif SC 绘制，不更改原文。 */
 @font-face {
   font-family: 'Poeticus Noto Serif TC Punctuation';
@@ -472,17 +482,26 @@ html.theme-transition #root * {
   }
 
   .home-featured-poem .home-book-title {
-    text-decoration-line: underline;
-    text-decoration-style: wavy;
-    text-decoration-color: color-mix(
-      in srgb,
-      var(--foreground) var(--reader-punctuation-opacity),
-      transparent
-    );
-    text-decoration-thickness: 1px;
-    text-underline-position: left;
-    text-underline-offset: 0.05em;
-    text-decoration-skip-ink: none;
+    position: relative;
+  }
+
+  /* 只画书名线：字形在伪元素中，不进入正文 DOM 或复制内容。 */
+  .home-featured-poem .home-book-title::after {
+    content: attr(data-book-line);
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-end: -0.05em;
+    color: color-mix(in srgb, var(--foreground) var(--reader-punctuation-opacity), transparent);
+    font-family: 'Poeticus Noto Serif TC Book Line', serif;
+    font-size: 1em;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: inherit;
+    white-space: nowrap;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    pointer-events: none;
+    user-select: none;
   }
 
   /* 只降低标点文字颜色的不透明度，避免对整段元素和选区应用 opacity。 */
