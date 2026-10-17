@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 const works = [
   {
@@ -61,6 +62,16 @@ const works = [
     text_version: 1,
   },
 ]
+
+// 首页首次入场时搜索区是 inert：不能在不可交互阶段填值再误判搜索功能失败。
+async function fillHomeSearch(page: Page, value: string) {
+  const slot = page.locator('[data-home-search-slot]')
+  await expect(slot).toBeVisible()
+  await expect(slot).not.toHaveAttribute('inert', '')
+  const input = page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' })
+  await input.fill(value)
+  await expect(input).toHaveValue(value)
+}
 
 test.beforeEach(async ({ page }) => {
   // The first-screen test is independent of the local corpus/Postgres service.
@@ -258,7 +269,7 @@ test('reader first entrance reveals lines once and leaves ordinary poem switchin
 }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const results = page.getByRole('region', { name: '搜索结果' })
   await expect(results).toContainText('水调歌头')
@@ -286,7 +297,7 @@ test('submitted home search replaces recommendation and clearing restores it', a
   await expect(searchbox).toHaveAttribute('inputmode', 'search')
   await expect(searchbox).toHaveAttribute('enterkeyhint', 'search')
 
-  await searchbox.fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   // 原生搜索框的 X 不再出现，保留本站自己的一个清空按钮。
   await expect(page.getByRole('button', { name: '清空输入' })).toHaveCount(1)
   // 只有正式提交才进入结果模式；输入和焦点变化均不隐藏推荐。
@@ -321,7 +332,7 @@ test('home search field moves between positions instead of hiding the whole page
   await page.goto('/')
   const search = page.getByRole('region', { name: '馆藏搜索' })
   const initialTop = await search.evaluate((element) => element.getBoundingClientRect().top)
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await expect(page.getByRole('region', { name: '搜索结果' })).toBeVisible()
   // FLIP 维持同一个搜索元素，只改变它的屏幕位置，不整页淡出。
@@ -341,7 +352,7 @@ test('delayed FLIP search never flashes at its destination', async ({ page }) =>
   await page.goto('/')
   const section = page.getByRole('region', { name: '馆藏搜索' })
   const origin = await section.evaluate((element) => element.getBoundingClientRect().top)
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const samples = await section.evaluate((element) => {
     const animation = element.getAnimations()[0]
@@ -363,7 +374,7 @@ test('poem float-up does not create a temporary vertical scrollbar', async ({ pa
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await page
     .getByRole('region', { name: '搜索结果' })
@@ -384,7 +395,7 @@ test('poem float-up does not create a temporary vertical scrollbar', async ({ pa
 test('delayed FLIP keeps search at its original position before moving', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   const frames = await page.evaluate(async () => {
     const form = document.querySelector<HTMLFormElement>('form[role="search"]')
     const search = document.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
@@ -414,7 +425,7 @@ test('staggering poem lines never enables a transient vertical scrollbar', async
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const results = page.getByRole('region', { name: '搜索结果' })
   await expect(results).toContainText('水调歌头')
@@ -441,7 +452,7 @@ test('staggering poem lines never enables a transient vertical scrollbar', async
 test('moving search overlaps the recommendation fade', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   const observations = await page.evaluate(async () => {
     document.querySelector<HTMLFormElement>('form[role="search"]')?.requestSubmit()
     const frames: { opacity: number; line: number; moving: boolean }[] = []
@@ -469,7 +480,7 @@ test('moving search overlaps the recommendation fade', async ({ page }) => {
 test('returning recommendation never overlaps the moving search field', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const results = page.getByRole('region', { name: '搜索结果' })
   await expect(results).toContainText('水调歌头')
@@ -503,7 +514,7 @@ test('returning recommendation never overlaps the moving search field', async ({
 test('returning columns stagger before the divider grows from its center', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const results = page.getByRole('region', { name: '搜索结果' })
   await expect(results).toContainText('水调歌头')
@@ -539,7 +550,7 @@ test('revealed recommendation does not replay after viewport resize', async ({ p
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await page
     .getByRole('region', { name: '搜索结果' })
@@ -563,7 +574,7 @@ test('home search results reuse catalog title typography for full-width middle d
   page,
 }) => {
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('辛弃疾')
+  await fillHomeSearch(page, '辛弃疾')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const title = page.getByRole('region', { name: '搜索结果' }).locator('.poeticus-catalog-title')
   await expect(title).toHaveText('破阵子·为陈同甫赋壮词以寄之')
@@ -608,7 +619,7 @@ test('first entries are immediate for reduced-motion users', async ({ page }) =>
 test('home search view transition remains immediate with reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await expect(page.getByRole('region', { name: '推荐作品' })).toHaveCount(0)
   await expect(page.getByRole('region', { name: '搜索结果' })).toContainText('水调歌头')
@@ -617,7 +628,7 @@ test('home search view transition remains immediate with reduced motion', async 
 
 test('search a poet and enter the existing reader', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const results = page.getByRole('region', { name: '搜索结果' })
   await expect(results).toContainText('水调歌头')

@@ -26,6 +26,12 @@
 - **预防方法**：设计输入控件时检查浏览器自带的 UI 与项目绘制的控件是否重复；当前首页使用 `type="text"` + `role="searchbox"`、`inputMode="search"`、`enterKeyHint="search"`，保留搜索语义、搜索键盘与本站唯一清除按钮。
 - **验证方式**：手机／桌面实际输入后只有一个清除按钮，点击能清空内容，Enter／搜索键仍能提交表单；对 Safari 的软键盘另做真机核对。
 
+## 自动化输入必须等待入场结束后的可交互状态
+
+- **现象与原因**：首页首次入场期间，搜索区先以 `inert` 阻止焦点和输入。旧 Playwright 测试在页面刚载入时立即 `fill('苏轼')`，API 未报告失败，但 DOM 输入值仍为空；点击搜索后没有任何结果，导致二十余项后续断言一起失败（[#319](https://github.com/montricwang/poeticus/issues/319)、PR #321）。这是测试时序不符合交互契约，不应通过提前移除 `inert` 或放宽结果断言蒙混过去。
+- **预防方法**：有入场锁定、加载遮罩或 disabled 状态的控件，先等待真实可交互条件（如 `inert` 解除），再执行 Playwright 用户动作；输入后立即验证实际 value 已更新。一个根因造成批量失败时先检查共同前置条件，不逐条延长 timeout。
+- **验证方式**：对比页面刚加载时的 `inert` / `input.value`，与解除 `inert` 后输入、清除按钮和结果区是否正常；CI 重新运行真实浏览器 E2E。
+
 ## 动画中间帧闪动、临时滚动条与意外重播
 
 - **现象与原因**：首页搜索的 FLIP 使用了 `delay`，但未设置 WAAPI 的 backwards fill，搜索框在延迟期间先闪到新布局的最终位置，再跳回起点上移；首页推荐词列通过 `translateY(6px)` 淡入，桌面正文横向滚动容器同时允许纵向滚动，动画中临时增加 6px `scrollHeight`，出现闪一下的竖向滚动条（[#308](https://github.com/montricwang/poeticus/issues/308)、[#319](https://github.com/montricwang/poeticus/issues/319)）。
