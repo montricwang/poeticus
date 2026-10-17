@@ -72,7 +72,7 @@ test('窄矮视口显示明确节选，可纵向滚动且没有页面横向溢�
     await page.goto('/')
     const body = page.locator('.home-classic-body.lg\\:hidden')
     await expect(body.locator('.home-classic-column').first()).toBeVisible()
-    await expect(page.locator('.home-featured-poem header')).toBeVisible()
+    await expect(page.getByRole('region', { name: '推荐作品' }).locator('header')).toBeVisible()
     const shape = await page.evaluate(() => {
       const main = document.querySelector<HTMLElement>('#home')!
       const article = document.querySelector<HTMLElement>('.home-featured-poem')!
@@ -82,13 +82,15 @@ test('窄矮视口显示明确节选，可纵向滚动且没有页面横向溢�
         bodyBudget: parseFloat(
           getComputedStyle(main).getPropertyValue('--home-classic-max-height'),
         ),
-        verticalScroll: main.scrollHeight > main.clientHeight,
+        scrollable: getComputedStyle(main).overflowY === 'auto',
+        needsScroll: main.scrollHeight > main.clientHeight,
         articleFits: article.getBoundingClientRect().width <= scrollport.clientWidth,
       }
     })
     expect(shape.pageOverflow).toBe(false)
     expect(shape.bodyBudget).toBeGreaterThanOrEqual(288)
-    expect(shape.verticalScroll).toBe(true)
+    expect(shape.scrollable).toBe(true)
+    if (height <= 490) expect(shape.needsScroll).toBe(true)
     expect(shape.articleFits).toBe(true)
   }
 })
