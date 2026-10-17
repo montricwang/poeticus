@@ -474,10 +474,14 @@ html.theme-transition #root * {
   .home-featured-poem .home-book-title {
     text-decoration-line: underline;
     text-decoration-style: wavy;
-    text-decoration-color: color-mix(in srgb, var(--foreground) 40%, transparent);
+    text-decoration-color: color-mix(
+      in srgb,
+      var(--foreground) var(--reader-punctuation-opacity),
+      transparent
+    );
     text-decoration-thickness: 1px;
     text-underline-position: left;
-    text-underline-offset: 0.14em;
+    text-underline-offset: 0.05em;
     text-decoration-skip-ink: none;
   }
 
