@@ -90,7 +90,7 @@ def list_poems(
     return rows, total
 
 
-def get_daily_poem(conn: Connection[DictRow] | PoemReader, day: date) -> DictRow | None:
+def get_daily_poem(conn: Connection[DictRow] | PoemReader, day: date) -> Mapping[str, object] | None:
     """用北京时间日期对整张作品表做稳定的伪随机选择，不加载全部作品。"""
     count_row = conn.execute(sql.SQL("SELECT COUNT(*) AS total FROM poems"), ()).fetchone()
     if count_row is None or not isinstance(count_row["total"], int):

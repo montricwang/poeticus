@@ -88,7 +88,13 @@ class FakeConnection:
             assert isinstance(poem_id, UUID)
             return FakeRows(row=self.details.get(poem_id))
         if "ORDER BY source_order LIMIT 1 OFFSET %s" in query_text:
-            return FakeRows(row=self.details.get(self.pages[params[0]]["id"]) if self.pages else None)
+            offset = params[0]
+            assert isinstance(offset, int)
+            if not self.pages:
+                return FakeRows(row=None)
+            poem_id = self.pages[offset]["id"]
+            assert isinstance(poem_id, UUID)
+            return FakeRows(row=self.details.get(poem_id))
         if "ORDER BY source_order" in query_text:
             return FakeRows(rows=self.pages)
         raise AssertionError("Unexpected SQL in read-only repository")

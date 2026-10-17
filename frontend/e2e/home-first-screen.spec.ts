@@ -65,8 +65,13 @@ const works = [
 test.beforeEach(async ({ page }) => {
   // The first-screen test is independent of the local corpus/Postgres service.
   await page.route(/\/api\/poems(?:\/[^?]+)?(?:\?.*)?$/, async (route) => {
-    const url = new URL(route.request().url)
+    const url = new URL(route.request().url())
     const parts = url.pathname.split('/').filter(Boolean)
+    if (parts.at(-1) === 'daily') {
+      // Today's recommendation is a separate API; keep the UI fixture deterministic.
+      await route.fulfill({ json: works[0] })
+      return
+    }
     if (parts.at(-1) === 'neighbors') {
       await route.fulfill({ json: { previous_id: null, next_id: null } })
       return
@@ -107,24 +112,25 @@ test.beforeEach(async ({ page }) => {
 
 test('homepage poem stays visible across phone, tablet and desktop widths', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: '在诗词中寻一处相逢' })).toBeVisible()
-  await expect(page.locator('.home-featured-poem')).not.toBeEmpty()
+  const recommendation = page.getByRole('region', { name: '推荐作品' })
+  await expect(page.getByRole('heading', { name: '美要眇兮宜修' })).toBeVisible()
+  await expect(recommendation.locator('.home-featured-poem')).not.toBeEmpty()
   for (const width of [320, 390, 820, 1023, 1024, 1440]) {
     await page.setViewportSize({ width, height: 844 })
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true)
     expect(
-      await page
+      await recommendation
         .locator('.home-featured-poem')
         .evaluate((element) => getComputedStyle(element).writingMode),
     ).toBe('vertical-rl')
     if (width < 1024) {
       // Safari 的窄屏首页不依赖 RTL 滚动容器来定位正文。
-      await expect(page.locator('.home-classic-body[class~="lg:hidden"]')).toBeVisible()
-      await expect(page.locator('.home-featured-poem header')).toBeVisible()
+      await expect(recommendation.locator('.home-classic-body[class~="lg:hidden"]')).toBeVisible()
+      await expect(recommendation.locator('header')).toBeVisible()
       expect(
-        await page.locator('[data-recommendation-scrollport]').evaluate((element) => ({
+        await recommendation.locator('[data-recommendation-scrollport]').evaluate((element) => ({
           direction: element.getAttribute('dir'),
           overflow: getComputedStyle(element).overflowX,
         })),
@@ -149,22 +155,24 @@ test('homepage poem stays visible across phone, tablet and desktop widths', asyn
       expect(layout.visualOffset).toBeLessThan(60)
       expect(layout.sealGap).toBeGreaterThanOrEqual(8)
       expect(layout.sealGap).toBeLessThanOrEqual(18)
-      await expect(page.locator('.home-classic-body[class~="lg:hidden"]')).toContainText('晚秋天')
+      await expect(recommendation.locator('.home-classic-body[class~="lg:hidden"]')).toContainText(
+        '晚秋天',
+      )
     } else {
       // 桌面仅保留按句断列的排版。
-      await expect(page.locator('.poem-reader-line').first()).toBeVisible()
-      await expect(page.locator('.home-classic-body[class~="lg:hidden"]')).toHaveCount(0)
+      await expect(recommendation.locator('.poem-reader-line').first()).toBeVisible()
+      await expect(recommendation.locator('.home-classic-body[class~="lg:hidden"]')).toHaveCount(0)
     }
     await expect(page.getByRole('group', { name: '推荐作品排版方式' })).toHaveCount(0)
   }
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(page.locator('.home-classic-body[class~="lg:hidden"]')).toBeVisible()
+  await expect(recommendation.locator('.home-classic-body[class~="lg:hidden"]')).toBeVisible()
 
   await page.getByRole('button', { name: '阅读室' }).click()
   await expect(page).toHaveURL(/#reader$/)
   await expect(page.locator('.poem-reader')).toBeVisible()
   await page.getByRole('button', { name: 'Poeticus' }).click()
-  await expect(page.getByRole('heading', { name: '在诗词中寻一处相逢' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '美要眇兮宜修' })).toBeVisible()
   await page.goBack()
   await expect(page.locator('.poem-reader')).toBeVisible()
 })
