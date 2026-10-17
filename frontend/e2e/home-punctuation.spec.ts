@@ -79,6 +79,9 @@ test('书名线在手机及桌面竖排正文中紧贴文字，且不依赖绝�
         const ink = text.getBoundingClientRect()
         const wave = line.getBoundingClientRect()
         const style = getComputedStyle(element)
+        const column = element.closest<HTMLElement>('.home-classic-column, .poem-reader-line')
+        const body = element.closest<HTMLElement>('.poem-reader-body')
+        if (!column || !body) throw new Error('Book title must be inside a poem column')
         return {
           layout: style.display,
           gap: Number.parseFloat(style.gap),
@@ -88,6 +91,8 @@ test('书名线在手机及桌面竖排正文中紧贴文字，且不依赖绝�
           distance: ink.left - wave.right,
           position: getComputedStyle(line).position,
           mask: getComputedStyle(line).maskImage,
+          columnWidth: column.getBoundingClientRect().width,
+          normalColumnWidth: Number.parseFloat(getComputedStyle(body).lineHeight),
         }
       })
       expect(geometry.layout).toBe('inline-flex')
@@ -97,6 +102,8 @@ test('书名线在手机及桌面竖排正文中紧贴文字，且不依赖绝�
       expect(geometry.mask).toContain('book-title-wave-mask.svg')
       expect(geometry.distance).toBeGreaterThanOrEqual(0)
       expect(Math.abs(geometry.distance - geometry.fontSize * 0.05)).toBeLessThan(0.8)
+      // 书名线不能让这一列比没有书名线的正文列更宽。
+      expect(Math.abs(geometry.columnWidth - geometry.normalColumnWidth)).toBeLessThan(0.8)
     }
   }
 })

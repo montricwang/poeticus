@@ -49,15 +49,15 @@ test('TC 标点字体文件全部存在且只应用在首页推荐正文', () =>
 
 test('首页书名线使用 TC U+FE34 轮廓，颜色和透明度由 CSS 变量控制', () => {
   const asset = '/decorations/book-title-wave-mask.svg'
-  assert.match(
-    css,
-    /\.home-featured-poem \.home-book-title\s*\{[^}]*display:\s*inline-flex;[^}]*flex-direction:\s*column;[^}]*gap:\s*0\.05em;/,
-  )
+  assert.match(css, /--home-book-title-line-gap:\s*0\.05em/)
+  assert.match(css, /\.home-featured-poem \.home-book-title\s*\{[^}]*display:\s*inline-flex;/)
+  assert.match(css, /gap:\s*var\(--home-book-title-line-gap\)/)
+  assert.match(css, /\.home-featured-poem \.home-book-title-line\s*\{[^}]*flex:\s*0 0 0\.18em;/)
+  assert.match(css, /margin-block-end:\s*calc\(-0\.18em - var\(--home-book-title-line-gap\)\)/)
   assert.doesNotMatch(
     css,
     /\.home-featured-poem \.home-book-title-line\s*\{[^}]*position:\s*absolute/,
   )
-  assert.match(css, /\.home-featured-poem \.home-book-title-line\s*\{[^}]*flex:\s*0 0 0\.18em;/)
   assert.match(
     css,
     /mask:\s*url\('\/decorations\/book-title-wave-mask\.svg'\) left top \/ 0\.18em 0\.333em repeat-y/,
