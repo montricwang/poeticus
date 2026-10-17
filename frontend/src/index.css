@@ -301,7 +301,7 @@ html.theme-transition #root * {
 }
 
 @layer components {
-  /* 搜索框移动由 React 测量实际位置；新区域只淡入，不做交错动画。 */
+  /* 首页模式切换：旧推荐独立淡出，搜索入口同时移动；不用等待每段动效全部结束。 */
   @keyframes home-results-appear {
     from {
       opacity: 0;
@@ -311,24 +311,78 @@ html.theme-transition #root * {
     }
   }
 
+  @keyframes home-results-disappear {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes home-column-rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes home-line-reveal {
+    from {
+      opacity: 0;
+      clip-path: inset(0 50% 0 50%);
+    }
+    to {
+      opacity: 1;
+      clip-path: inset(0 0 0 0);
+    }
+  }
+
+  .home-recommendation-exiting {
+    animation: home-results-disappear var(--home-recommendation-fade-duration) ease-in-out both;
+  }
+
+  .home-divider-exiting {
+    animation: home-results-disappear var(--home-divider-fade-duration) ease-out both;
+  }
+
   .home-search-results-enter {
-    animation: home-results-appear 300ms 260ms ease-out both;
+    animation: home-results-appear 280ms 220ms ease-out both;
   }
 
-  .home-recommendation-returning {
-    animation: home-results-appear 300ms var(--home-search-move-duration) ease-out both;
+  .home-recommendation-revealing {
+    animation: home-results-appear 250ms ease-out both;
   }
 
-  /* 返回时先等待搜索框落位、推荐淡入结束，分割线最后出现。 */
-  .home-divider-returning {
-    animation: home-results-appear 200ms calc(var(--home-search-move-duration) + 350ms) ease-out
+  /* 搜索结果只错峰前八项；分页不会因为二十项串行播放而拖慢。 */
+  .home-search-result-item {
+    animation: home-column-rise 270ms calc(240ms + var(--home-stagger-index, 0) * 35ms) ease-out
       both;
   }
 
+  .home-recommendation-revealing .home-classic-column,
+  .home-recommendation-revealing .poem-reader-line {
+    animation: home-column-rise 270ms calc(var(--home-stagger-index, 0) * 42ms) ease-out both;
+  }
+
+  /* 先让正文列依次显现，再从中间向两侧绘制两区之间的横线。 */
+  .home-divider-growing {
+    animation: home-line-reveal 230ms 470ms ease-out both;
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    .home-recommendation-exiting,
+    .home-divider-exiting,
     .home-search-results-enter,
-    .home-recommendation-returning,
-    .home-divider-returning {
+    .home-recommendation-revealing,
+    .home-recommendation-revealing .home-classic-column,
+    .home-recommendation-revealing .poem-reader-line,
+    .home-search-result-item,
+    .home-divider-growing {
       animation: none;
     }
   }

@@ -1,4 +1,4 @@
-import type { FormEvent } from 'react'
+import type { CSSProperties, FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Search, X } from 'lucide-react'
 
 import { HorizontalEditorialDivider } from '@/components/editorial-divider'
@@ -122,8 +122,12 @@ export function HomeSearch({
           )}
           {!loading && !error && (
             <ul className="divide-y divide-border/50">
-              {catalog?.items.map((work) => (
-                <li key={work.id}>
+              {catalog?.items.map((work, index) => (
+                <li
+                  key={`${filters.q}-${filters.offset}-${work.id}`}
+                  className="home-search-result-item"
+                  style={{ '--home-stagger-index': Math.min(index, 8) } as CSSProperties}
+                >
                   <button
                     type="button"
                     className="group flex w-full min-w-0 items-baseline justify-between gap-6 py-4 text-left hover:text-foreground/70 focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"

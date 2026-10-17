@@ -227,6 +227,7 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
               {desktopLines.map((line, index) => (
                 <span
                   key={line.start}
+                  style={{ '--home-stagger-index': Math.min(index, 8) } as CSSProperties}
                   className={
                     'poem-reader-line' + (line.sourceGapBefore ? ' poem-reader-source-gap' : '')
                   }
@@ -408,6 +409,7 @@ function ContinuousPoemBody({ segments }: { segments: string[] }) {
           placedColumns.map((column, index) => (
             <span
               key={index}
+              style={{ '--home-stagger-index': index } as CSSProperties}
               className={
                 'home-classic-column' +
                 (column.beginsSegment ? ' home-classic-column--new-segment' : '')

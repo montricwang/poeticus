@@ -239,45 +239,30 @@ test('home search field moves between positions instead of hiding the whole page
     .toBeGreaterThan(initialTop - 5)
 })
 
-test('outgoing recommendation fully fades before divider and search move', async ({ page }) => {
+test('moving search overlaps the recommendation fade', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
-
-  // 从提交表单开始逐帧采样，以免仅检查最终 DOM 而漏掉瞬间消失的诗文。
-  const sequence = await page.evaluate(async () => {
-    const form = document.querySelector<HTMLFormElement>('form[role="search"]')
-    if (!form) throw new Error('Missing home search form')
-    const states: { poem: number | null; divider: number | null; moving: boolean }[] = []
-    form.requestSubmit()
-    for (let frame = 0; frame < 95; frame++) {
+  const observations = await page.evaluate(async () => {
+    document.querySelector<HTMLFormElement>('form[role="search"]')?.requestSubmit()
+    const frames: { opacity: number; line: number; moving: boolean }[] = []
+    for (let frame = 0; frame < 28; frame++) {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
-      const recommendation = document.querySelector<HTMLElement>('[data-home-recommendation-slot]')
-      const divider = document.querySelector<HTMLElement>('.home-recommendation-divider')
+      const poem = document.querySelector<HTMLElement>('.home-recommendation-exiting')
+      const line = document.querySelector<HTMLElement>('.home-divider-exiting')
       const search = document.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
-      states.push({
-        poem: recommendation ? Number(getComputedStyle(recommendation).opacity) : null,
-        divider: divider ? Number(getComputedStyle(divider).opacity) : null,
+      frames.push({
+        opacity: poem ? Number(getComputedStyle(poem).opacity) : 0,
+        line: line ? Number(getComputedStyle(line).opacity) : 0,
         moving: !!search?.getAnimations().some((animation) => animation.playState === 'running'),
       })
-      if (states.at(-1)?.moving) break
     }
-    const poemFading = states.findIndex((state) => state.poem !== null && state.poem < 0.85)
-    const dividerFading = states.findIndex(
-      (state) => state.divider !== null && state.divider < 0.85,
-    )
-    const moving = states.findIndex((state) => state.moving)
-    return { states, poemFading, dividerFading, moving }
+    return frames
   })
-  expect(sequence.poemFading).toBeGreaterThanOrEqual(0)
-  expect(sequence.dividerFading).toBeGreaterThan(sequence.poemFading)
-  expect(sequence.moving).toBeGreaterThan(sequence.dividerFading)
-  // 分割线开始消失时，推荐已经几乎完全透明。
-  expect(sequence.states[sequence.dividerFading].poem ?? 1).toBeLessThan(0.05)
-  // 移动前存在明显可见的渐隐过程，不能刚提交就直接卸载整个推荐区。
   expect(
-    sequence.states.some((state) => state.poem !== null && state.poem > 0.15 && state.poem < 0.7),
+    observations.some(({ opacity, moving }) => moving && opacity > 0.05 && opacity < 0.95),
   ).toBe(true)
+  expect(observations.some(({ line, moving }) => moving && line < 0.25)).toBe(true)
+  await expect(page.locator('.home-recommendation-exiting')).toHaveCount(0)
   await expect(page.getByRole('region', { name: '搜索结果' })).toContainText('水调歌头')
 })
 
@@ -315,39 +300,63 @@ test('returning recommendation never overlaps the moving search field', async ({
   expect(overlap.finalOpacity).toBe('1')
 })
 
-test('home separator returns only after the search and recommendation animations', async ({
-  page,
-}) => {
+test('returning columns stagger before the divider grows from its center', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  const divider = page.locator('.home-recommendation-divider')
-  await expect(divider).toHaveCSS('opacity', '1')
   await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const results = page.getByRole('region', { name: '搜索结果' })
   await expect(results).toContainText('水调歌头')
-  await expect(divider).toHaveCount(0)
   await results.getByRole('button', { name: '清除搜索' }).click()
-  await expect(divider).toHaveClass(/home-divider-returning/)
-
-  // 时长由同一变量驱动：搜索框落位 → 推荐词显现 → 分割线显现。
+  await expect(page.locator('.home-recommendation-revealing')).toBeVisible()
   const sequence = await page.evaluate(() => {
-    const main = document.querySelector<HTMLElement>('#home')
-    const recommendation = document.querySelector<HTMLElement>('[data-home-recommendation-slot]')
-    const divider = document.querySelector<HTMLElement>('.home-recommendation-divider')
-    if (!main || !recommendation || !divider) throw new Error('Missing homepage sections')
-    const recStyle = getComputedStyle(recommendation)
-    const lineStyle = getComputedStyle(divider)
+    const divider = document.querySelector<HTMLElement>('.home-divider-growing')
+    const columns = [
+      ...document.querySelectorAll<HTMLElement>(
+        '.home-recommendation-revealing .home-classic-column, .home-recommendation-revealing .poem-reader-line',
+      ),
+    ]
+    if (!divider || columns.length < 2) throw new Error('Missing staggered text or divider')
     return {
-      move: parseFloat(getComputedStyle(main).getPropertyValue('--home-search-move-duration')),
-      recDelay: parseFloat(recStyle.animationDelay) * 1000,
-      recDuration: parseFloat(recStyle.animationDuration) * 1000,
-      dividerDelay: parseFloat(lineStyle.animationDelay) * 1000,
+      dividerAnimation: getComputedStyle(divider).animationName,
+      dividerDelay: parseFloat(getComputedStyle(divider).animationDelay) * 1000,
+      columns: columns.map((column) => ({
+        name: getComputedStyle(column).animationName,
+        delay: parseFloat(getComputedStyle(column).animationDelay) * 1000,
+      })),
     }
   })
-  expect(sequence.recDelay).toBeGreaterThanOrEqual(sequence.move)
-  expect(sequence.dividerDelay).toBeGreaterThanOrEqual(sequence.recDelay + sequence.recDuration)
-  await expect(divider).toHaveCSS('opacity', '1', { timeout: 2500 })
+  expect(sequence.dividerAnimation).toContain('home-line-reveal')
+  expect(sequence.columns.every((column) => column.name.includes('home-column-rise'))).toBe(true)
+  expect(sequence.columns.at(-1)?.delay).toBeGreaterThan(sequence.columns[0].delay)
+  expect(sequence.dividerDelay).toBeGreaterThan(sequence.columns.at(-1)?.delay ?? 0)
+  await expect(page.locator('.home-recommendation-divider')).toHaveCSS('opacity', '1', {
+    timeout: 3000,
+  })
+})
+
+test('revealed recommendation does not replay after viewport resize', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  await page
+    .getByRole('region', { name: '搜索结果' })
+    .getByRole('button', { name: '清除搜索' })
+    .click()
+  await expect(page.locator('.home-recommendation-revealing')).toHaveCount(0, { timeout: 3000 })
+  await page.setViewportSize({ width: 402, height: 874 })
+  await expect(page.locator('.home-recommendation-revealing')).toHaveCount(0)
+  const count = await page
+    .locator('.home-classic-column')
+    .evaluateAll(
+      (columns) =>
+        columns.filter((column) =>
+          column.getAnimations().some((animation) => animation.playState === 'running'),
+        ).length,
+    )
+  expect(count).toBe(0)
 })
 
 test('home search results reuse catalog title typography for full-width middle dots', async ({
