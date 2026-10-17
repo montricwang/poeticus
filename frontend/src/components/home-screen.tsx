@@ -63,6 +63,14 @@ export function HomeScreen({
   } | null>(null)
   const searchBeforeLayoutRef = useRef<DOMRect | null>(null)
   const [returnPhase, setReturnPhase] = useState<'none' | 'waiting' | 'revealing'>('none')
+  // HomeScreen remounts on each entry from Reader. Replay only on page entry,
+  // not when resizing, focusing search, or changing the theme.
+  const [initialEntrance, setInitialEntrance] = useState<'waiting' | 'revealing' | 'done'>(() =>
+    !filters.q?.trim() && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'waiting'
+      : 'done',
+  )
+  const [entranceCompleted, setEntranceCompleted] = useState(false)
   const revealTimerRef = useRef<number | null>(null)
   const hasSearch = !!filters.q?.trim()
 
@@ -87,6 +95,38 @@ export function HomeScreen({
       })
     return () => controller.abort()
   }, [debugSampleId])
+
+  // 每次进入首页都等推荐数据与字体就绪、浏览器完成两帧布局后才入场。
+  useEffect(() => {
+    if (initialEntrance !== 'waiting' || !!filters.q?.trim()) return
+    if (!featured || featuredError) return
+    let disposed = false
+    let firstFrame = 0
+    let secondFrame = 0
+    void document.fonts.ready.then(() => {
+      if (disposed) return
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          if (disposed) return
+          setInitialEntrance('revealing')
+        })
+      })
+    })
+    return () => {
+      disposed = true
+      window.cancelAnimationFrame(firstFrame)
+      window.cancelAnimationFrame(secondFrame)
+    }
+  }, [initialEntrance, featured, featuredLoading, featuredError, filters.q])
+
+  useEffect(() => {
+    if (initialEntrance !== 'revealing') return
+    const timer = window.setTimeout(() => {
+      setInitialEntrance('done')
+      setEntranceCompleted(true)
+    }, 1200)
+    return () => window.clearTimeout(timer)
+  }, [initialEntrance])
 
   const debugging = import.meta.env.DEV && debugSampleId !== null
   const visiblePoem = debugging ? (debugPoem?.id === debugSampleId ? debugPoem : null) : featured
@@ -220,6 +260,14 @@ export function HomeScreen({
 
   const hasRecommendation = !hasSearch || outgoing !== null
   const recommendationIsReturning = !hasSearch && returnPhase !== 'none'
+  const homeInitialWaiting = initialEntrance === 'waiting' && !!visiblePoem && !hasSearch
+  const homeInitialRevealing = initialEntrance === 'revealing' && !hasSearch
+  // Unavailable recommendations must never leave the search entry inaccessible.
+  const searchAwaitsEntrance =
+    !hasSearch &&
+    !featuredError &&
+    (featuredLoading || !!featured) &&
+    (initialEntrance === 'waiting' || initialEntrance === 'revealing')
   const outStyle = (rect: DOMRect): CSSProperties => ({
     position: 'fixed',
     left: rect.left,
@@ -322,11 +370,13 @@ export function HomeScreen({
                   'flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none ' +
                   (outgoing && hasSearch
                     ? 'home-recommendation-exiting'
-                    : returnPhase === 'waiting'
+                    : returnPhase === 'waiting' || homeInitialWaiting
                       ? 'pointer-events-none opacity-0'
                       : returnPhase === 'revealing'
                         ? 'home-recommendation-revealing'
-                        : '')
+                        : homeInitialRevealing
+                          ? 'home-recommendation-revealing home-recommendation-initial'
+                          : '')
                 }
               >
                 <DailyRecommendation
@@ -349,11 +399,27 @@ export function HomeScreen({
                       ? returnPhase === 'revealing'
                         ? 'home-divider-growing'
                         : 'opacity-0'
-                      : '')
+                      : homeInitialWaiting
+                        ? 'opacity-0'
+                        : homeInitialRevealing
+                          ? 'home-divider-growing home-divider-initial'
+                          : '')
                 }
               />
             )}
-            <div ref={searchRef} className="w-full shrink-0">
+            <div
+              ref={searchRef}
+              data-home-search-slot
+              inert={searchAwaitsEntrance}
+              className={
+                'w-full shrink-0 ' +
+                (searchAwaitsEntrance
+                  ? 'pointer-events-none opacity-0'
+                  : entranceCompleted
+                    ? 'home-search-intro-revealing'
+                    : '')
+              }
+            >
               <HomeSearch
                 catalog={catalog}
                 filters={filters}

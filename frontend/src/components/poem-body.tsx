@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
-import type { RefObject } from 'react'
+import type { CSSProperties, RefObject } from 'react'
 
 import { buildPoemLines, buildPoemTextRuns } from '@/lib/poem-layout'
 import { selectionFromPoemRange } from '@/lib/poem-dom-selection'
@@ -232,9 +232,10 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
       className="poem-reader-body mx-auto w-fit max-w-full cursor-text select-text whitespace-normal font-serif text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white"
     >
       {/* 各诗行及标点节点的文本按 DOM 顺序拼接，应等于完整原文。 */}
-      {lines.map((line) => (
+      {lines.map((line, index) => (
         <span
           key={line.start}
+          style={{ '--reader-stagger-index': Math.min(index, 9) } as CSSProperties}
           className={'poem-reader-line' + (line.sourceGapBefore ? ' poem-reader-source-gap' : '')}
         >
           {buildPoemTextRuns(line.text).map((run, index) =>

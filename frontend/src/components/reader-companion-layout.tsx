@@ -128,7 +128,7 @@ export function ReaderCompanionLayout({
         />
       </div>
 
-      <div ref={stageRef} className="relative h-full min-h-0 min-w-0">
+      <div ref={stageRef} className="reader-companion-stage relative h-full min-h-0 min-w-0">
         <div className={'min-w-0 ' + motionClass} style={{ marginTop: verticalOffset }}>
           <div
             aria-hidden={catalogOpen}

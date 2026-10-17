@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 
 const works = [
   {
@@ -61,6 +62,16 @@ const works = [
     text_version: 1,
   },
 ]
+
+// 首页首次入场时搜索区是 inert：不能在不可交互阶段填值再误判搜索功能失败。
+async function fillHomeSearch(page: Page, value: string) {
+  const slot = page.locator('[data-home-search-slot]')
+  await expect(slot).toBeVisible()
+  await expect(slot).not.toHaveAttribute('inert', '')
+  const input = page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' })
+  await input.fill(value)
+  await expect(input).toHaveValue(value)
+}
 
 test.beforeEach(async ({ page }) => {
   // The first-screen test is independent of the local corpus/Postgres service.
@@ -177,6 +188,103 @@ test('homepage poem stays visible across phone, tablet and desktop widths', asyn
   await expect(page.locator('.poem-reader')).toBeVisible()
 })
 
+test('homepage entrance replays after reader navigation and search appears last', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  const search = page.locator('[data-home-search-slot]')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(1)
+  await expect(search).toHaveCSS('opacity', '0')
+  await expect(search).toHaveAttribute('inert', '')
+  const column = page.locator('.home-recommendation-initial .home-classic-column').first()
+  await expect(column).toHaveCSS('animation-duration', '0.38s')
+  await expect(page.locator('.home-divider-initial')).toHaveCSS('animation-delay', '0.85s')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
+  await expect(search).toHaveClass(/home-search-intro-revealing/)
+  const title = search.locator('.home-search-intro-title')
+  const form = search.locator('.home-search-intro-form')
+  const underline = search.locator('.home-search-intro-divider')
+  await expect(title).toHaveCSS('animation-name', 'home-search-float-up')
+  await expect(title).toHaveCSS('animation-duration', '0.42s')
+  await expect(form).toHaveCSS('animation-name', 'home-search-float-up')
+  await expect(form).toHaveCSS('animation-delay', '0.15s')
+  await expect(underline).toHaveCSS('animation-delay', '0.15s')
+  const floatUp = await title.evaluate((element) => {
+    const animation = element
+      .getAnimations()
+      .find((item) => item instanceof CSSAnimation && item.animationName === 'home-search-float-up')
+    const keyframes =
+      animation?.effect instanceof KeyframeEffect ? animation.effect.getKeyframes() : undefined
+    return keyframes?.map((frame) => ({
+      opacity: String(frame.opacity),
+      transform: String(frame.transform),
+    }))
+  })
+  expect(floatUp).toEqual([
+    { opacity: '0', transform: 'translateY(14px)' },
+    { opacity: '1', transform: 'translateY(0px)' },
+  ])
+  await expect(search).toHaveCSS('opacity', '1')
+  await expect(search).not.toHaveAttribute('inert', '')
+
+  await page.getByRole('button', { name: '阅读室' }).click()
+  await page.getByRole('button', { name: 'Poeticus' }).click()
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(1)
+  await expect(search).toHaveCSS('opacity', '0')
+  await expect(search).toHaveAttribute('inert', '')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
+  await expect(search).toHaveClass(/home-search-intro-revealing/)
+  await expect(search.locator('.home-search-intro-title')).toHaveCSS(
+    'animation-name',
+    'home-search-float-up',
+  )
+  await expect(search.locator('.home-search-intro-form')).toHaveCSS('animation-delay', '0.15s')
+  await expect(search).toHaveCSS('opacity', '1')
+
+  // A viewport resize changes layout, not the home route, so the intro stays finished.
+  await page.setViewportSize({ width: 402, height: 874 })
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+  await expect(search).not.toHaveAttribute('inert', '')
+})
+
+test('Poeticus navigation from a direct reader visit replays the home introduction', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/#reader')
+  await page.getByRole('button', { name: 'Poeticus' }).click()
+  const search = page.locator('[data-home-search-slot]')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(1)
+  await expect(search).toHaveCSS('opacity', '0')
+  await expect(search).toHaveAttribute('inert', '')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
+  await expect(search).toHaveCSS('opacity', '1')
+  await expect(search).not.toHaveAttribute('inert', '')
+})
+
+test('reader first entrance reveals lines once and leaves ordinary poem switching unchanged', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await fillHomeSearch(page, '苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  const results = page.getByRole('region', { name: '搜索结果' })
+  await expect(results).toContainText('水调歌头')
+  await results.getByRole('button', { name: /水调歌头/ }).click()
+  await expect(page.locator('.reader-intro-revealing')).toHaveCount(1, { timeout: 4500 })
+  await expect(page.locator('.reader-intro-revealing .poem-reader-line').first()).toHaveCSS(
+    'animation-name',
+    'home-column-rise',
+  )
+  await expect(page.locator('.reader-intro-revealing')).toHaveCount(0, { timeout: 4000 })
+  await expect(page.getByRole('heading', { name: '水调歌头' })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator('.reader-intro-revealing')).toHaveCount(0)
+})
+
 test('submitted home search replaces recommendation and clearing restores it', async ({ page }) => {
   await page.goto('/')
   const recommendation = page.getByRole('region', { name: '推荐作品' })
@@ -189,7 +297,7 @@ test('submitted home search replaces recommendation and clearing restores it', a
   await expect(searchbox).toHaveAttribute('inputmode', 'search')
   await expect(searchbox).toHaveAttribute('enterkeyhint', 'search')
 
-  await searchbox.fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   // 原生搜索框的 X 不再出现，保留本站自己的一个清空按钮。
   await expect(page.getByRole('button', { name: '清空输入' })).toHaveCount(1)
   // 只有正式提交才进入结果模式；输入和焦点变化均不隐藏推荐。
@@ -224,7 +332,7 @@ test('home search field moves between positions instead of hiding the whole page
   await page.goto('/')
   const search = page.getByRole('region', { name: '馆藏搜索' })
   const initialTop = await search.evaluate((element) => element.getBoundingClientRect().top)
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await expect(page.getByRole('region', { name: '搜索结果' })).toBeVisible()
   // FLIP 维持同一个搜索元素，只改变它的屏幕位置，不整页淡出。
@@ -244,7 +352,7 @@ test('delayed FLIP search never flashes at its destination', async ({ page }) =>
   await page.goto('/')
   const section = page.getByRole('region', { name: '馆藏搜索' })
   const origin = await section.evaluate((element) => element.getBoundingClientRect().top)
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const samples = await section.evaluate((element) => {
     const animation = element.getAnimations()[0]
@@ -266,7 +374,7 @@ test('poem float-up does not create a temporary vertical scrollbar', async ({ pa
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await page
     .getByRole('region', { name: '搜索结果' })
@@ -284,10 +392,67 @@ test('poem float-up does not create a temporary vertical scrollbar', async ({ pa
   expect(dimensions.delta).toBeGreaterThanOrEqual(0)
 })
 
+test('delayed FLIP keeps search at its original position before moving', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await fillHomeSearch(page, '苏轼')
+  const frames = await page.evaluate(async () => {
+    const form = document.querySelector<HTMLFormElement>('form[role="search"]')
+    const search = document.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
+    if (!form || !search) throw new Error('Missing search form')
+    const originalTop = search.getBoundingClientRect().top
+    form.requestSubmit()
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    const animation = search.getAnimations().find((item) => item.effect?.getTiming().delay === 60)
+    if (!animation) throw new Error('Missing delayed search FLIP animation')
+    animation.pause()
+    const points = [0, 30, 59, 60, 160, 660].map((time) => {
+      animation.currentTime = time
+      return search.getBoundingClientRect().top
+    })
+    animation.finish()
+    return { originalTop, points, fill: animation.effect?.getTiming().fill }
+  })
+  expect(frames.fill).toBe('backwards')
+  for (const point of frames.points.slice(0, 4)) {
+    expect(Math.abs(point - frames.originalTop)).toBeLessThan(2)
+  }
+  expect(frames.points.at(-1)).toBeLessThan(frames.originalTop - 80)
+})
+
+test('staggering poem lines never enables a transient vertical scrollbar', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await fillHomeSearch(page, '苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  const results = page.getByRole('region', { name: '搜索结果' })
+  await expect(results).toContainText('水调歌头')
+  await results.getByRole('button', { name: '清除搜索' }).click()
+  const samples = await page.evaluate(async () => {
+    const port = document.querySelector<HTMLElement>('[data-recommendation-scrollport]')
+    if (!port) throw new Error('Missing featured poem scrollport')
+    const values: { overflowX: string; overflowY: string; overflowPx: number }[] = []
+    for (let frame = 0; frame < 55; frame++) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      values.push({
+        overflowX: getComputedStyle(port).overflowX,
+        overflowY: getComputedStyle(port).overflowY,
+        overflowPx: port.scrollHeight - port.clientHeight,
+      })
+    }
+    return values
+  })
+  expect(samples.length).toBeGreaterThan(40)
+  expect(samples.every((sample) => sample.overflowY === 'hidden')).toBe(true)
+  expect(samples.every((sample) => sample.overflowX === 'auto')).toBe(true)
+})
+
 test('moving search overlaps the recommendation fade', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   const observations = await page.evaluate(async () => {
     document.querySelector<HTMLFormElement>('form[role="search"]')?.requestSubmit()
     const frames: { opacity: number; line: number; moving: boolean }[] = []
@@ -315,7 +480,7 @@ test('moving search overlaps the recommendation fade', async ({ page }) => {
 test('returning recommendation never overlaps the moving search field', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const results = page.getByRole('region', { name: '搜索结果' })
   await expect(results).toContainText('水调歌头')
@@ -349,7 +514,7 @@ test('returning recommendation never overlaps the moving search field', async ({
 test('returning columns stagger before the divider grows from its center', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const results = page.getByRole('region', { name: '搜索结果' })
   await expect(results).toContainText('水调歌头')
@@ -385,7 +550,7 @@ test('revealed recommendation does not replay after viewport resize', async ({ p
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await page
     .getByRole('region', { name: '搜索结果' })
@@ -409,7 +574,7 @@ test('home search results reuse catalog title typography for full-width middle d
   page,
 }) => {
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('辛弃疾')
+  await fillHomeSearch(page, '辛弃疾')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const title = page.getByRole('region', { name: '搜索结果' }).locator('.poeticus-catalog-title')
   await expect(title).toHaveText('破阵子·为陈同甫赋壮词以寄之')
@@ -437,10 +602,24 @@ test('mobile catalog title preserves full-width middle dots', async ({ page }) =
   await expect(title).toHaveCSS('font-family', /Noto Sans SC Variable/)
 })
 
+test('first entries are immediate for reduced-motion users', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await expect(page.getByRole('region', { name: '推荐作品' })).toBeVisible()
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+  await expect(page.locator('[data-home-search-slot]')).toHaveCSS('opacity', '1')
+  await expect(page.locator('[data-home-search-slot]')).not.toHaveAttribute('inert', '')
+  await page.getByRole('button', { name: '阅读室' }).click()
+  await expect(page.locator('.reader-intro-waiting, .reader-intro-revealing')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Poeticus' }).click()
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+  await expect(page.locator('[data-home-search-slot]')).toHaveCSS('opacity', '1')
+})
+
 test('home search view transition remains immediate with reduced motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await expect(page.getByRole('region', { name: '推荐作品' })).toHaveCount(0)
   await expect(page.getByRole('region', { name: '搜索结果' })).toContainText('水调歌头')
@@ -449,7 +628,7 @@ test('home search view transition remains immediate with reduced motion', async 
 
 test('search a poet and enter the existing reader', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await fillHomeSearch(page, '苏轼')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   const results = page.getByRole('region', { name: '搜索结果' })
   await expect(results).toContainText('水调歌头')
