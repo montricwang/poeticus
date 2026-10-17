@@ -281,20 +281,38 @@ test('homepage entrance replays after reader navigation and search appears last'
   await expect(search).not.toHaveAttribute('inert', '')
 })
 
-test('desktop initial poem reveal completes before the divider and search phase', async ({
+test('desktop poem columns finish before the divider and sub-second search phase', async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' })
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(1)
-  const desktopBody = page.locator(
-    '.home-recommendation-initial [class~="max-lg:hidden"].home-classic-body',
-  )
-  const divider = page.locator('.home-divider-initial')
-  await expect(desktopBody).toHaveCSS('animation-duration', '0.46s')
-  await expect(divider).toHaveCSS('animation-delay', '0.47s')
-  await expect(divider).toHaveCSS('animation-duration', '0.11s')
+  const desktopColumns = page.locator('.home-recommendation-initial .poem-reader-line')
+  await expect(desktopColumns.first()).toHaveCSS('animation-duration', '0.17s')
+  const timeline = await page.evaluate(() => {
+    const lines = [
+      ...document.querySelectorAll<HTMLElement>('.home-recommendation-initial .poem-reader-line'),
+    ]
+    const divider = document.querySelector<HTMLElement>('.home-divider-initial')
+    if (!lines.length || !divider) throw new Error('Missing desktop entrance lines or divider')
+    const secondsToMs = (time: string) => Number.parseFloat(time) * 1000
+    const lastLineEnd = Math.max(
+      ...lines.map((line) => {
+        const css = getComputedStyle(line)
+        return secondsToMs(css.animationDelay) + secondsToMs(css.animationDuration)
+      }),
+    )
+    const dividerCss = getComputedStyle(divider)
+    const dividerStart = secondsToMs(dividerCss.animationDelay)
+    return {
+      lastLineEnd,
+      dividerStart,
+      dividerEnd: dividerStart + secondsToMs(dividerCss.animationDuration),
+    }
+  })
+  expect(timeline.lastLineEnd).toBeLessThan(timeline.dividerStart)
+  expect(timeline.dividerEnd).toBeLessThan(HOME_INITIAL_REVEAL_MS)
   await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
   const search = page.locator('[data-home-search-slot]')
   await expect(search).not.toHaveAttribute('inert', '')

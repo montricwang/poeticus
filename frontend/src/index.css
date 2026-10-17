@@ -358,27 +358,17 @@ html.theme-transition #root * {
     animation: home-results-appear 250ms ease-out both;
   }
 
-  /* 入场：手机五列最迟 440ms 完成，桌面正文 460ms 完成；随后分割线至 580ms。 */
+  /* 入场：手机最多五列到 440ms，桌面最多九列到 450ms；分割线从 470ms 展开。 */
   .home-recommendation-revealing.home-recommendation-initial .home-classic-column,
   .home-recommendation-revealing.home-recommendation-initial .poem-reader-line {
     animation-duration: 240ms;
     animation-delay: calc(var(--home-stagger-index, 0) * 50ms);
   }
 
-  /* 桌面端正文自动分栏，按从右到左的方向渐进揭示而不改断列算法。 */
-  @keyframes home-desktop-text-reveal {
-    from {
-      clip-path: inset(0 0 0 100%);
-      opacity: 0;
-    }
-    to {
-      clip-path: inset(0 0 0 0);
-      opacity: 1;
-    }
-  }
-
-  .home-recommendation-initial .home-classic-body.max-lg\:hidden {
-    animation: home-desktop-text-reveal 460ms ease-out both;
+  /* 桌面按真实诗行而非隐藏的手机连续正文入场；最多第八索引在 450ms 完成。 */
+  .home-recommendation-revealing.home-recommendation-initial .poem-reader-line {
+    animation-duration: 170ms;
+    animation-delay: calc(var(--home-stagger-index, 0) * 35ms);
   }
 
   .home-divider-growing.home-divider-initial {
@@ -457,7 +447,6 @@ html.theme-transition #root * {
     .home-search-intro-revealing .home-search-intro-divider,
     .home-recommendation-revealing .home-classic-column,
     .home-recommendation-revealing .poem-reader-line,
-    .home-recommendation-initial .home-classic-body.max-lg\:hidden,
     .home-search-result-item,
     .home-divider-growing,
     .reader-intro-revealing,
