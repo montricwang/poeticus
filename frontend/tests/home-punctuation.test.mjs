@@ -49,18 +49,18 @@ test('TC 标点字体文件全部存在且只应用在首页推荐正文', () =>
 
 test('首页书名线使用 TC U+FE34 轮廓，颜色和透明度由 CSS 变量控制', () => {
   const asset = '/decorations/book-title-wave-mask.svg'
-  assert.match(css, /--home-book-title-line-gap:\s*0\.05em/)
+  assert.match(css, /--home-book-title-line-gap:\s*0\.02em/)
   assert.match(css, /\.home-featured-poem \.home-book-title\s*\{[^}]*display:\s*inline-flex;/)
   assert.match(css, /gap:\s*var\(--home-book-title-line-gap\)/)
-  assert.match(css, /\.home-featured-poem \.home-book-title-line\s*\{[^}]*flex:\s*0 0 0\.18em;/)
-  assert.match(css, /margin-block-end:\s*calc\(-0\.18em - var\(--home-book-title-line-gap\)\)/)
+  assert.match(css, /\.home-featured-poem \.home-book-title-line\s*\{[^}]*flex:\s*0 0 0\.1em;/)
+  assert.match(css, /margin-block-end:\s*calc\(-0\.1em - var\(--home-book-title-line-gap\)\)/)
   assert.doesNotMatch(
     css,
     /\.home-featured-poem \.home-book-title-line\s*\{[^}]*position:\s*absolute/,
   )
   assert.match(
     css,
-    /mask:\s*url\('\/decorations\/book-title-wave-mask\.svg'\) left top \/ 0\.18em 0\.333em repeat-y/,
+    /mask:\s*url\('\/decorations\/book-title-wave-mask\.svg'\) left top \/ 0\.1em 0\.333em repeat-y/,
   )
   assert.match(css, /--home-book-title-line-color, var\(--foreground\)/)
   assert.match(css, /--home-book-title-line-opacity, var\(--reader-punctuation-opacity\)/)
@@ -69,7 +69,7 @@ test('首页书名线使用 TC U+FE34 轮廓，颜色和透明度由 CSS 变量�
   assert.match(display, /lineElement\.className = 'home-book-title-line'/)
   const svg = readFileSync(new URL(`../public${asset}`, import.meta.url), 'utf8')
   assert.match(svg, /Noto Serif TC U\+FE34/)
-  assert.match(svg, /viewBox="0 0 180 333"/)
+  assert.match(svg, /viewBox="40 0 100 333"/)
   assert.match(svg, /fill="#000"/)
   assert.doesNotMatch(svg, /fill-opacity/)
   assert.match(svg, /translate\(0 713\) scale\(1 -1\)/)

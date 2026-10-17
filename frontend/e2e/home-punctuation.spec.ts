@@ -101,7 +101,7 @@ test('书名线在手机及桌面竖排正文中紧贴文字，且不依赖绝�
       expect(geometry.lineHeight).toBeGreaterThan(0)
       expect(geometry.mask).toContain('book-title-wave-mask.svg')
       expect(geometry.distance).toBeGreaterThanOrEqual(0)
-      expect(Math.abs(geometry.distance - geometry.fontSize * 0.05)).toBeLessThan(0.8)
+      expect(Math.abs(geometry.distance - geometry.fontSize * 0.02)).toBeLessThan(0.8)
       // 书名线不能让这一列比没有书名线的正文列更宽。
       expect(Math.abs(geometry.columnWidth - geometry.normalColumnWidth)).toBeLessThan(0.8)
     }
