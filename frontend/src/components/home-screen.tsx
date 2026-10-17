@@ -52,6 +52,7 @@ export function HomeScreen({
   const [debugSampleId, setDebugSampleId] = useState<string | null>(null)
   const [debugPoem, setDebugPoem] = useState<Poem | null>(null)
   const [debugError, setDebugError] = useState('')
+  const hasSearch = !!filters.q?.trim()
 
   // 调试样本只替换首页展示内容，不修改当天推荐，也不触碰阅读器状态。
   useEffect(() => {
@@ -110,7 +111,12 @@ export function HomeScreen({
       window.removeEventListener('resize', measure)
       window.visualViewport?.removeEventListener('resize', measure)
     }
-  }, [visiblePoem])
+  }, [visiblePoem, hasSearch])
+
+  // 模式切换后从顶部展示搜索入口；不让旧的搜索结果滚动位置留下来。
+  useLayoutEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0
+  }, [hasSearch])
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
@@ -176,23 +182,35 @@ export function HomeScreen({
       >
         <div
           ref={contentRef}
-          className="mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-4 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]"
+          className={
+            hasSearch
+              ? 'mx-auto flex min-h-full w-full max-w-6xl flex-col px-5 pt-8 pb-8 md:px-8 lg:pt-14'
+              : 'mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-4 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]'
+          }
         >
           {/* 父容器统一管理推荐区、分割线和搜索区的间距；剩余高度只交给推荐区。 */}
-          <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-none lg:gap-10">
-            <div
-              data-home-recommendation-slot
-              className="flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none"
-            >
-              <DailyRecommendation
-                poem={visiblePoem}
-                loading={visibleLoading}
-                error={visibleError}
-                disabled={selectionBlocked}
-                onRead={onSelect}
-              />
-            </div>
-            <HorizontalEditorialDivider className="mx-auto w-full max-w-2xl" />
+          <div
+            className={
+              hasSearch
+                ? 'flex flex-col gap-8 lg:gap-10'
+                : 'flex min-h-0 flex-1 flex-col gap-4 lg:flex-none lg:gap-10'
+            }
+          >
+            {!hasSearch && (
+              <div
+                data-home-recommendation-slot
+                className="flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none"
+              >
+                <DailyRecommendation
+                  poem={visiblePoem}
+                  loading={visibleLoading}
+                  error={visibleError}
+                  disabled={selectionBlocked}
+                  onRead={onSelect}
+                />
+              </div>
+            )}
+            {!hasSearch && <HorizontalEditorialDivider className="mx-auto w-full max-w-2xl" />}
             <div ref={searchRef} className="w-full shrink-0">
               <HomeSearch
                 catalog={catalog}

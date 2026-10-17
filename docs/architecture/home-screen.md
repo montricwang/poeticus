@@ -7,9 +7,16 @@
 - `frontend/src/components/home-screen.tsx`（`HomeScreen`）：组合导航、推荐槽位、分割线和馆藏搜索；通过 `ResizeObserver` 测量推荐槽位，将剩余高度写入 `--home-classic-max-height`。每日推荐由上游 `featured` 提供，首页不生成另一套推荐或会话。
 - `frontend/src/components/daily-recommendation.tsx`（`DailyRecommendation`）：排布印章与作品，印章点击后进入阅读室。手机端取两者横向组合的视觉中心；桌面端保留独立的三栏布局。
 - `frontend/src/components/featured-poem-display.tsx`（`FeaturedPoemDisplay`、`ContinuousPoemBody`）：根据空间决定预览哪些完整片段，并将手机正文断为竖列。纯文本列划分由 `frontend/src/lib/home-preview-columns.ts` 的 `arrangeHomeColumns` 负责。
-- `frontend/src/components/home-search.tsx`：馆藏搜索独立于每日推荐；首页搜索区靠近首屏底部。
+- `frontend/src/components/home-search.tsx`：馆藏搜索独立于每日推荐；未提交搜索时搜索区靠近首屏底部，提交后切换到结果视图。
 
 开发环境 `import.meta.env.DEV` 下的「调试」菜单可以从 `frontend/src/lib/home-debug-poems.ts` 指定的十首实际作品中切换预览，或返回「今日推荐」。它不修改服务端每日推荐，生产构建不显示此入口。
+
+## 首页搜索模式（Issue #308）
+
+- `filters.q` 是**已提交搜索**的权威状态；输入框的 `query` 只是未提交草稿。聚焦或输入不会切换首页模式，也不会主动隐藏每日推荐。
+- 提交非空搜索时，`HomeScreen` 不渲染推荐槽位和其下方分割线，将搜索入口放到顶部，并在下方显示分页结果。布局切换后将首页滚动位置归零，不再调用 `scrollIntoView` 触发第二次滚动；提交同时使输入框失焦，协助手机收起软键盘。
+- 点击结果区的「清除搜索」同时清除草稿和已提交过滤条件，恢复原始首页；搜索框 `autocomplete="off"`，不实现站内历史记录。浏览器是否完全遵守该属性由浏览器决定。
+- 本阶段仅切换布局，不增加淡入、交错入场等动效；相关动效由独立 Issue 处理。手机 Safari 实际软键盘与滚动行为仍须单独验收，不以桌面模拟取代。
 
 ## 已封板的手机竖屏设计（2026-10-17）
 

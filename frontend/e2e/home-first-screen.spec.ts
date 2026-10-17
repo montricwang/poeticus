@@ -177,6 +177,39 @@ test('homepage poem stays visible across phone, tablet and desktop widths', asyn
   await expect(page.locator('.poem-reader')).toBeVisible()
 })
 
+test('submitted home search replaces recommendation and clearing restores it', async ({ page }) => {
+  await page.goto('/')
+  const recommendation = page.getByRole('region', { name: '推荐作品' })
+  const searchbox = page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' })
+  const results = page.getByRole('region', { name: '搜索结果' })
+  await expect(recommendation).toBeVisible()
+  await expect(results).toHaveCount(0)
+  await expect(searchbox).toHaveAttribute('autocomplete', 'off')
+
+  await searchbox.fill('苏轼')
+  // 只有正式提交才进入结果模式；输入和焦点变化均不隐藏推荐。
+  await expect(recommendation).toBeVisible()
+  await expect(results).toHaveCount(0)
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+
+  await expect(recommendation).toHaveCount(0)
+  await expect(results).toBeVisible()
+  await expect(results).toContainText('水调歌头')
+  await expect(results).toContainText('找到 1 首作品')
+  await expect(searchbox).not.toBeFocused()
+  const searchTop = await page
+    .getByRole('region', { name: '馆藏搜索' })
+    .evaluate((section) => section.getBoundingClientRect().top)
+  expect(searchTop).toBeLessThan(180)
+  expect(await page.locator('#home').evaluate((main) => main.scrollTop)).toBe(0)
+
+  await results.getByRole('button', { name: '清除搜索' }).click()
+  await expect(results).toHaveCount(0)
+  await expect(recommendation).toBeVisible()
+  await expect(searchbox).toHaveValue('')
+  await expect(page.getByRole('heading', { name: '美要眇兮宜修' })).toBeVisible()
+})
+
 test('search a poet and enter the existing reader', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
