@@ -33,6 +33,16 @@ function App() {
   const [screen, setScreen] = useState<'home' | 'reader'>(() =>
     window.location.hash === '#reader' ? 'reader' : 'home',
   )
+  const [homeEntranceSeen, setHomeEntranceSeen] = useState(false)
+  const [readerEntrance, setReaderEntrance] = useState<'waiting' | 'revealing' | 'done'>(() =>
+    window.location.hash === '#reader' &&
+    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'waiting'
+      : 'done',
+  )
+  const onHomeEntranceStarted = useCallback(() => {
+    setHomeEntranceSeen(true)
+  }, [])
   const { featured, loading: featuredLoading, error: featuredError } = useFeaturedPoem()
   const [initialChatState] = useState(loadInitialChatState)
   const [poemId, setPoemId] = useState<string | null>(initialChatState.poemId)
@@ -115,7 +125,15 @@ function App() {
   })
 
   useEffect(() => {
-    const followHistory = () => setScreen(window.location.hash === '#reader' ? 'reader' : 'home')
+    const followHistory = () => {
+      const next = window.location.hash === '#reader' ? 'reader' : 'home'
+      setScreen(next)
+      setReaderEntrance(
+        next === 'reader' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'waiting'
+          : 'done',
+      )
+    }
     window.addEventListener('popstate', followHistory)
     window.addEventListener('hashchange', followHistory)
     return () => {
@@ -130,6 +148,11 @@ function App() {
       window.history.pushState(null, '', window.location.pathname + window.location.search + hash)
     }
     setScreen(next)
+    setReaderEntrance(
+      next === 'reader' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'waiting'
+        : 'done',
+    )
     if (next === 'home') {
       setCatalogOpen(false)
       setMobileDiscussionOpen(false)
@@ -214,6 +237,7 @@ function App() {
   /** 切换作品时协调预取、过渡动画和旧会话保存。 */
   function handlePoemChange(nextId: string) {
     if (inFlightRef.current || analyzing || !nextId || nextId === poemId) return
+    if (screen === 'reader' && readerEntrance !== 'waiting') setReaderEntrance('done')
 
     switchControllerRef.current?.abort()
     const controller = new AbortController()
@@ -221,13 +245,15 @@ function App() {
     setSwitchTarget(nextId)
     setSwitchError('')
 
+    const animateSwap =
+      screen === 'reader' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
     void fetchPoem(nextId, controller.signal)
       .then(async (work) => {
         if (controller.signal.aborted) return
 
         // 等待网络请求时保持旧作品可见；取得新作品后才开始淡出。
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        if (!reduceMotion) {
+        if (animateSwap) {
           setPoemSwapPhase('leaving')
           await new Promise<void>((resolve) =>
             window.setTimeout(resolve, motionDurationMs('--motion-poem-swap')),
@@ -254,7 +280,7 @@ function App() {
         // 桌面目录支持连续选诗；移动端选中作品后仍收起抽屉。
         if (!wideDiscussionLayout && catalogOpen) closeCatalog()
 
-        if (!reduceMotion) {
+        if (animateSwap) {
           // 在页面隐藏期间更新作品、消息、输入区和引用内容；
           // 留出两帧供 React 绘制及伴读区重新测量布局。
           setPoemSwapPhase('arriving')
@@ -305,6 +331,34 @@ function App() {
   }
 
   const poemReady = !!activePoem && activePoem.id === poemId
+  // 阅读室首次进入只对目标诗文入场；切换作品不重新逐行展开。
+  useEffect(() => {
+    if (screen !== 'reader' || readerEntrance !== 'waiting' || !poemReady) return
+    if (switchTarget || poemSwapPhase !== 'steady') return
+    let disposed = false
+    let frameOne = 0
+    let frameTwo = 0
+    void document.fonts.ready.then(() => {
+      if (disposed) return
+      frameOne = window.requestAnimationFrame(() => {
+        frameTwo = window.requestAnimationFrame(() => {
+          if (!disposed) setReaderEntrance('revealing')
+        })
+      })
+    })
+    return () => {
+      disposed = true
+      window.cancelAnimationFrame(frameOne)
+      window.cancelAnimationFrame(frameTwo)
+    }
+  }, [screen, readerEntrance, poemReady, switchTarget, poemSwapPhase])
+
+  useEffect(() => {
+    if (readerEntrance !== 'revealing') return
+    const timer = window.setTimeout(() => setReaderEntrance('done'), 1050)
+    return () => window.clearTimeout(timer)
+  }, [readerEntrance])
+
   // 请求新作品期间保留旧内容，阅读区和伴读区共用切换阶段。
   const poemTransitionClass =
     'transition-[opacity,transform] duration-[var(--motion-poem-swap)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none ' +
@@ -378,7 +432,12 @@ function App() {
     if (poemReady) {
       return (
         <div className="w-full lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:pt-2">
-          <PoemReader key={activePoem.id} work={activePoem} onSelect={handleReaderSelect} />
+          <PoemReader
+            key={activePoem.id}
+            work={activePoem}
+            onSelect={handleReaderSelect}
+            entrance={readerEntrance}
+          />
           {!wideDiscussionLayout && (
             <ReaderNavigation
               neighbors={neighbors}
@@ -458,6 +517,8 @@ function App() {
         onFiltersChange={updateCatalogFilters}
         onSelect={openHomePoem}
         onEnterReader={() => navigateTo('reader')}
+        firstEntrance={!homeEntranceSeen}
+        onFirstEntranceStarted={onHomeEntranceStarted}
       />
     )
   }
@@ -480,7 +541,12 @@ function App() {
   }
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
+    <div
+      className={
+        'flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground ' +
+        (readerEntrance === 'revealing' ? 'reader-screen-entering' : '')
+      }
+    >
       {wideDiscussionLayout ? (
         <DesktopLayout
           catalog={catalogLayout}

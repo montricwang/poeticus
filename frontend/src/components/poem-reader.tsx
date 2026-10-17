@@ -9,13 +9,23 @@ import type { SelectedText } from '@/types/poem'
 type PoemReaderProps = {
   work: Poem
   onSelect: (selection: SelectedText) => void
+  entrance?: 'waiting' | 'revealing' | 'done'
 }
 
-export function PoemReader({ work, onSelect }: PoemReaderProps) {
+export function PoemReader({ work, onSelect, entrance = 'done' }: PoemReaderProps) {
   const poem = poemText(work)
   const readerRef = useRef<HTMLDivElement>(null)
   return (
-    <div className="poem-reader min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+    <div
+      className={
+        'poem-reader min-w-0 lg:flex lg:min-h-0 lg:flex-1 lg:flex-col ' +
+        (entrance === 'waiting'
+          ? 'reader-intro-waiting'
+          : entrance === 'revealing'
+            ? 'reader-intro-revealing'
+            : '')
+      }
+    >
       <div
         ref={readerRef}
         className="poem-reader-content bg-transparent lg:flex lg:flex-1 lg:flex-col"

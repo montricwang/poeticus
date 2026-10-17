@@ -177,6 +177,46 @@ test('homepage poem stays visible across phone, tablet and desktop widths', asyn
   await expect(page.locator('.poem-reader')).toBeVisible()
 })
 
+test('homepage first entrance staggers once and does not replay when returning', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(1)
+  const column = page.locator('.home-recommendation-initial .home-classic-column').first()
+  await expect(column).toHaveCSS('animation-duration', '0.38s')
+  await expect(page.locator('.home-divider-initial')).toHaveCSS('animation-delay', '0.85s')
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0, { timeout: 3000 })
+  await page.getByRole('button', { name: '阅读室' }).click()
+  await page.getByRole('button', { name: 'Poeticus' }).click()
+  await expect(page.getByRole('region', { name: '推荐作品' })).toBeVisible()
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+  await page.setViewportSize({ width: 402, height: 874 })
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+})
+
+test('reader first entrance reveals lines once and leaves ordinary poem switching unchanged', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  const results = page.getByRole('region', { name: '搜索结果' })
+  await expect(results).toContainText('水调歌头')
+  await results.getByRole('button', { name: /水调歌头/ }).click()
+  await expect(page.locator('.reader-intro-revealing')).toHaveCount(1, { timeout: 4500 })
+  await expect(page.locator('.reader-intro-revealing .poem-reader-line').first()).toHaveCSS(
+    'animation-name',
+    'home-column-rise',
+  )
+  await expect(page.locator('.reader-intro-revealing')).toHaveCount(0, { timeout: 4000 })
+  await expect(page.getByRole('heading', { name: '水调歌头' })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator('.reader-intro-revealing')).toHaveCount(0)
+})
+
 test('submitted home search replaces recommendation and clearing restores it', async ({ page }) => {
   await page.goto('/')
   const recommendation = page.getByRole('region', { name: '推荐作品' })
@@ -282,6 +322,63 @@ test('poem float-up does not create a temporary vertical scrollbar', async ({ pa
   expect(dimensions.overflowY).toBe('hidden')
   // The 6px translateY can enlarge scrollHeight; it must not activate a scrollbar.
   expect(dimensions.delta).toBeGreaterThanOrEqual(0)
+})
+
+test('delayed FLIP keeps search at its original position before moving', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  const frames = await page.evaluate(async () => {
+    const form = document.querySelector<HTMLFormElement>('form[role="search"]')
+    const search = document.querySelector<HTMLElement>('[aria-label="馆藏搜索"]')
+    if (!form || !search) throw new Error('Missing search form')
+    const originalTop = search.getBoundingClientRect().top
+    form.requestSubmit()
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    const animation = search.getAnimations().find((item) => item.effect?.getTiming().delay === 60)
+    if (!animation) throw new Error('Missing delayed search FLIP animation')
+    animation.pause()
+    const points = [0, 30, 59, 60, 160, 660].map((time) => {
+      animation.currentTime = time
+      return search.getBoundingClientRect().top
+    })
+    animation.finish()
+    return { originalTop, points, fill: animation.effect?.getTiming().fill }
+  })
+  expect(frames.fill).toBe('backwards')
+  for (const point of frames.points.slice(0, 4)) {
+    expect(Math.abs(point - frames.originalTop)).toBeLessThan(2)
+  }
+  expect(frames.points.at(-1)).toBeLessThan(frames.originalTop - 80)
+})
+
+test('staggering poem lines never enables a transient vertical scrollbar', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await page.getByRole('searchbox', { name: '搜索词人、词牌或诗句' }).fill('苏轼')
+  await page.getByRole('button', { name: '搜索', exact: true }).click()
+  const results = page.getByRole('region', { name: '搜索结果' })
+  await expect(results).toContainText('水调歌头')
+  await results.getByRole('button', { name: '清除搜索' }).click()
+  const samples = await page.evaluate(async () => {
+    const port = document.querySelector<HTMLElement>('[data-recommendation-scrollport]')
+    if (!port) throw new Error('Missing featured poem scrollport')
+    const values: { overflowX: string; overflowY: string; overflowPx: number }[] = []
+    for (let frame = 0; frame < 55; frame++) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+      values.push({
+        overflowX: getComputedStyle(port).overflowX,
+        overflowY: getComputedStyle(port).overflowY,
+        overflowPx: port.scrollHeight - port.clientHeight,
+      })
+    }
+    return values
+  })
+  expect(samples.length).toBeGreaterThan(40)
+  expect(samples.every((sample) => sample.overflowY === 'hidden')).toBe(true)
+  expect(samples.every((sample) => sample.overflowX === 'auto')).toBe(true)
 })
 
 test('moving search overlaps the recommendation fade', async ({ page }) => {
@@ -435,6 +532,15 @@ test('mobile catalog title preserves full-width middle dots', async ({ page }) =
     .filter({ hasText: '破阵子·为陈同甫赋壮词以寄之' })
   await expect(title).toBeVisible()
   await expect(title).toHaveCSS('font-family', /Noto Sans SC Variable/)
+})
+
+test('first entries are immediate for reduced-motion users', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await expect(page.getByRole('region', { name: '推荐作品' })).toBeVisible()
+  await expect(page.locator('.home-recommendation-initial')).toHaveCount(0)
+  await page.getByRole('button', { name: '阅读室' }).click()
+  await expect(page.locator('.reader-intro-waiting, .reader-intro-revealing')).toHaveCount(0)
 })
 
 test('home search view transition remains immediate with reduced motion', async ({ page }) => {

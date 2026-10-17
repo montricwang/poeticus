@@ -26,6 +26,8 @@ type HomeScreenProps = {
   onFiltersChange: (filters: PoemFilters) => void
   onSelect: (id: string) => void
   onEnterReader: () => void
+  firstEntrance: boolean
+  onFirstEntranceStarted: () => void
 }
 
 // CSS 推荐区和分割线的延迟与搜索入口的 FLIP 位移共用这一时长。
@@ -48,6 +50,8 @@ export function HomeScreen({
   onFiltersChange,
   onSelect,
   onEnterReader,
+  firstEntrance,
+  onFirstEntranceStarted,
 }: HomeScreenProps) {
   const mainRef = useRef<HTMLElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -63,6 +67,11 @@ export function HomeScreen({
   } | null>(null)
   const searchBeforeLayoutRef = useRef<DOMRect | null>(null)
   const [returnPhase, setReturnPhase] = useState<'none' | 'waiting' | 'revealing'>('none')
+  const [initialEntrance, setInitialEntrance] = useState<'waiting' | 'revealing' | 'done'>(() =>
+    firstEntrance && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 'waiting'
+      : 'done',
+  )
   const revealTimerRef = useRef<number | null>(null)
   const hasSearch = !!filters.q?.trim()
 
@@ -87,6 +96,35 @@ export function HomeScreen({
       })
     return () => controller.abort()
   }, [debugSampleId])
+
+  // 等推荐数据与字体就绪、浏览器至少完成两帧布局后，才播放首次入场。
+  useEffect(() => {
+    if (initialEntrance !== 'waiting' || !featured || !!filters.q?.trim()) return
+    let disposed = false
+    let firstFrame = 0
+    let secondFrame = 0
+    void document.fonts.ready.then(() => {
+      if (disposed) return
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          if (disposed) return
+          onFirstEntranceStarted()
+          setInitialEntrance('revealing')
+        })
+      })
+    })
+    return () => {
+      disposed = true
+      window.cancelAnimationFrame(firstFrame)
+      window.cancelAnimationFrame(secondFrame)
+    }
+  }, [initialEntrance, featured, filters.q, onFirstEntranceStarted])
+
+  useEffect(() => {
+    if (initialEntrance !== 'revealing') return
+    const timer = window.setTimeout(() => setInitialEntrance('done'), 1200)
+    return () => window.clearTimeout(timer)
+  }, [initialEntrance])
 
   const debugging = import.meta.env.DEV && debugSampleId !== null
   const visiblePoem = debugging ? (debugPoem?.id === debugSampleId ? debugPoem : null) : featured
@@ -220,6 +258,8 @@ export function HomeScreen({
 
   const hasRecommendation = !hasSearch || outgoing !== null
   const recommendationIsReturning = !hasSearch && returnPhase !== 'none'
+  const homeInitialWaiting = initialEntrance === 'waiting' && !!visiblePoem && !hasSearch
+  const homeInitialRevealing = initialEntrance === 'revealing' && !hasSearch
   const outStyle = (rect: DOMRect): CSSProperties => ({
     position: 'fixed',
     left: rect.left,
@@ -322,11 +362,13 @@ export function HomeScreen({
                   'flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none ' +
                   (outgoing && hasSearch
                     ? 'home-recommendation-exiting'
-                    : returnPhase === 'waiting'
+                    : returnPhase === 'waiting' || homeInitialWaiting
                       ? 'pointer-events-none opacity-0'
                       : returnPhase === 'revealing'
                         ? 'home-recommendation-revealing'
-                        : '')
+                        : homeInitialRevealing
+                          ? 'home-recommendation-revealing home-recommendation-initial'
+                          : '')
                 }
               >
                 <DailyRecommendation
@@ -349,7 +391,11 @@ export function HomeScreen({
                       ? returnPhase === 'revealing'
                         ? 'home-divider-growing'
                         : 'opacity-0'
-                      : '')
+                      : homeInitialWaiting
+                        ? 'opacity-0'
+                        : homeInitialRevealing
+                          ? 'home-divider-growing home-divider-initial'
+                          : '')
                 }
               />
             )}

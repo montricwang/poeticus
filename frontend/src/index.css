@@ -358,6 +358,34 @@ html.theme-transition #root * {
     animation: home-results-appear 250ms ease-out both;
   }
 
+  /* 首次进首页更从容；正文逐列上浮，题头与印章一起渐显。 */
+  .home-recommendation-revealing.home-recommendation-initial .home-classic-column,
+  .home-recommendation-revealing.home-recommendation-initial .poem-reader-line {
+    animation-duration: 380ms;
+    animation-delay: calc(var(--home-stagger-index, 0) * 70ms);
+  }
+
+  /* 桌面端正文自动分栏，按从右到左的方向渐进揭示而不改断列算法。 */
+  @keyframes home-desktop-text-reveal {
+    from {
+      clip-path: inset(0 0 0 100%);
+      opacity: 0;
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+      opacity: 1;
+    }
+  }
+
+  .home-recommendation-initial .home-classic-body.max-lg\:hidden {
+    animation: home-desktop-text-reveal 920ms ease-out both;
+  }
+
+  .home-divider-growing.home-divider-initial {
+    animation-delay: 850ms;
+    animation-duration: 270ms;
+  }
+
   /* 搜索结果只错峰前八项；分页不会因为二十项串行播放而拖慢。 */
   .home-search-result-item {
     animation: home-column-rise 270ms calc(240ms + var(--home-stagger-index, 0) * 35ms) ease-out
@@ -374,6 +402,29 @@ html.theme-transition #root * {
     animation: home-line-reveal 230ms 470ms ease-out both;
   }
 
+  /* 阅读室首次入场：题头先到，正文从上向下逐行展开；普通换诗仍走既有 360ms 淡入淡出。 */
+  .reader-intro-waiting {
+    opacity: 0;
+  }
+
+  .reader-intro-revealing {
+    animation: home-results-appear 260ms ease-out both;
+  }
+
+  .reader-intro-revealing .poem-reader-header,
+  .reader-intro-revealing .poem-reader-preface {
+    animation: home-column-rise 300ms ease-out both;
+  }
+
+  .reader-intro-revealing .poem-reader-line {
+    animation: home-column-rise 300ms calc(130ms + var(--reader-stagger-index, 0) * 50ms) ease-out
+      both;
+  }
+
+  .reader-screen-entering .reader-companion-stage {
+    animation: home-results-appear 230ms 140ms ease-out both;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .home-recommendation-exiting,
     .home-divider-exiting,
@@ -381,8 +432,14 @@ html.theme-transition #root * {
     .home-recommendation-revealing,
     .home-recommendation-revealing .home-classic-column,
     .home-recommendation-revealing .poem-reader-line,
+    .home-recommendation-initial .home-classic-body.max-lg\:hidden,
     .home-search-result-item,
-    .home-divider-growing {
+    .home-divider-growing,
+    .reader-intro-revealing,
+    .reader-intro-revealing .poem-reader-header,
+    .reader-intro-revealing .poem-reader-preface,
+    .reader-intro-revealing .poem-reader-line,
+    .reader-screen-entering .reader-companion-stage {
       animation: none;
     }
   }
