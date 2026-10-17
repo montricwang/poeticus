@@ -1,0 +1,56 @@
+import { expect, test } from '@playwright/test'
+
+const poem = {
+  id: '00000000-0000-0000-0000-000000000002',
+  source_order: 2,
+  collection: '测试词集',
+  author: '苏轼',
+  cipai: '水调歌头',
+  title: null,
+  yusheng_title: null,
+  incipit: '明月几时有，把酒问青天。',
+  review_status: 'reviewed',
+  body_segments: ['明月几时有，把酒问青天。', '不知天上宫阙，今夕是何年。'],
+  prefaces: [],
+  text_version: 1,
+}
+
+test('首页的桌面和手机共用 TC 标点字形与淡化样式，阅读室不受影响', async ({ page }) => {
+  await page.route('**/api/poems/daily', async (route) => route.fulfill({ json: poem }))
+  await page.route(`**/api/poems/${poem.id}`, async (route) => route.fulfill({ json: poem }))
+
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto('/')
+    const body = page.locator(width < 1024 ? '.home-classic-body.lg\\:hidden' : '.poem-reader-line')
+    await expect(body.first()).toBeVisible()
+    const punctuation = body.locator('.poem-reader-punctuation').first()
+    await expect(punctuation).toBeVisible()
+    await expect(punctuation).toContainText(/[，。]/)
+    const result = await punctuation.evaluate(async (element) => {
+      await document.fonts.ready
+      return {
+        font: getComputedStyle(element).fontFamily,
+        tcLoaded: document.fonts.check(`22px 'Poeticus Noto Serif TC Punctuation'`, '，'),
+        alpha: getComputedStyle(document.documentElement)
+          .getPropertyValue('--reader-punctuation-opacity')
+          .trim(),
+      }
+    })
+    expect(result.font).toContain('Poeticus Noto Serif TC Punctuation')
+    expect(result.tcLoaded).toBe(true)
+    expect(result.alpha).toBe('20%')
+    await expect(page.locator('.home-featured-poem .poem-reader-body').first()).toContainText(
+      '明月几时有，把酒问青天。',
+    )
+  }
+
+  await page.getByRole('button', { name: '读这首词' }).click()
+  await expect(page).toHaveURL(/#reader$/)
+  await expect(page.locator('.poem-reader-body').first()).toBeVisible()
+  const readerFont = await page
+    .locator('.poem-reader-body')
+    .first()
+    .evaluate((element) => getComputedStyle(element).fontFamily)
+  expect(readerFont).not.toContain('Poeticus Noto Serif TC Punctuation')
+})

@@ -9,6 +9,88 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* 首页仅替换指定标点字形；汉字仍由 Noto Serif SC 绘制，不更改原文。 */
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-123-wght-normal.woff2') format('woff2');
+  unicode-range: U+2014, U+3001-3002, U+FF0C, U+FF1A;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-122-wght-normal.woff2') format('woff2');
+  unicode-range: U+300C-300D, U+FF01, U+FF08-FF09, U+FF1F;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-121-wght-normal.woff2') format('woff2');
+  unicode-range: U+300A-300B;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-119-wght-normal.woff2') format('woff2');
+  unicode-range: U+2026, U+FF1B;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-118-wght-normal.woff2') format('woff2');
+  unicode-range: U+00B7;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-117-wght-normal.woff2') format('woff2');
+  unicode-range: U+300E, U+FF0E;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-116-wght-normal.woff2') format('woff2');
+  unicode-range: U+201C-201D, U+300F;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-113-wght-normal.woff2') format('woff2');
+  unicode-range: U+3008-3009;
+}
+
+@font-face {
+  font-family: 'Poeticus Noto Serif TC Punctuation';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/fonts/noto-serif-tc-punctuation/noto-serif-tc-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+2018-2019;
+}
+
 :root {
   color-scheme: light;
 
@@ -345,6 +427,13 @@ html.theme-transition #root * {
   /* 原文中连续换行对应的段间留白。 */
   .poem-reader-source-gap {
     margin-block-start: 0.9em;
+  }
+
+  /* 只作用于首页每日推荐正文，阅读室、题头与搜索仍使用原来的宋体栈。 */
+  .home-featured-poem .poem-reader-body {
+    font-family:
+      'Poeticus Noto Serif TC Punctuation', 'Noto Serif SC Variable', HanaMin, 'Noto Serif SC',
+      'Source Han Serif SC', 'Noto Serif CJK SC', 'Songti SC', STSong, SimSun, SimSun-ExtB, serif;
   }
 
   /* 首页古籍式预览：直接使用浏览器原生竖排标点与自然换列。 */

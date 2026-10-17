@@ -202,15 +202,7 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
                     'poem-reader-line' + (line.sourceGapBefore ? ' poem-reader-source-gap' : '')
                   }
                 >
-                  {buildPoemTextRuns(line.text).map((run, index) =>
-                    run.punctuation ? (
-                      <span key={index} className="poem-reader-punctuation">
-                        {run.text}
-                      </span>
-                    ) : (
-                      <span key={index}>{run.text}</span>
-                    ),
-                  )}
+                  <PunctuatedPoemText text={line.text} />
                 </span>
               ))}
             </div>
@@ -218,6 +210,19 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
         </article>
       </div>
     </div>
+  )
+}
+
+/** 首页各端都只拆标点显示，不在排版文本中插入、移动或替换字符。 */
+function PunctuatedPoemText({ text }: { text: string }) {
+  return buildPoemTextRuns(text).map((run, index) =>
+    run.punctuation ? (
+      <span key={index} className="poem-reader-punctuation">
+        {run.text}
+      </span>
+    ) : (
+      run.text
+    ),
   )
 }
 
@@ -327,22 +332,24 @@ function ContinuousPoemBody({ segments }: { segments: string[] }) {
         className="poem-reader-body home-classic-body !mx-0 !w-max max-w-none text-foreground/90 lg:hidden"
         style={layout ? { height: layout.height } : undefined}
       >
-        {placedColumns
-          ? placedColumns.map((column, index) => (
-              <span
-                key={index}
-                className={
-                  'home-classic-column' +
-                  (column.beginsSegment ? ' home-classic-column--new-segment' : '')
-                }
-              >
-                {column.text}
-              </span>
-            ))
-          : text}
+        {placedColumns ? (
+          placedColumns.map((column, index) => (
+            <span
+              key={index}
+              className={
+                'home-classic-column' +
+                (column.beginsSegment ? ' home-classic-column--new-segment' : '')
+              }
+            >
+              <PunctuatedPoemText text={column.text} />
+            </span>
+          ))
+        ) : (
+          <PunctuatedPoemText text={text} />
+        )}
       </div>
       <div className="poem-reader-body home-classic-body !mx-0 !w-max max-w-none text-foreground/90 max-lg:hidden lg:pt-[var(--reader-poem-size)]">
-        {text}
+        <PunctuatedPoemText text={text} />
       </div>
     </>
   )
