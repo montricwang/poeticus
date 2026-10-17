@@ -55,19 +55,11 @@ export function HomeScreen({
 
     const measure = () => {
       if (window.matchMedia('(min-width: 64rem)').matches) return
-      const body = main.querySelector<HTMLElement>('.home-classic-body')
-      if (!body) return
-      const bodyRect = body.getBoundingClientRect()
-      if (!bodyRect.height) return
-      const mainRect = main.getBoundingClientRect()
-      const searchRect = search.getBoundingClientRect()
-      const spaceBeforeBody = bodyRect.top - mainRect.top + main.scrollTop
-      const spaceAfterBody = searchRect.bottom - bodyRect.bottom
-      const bottomPadding = Number.parseFloat(getComputedStyle(content).paddingBottom) || 0
-      const available = Math.max(
-        192,
-        Math.floor(main.clientHeight - spaceBeforeBody - spaceAfterBody - bottomPadding - 8),
-      )
+      const slot = main.querySelector<HTMLElement>('[data-home-recommendation-slot]')
+      if (!slot) return
+      // 搜索区的位置由布局决定；推荐词只使用上方独立槽位的高度预算。
+      // 不再用正文自身高度反推剩余空间，避免测量随换列结果反复变化。
+      const available = Math.max(192, Math.floor(slot.clientHeight - 12))
       setMobileBodyMaxHeight((previous) => (previous === available ? previous : available))
     }
 
@@ -75,6 +67,8 @@ export function HomeScreen({
     const observer = new ResizeObserver(measure)
     observer.observe(main)
     observer.observe(search)
+    const slot = main.querySelector<HTMLElement>('[data-home-recommendation-slot]')
+    if (slot) observer.observe(slot)
     window.addEventListener('resize', measure)
     window.visualViewport?.addEventListener('resize', measure)
     return () => {
@@ -109,19 +103,24 @@ export function HomeScreen({
       >
         <div
           ref={contentRef}
-          className="mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-6 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]"
+          className="mx-auto flex min-h-full w-full max-w-6xl flex-col justify-start px-5 pt-6 pb-4 md:px-8 lg:justify-center lg:pt-10 lg:pb-[6.5rem]"
         >
-          {/* 手机靠上排，桌面仍整体居中；内容超出视口时由 main 滚动。 */}
-          <div className="lg:flex lg:flex-col lg:gap-10">
-            <DailyRecommendation
-              poem={featured}
-              loading={featuredLoading}
-              error={featuredError}
-              disabled={selectionBlocked}
-              onRead={onSelect}
-            />
-            <HorizontalEditorialDivider className="mx-auto my-6 w-full max-w-2xl lg:my-0" />
-            <div ref={searchRef} className="w-full">
+          {/* 父容器统一管理推荐区、分割线和搜索区的间距；剩余高度只交给推荐区。 */}
+          <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-none lg:gap-10">
+            <div
+              data-home-recommendation-slot
+              className="flex min-h-0 w-full flex-1 flex-col justify-center lg:block lg:flex-none"
+            >
+              <DailyRecommendation
+                poem={featured}
+                loading={featuredLoading}
+                error={featuredError}
+                disabled={selectionBlocked}
+                onRead={onSelect}
+              />
+            </div>
+            <HorizontalEditorialDivider className="mx-auto w-full max-w-2xl" />
+            <div ref={searchRef} className="w-full shrink-0">
               <HomeSearch
                 catalog={catalog}
                 filters={filters}

@@ -60,7 +60,7 @@ export function HomeSearch({
 
   return (
     <>
-      <section aria-label="馆藏搜索" className="mx-auto w-full max-w-2xl pb-12 lg:pb-0">
+      <section aria-label="馆藏搜索" className="mx-auto w-full max-w-2xl">
         <h1 className="mb-5 text-center font-serif text-xl font-medium tracking-[0.12em] sm:text-2xl">
           美要眇兮宜修
         </h1>
