@@ -53,7 +53,7 @@ test('homepage uses fixed recommendation without a preview debug selector', () =
   assert.match(featuredHook, /fetchDailyPoem\(controller.signal\)/)
   assert.doesNotMatch(
     home,
-    /选择首页测试词作|首页排版测试|PREVIEW_POEMS|onPreviewPoemChange|debugSampleId|HOME_DEBUG_POEMS|首页词牌排版调试/,
+    /选择首页测试词作|首页排版测试|PREVIEW_POEMS|onPreviewPoemChange|debugSampleId|HOME_DEBUG_POEMS|首页词牌排版调试|HOME_PREVIEW_TUNES|previewTune|previewFeatured|本地排版样本|首页竖排调试样本/,
   )
   assert.doesNotMatch(app, /setPreviewPoemId|previewPoemId/)
 })
