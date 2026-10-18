@@ -1,8 +1,8 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-16
+> 更新日期：2026-10-18
 >
-> 当前状态：v0.5.0 公网版。首页每日一词、馆藏搜索、阅读版心与响应式布局已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持现有线上链路。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
+> 当前状态：v0.5.0 已正式发布，v0.6.0 正在整理发布文档。首页入场与搜索过渡、桌面 / iPad 竖排居中、原文引用下划线和统一中国红已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持现有线上链路。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
 
 Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog 和 ADR；具体任务继续进入 GitHub Issues。
 
@@ -38,9 +38,14 @@ Poeticus 已经走通：
 
 Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、更多 Chunk、更多 sparse ranking 变体做惯性扩张。
 
-## 2. v0.5.0 之后的近期事项
+## 2. 近期事项
 
-### 2.1 Production hygiene
+### 2.1 阅读交互与 iOS 选区
+
+- [#86](https://github.com/montricwang/poeticus/issues/86)：iPhone 原文长按及拖柄调整选区时，引用卡片与阅读区红色下划线应及时同步到最终选区；结合 Safari 真机事件时序排查。
+- [#294](https://github.com/montricwang/poeticus/issues/294)：继续收集极端手机尺寸、横屏及系统键盘场景的排版反馈；日常字号与竖排规则以[现行设计规范](design/frontend-visual-conventions.md)为准。
+
+### 2.2 Production hygiene
 
 当前部署是 Railway Web/Agent + Cloudflare 命名 Tunnel + WSL Retrieval，不再维护已销毁腾讯云节点的公网 IP 证书、Nginx 或 2C8G 扩容规划。
 
@@ -48,7 +53,7 @@ Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、
 - 当前运维重点是 WSL CPU Serving 和 Windows `cloudflared` 的重启恢复、Bearer 鉴权、Railway ↔ Tunnel 的真实可用性及错误降级（[#180](https://github.com/montricwang/poeticus/issues/180)）。
 - 未来确有长期可用性或流量需求，再考虑独立云主机、性能基线、容量及必要的 Retrieval CI/CD。
 
-### 2.2 工程基础补课
+### 2.3 工程基础补课
 
 #166 单独安排一堂简短课程，用本次生产数据讲：
 
@@ -63,7 +68,7 @@ Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、
 
 这一轮的目标是把最近几天大量局部判断重新整理成稳定系统图。
 
-### 2.3 AI Evaluation
+### 2.4 AI Evaluation
 
 当前已经有 Seed Eval、Retrieval Increment Case、真实 Agent E2E。
 
@@ -77,7 +82,7 @@ Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、
 
 单元测试、AI Eval、Trace、生产 E2E 继续分层。
 
-### 2.4 Corpus quality
+### 2.5 Corpus quality
 
 公开阅读数据仍保留 `imported_unreviewed` 状态。
 
@@ -88,7 +93,7 @@ Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、
 - 建立 curated correction 与原始抽取之间的明确边界；
 - 逐步补充可靠年代 metadata，而不把 Werneror coarse dynasty 回写成阅读库事实。
 
-### 2.5 UX reliability
+### 2.6 UX reliability
 
 真实设备问题继续按 Issue 推进：
 
@@ -100,7 +105,7 @@ Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、
 
 10 月 15 日已合并桌面阅读版心与目录改进（PR #291）、手机／桌面布局外壳拆分（PR #292）及首页推荐和馆藏搜索（PR #293）；10 月 16 日合并 Safari 竖排修复（PR #295）与每日一词（PR #297）。iPhone Safari 在不同视口下的断行差异仍由 [#294](https://github.com/montricwang/poeticus/issues/294) 跟进。首页信息架构 [#113](https://github.com/montricwang/poeticus/issues/113) 还有作者入口、导航与阅读进度等待设计和实现。
 
-### 2.6 诗学画像与推荐（研究阶段）
+### 2.7 诗学画像与推荐（研究阶段）
 
 [#156](https://github.com/montricwang/poeticus/issues/156)／[#157](https://github.com/montricwang/poeticus/issues/157) 的 3491 首词双模型实验见 [10 月 14 日开发日志](devlog/2026-10-14.md) 和 [聚类复现实验](../scripts/experiments/README-clustering.md)。BERT-CCPoem 与 Qwen3 Embedding 的无监督 K-means 分组没有得到可直接命名的稳定文学风格，**不接生产推荐或自动贴标签**。
 
