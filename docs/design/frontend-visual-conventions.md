@@ -17,7 +17,7 @@ W3C [中文排版需求 CLReq](https://www.w3.org/TR/clreq/) 描述汉字竖排�
 
 | 领域 | 修改位置 |
 | --- | --- |
-| 明暗主题、印章中国红、圆角 | frontend/src/index.css 的 :root、.dark、@theme inline。引用竖线、链接、选区、未读提示、印章与节选共用 --editorial-red（#AA381E）；深色小字通过 --editorial-red-readable 提亮 |
+| 明暗主题、印章中国红、圆角 | frontend/src/index.css 的 :root、.dark、@theme inline。引用竖线、链接、未读提示、错误语义色、印章与节选统一使用 --editorial-red；原色 --editorial-red-base = #AA381E，深色模式统一 75% 不透明度 |
 | 装饰分隔线 | --editorial-divider-thickness；不代表所有边框必须使用相同厚度 |
 | 首页正文大小、字距、印章字距、作者光学校正、宽度预留 | index.css 的 .home-recommendation-layout 与 .home-featured-poem |
 | 阅读页主标题、正文、作者、小序的字级和行高 | index.css 的 .poem-reader；首页使用有范围的覆盖，不污染阅读页 |
@@ -29,9 +29,10 @@ W3C [中文排版需求 CLReq](https://www.w3.org/TR/clreq/) 描述汉字竖排�
 
 ### 中国红作为全站强调色
 
-- 统一引用竖线（用户引用、AI Markdown 引用、编辑态引用）、链接、原文划词背景、未读提示点及错误/重试提示的强调色，不再保留紫色与另一套报警红。
-- **颜色与状态语义独立**：错误仍使用 Tailwind 的 destructive 语义和原有 role=alert；仅把 --destructive 指向可读的中国红，不改变报错状态或按钮行为。引用和链接不被误认成错误。
-- 浅色文字使用标准 --editorial-red = #AA381E；深色小字、链接和报错使用 --editorial-red-readable（70% 中国红 + 30% 白色），保证对比度。印章和引用竖线等装饰保留标准色。
+- 统一引用竖线（用户引用、AI Markdown 引用、编辑态引用）、链接、阅读区批注下划线、未读提示点及错误/重试提示的强调色，不再保留紫色与另一套报警红。
+- **颜色与状态语义独立**：错误仍使用 Tailwind 的 destructive 语义和原有 role=alert；只把 --destructive 映射到统一中国红，不改变报错状态或按钮行为。引用和链接不被误认成错误。
+- 色值只定义在 --editorial-red-base = #AA381E。浅色 --editorial-red 为原色 100%；深色 --editorial-red 为原色 75% 不透明度，**所有使用处统一**，包括印章边框/文字/悬停、引用竖线/下划线、链接、未读点与 destructive 错误提示，不再为装饰线另建一套透明度。引用正文继续用 text-muted-foreground。
+- 引用竖线使用统一的 --editorial-red 参数；引用文字保留灰色。阅读区中已引用的原文在文字下方绘制细红线，入场时由左向右划出，取消引用即消失；不覆盖文字底色。此标记是独立叠加层，不改变正文 DOM 的字符顺序、复制或引用偏移。
 - **不染红**正文、普通分割线、黑白主按钮或中性等待状态。红色负责强调，而不是覆盖所有灰阶。
 
 ## 三、首页有效的视觉规则
