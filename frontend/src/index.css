@@ -553,6 +553,7 @@ html.theme-transition #root * {
 
     --reader-author-margin-top: 0.375rem;
     --reader-author-size: 0.875rem;
+    /* 阅读室与首页推荐共用作者字重；两处字号、字距和布局各自控制。 */
     --reader-author-weight: 500;
 
     --reader-header-body-gap: 1.25rem;
@@ -570,7 +571,8 @@ html.theme-transition #root * {
 
   /*
    * 阅读室使用独立的字号与题头节奏；首页推荐保留原有尺寸和布局。
-   * 词牌到标题 4px、标题（或词牌）到作者 8px、作者到小序 12px，末项到正文 24px。
+   * 词牌→标题 4px、标题（缺席则词牌）→作者 8px；
+   * 作者→小序及连续小序之间 12px，最后一个题头元素→正文 24px。
    */
   .poem-reader-content {
     --reader-title-size: 1.25rem;
