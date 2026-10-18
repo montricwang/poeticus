@@ -41,7 +41,16 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     }
 
     const fits = (segments: string[]) => {
-      if (!continuous) return measure(segments) <= scrollport.clientWidth - 4
+      if (!continuous) {
+        // 桌面预览的宽度预算属于「印章＋间距＋诗文」整体；与当前诗文宽度无关。
+        // 不能再用会随已选片段缩小的 scrollport.clientWidth，否则会反复截短。
+        const layout = scrollport.closest<HTMLElement>('[data-home-recommendation-layout]')
+        const area = layout?.closest('section')
+        const seal = layout?.querySelector('button')
+        const gap = layout ? Number.parseFloat(getComputedStyle(layout).columnGap) || 0 : 0
+        const available = (area?.clientWidth ?? 0) - (seal?.offsetWidth ?? 0) - gap - 4
+        return available > 0 && measure(segments) <= available
+      }
       const body = scrollport.querySelector<HTMLElement>('.home-classic-body')
       const budget = body && getHomeMobileColumnBudget(body, segments)
       if (!budget) return false
@@ -59,7 +68,8 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
         '--home-classic-max-height',
         getComputedStyle(scrollport).getPropertyValue('--home-classic-max-height'),
       )
-      if (scrollport.clientWidth <= 0) return
+      if (continuous && scrollport.clientWidth <= 0) return
+      if (!continuous && !scrollport.closest('section')?.clientWidth) return
       const segments = poem.body_segments
       let chosen = segments
 
@@ -73,30 +83,39 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
 
         if (!chosen.length && segments[0]) {
           const first = segments[0]
-          const sentenceEnds = [...first.matchAll(/[。！？!?]/gu)].map(
-            (match) => match.index + match[0].length,
-          )
-          const punctuationEnds = [...first.matchAll(/[，、；;]/gu)].map(
-            (match) => match.index + match[0].length,
-          )
-          for (const ends of [sentenceEnds, punctuationEnds]) {
-            for (const end of ends) {
-              const candidate = [first.slice(0, end)]
+          // 桌面只截取完整的视觉诗句，不从一条句子中间截掉文字。
+          if (!continuous) {
+            for (const line of buildPoemLines(first)) {
+              const candidate = [first.slice(0, line.end)]
               if (!fits(candidate)) break
               chosen = candidate
             }
-            if (chosen.length) break
-          }
-          if (!chosen.length) {
-            let low = 1
-            let high = first.length
-            while (low <= high) {
-              const middle = Math.floor((low + high) / 2)
-              if (fits([first.slice(0, middle)])) {
-                chosen = [first.slice(0, middle)]
-                low = middle + 1
-              } else {
-                high = middle - 1
+          } else {
+            const sentenceEnds = [...first.matchAll(/[。！？!?]/gu)].map(
+              (match) => match.index + match[0].length,
+            )
+            const punctuationEnds = [...first.matchAll(/[，、；;]/gu)].map(
+              (match) => match.index + match[0].length,
+            )
+            for (const ends of [sentenceEnds, punctuationEnds]) {
+              for (const end of ends) {
+                const candidate = [first.slice(0, end)]
+                if (!fits(candidate)) break
+                chosen = candidate
+              }
+              if (chosen.length) break
+            }
+            if (!chosen.length) {
+              let low = 1
+              let high = first.length
+              while (low <= high) {
+                const middle = Math.floor((low + high) / 2)
+                if (fits([first.slice(0, middle)])) {
+                  chosen = [first.slice(0, middle)]
+                  low = middle + 1
+                } else {
+                  high = middle - 1
+                }
               }
             }
           }
@@ -112,6 +131,9 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     refresh()
     const observer = new ResizeObserver(refresh)
     observer.observe(scrollport)
+    // 桌面片段的宽度预算来自推荐区，而非随着片段缩短的正文容器。
+    const recommendation = scrollport.closest('section')
+    if (!continuous && recommendation) observer.observe(recommendation)
     const main = scrollport.closest('#home')
     const budgetObserver = new MutationObserver(refresh)
     if (main) budgetObserver.observe(main, { attributes: true, attributeFilter: ['style'] })
@@ -133,30 +155,6 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     (displayedSegments.length !== poem.body_segments.length ||
       displayedSegments.some((segment, index) => segment !== poem.body_segments[index]))
 
-  // 样式一从最右列开始读；使用标准 LTR scrollLeft，避开 Safari 的 RTL 滚动差异。
-  useLayoutEffect(() => {
-    if (continuous) return
-    const scrollport = poemScrollport.current
-    if (!scrollport) return
-    const showFirstColumn = () => {
-      scrollport.scrollLeft = scrollport.scrollWidth - scrollport.clientWidth
-      // 窄屏先让正文开头靠右显示；词牌仍保留在右侧，可以反向滑动查看。
-      if (window.matchMedia('(max-width: 1023px)').matches) {
-        const body = scrollport.querySelector('.poem-reader-body')
-        if (body) {
-          const bodyRight = body.getBoundingClientRect().right
-          const viewportRight = scrollport.getBoundingClientRect().right
-          scrollport.scrollLeft += bodyRight - viewportRight
-        }
-      }
-    }
-    showFirstColumn()
-    const observer = new ResizeObserver(showFirstColumn)
-    observer.observe(scrollport)
-    if (scrollport.firstElementChild) observer.observe(scrollport.firstElementChild)
-    return () => observer.disconnect()
-  }, [continuous, poem])
-
   return (
     <div
       data-recommendation-scrollport
@@ -164,10 +162,10 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
       className={
         continuous
           ? 'min-w-0 flex-1 overflow-hidden lg:w-full lg:flex-none'
-          : 'poeticus-scrollport min-w-0 flex-1 overflow-x-auto overflow-y-hidden lg:w-full lg:flex-none'
+          : 'min-w-0 flex-1 overflow-hidden lg:w-max lg:max-w-full lg:flex-none'
       }
     >
-      <div className="flex w-full flex-row-reverse justify-center lg:w-max lg:min-w-full lg:flex-row">
+      <div className="flex w-full flex-row-reverse justify-center lg:w-max lg:min-w-0 lg:flex-row">
         <article
           dir="ltr"
           lang="zh-CN"
