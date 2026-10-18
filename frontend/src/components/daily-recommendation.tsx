@@ -68,7 +68,7 @@ export function DailyRecommendation({
         <div
           ref={recommendationRef}
           data-home-recommendation-layout
-          className="relative mx-auto grid w-full max-w-2xl grid-cols-[2.5rem_minmax(0,1fr)] items-end lg:max-w-full lg:flex lg:w-max lg:gap-3 [--home-poem-em:1.375rem]"
+          className="relative mx-auto grid w-full max-w-2xl grid-cols-[2.5rem_minmax(0,1fr)] items-end lg:max-w-full lg:flex lg:w-max lg:gap-3 [--home-poem-em:1.375rem] lg:[--home-poem-em:1.5rem]"
         >
           <div
             ref={sealRef}
@@ -77,7 +77,7 @@ export function DailyRecommendation({
           >
             <ReadPoemSeal disabled={disabled} onClick={() => onRead(poem.id)} />
           </div>
-          <div className="col-start-2 min-w-0 lg:w-max lg:max-w-full lg:shrink">
+          <div className="col-start-2 min-w-0 lg:w-max lg:shrink-0">
             <FeaturedPoemDisplay poem={poem} continuous={continuous} />
           </div>
         </div>

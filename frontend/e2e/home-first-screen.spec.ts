@@ -128,16 +128,17 @@ test('homepage poem stays visible across phone, tablet and desktop widths', asyn
   const recommendation = page.getByRole('region', { name: '推荐作品' })
   await expect(page.getByRole('heading', { name: '美要眇兮宜修' })).toBeVisible()
   await expect(recommendation.locator('.home-featured-poem')).not.toBeEmpty()
-  for (const width of [320, 390, 820, 1023, 1024, 1440]) {
+  for (const width of [320, 390, 820, 1023, 1024, 1194, 1440]) {
     await page.setViewportSize({ width, height: 844 })
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true)
+    // 手机整篇竖排；桌面只有各列竖排，外层必须是横向布局。
     expect(
       await recommendation
         .locator('.home-featured-poem')
         .evaluate((element) => getComputedStyle(element).writingMode),
-    ).toBe('vertical-rl')
+    ).toBe(width < 1024 ? 'vertical-rl' : 'horizontal-tb')
     if (width < 1024) {
       // Safari 的窄屏首页不依赖 RTL 滚动容器来定位正文。
       await expect(recommendation.locator('.home-classic-body[class~="lg:hidden"]')).toBeVisible()
@@ -172,9 +173,52 @@ test('homepage poem stays visible across phone, tablet and desktop widths', asyn
         '晚秋天',
       )
     } else {
-      // 桌面仅保留按句断列的排版。
+      // 桌面/iPad 横屏的内容宽度必须匹配真实列宽，不能由 CSS 二次裁切。
       await expect(recommendation.locator('.poem-reader-line').first()).toBeVisible()
       await expect(recommendation.locator('.home-classic-body[class~="lg:hidden"]')).toHaveCount(0)
+      const geometry = await recommendation.evaluate((section) => {
+        const group = section.querySelector<HTMLElement>('[data-home-recommendation-layout]')
+        const article = section.querySelector<HTMLElement>('.home-featured-poem')
+        const viewport = section.querySelector<HTMLElement>('[data-recommendation-scrollport]')
+        const seal = group?.querySelector<HTMLButtonElement>('button')
+        const heading = article?.querySelector<HTMLElement>('header')
+        const body = article?.querySelector<HTMLElement>('.poem-reader-body')
+        const lines = article?.querySelectorAll<HTMLElement>('.poem-reader-line')
+        if (!group || !article || !viewport || !seal || !heading || !body || !lines?.length) {
+          throw new Error('Missing desktop recommendation geometry')
+        }
+        const sectionRect = section.getBoundingClientRect()
+        const groupRect = group.getBoundingClientRect()
+        const articleRect = article.getBoundingClientRect()
+        return {
+          centerError: Math.abs(
+            (groupRect.left + groupRect.right - sectionRect.left - sectionRect.right) / 2,
+          ),
+          groupOverflow: groupRect.width - sectionRect.width,
+          viewportOverflow: viewport.scrollWidth - viewport.clientWidth,
+          sealGap: articleRect.left - seal.getBoundingClientRect().right,
+          headingBodyGap: heading.getBoundingClientRect().left - body.getBoundingClientRect().right,
+          columnsWidthError: Math.max(
+            ...Array.from(lines, (line) =>
+              Math.abs(
+                line.getBoundingClientRect().width -
+                  Number.parseFloat(getComputedStyle(line).lineHeight),
+              ),
+            ),
+          ),
+          leftmostColumn: Math.min(
+            ...Array.from(lines, (line) => line.getBoundingClientRect().left),
+          ),
+          articleLeft: articleRect.left,
+        }
+      })
+      expect(geometry.centerError).toBeLessThan(2)
+      expect(geometry.groupOverflow).toBeLessThanOrEqual(0)
+      expect(geometry.viewportOverflow).toBeLessThanOrEqual(2)
+      expect(geometry.sealGap).toBeCloseTo(12, 0)
+      expect(geometry.headingBodyGap).toBeLessThan(2)
+      expect(geometry.columnsWidthError).toBeLessThan(2)
+      expect(geometry.leftmostColumn).toBeGreaterThanOrEqual(geometry.articleLeft - 2)
     }
     await expect(page.getByRole('group', { name: '推荐作品排版方式' })).toHaveCount(0)
   }

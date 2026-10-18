@@ -7,6 +7,7 @@ import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { HomeSearch } from '@/components/home-search'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
+import { fetchPoem, fetchPoemPage } from '@/data/poem-library'
 import type { Poem, PoemFilters, PoemPage } from '@/data/poem-library'
 import { HOME_INITIAL_REVEAL_MS } from '@/lib/entrance-motion'
 import { whenFontsReadyOrTimeout } from '@/lib/font-readiness'
@@ -31,6 +32,20 @@ type HomeScreenProps = {
 const HOME_SEARCH_MOVE_DURATION_MS = 600
 const HOME_RECOMMENDATION_FADE_OUT_MS = 330
 const HOME_DIVIDER_FADE_OUT_MS = 130
+
+// 仅本地开发显示：十个词牌分别从真实词库选择一首，便于直接比较竖排效果。
+const HOME_PREVIEW_TUNES = [
+  '杨柳枝',
+  '菩萨蛮',
+  '踏莎行',
+  '水调歌头',
+  '八声甘州',
+  '戚氏',
+  '临江仙',
+  '鹧鸪天',
+  '如梦令',
+  '青玉案',
+] as const
 
 /** Home is an entry to the existing Reader; it never owns a second conversation. */
 export function HomeScreen({
@@ -66,6 +81,10 @@ export function HomeScreen({
       : 'done',
   )
   const [entranceCompleted, setEntranceCompleted] = useState(false)
+  const [previewTune, setPreviewTune] = useState<string | null>(null)
+  const [previewPoem, setPreviewPoem] = useState<Poem | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState('')
   const revealTimerRef = useRef<number | null>(null)
   const hasSearch = !!filters.q?.trim()
 
@@ -75,6 +94,31 @@ export function HomeScreen({
     },
     [],
   )
+
+  // 开发用排版样本：按词牌读取一首馆藏真词，只覆盖首页预览，不影响每日推荐数据。
+  useEffect(() => {
+    if (!import.meta.env.DEV || !previewTune) return
+    const controller = new AbortController()
+    const loadPreview = async () => {
+      try {
+        const page = await fetchPoemPage(
+          { cipai: previewTune, limit: 1, offset: 0 },
+          controller.signal,
+        )
+        if (!page.items.length) throw new Error(`词库中没有找到「${previewTune}」`)
+        const poem = await fetchPoem(page.items[0].id, controller.signal)
+        if (!controller.signal.aborted) setPreviewPoem(poem)
+      } catch (cause: unknown) {
+        if (!controller.signal.aborted) {
+          setPreviewError(cause instanceof Error ? cause.message : '样本加载失败')
+        }
+      } finally {
+        if (!controller.signal.aborted) setPreviewLoading(false)
+      }
+    }
+    void loadPreview()
+    return () => controller.abort()
+  }, [previewTune])
 
   // 每次进入首页都等推荐数据与字体就绪、浏览器完成两帧布局后才入场。
   useEffect(() => {
@@ -227,6 +271,7 @@ export function HomeScreen({
     return () => window.cancelAnimationFrame(frame)
   }, [hasSearch])
 
+  const previewFeatured = import.meta.env.DEV && previewTune && previewPoem ? previewPoem : featured
   const hasRecommendation = !hasSearch || outgoing !== null
   const recommendationIsReturning = !hasSearch && returnPhase !== 'none'
   const homeInitialWaiting = initialEntrance === 'waiting' && !!featured && !hasSearch
@@ -310,7 +355,7 @@ export function HomeScreen({
                 }
               >
                 <DailyRecommendation
-                  poem={featured}
+                  poem={previewFeatured}
                   loading={featuredLoading}
                   error={featuredError}
                   disabled={selectionBlocked}
@@ -365,6 +410,56 @@ export function HomeScreen({
           </div>
         </div>
       </main>
+      {import.meta.env.DEV && !hasSearch && (
+        <aside
+          aria-label="首页竖排调试样本"
+          className="fixed right-4 bottom-4 z-50 hidden w-[420px] max-w-[calc(100vw-2rem)] rounded-lg border border-border/70 bg-background/95 p-3 shadow-md backdrop-blur-sm lg:block"
+        >
+          <div className="mb-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>本地排版样本 · 十个词牌</span>
+            <button
+              type="button"
+              className="rounded px-2 py-1 hover:bg-muted"
+              onClick={() => {
+                setPreviewTune(null)
+                setPreviewPoem(null)
+                setPreviewError('')
+                setPreviewLoading(false)
+              }}
+            >
+              恢复今日推荐
+            </button>
+          </div>
+          <div className="grid grid-cols-5 gap-1.5">
+            {HOME_PREVIEW_TUNES.map((tune) => (
+              <button
+                key={tune}
+                type="button"
+                aria-pressed={previewTune === tune}
+                className={`rounded border px-1 py-1.5 text-xs transition-colors ${
+                  previewTune === tune
+                    ? 'border-[#AA381E] text-[#AA381E]'
+                    : 'border-border/60 hover:bg-muted'
+                }`}
+                onClick={() => {
+                  if (previewTune === tune) return
+                  setPreviewPoem(null)
+                  setPreviewError('')
+                  setPreviewLoading(true)
+                  setPreviewTune(tune)
+                }}
+              >
+                {tune}
+              </button>
+            ))}
+          </div>
+          {(previewLoading || previewError) && (
+            <p role="status" className="mt-2 text-xs text-muted-foreground">
+              {previewLoading ? '正在加载馆藏作品…' : previewError}
+            </p>
+          )}
+        </aside>
+      )}
     </div>
   )
 }
