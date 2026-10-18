@@ -520,12 +520,14 @@ test('poem float-up does not create a temporary vertical scrollbar', async ({ pa
   const dimensions = await page.locator('[data-recommendation-scrollport]').evaluate((element) => ({
     overflowX: getComputedStyle(element).overflowX,
     overflowY: getComputedStyle(element).overflowY,
-    delta: element.scrollHeight - element.clientHeight,
+    // Desktop uses natural width; the entrance animation must not overflow the page.
+    pageOverflowY: document.documentElement.scrollHeight - window.innerHeight,
+    pageOverflowX: document.documentElement.scrollWidth - window.innerWidth,
   }))
-  expect(dimensions.overflowX).toBe('auto')
-  expect(dimensions.overflowY).toBe('hidden')
-  // The 6px translateY can enlarge scrollHeight; it must not activate a scrollbar.
-  expect(dimensions.delta).toBeGreaterThanOrEqual(0)
+  expect(dimensions.overflowX).toBe('visible')
+  expect(dimensions.overflowY).toBe('visible')
+  expect(dimensions.pageOverflowY).toBeLessThanOrEqual(0)
+  expect(dimensions.pageOverflowX).toBeLessThanOrEqual(0)
 })
 
 test('delayed FLIP keeps search at its original position before moving', async ({ page }) => {
@@ -569,20 +571,23 @@ test('staggering poem lines never enables a transient vertical scrollbar', async
   const samples = await page.evaluate(async () => {
     const port = document.querySelector<HTMLElement>('[data-recommendation-scrollport]')
     if (!port) throw new Error('Missing featured poem scrollport')
-    const values: { overflowX: string; overflowY: string; overflowPx: number }[] = []
+    const values: { overflowX: string; overflowY: string; pageOverflowY: number; pageOverflowX: number }[] = []
     for (let frame = 0; frame < 55; frame++) {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
       values.push({
         overflowX: getComputedStyle(port).overflowX,
         overflowY: getComputedStyle(port).overflowY,
-        overflowPx: port.scrollHeight - port.clientHeight,
+        pageOverflowY: document.documentElement.scrollHeight - window.innerHeight,
+        pageOverflowX: document.documentElement.scrollWidth - window.innerWidth,
       })
     }
     return values
   })
   expect(samples.length).toBeGreaterThan(40)
-  expect(samples.every((sample) => sample.overflowY === 'hidden')).toBe(true)
-  expect(samples.every((sample) => sample.overflowX === 'auto')).toBe(true)
+  expect(samples.every((sample) => sample.overflowY === 'visible')).toBe(true)
+  expect(samples.every((sample) => sample.overflowX === 'visible')).toBe(true)
+  expect(samples.every((sample) => sample.pageOverflowY <= 0)).toBe(true)
+  expect(samples.every((sample) => sample.pageOverflowX <= 0)).toBe(true)
 })
 
 test('moving search overlaps the recommendation fade', async ({ page }) => {
