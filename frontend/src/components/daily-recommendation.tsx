@@ -68,7 +68,7 @@ export function DailyRecommendation({
         <div
           ref={recommendationRef}
           data-home-recommendation-layout
-          className="relative mx-auto grid w-full max-w-2xl grid-cols-[2.5rem_minmax(0,1fr)] items-end lg:max-w-full lg:flex lg:w-max lg:gap-3 [--home-poem-em:1.375rem] lg:[--home-poem-em:1.5rem]"
+          className="home-recommendation-layout relative mx-auto grid w-full max-w-2xl grid-cols-[2.5rem_minmax(0,1fr)] items-end lg:max-w-full lg:flex lg:w-max lg:gap-3"
         >
           <div
             ref={sealRef}

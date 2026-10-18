@@ -116,7 +116,7 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
         section.getBoundingClientRect().width -
         seal.getBoundingClientRect().width -
         (Number.parseFloat(getComputedStyle(layout).columnGap) || 0) -
-        8
+        (Number.parseFloat(getComputedStyle(layout).getPropertyValue('--home-width-reserve')) || 0)
       if (available <= 0) return
 
       // 标题和作者列作为普通 Flex 子项，header 的真实物理宽度即题署预算。
@@ -124,7 +124,11 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
       const bodyStyle = getComputedStyle(body)
       // 每个 .poem-reader-line 是一个独立的竖排列，横向步长就是实际 line-height。
       const advance = Number.parseFloat(bodyStyle.lineHeight)
-      const sourceGap = Number.parseFloat(bodyStyle.fontSize) * 0.9
+      // CSS 的来源段间距比例是唯一权威值，测量不再另写常数。
+      const sourceGapScale = Number.parseFloat(
+        bodyStyle.getPropertyValue('--reader-source-gap-scale'),
+      )
+      const sourceGap = Number.parseFloat(bodyStyle.fontSize) * sourceGapScale
       if (!Number.isFinite(advance) || advance <= 0) return
 
       const widthOf = (segments: string[]) => {
@@ -206,7 +210,7 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
         <article
           dir="ltr"
           lang="zh-CN"
-          className={`poem-reader home-featured-poem w-max shrink-0 font-serif ${!continuous ? 'lg:flex lg:flex-row-reverse lg:items-start' : ''} lg:[--reader-poem-size:1.5rem] lg:[--reader-poem-line-height:1.5] lg:[--reader-poem-letter-spacing:0.12em] lg:[--reader-preface-size:0.875rem] lg:[--reader-preface-line-height:1.6] [--reader-author-size:1rem] lg:[--reader-author-size:1.125rem] lg:[--reader-title-size:1.25rem] ${continuous ? '[--reader-poem-line-height:1.5] [--reader-poem-letter-spacing:0.12em]' : ''}`}
+          className={`poem-reader home-featured-poem w-max shrink-0 font-serif ${!continuous ? 'lg:flex lg:flex-row-reverse lg:items-start' : ''}`}
           style={
             {
               writingMode: continuous ? 'vertical-rl' : 'horizontal-tb',
@@ -223,7 +227,7 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
                   {poem.yusheng_title ?? poem.cipai ?? '词牌未核实'}
                 </h2>
                 {excerpted && (
-                  <span className="shrink-0 font-serif text-2xl text-[#AA381E]">节选</span>
+                  <span className="shrink-0 font-serif text-2xl text-editorial-red">节选</span>
                 )}
                 <p className="poem-reader-author !mt-0 shrink-0 font-serif text-muted-foreground">
                   {poem.author ?? '作者未核实'}
@@ -262,13 +266,13 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
                   </p>
                 )}
                 {excerpted && (
-                  <span className="shrink-0 font-serif text-2xl font-normal tracking-[0.12em] text-[#AA381E]">
+                  <span className="home-featured-excerpt shrink-0 font-serif text-2xl font-normal text-editorial-red">
                     节选
                   </span>
                 )}
               </div>
-              <div className="pt-[calc(var(--reader-poem-size)+2px)] [writing-mode:vertical-rl]">
-                <p className="poem-reader-author !mt-0 shrink-0 font-serif tracking-[0.10em] text-muted-foreground">
+              <div className="pt-[calc(var(--reader-poem-size)+var(--home-author-optical-nudge))] [writing-mode:vertical-rl]">
+                <p className="home-featured-author poem-reader-author !mt-0 shrink-0 font-serif text-muted-foreground">
                   {poem.author ?? '作者未核实'}
                 </p>
               </div>

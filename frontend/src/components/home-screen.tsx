@@ -438,7 +438,7 @@ export function HomeScreen({
                 aria-pressed={previewTune === tune}
                 className={`rounded border px-1 py-1.5 text-xs transition-colors ${
                   previewTune === tune
-                    ? 'border-[#AA381E] text-[#AA381E]'
+                    ? 'border-editorial-red text-editorial-red'
                     : 'border-border/60 hover:bg-muted'
                 }`}
                 onClick={() => {

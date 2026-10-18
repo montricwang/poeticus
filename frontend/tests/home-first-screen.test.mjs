@@ -43,10 +43,10 @@ test('homepage uses phrase layout on desktop and continuous layout on mobile', (
   assert.doesNotMatch(featuredDisplay, /home-compact-punctuation/)
   assert.match(recommendation, /<FeaturedPoemDisplay/)
   assert.match(recommendation, /<ReadPoemSeal/)
-  assert.match(seal, /#AA381E/)
-  assert.match(seal, /fontFamily:/)
-  assert.match(seal, /gap-\[0\.18em\]/)
-  assert.match(seal, /hover:bg-\[#AA381E\]/)
+  assert.match(seal, /home-read-seal/)
+  assert.match(seal, /home-read-seal-glyphs/)
+  assert.match(seal, /border-editorial-red/)
+  assert.match(seal, /hover:bg-editorial-red/)
 })
 
 test('homepage uses fixed recommendation without a preview debug selector', () => {

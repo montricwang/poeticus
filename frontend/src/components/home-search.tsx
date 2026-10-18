@@ -49,7 +49,7 @@ export function HomeSearch({
   return (
     <>
       <section aria-label="馆藏搜索" className="mx-auto w-full max-w-2xl">
-        <h1 className="home-search-intro-title mb-5 text-center font-serif text-xl font-medium tracking-[0.12em] sm:text-2xl">
+        <h1 className="home-search-intro-title mb-5 text-center font-serif text-xl font-medium  sm:text-2xl">
           美要眇兮宜修
         </h1>
         <form
