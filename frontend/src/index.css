@@ -97,6 +97,11 @@
   --background: #faf9f6;
   --foreground: #151411;
   --reader-punctuation-opacity: 20%;
+  /* 竖排段间距：JS 列数预算与 CSS 共用这一比例。 */
+  --reader-source-gap-scale: 0.9;
+  --editorial-red: #aa381e;
+  /* 搜索区不在推荐容器内，字距必须定义在共同祖先上。 */
+  --home-search-heading-letter-spacing: 0.12em;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -158,6 +163,9 @@
 
   /* 1200px 版心扣除 50px 中线与留白：阅读 500px，辅助 650px；窄屏等比收缩。 */
   --reading-stage-max-width: 1200px;
+  /* 重用的页面几何：桌面壳层与阅读页脚的共同宽度。 */
+  --desktop-shell-max-width: 1600px;
+  --reader-footer-max-width: 27rem;
   --reader-column-share: 500fr;
   --companion-column-share: 650fr;
 
@@ -176,6 +184,7 @@
 }
 
 @theme inline {
+  --color-editorial-red: var(--editorial-red);
   --font-heading: var(--font-sans);
   --font-sans:
     'Inter Variable', 'PingFang SC', 'Noto Sans SC Variable', 'Noto Sans SC', 'Source Han Sans SC',
@@ -467,6 +476,59 @@ html.theme-transition #root * {
   }
 
   /*
+   * 首页排版参数入口：字号/字距/光学修正；物理布局仍由组件负责。
+   * +2px 是作者墨迹的光学校正，不得用来补偿正文截断宽度。
+   */
+  .home-recommendation-layout {
+    --home-poem-em: 1.375rem;
+    --home-width-reserve: 8px;
+    --home-seal-glyph-gap: 0.18em;
+    --home-author-optical-nudge: 2px;
+    --home-author-letter-spacing: 0.1em;
+    --home-excerpt-letter-spacing: 0.12em;
+  }
+
+  .home-recommendation-layout .home-featured-poem {
+    --reader-poem-size: var(--home-poem-em);
+    --reader-poem-line-height: 1.5;
+    --reader-poem-letter-spacing: 0.12em;
+    --reader-author-size: 1rem;
+  }
+
+  .home-search-intro-title {
+    letter-spacing: var(--home-search-heading-letter-spacing);
+  }
+
+  .home-read-seal {
+    font-family:
+      'PingFang SC', 'Noto Sans SC Variable', 'Source Han Sans SC', 'Noto Sans SC', sans-serif;
+  }
+
+  .home-read-seal-glyphs {
+    gap: var(--home-seal-glyph-gap);
+  }
+
+  .home-featured-author {
+    letter-spacing: var(--home-author-letter-spacing);
+  }
+
+  .home-featured-excerpt {
+    letter-spacing: var(--home-excerpt-letter-spacing);
+  }
+
+  @media (min-width: 64rem) {
+    .home-recommendation-layout {
+      --home-poem-em: 1.5rem;
+    }
+    .home-recommendation-layout .home-featured-poem {
+      --reader-author-size: 1.125rem;
+      --reader-title-size: 1.25rem;
+      --reader-preface-size: 0.875rem;
+      --reader-preface-line-height: 1.6;
+    }
+  }
+
+  /*
    * 阅读器排版调参区。
    * 结构布局仍由组件负责；字号、字重、行高、字距和垂直节奏集中在这里，
    * 方便在浏览器热更新时只改这一组参数。
@@ -586,7 +648,7 @@ html.theme-transition #root * {
 
   /* 原文中连续换行对应的段间留白。 */
   .poem-reader-source-gap {
-    margin-block-start: 0.9em;
+    margin-block-start: calc(var(--reader-source-gap-scale) * 1em);
   }
 
   /* 只作用于首页每日推荐正文，阅读室、题头与搜索仍使用原来的宋体栈。 */

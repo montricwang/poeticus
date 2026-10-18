@@ -29,7 +29,7 @@ test('桌面阅读区使用剩余视口高度，正文在本栏滚动', () => {
   assert.match(app, /flex h-dvh min-h-0 flex-col overflow-hidden/)
   assert.match(
     desktopLayout,
-    /flex min-h-0 w-full max-w-\[1600px\] flex-1 flex-col overflow-hidden/,
+    /flex min-h-0 w-full max-w-\(--desktop-shell-max-width\) flex-1 flex-col overflow-hidden/,
   )
   assert.match(companion, /grid h-full min-h-0 min-w-0/)
   assert.match(
@@ -43,7 +43,7 @@ test('阅读书页与底部分割线、导航共用阅读栏中心线', () => {
   // 阅读正文滚动区保留总共 8px 的滚动留白，但必须两侧对称。
   assert.match(readerPane, /overflow-y-auto overscroll-contain px-1/)
   assert.doesNotMatch(readerPane, /overscroll-contain pr-2/)
-  assert.match(readerPane, /lg:max-w-\[27rem\] lg:px-4/)
+  assert.match(readerPane, /lg:max-w-\(--reader-footer-max-width\) lg:px-4/)
   assert.match(
     readerPane,
     /<HorizontalEditorialDivider className="mb-3 hidden w-full lg:block" \/>/,
@@ -328,7 +328,7 @@ test('手机阅读导航保留提示，前后按钮各自贴近两端', () => {
   assert.match(navigation, /justify-self-end/)
   assert.match(navigation, /划选诗句，即可引用提问/)
   assert.doesNotMatch(navigation, /hidden whitespace-nowrap/)
-  assert.match(navigation, /lg:max-w-\[27rem\]/)
+  assert.match(navigation, /lg:max-w-\(--reader-footer-max-width\)/)
   assert.match(navigation, /<HorizontalEditorialDivider className="mb-3 w-full" \/>/)
   assert.doesNotMatch(navigation, /hidden w-full lg:block/)
   assert.doesNotMatch(navigation, /mx-auto mt-6 w-full max-w-\[27rem\]/)

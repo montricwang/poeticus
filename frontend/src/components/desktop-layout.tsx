@@ -62,7 +62,7 @@ export function DesktopLayout({
           </div>
         </div>
       </header>
-      <main className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col overflow-hidden px-5 pb-7 pt-7 md:px-8">
+      <main className="mx-auto flex min-h-0 w-full max-w-(--desktop-shell-max-width) flex-1 flex-col overflow-hidden px-5 pb-7 pt-7 md:px-8">
         {/* 目录与讨论共用右栏；两栏和中线的横向位置不受目录开关影响。 */}
         <div className="mx-auto h-full w-full min-h-0 min-w-0 max-w-[var(--reading-stage-max-width)]">
           <div className="relative h-full min-h-0 min-w-0" aria-busy={reader.switching}>
