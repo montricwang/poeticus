@@ -9,7 +9,7 @@
 - `frontend/src/components/featured-poem-display.tsx`（`FeaturedPoemDisplay`、`ContinuousPoemBody`）：根据空间决定预览哪些完整片段，并将手机正文断为竖列。纯文本列划分由 `frontend/src/lib/home-preview-columns.ts` 的 `arrangeHomeColumns` 负责。
 - `frontend/src/components/home-search.tsx`：馆藏搜索独立于每日推荐；未提交搜索时搜索区靠近首屏底部，提交后切换到结果视图。
 
-正式首页不提供样本切换按钮；仅在 Vite 开发环境的桌面首页右下角提供十个词牌的临时排版样本入口，通过现有馆藏 API 读取真词，点击「恢复今日推荐」回到每日推荐。生产构建不显示这一入口。
+首页使用上游传入的每日推荐作品；开发环境与生产环境共用推荐数据入口。临时样本切换面板及其额外馆藏请求已清理，视觉回归可通过既有 Node / 浏览器测试和真机观察进行。
 
 ## 首页搜索模式（Issue #308）
 

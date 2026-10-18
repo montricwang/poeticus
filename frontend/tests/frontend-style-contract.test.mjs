@@ -36,6 +36,6 @@ test('editorial accent and seal spacing are named tokens, not duplicated hex lit
   assert.match(seal, /home-read-seal-glyphs/)
   assert.match(seal, /border-editorial-red/)
   assert.match(featured, /text-editorial-red/)
-  assert.match(home, /text-editorial-red/)
+  assert.match(seal, /text-editorial-red/)
   assert.doesNotMatch([seal, featured, home].join('\n'), /#aa381e/i)
 })
