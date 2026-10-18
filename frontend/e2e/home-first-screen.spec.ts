@@ -781,7 +781,13 @@ test('font readiness can stall without hiding mobile home and reader forever', a
 test('selected poem text draws one annotation underline per actual line', async ({ page }) => {
   // Disable the draw animation so width assertions measure final geometry.
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/#reader')
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    // The desktop app enters the reader through its navigation control.
+    await page.goto('/')
+    await page.getByRole('button', { name: '阅读室' }).click()
+  } else {
+    await page.goto('/#reader')
+  }
   const body = page.getByRole('region', { name: '诗词阅读' }).locator('.poem-reader-body')
   await expect(body).toContainText('晚秋天')
 
