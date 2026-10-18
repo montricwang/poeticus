@@ -130,10 +130,7 @@ export function MobileLayout({
               <MessageCircle className="size-4" aria-hidden="true" />
               <span>{discussion.hasSelection ? '提问' : '对话'}</span>
               {discussion.hasUnreadReply && (
-                <span
-                  className="size-2 rounded-full bg-editorial-red-readable"
-                  aria-label="有新回复"
-                />
+                <span className="size-2 rounded-full bg-editorial-red" aria-label="有新回复" />
               )}
             </Button>
           )}

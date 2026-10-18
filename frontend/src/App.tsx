@@ -435,6 +435,7 @@ function App() {
             key={activePoem.id}
             work={activePoem}
             onSelect={handleReaderSelect}
+            selected={selected}
             entrance={readerEntrance}
           />
           {!wideDiscussionLayout && (

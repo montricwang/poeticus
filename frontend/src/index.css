@@ -99,9 +99,9 @@
   --reader-punctuation-opacity: 20%;
   /* 竖排段间距：JS 列数预算与 CSS 共用这一比例。 */
   --reader-source-gap-scale: 0.9;
-  /* 唯一品牌强调色；小字在深色背景下使用同色系亮化的可读版本。 */
-  --editorial-red: #aa381e;
-  --editorial-red-readable: var(--editorial-red);
+  /* 唯一原始色值：浅色直接使用，深色所有红色用途统一以 75% 不透明度叠加。 */
+  --editorial-red-base: #aa381e;
+  --editorial-red: var(--editorial-red-base);
   /* 搜索区不在推荐容器内，字距必须定义在共同祖先上。 */
   --home-search-heading-letter-spacing: 0.12em;
   --card: oklch(1 0 0);
@@ -116,7 +116,7 @@
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: var(--editorial-red-readable);
+  --destructive: var(--editorial-red);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -187,7 +187,6 @@
 
 @theme inline {
   --color-editorial-red: var(--editorial-red);
-  --color-editorial-red-readable: var(--editorial-red-readable);
   --font-heading: var(--font-sans);
   --font-sans:
     'Inter Variable', 'PingFang SC', 'Noto Sans SC Variable', 'Noto Sans SC', 'Source Han Sans SC',
@@ -275,9 +274,8 @@ html.theme-transition #root * {
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  /* #AA381E 在深色背景上的对比度不足以用于小字；只提亮文字用途。 */
-  --editorial-red-readable: color-mix(in srgb, var(--editorial-red) 70%, white);
-  --destructive: var(--editorial-red-readable);
+  --editorial-red: color-mix(in srgb, var(--editorial-red-base) 75%, transparent);
+  --destructive: var(--editorial-red);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
@@ -915,6 +913,34 @@ html.theme-transition #root * {
     font-weight: var(--reader-poem-weight);
     line-height: var(--reader-poem-line-height);
     letter-spacing: var(--reader-poem-letter-spacing);
+  }
+
+  /*
+   * 阅读区原文引用：细红线仅覆盖已确认的字符区间，
+   * 测量层与正文 DOM 分离，不改变选区文本和字符偏移。
+   */
+  .poem-quote-underline {
+    position: absolute;
+    height: 2px;
+    background: var(--editorial-red);
+    pointer-events: none;
+    transform-origin: left center;
+    animation: poem-quote-underline-draw 360ms var(--motion-ease-settle) both;
+  }
+
+  @keyframes poem-quote-underline-draw {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .poem-quote-underline {
+      animation: none;
+    }
   }
 
   @media (min-width: 40rem) {

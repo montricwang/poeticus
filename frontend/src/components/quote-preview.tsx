@@ -76,7 +76,7 @@ export function QuotePreview({ selected, loading, onClearQuote }: QuotePreviewPr
     >
       <div ref={contentRef} className="min-w-0" inert={!expanded}>
         {rendered && (
-          <div className="inline-flex w-fit max-w-full min-w-0 items-start gap-1.5 border-l-2 border-editorial-red/60 pl-3">
+          <div className="inline-flex w-fit max-w-full min-w-0 items-start gap-1.5 border-l-2 border-editorial-red pl-3">
             <p
               className="poeticus-scrollport max-h-20 min-w-0 flex-[0_1_auto] overflow-y-auto whitespace-pre-wrap font-serif text-sm font-medium leading-6 text-foreground/85"
               aria-label="引用原文"
