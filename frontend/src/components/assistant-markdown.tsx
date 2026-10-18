@@ -60,8 +60,8 @@ export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantM
             <blockquote
               className={
                 isUser
-                  ? 'my-2 border-l-2 border-violet-400/70 pl-3 text-muted-foreground'
-                  : 'my-4 border-l-2 border-violet-400/70 pl-4 text-muted-foreground'
+                  ? 'my-2 border-l-2 border-editorial-red/70 pl-3 text-muted-foreground'
+                  : 'my-4 border-l-2 border-editorial-red/70 pl-4 text-muted-foreground'
               }
             >
               {children}
@@ -75,7 +75,7 @@ export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantM
               href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-violet-600 underline underline-offset-4 hover:text-violet-700 dark:text-violet-300"
+              className="text-editorial-red-readable underline underline-offset-4 hover:opacity-80"
             >
               {children}
             </a>

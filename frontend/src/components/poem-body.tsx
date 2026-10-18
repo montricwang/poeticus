@@ -229,7 +229,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
   return (
     <p
       ref={poemRef}
-      className="poem-reader-body mx-auto w-fit max-w-full cursor-text select-text whitespace-normal font-serif text-foreground/90 selection:bg-violet-200 selection:text-violet-950 dark:selection:bg-violet-400/40 dark:selection:text-white"
+      className="poem-reader-body mx-auto w-fit max-w-full cursor-text select-text whitespace-normal font-serif text-foreground/90 selection:bg-editorial-red/20 selection:text-foreground dark:selection:bg-editorial-red/45 dark:selection:text-foreground"
     >
       {/* 各诗行及标点节点的文本按 DOM 顺序拼接，应等于完整原文。 */}
       {lines.map((line, index) => (

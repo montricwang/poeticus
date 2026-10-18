@@ -56,7 +56,7 @@ export function UserMessage({
           /* 编辑模式 */
           <div className="w-full min-w-64 space-y-3 rounded-sm bg-muted/45 p-3 dark:bg-muted/25">
             {turn.selection && (
-              <div className="border-l-2 border-violet-400/70 py-1 pl-3 pr-1 text-base leading-7 text-muted-foreground">
+              <div className="border-l-2 border-editorial-red/70 py-1 pl-3 pr-1 text-base leading-7 text-muted-foreground">
                 {turn.selection.text}
               </div>
             )}
