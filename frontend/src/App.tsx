@@ -21,6 +21,7 @@ import { useConversationPersistence } from '@/hooks/use-conversation-persistence
 import { usePoemAnalysis } from '@/hooks/use-poem-analysis'
 import { loadInitialChatState } from '@/lib/chat-initial-state'
 import { motionDurationMs } from '@/lib/motion'
+import { READER_INITIAL_REVEAL_MS } from '@/lib/entrance-motion'
 import { whenFontsReadyOrTimeout } from '@/lib/font-readiness'
 import { WIDE_DISCUSSION_MEDIA } from '@/lib/responsive-layout'
 import { useChatSession } from '@/hooks/use-chat-session'
@@ -353,7 +354,7 @@ function App() {
 
   useEffect(() => {
     if (readerEntrance !== 'revealing') return
-    const timer = window.setTimeout(() => setReaderEntrance('done'), 1050)
+    const timer = window.setTimeout(() => setReaderEntrance('done'), READER_INITIAL_REVEAL_MS)
     return () => window.clearTimeout(timer)
   }, [readerEntrance])
 
