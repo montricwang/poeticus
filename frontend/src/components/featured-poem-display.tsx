@@ -14,34 +14,13 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
   const poemScrollport = useRef<HTMLDivElement>(null)
   const [previewSegments, setPreviewSegments] = useState<string[] | null>(null)
 
-  // 测量浏览器实际竖排宽度；整叠优先，容不下第一叠时才逐句截断。
+  // 手机端沿用已封板的断列/节选规则，不参与桌面端的宽度计算。
   useLayoutEffect(() => {
     const scrollport = poemScrollport.current
     const article = scrollport?.querySelector('article')
-    if (!scrollport || !article) return
-
-    const probe = article.cloneNode(true) as HTMLElement
-    probe.setAttribute('aria-hidden', 'true')
-    Object.assign(probe.style, {
-      position: 'fixed',
-      left: '-10000px',
-      top: '0',
-      visibility: 'hidden',
-      pointerEvents: 'none',
-      width: 'max-content',
-    })
-    document.body.append(probe)
-    const bodies = [...probe.querySelectorAll<HTMLElement>('.poem-reader-body')]
-    // 测量节点不在 #home 下：不能丢失实际高度预算，也不能沿用克隆时的旧高度。
-    for (const body of bodies) body.style.removeProperty('height')
-
-    const measure = (segments: string[]) => {
-      for (const body of bodies) fillProbeBody(body, segments, continuous)
-      return probe.getBoundingClientRect().width
-    }
+    if (!scrollport || !article || !continuous) return
 
     const fits = (segments: string[]) => {
-      if (!continuous) return measure(segments) <= scrollport.clientWidth - 4
       const body = scrollport.querySelector<HTMLElement>('.home-classic-body')
       const budget = body && getHomeMobileColumnBudget(body, segments)
       if (!budget) return false
@@ -54,11 +33,6 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     }
 
     const refresh = () => {
-      // 随首页推荐槽位的高度同步；否则离屏克隆会退回 18rem，误判长词超宽。
-      probe.style.setProperty(
-        '--home-classic-max-height',
-        getComputedStyle(scrollport).getPropertyValue('--home-classic-max-height'),
-      )
       if (scrollport.clientWidth <= 0) return
       const segments = poem.body_segments
       let chosen = segments
@@ -116,12 +90,97 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     const budgetObserver = new MutationObserver(refresh)
     if (main) budgetObserver.observe(main, { attributes: true, attributeFilter: ['style'] })
     void document.fonts.ready.then(() => {
-      if (probe.isConnected) refresh()
+      if (scrollport.isConnected) refresh()
     })
     return () => {
       observer.disconnect()
       budgetObserver.disconnect()
-      probe.remove()
+    }
+  }, [poem, continuous])
+
+  // 桌面与 iPad 横屏共用一份物理宽度预算：直接量当前题署与正文行距，
+  // 不再让离屏 vertical-rl 克隆另算一次 Safari 的 max-content 宽度。
+  useLayoutEffect(() => {
+    if (continuous) return
+    const port = poemScrollport.current
+    const article = port?.querySelector<HTMLElement>('article')
+    const header = article?.querySelector<HTMLElement>('header')
+    const body = article?.querySelector<HTMLElement>('.poem-reader-body')
+    const layout = port?.closest<HTMLElement>('[data-home-recommendation-layout]')
+    const section = layout?.closest<HTMLElement>('section')
+    const seal = layout?.querySelector<HTMLElement>('button')
+    if (!article || !header || !body || !layout || !section || !seal) return
+
+    const refresh = () => {
+      const available =
+        section.getBoundingClientRect().width -
+        seal.getBoundingClientRect().width -
+        (Number.parseFloat(getComputedStyle(layout).columnGap) || 0) -
+        8
+      if (available <= 0) return
+
+      // 标题和作者列作为普通 Flex 子项，header 的真实物理宽度即题署预算。
+      const headerWidth = header.getBoundingClientRect().width
+      const bodyStyle = getComputedStyle(body)
+      // 每个 .poem-reader-line 是一个独立的竖排列，横向步长就是实际 line-height。
+      const advance = Number.parseFloat(bodyStyle.lineHeight)
+      const sourceGap = Number.parseFloat(bodyStyle.fontSize) * 0.9
+      if (!Number.isFinite(advance) || advance <= 0) return
+
+      const widthOf = (segments: string[]) => {
+        const lines = buildPoemLines(segments.join('\n\n'))
+        return Math.ceil(
+          headerWidth +
+            lines.length * advance +
+            lines.filter((line) => line.sourceGapBefore).length * sourceGap +
+            2,
+        )
+      }
+      const fits = (segments: string[]) => widthOf(segments) <= available
+      const segments = poem.body_segments
+      let chosen = segments
+
+      if (!fits(segments)) {
+        chosen = []
+        for (const segment of segments) {
+          const candidate = [...chosen, segment]
+          if (!fits(candidate)) break
+          chosen = candidate
+        }
+
+        // 只有第一片也无法完整容纳时，才退回到第一片内部按完整诗句截断。
+        if (!chosen.length && segments[0]) {
+          const first = segments[0]
+          for (const line of buildPoemLines(first)) {
+            const candidate = [first.slice(0, line.end)]
+            if (!fits(candidate)) break
+            chosen = candidate
+          }
+          // 极窄视口仍至少保留一句，不以 CSS 裁掉半列汉字。
+          if (!chosen.length) {
+            const firstLine = buildPoemLines(first)[0]
+            if (firstLine) chosen = [firstLine.text]
+          }
+        }
+      }
+
+      const next = chosen === segments ? null : chosen
+      setPreviewSegments((previous) =>
+        JSON.stringify(previous) === JSON.stringify(next) ? previous : next,
+      )
+    }
+
+    refresh()
+    const observer = new ResizeObserver(refresh)
+    observer.observe(section)
+    observer.observe(header)
+    window.addEventListener('resize', refresh)
+    void document.fonts.ready.then(() => {
+      if (article.isConnected) refresh()
+    })
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', refresh)
     }
   }, [poem, continuous])
 
@@ -133,30 +192,6 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
     (displayedSegments.length !== poem.body_segments.length ||
       displayedSegments.some((segment, index) => segment !== poem.body_segments[index]))
 
-  // 样式一从最右列开始读；使用标准 LTR scrollLeft，避开 Safari 的 RTL 滚动差异。
-  useLayoutEffect(() => {
-    if (continuous) return
-    const scrollport = poemScrollport.current
-    if (!scrollport) return
-    const showFirstColumn = () => {
-      scrollport.scrollLeft = scrollport.scrollWidth - scrollport.clientWidth
-      // 窄屏先让正文开头靠右显示；词牌仍保留在右侧，可以反向滑动查看。
-      if (window.matchMedia('(max-width: 1023px)').matches) {
-        const body = scrollport.querySelector('.poem-reader-body')
-        if (body) {
-          const bodyRight = body.getBoundingClientRect().right
-          const viewportRight = scrollport.getBoundingClientRect().right
-          scrollport.scrollLeft += bodyRight - viewportRight
-        }
-      }
-    }
-    showFirstColumn()
-    const observer = new ResizeObserver(showFirstColumn)
-    observer.observe(scrollport)
-    if (scrollport.firstElementChild) observer.observe(scrollport.firstElementChild)
-    return () => observer.disconnect()
-  }, [continuous, poem])
-
   return (
     <div
       data-recommendation-scrollport
@@ -164,72 +199,109 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
       className={
         continuous
           ? 'min-w-0 flex-1 overflow-hidden lg:w-full lg:flex-none'
-          : 'poeticus-scrollport min-w-0 flex-1 overflow-x-auto overflow-y-hidden lg:w-full lg:flex-none'
+          : 'min-w-0 flex-1 lg:w-max lg:flex-none'
       }
     >
-      <div className="flex w-full flex-row-reverse justify-center lg:w-max lg:min-w-full lg:flex-row">
+      <div className="flex w-full flex-row-reverse justify-center lg:w-max lg:min-w-0 lg:flex-row">
         <article
           dir="ltr"
           lang="zh-CN"
-          className={`poem-reader home-featured-poem w-max shrink-0 font-serif lg:[--reader-poem-line-height:1.5] lg:[--reader-poem-letter-spacing:0.12em] lg:[--reader-preface-size:0.875rem] lg:[--reader-preface-line-height:1.6] [--reader-author-size:1rem] lg:[--reader-author-size:1.125rem] lg:[--reader-title-size:1.25rem] ${continuous ? '[--reader-poem-line-height:1.5] [--reader-poem-letter-spacing:0.12em]' : ''}`}
+          className={`poem-reader home-featured-poem w-max shrink-0 font-serif ${!continuous ? 'lg:flex lg:flex-row-reverse lg:items-start' : ''} lg:[--reader-poem-size:1.5rem] lg:[--reader-poem-line-height:1.5] lg:[--reader-poem-letter-spacing:0.12em] lg:[--reader-preface-size:0.875rem] lg:[--reader-preface-line-height:1.6] [--reader-author-size:1rem] lg:[--reader-author-size:1.125rem] lg:[--reader-title-size:1.25rem] ${continuous ? '[--reader-poem-line-height:1.5] [--reader-poem-letter-spacing:0.12em]' : ''}`}
           style={
             {
-              writingMode: 'vertical-rl',
+              writingMode: continuous ? 'vertical-rl' : 'horizontal-tb',
               textOrientation: 'mixed',
               '--home-classic-target-height': `${Math.round(208 + Math.max(0, poem.body_segments.join('').length - 36) * 7.5)}px`,
             } as CSSProperties
           }
         >
-          <header className="ml-3 lg:ml-2.5">
-            {/* 与横排阅读器一致：寓声为主标题，词牌另作辅助标题。 */}
-            {/* 竖排 flex-row 沿纵向排列；词牌与作者共用一列，横向居中对齐。 */}
-            <div
-              className={`flex flex-row items-center gap-4 lg:ml-2.5 ${continuous ? 'mt-[var(--reader-poem-size)]' : ''}`}
-            >
-              <h2 className="poem-reader-heading shrink-0 font-serif">
-                {poem.yusheng_title ?? poem.cipai ?? '词牌未核实'}
-              </h2>
-              {excerpted && (
-                <span className="shrink-0 font-serif text-2xl text-[#AA381E]">节选</span>
-              )}
-              <p className="poem-reader-author !mt-0 shrink-0 font-serif text-muted-foreground">
-                {poem.author ?? '作者未核实'}
-              </p>
-            </div>
-            {poem.yusheng_title &&
-              poem.cipai &&
-              poem.id !== 'b3f3a428-ad69-4bef-90ff-797cc7dac849' && (
-                <p className="poem-reader-secondary-heading ml-3 text-muted-foreground lg:ml-2.5">
-                  {poem.cipai}
+          {continuous ? (
+            <header className="ml-3 lg:ml-2.5">
+              {/* 手机首页沿用已封板的题署：标题、节选和作者在同一列。 */}
+              <div className="flex flex-row items-center gap-4 mt-[var(--reader-poem-size)]">
+                <h2 className="poem-reader-heading shrink-0 font-serif">
+                  {poem.yusheng_title ?? poem.cipai ?? '词牌未核实'}
+                </h2>
+                {excerpted && (
+                  <span className="shrink-0 font-serif text-2xl text-[#AA381E]">节选</span>
+                )}
+                <p className="poem-reader-author !mt-0 shrink-0 font-serif text-muted-foreground">
+                  {poem.author ?? '作者未核实'}
+                </p>
+              </div>
+              {poem.yusheng_title &&
+                poem.cipai &&
+                poem.id !== 'b3f3a428-ad69-4bef-90ff-797cc7dac849' && (
+                  <p className="poem-reader-secondary-heading ml-3 text-muted-foreground lg:ml-2.5">
+                    {poem.cipai}
+                  </p>
+                )}
+              {poem.title && (
+                <p className="poem-reader-title ml-3 hidden whitespace-pre-line font-serif text-foreground/85 lg:ml-2.5">
+                  {poem.title}
                 </p>
               )}
-            {poem.title && (
+            </header>
+          ) : (
+            // 桌面：最右题署列在标题后标示节选，作者独占下沉的次列。
+            <header className="flex shrink-0 flex-row-reverse items-start gap-1.5 pl-2.5">
+              <div className="flex flex-row items-center gap-3 [writing-mode:vertical-rl]">
+                <h2 className="poem-reader-heading shrink-0 font-serif">
+                  {poem.yusheng_title ?? poem.cipai ?? '词牌未核实'}
+                </h2>
+                {poem.yusheng_title &&
+                  poem.cipai &&
+                  poem.id !== 'b3f3a428-ad69-4bef-90ff-797cc7dac849' && (
+                    <p className="poem-reader-secondary-heading shrink-0 !text-base text-muted-foreground">
+                      {poem.cipai}
+                    </p>
+                  )}
+                {poem.title && (
+                  <p className="poem-reader-title !mt-0 shrink-0 whitespace-pre-line font-serif text-foreground/85">
+                    {poem.title}
+                  </p>
+                )}
+                {excerpted && (
+                  <span className="shrink-0 font-serif text-2xl font-normal tracking-[0.12em] text-[#AA381E]">
+                    节选
+                  </span>
+                )}
+              </div>
+              <div className="pt-[calc(var(--reader-poem-size)+2px)] [writing-mode:vertical-rl]">
+                <p className="poem-reader-author !mt-0 shrink-0 font-serif tracking-[0.10em] text-muted-foreground">
+                  {poem.author ?? '作者未核实'}
+                </p>
+              </div>
+            </header>
+          )}
+          {/* 小序在首页手机端继续隐藏；桌面新题署暂不展示，阅读室保留全文。 */}
+          {continuous &&
+            poem.prefaces.map((preface, index) => (
               <p
-                className={`poem-reader-title ml-3 whitespace-pre-line font-serif text-foreground/85 lg:ml-2.5 lg:mt-[var(--reader-poem-size)] ${continuous ? 'hidden lg:block' : ''}`}
+                key={index}
+                className={`ml-7 lg:ml-9 lg:mt-[var(--reader-poem-size)] max-h-[min(26rem,65dvh)] lg:max-h-[calc(11*var(--reader-poem-size)*1.12)] whitespace-pre-line font-serif text-[length:var(--reader-preface-size)] font-normal leading-[var(--reader-preface-line-height)] text-muted-foreground lg:[letter-spacing:0.08em] ${continuous ? 'hidden lg:block' : ''}`}
               >
-                {poem.title}
+                {preface}
               </p>
-            )}
-          </header>
-          {/* 小序最多占约 11 个正文字高；1.12 对应正文 0.12em 的字距。 */}
-          {poem.prefaces.map((preface, index) => (
-            <p
-              key={index}
-              className={`ml-7 lg:ml-9 lg:mt-[var(--reader-poem-size)] max-h-[min(26rem,65dvh)] lg:max-h-[calc(11*var(--reader-poem-size)*1.12)] whitespace-pre-line font-serif text-[length:var(--reader-preface-size)] font-normal leading-[var(--reader-preface-line-height)] text-muted-foreground lg:[letter-spacing:0.08em] ${continuous ? 'hidden lg:block' : ''}`}
-            >
-              {preface}
-            </p>
-          ))}
+            ))}
           {continuous ? (
             <ContinuousPoemBody segments={displayedSegments} />
           ) : (
-            <div className="poem-reader-body !mx-0 !w-max max-w-none text-foreground/90 lg:pt-[var(--reader-poem-size)]">
+            <div className="poem-reader-body !mx-0 !w-max max-w-none text-foreground/90 lg:flex lg:flex-row-reverse lg:items-start lg:pt-[var(--reader-poem-size)]">
               {desktopLines.map((line, index) => (
                 <span
                   key={line.start}
-                  style={{ '--home-stagger-index': Math.min(index, 8) } as CSSProperties}
+                  style={
+                    {
+                      '--home-stagger-index': Math.min(index, 8),
+                      writingMode: 'vertical-rl',
+                      textOrientation: 'mixed',
+                      width: 'calc(var(--reader-poem-size) * var(--reader-poem-line-height))',
+                    } as CSSProperties
+                  }
                   className={
-                    'poem-reader-line' + (line.sourceGapBefore ? ' poem-reader-source-gap' : '')
+                    'poem-reader-line whitespace-nowrap' +
+                    (line.sourceGapBefore ? ' poem-reader-source-gap' : '')
                   }
                 >
                   <PunctuatedPoemText text={line.text} bookRuns={desktopBookRuns[index]} />
@@ -427,49 +499,4 @@ function ContinuousPoemBody({ segments }: { segments: string[] }) {
       </div>
     </>
   )
-}
-
-/** 离屏探针也隐藏书名号，避免把不可见的字格计入预览宽度。 */
-function fillProbeBody(element: HTMLElement, segments: string[], continuous: boolean) {
-  element.replaceChildren()
-  const lines = continuous ? [] : buildPoemLines(segments.join('\n\n'))
-  const chunks = continuous ? [segments.join('\u3000')] : lines.map((line) => line.text)
-  const bookRuns = buildHomeBookTitleRuns(chunks)
-
-  for (const [index, runs] of bookRuns.entries()) {
-    const line = lines[index]
-    const container = continuous ? element : document.createElement('span')
-    if (line) {
-      container.className =
-        'poem-reader-line' + (line.sourceGapBefore ? ' poem-reader-source-gap' : '')
-    }
-
-    for (const part of runs) {
-      const partElement = document.createElement('span')
-      if (part.kind === 'marker') {
-        partElement.className = 'home-book-title-marker'
-        partElement.textContent = part.text
-      } else {
-        const textElement = part.kind === 'title' ? document.createElement('span') : partElement
-        if (part.kind === 'title') {
-          partElement.className = 'home-book-title'
-          textElement.className = 'home-book-title-text'
-        }
-        for (const run of buildPoemTextRuns(part.text)) {
-          const punctuation = document.createElement('span')
-          if (run.punctuation) punctuation.className = 'poem-reader-punctuation'
-          punctuation.textContent = run.text
-          textElement.append(punctuation)
-        }
-        if (part.kind === 'title') {
-          const lineElement = document.createElement('span')
-          lineElement.className = 'home-book-title-line'
-          lineElement.setAttribute('aria-hidden', 'true')
-          partElement.append(textElement, lineElement)
-        }
-      }
-      container.append(partElement)
-    }
-    if (!continuous) element.append(container)
-  }
 }

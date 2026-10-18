@@ -32,7 +32,7 @@ test('home search uses editorial heading and an unboxed input with matching unde
 })
 
 test('homepage uses phrase layout on desktop and continuous layout on mobile', () => {
-  assert.match(featuredDisplay, /writingMode: 'vertical-rl'/)
+  assert.match(featuredDisplay, /writingMode: continuous \? 'vertical-rl' : 'horizontal-tb'/)
   assert.match(featuredDisplay, /buildPoemLines\(displayedSegments.join/)
   assert.match(featuredDisplay, /buildPoemTextRuns\(/)
   assert.match(featuredDisplay, /<PunctuatedPoemText text=\{line.text\}/)
@@ -44,7 +44,8 @@ test('homepage uses phrase layout on desktop and continuous layout on mobile', (
   assert.match(recommendation, /<FeaturedPoemDisplay/)
   assert.match(recommendation, /<ReadPoemSeal/)
   assert.match(seal, /#AA381E/)
-  assert.match(seal, /font-sans/)
+  assert.match(seal, /fontFamily:/)
+  assert.match(seal, /gap-\[0\.18em\]/)
   assert.match(seal, /hover:bg-\[#AA381E\]/)
 })
 

@@ -28,7 +28,7 @@ export function DailyRecommendation({
   const sealRef = useRef<HTMLDivElement>(null)
   const [mobileSealLeft, setMobileSealLeft] = useState(0)
 
-  // 印章跟随实际诗文左缘，不参与正文的横向居中。
+  // 手机端：印章跟随实际诗文左缘；桌面直接由 Flex 布局居中。
   useLayoutEffect(() => {
     if (!poem || !continuous) return
     const area = recommendationRef.current
@@ -64,22 +64,22 @@ export function DailyRecommendation({
   return (
     <section aria-label="推荐作品" className="relative">
       {poem ? (
-        // 手机端仅在左侧为印章预留 40px，正文向右偏移 20px，使印章＋正文整体居中。
+        // 手机保留封板布局；桌面让印章和实际展示的诗文按内容宽度共同居中。
         <div
           ref={recommendationRef}
-          className="relative mx-auto grid w-full max-w-2xl grid-cols-[2.5rem_minmax(0,1fr)] items-end lg:grid-cols-[4rem_minmax(0,1fr)_4rem]"
+          data-home-recommendation-layout
+          className="relative mx-auto grid w-full max-w-2xl grid-cols-[2.5rem_minmax(0,1fr)] items-end lg:max-w-full lg:flex lg:w-max lg:gap-3 [--home-poem-em:1.375rem] lg:[--home-poem-em:1.5rem]"
         >
           <div
             ref={sealRef}
-            className="absolute bottom-0 z-10 flex shrink-0 lg:static lg:justify-end lg:pr-3"
-            style={{ left: mobileSealLeft }}
+            className="absolute bottom-0 z-10 flex shrink-0 lg:static -translate-y-[var(--home-poem-em)]"
+            style={continuous ? { left: mobileSealLeft } : undefined}
           >
             <ReadPoemSeal disabled={disabled} onClick={() => onRead(poem.id)} />
           </div>
-          <div className="col-start-2 min-w-0">
+          <div className="col-start-2 min-w-0 lg:w-max lg:shrink-0">
             <FeaturedPoemDisplay poem={poem} continuous={continuous} />
           </div>
-          <div aria-hidden="true" className="hidden lg:col-start-3 lg:block" />
         </div>
       ) : (
         <p role="status" className="py-20 text-center text-sm text-muted-foreground">
