@@ -1,5 +1,7 @@
 # Poeticus 架构盘点｜2026-10-18 第一轮
 
+> 源码快照：main `8b652ad7a46548151d974dfc4ce698453624872e`（对应已发布 `v0.6.0`）；PR 分支中的本文件是调查记录，不代表新的实时运行状态。
+
 > 状态：**只读调查快照 / Draft**，不是现行架构的新权威文档，也不是远期技术选型决定。
 > 负责追踪：[Issue #336](https://github.com/montricwang/poeticus/issues/336)。
 > 范围：第一轮只恢复 main 的运行边界、现有设计与研究状态，后续再补测试/PR 证据、全部开放 Issue 分类及目标架构。**不要将本报告中提及的候选能力解释为已实现。**
@@ -32,15 +34,26 @@ flowchart TB
     Serve["WSL 本地 Retrieval Serving\nQwen + FAISS + BM25 + RRF"]
     RetData[("Werneror 检索语料\n853385 Works")]
 
+    Local["浏览器 localStorage：按作品保存会话与草稿"]
+    LLM["外部兼容 OpenAI 的模型 API"]
+    Cnk["CNKGraph HTTP API"]
+    Connector["Windows cloudflared"]
+
     Reader --> App
+    Reader <-->|"本地会话与草稿"| Local
     App -->|"作品、搜索、每日推荐"| PG
     App -->|"对话 API / SSE"| Chat
     App --> Analyze
+    Chat --> LLM
+    Analyze --> LLM
     Chat -->|"典故、成句查询"| Ev
+    Ev --> Cnk
     Chat -->|"前代诗文候选"| Client
-    Client --> Tunnel --> Serve
+    Client --> Tunnel --> Connector --> Serve
     Serve --> RetData
 ```
+
+图中省略了仅在特定生产配置下启用的匿名 AI 配额中间件（`backend/public_ai_guard.py`）；`/health` 仅做进程存活检查，不等于数据库、模型或 Retrieval 的实时健康证明。
 
 这里区分**两套 Corpus**：
 
@@ -87,6 +100,19 @@ flowchart LR
 
 **提示**：「可施工」表示近期目标已清楚，仍需按对应 Issue 核对最小变更、Baseline 和验收，不能仅凭此表提交业务 PR。
 
+### 自动测试与真实环境证据（调查快照）
+
+| 主路径 | 已找到的可执行测试 / 质量入口 | 运行证据与限制 |
+| --- | --- | --- |
+| 作品库与私有数据发布 | [Corpus API](../../tests/test_corpus_api.py)、[Corpus 发布校验](../../tests/corpus/test_public_corpus_transfer.py)、[数据库迁移](../../tests/corpus/test_migrations.py) | 代码与测试存在；本轮未执行数据库迁移或真实 Railway 查询 |
+| Agent、对话与 SSE | [Agent 回归](../../tests/test_agent.py)、[聊天 API](../../tests/test_chat_api.py)、[SSE 测试](../../tests/test_chat_stream.py) | 只读核实测试入口；未在本轮执行真实 LLM 调用 |
+| 整首赏析 | [模型赏析测试](../../tests/test_model_analysis.py) | 本轮未测生成质量及其来源真实性；该调用与 Agent Tool Loop 分离 |
+| Poem Retrieval | [Client/Server 集成测试](../../tests/retrieval/test_client_server_integration.py)、[Serving 协议](../../tests/retrieval/test_serving_server.py)、[RRF/资格筛选](../../tests/retrieval/test_fusion.py) | [部署文档](../deployment.md)记录 **2026-10-14** Railway→Tunnel→WSL 真实 E2E；**不是本轮实时可用性保证** |
+| 浏览器 UI 与本地状态 | [前端 Playwright](../../frontend/e2e/)、[localStorage 单测](../../frontend/tests/chat-storage.test.mjs)、[首页首屏单测](../../frontend/tests/home-first-screen.test.mjs) | 代码与测试用例存在；本轮没有真机截图或 Playwright 运行记录 |
+| 公网匿名 AI 配额 | [PublicAIGuard 测试](../../tests/test_public_ai_guard.py) | 后端用 PostgreSQL 维护共享日额度，进程内控制短期突发；不等于已经验证所有跨实例并发条件 |
+
+[Python/前端 CI 定义](../../.github/workflows/tests.yml) 和 [浏览器 E2E Workflow](../../.github/workflows/browser-e2e.yml) 提供自动门禁；**有测试入口 ≠ 本次执行并通过，更不等于现场服务链通过**。离线 AI 评测资产见 [Eval 说明](../../evals/README.md)，其小规模 Case 也不代表全站真实准确率。
+
 ## 4. 已能确认的跨域约束
 
 - **作品身份与文献来源优先于索引细节**：阅读作品 UUID、检索 Work ID、外部文献卷则/版本和原文锚点不可混为同一 ID。相关 [Corpus Database](https://github.com/montricwang/poeticus/blob/main/docs/architecture/corpus-database.md)、[#133](https://github.com/montricwang/poeticus/issues/133)。
@@ -102,7 +128,7 @@ flowchart LR
 | #119 与 Roadmap 的 Reranker | [#119](https://github.com/montricwang/poeticus/issues/119) 为**离线实验**；Roadmap 停止线指不惯性纳入当前**生产主线** | 分类时注明两者并不互相否定，不急着改算法 |
 | 既有 Agent Map 与产品整体 | [Agent Capability Map](https://github.com/montricwang/poeticus/blob/main/docs/architecture/agent-capability-map.md) 是 AI 证据子图，非全平台地图 | 总览要覆盖阅读、用户状态、离线数据等，不改写原 Map 细节 |
 | 研究方向分散 | [文学学习研究规划](https://github.com/montricwang/poeticus/blob/main/docs/literary-learning-research-plan.md) 与 [Critic 研究提案](https://github.com/montricwang/poeticus/blob/main/docs/research/critic-self-evolution.md) 有交叉；#311 后来明确短期 P0 | 恢复各自目标和最新优先级；不直接删文件或合并研究结论 |
-| 完整 Issue 治理 | 本轮 GitHub 查询当前约 79 条开放 Issue，已有不少历史关闭记录 | 下一阶段按**领域归并 / 状态证据**，禁止批量复述、改写或关闭 |
+| 完整 Issue 治理 | 本轮 GitHub 查询当前约 80 条开放 Issue（含协调总单 #336），已有不少历史关闭记录 | 下一阶段按**领域归并 / 状态证据**，禁止批量复述、改写或关闭 |
 
 ## 6. 下一轮验证入口与停止线
 
