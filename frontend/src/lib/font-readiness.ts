@@ -2,7 +2,7 @@
  * 等字体排版稳定后入场；字体下载迟滞时也不能让页面一直保持透明。
  * 返回清理函数，供 React Effect 卸载时取消尚未触发的回调。
  */
-export function whenFontsReadyOrTimeout(onReady: () => void, timeoutMs = 900): () => void {
+export function whenFontsReadyOrTimeout(onReady: () => void, timeoutMs = 100): () => void {
   let active = true
   let completed = false
   const reveal = () => {

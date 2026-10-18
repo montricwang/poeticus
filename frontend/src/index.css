@@ -380,7 +380,7 @@ html.theme-transition #root * {
   @keyframes home-search-float-up {
     from {
       opacity: 0;
-      transform: translateY(14px);
+      transform: translateY(20px);
     }
     to {
       opacity: 1;
@@ -388,14 +388,17 @@ html.theme-transition #root * {
     }
   }
 
-  /* 题字先起，输入框和它的下划线作为第二拍一起上浮。 */
+  /* 标题和输入框依次上浮，底部分割线等搜索框就绪后再由中心展开。 */
   .home-search-intro-revealing .home-search-intro-title {
-    animation: home-search-float-up 190ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: home-search-float-up 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
-  .home-search-intro-revealing .home-search-intro-form,
+  .home-search-intro-revealing .home-search-intro-form {
+    animation: home-search-float-up 330ms 90ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
   .home-search-intro-revealing .home-search-intro-divider {
-    animation: home-search-float-up 195ms 60ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: home-line-reveal 170ms 450ms ease-out both;
   }
 
   /* 搜索结果只错峰前八项；分页不会因为二十项串行播放而拖慢。 */
