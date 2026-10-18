@@ -788,7 +788,7 @@ test('selected poem text draws one annotation underline per actual line', async 
   } else {
     await page.goto('/#reader')
   }
-  const body = page.getByRole('region', { name: '诗词阅读' }).locator('.poem-reader-body')
+  const body = page.locator('.poem-reader .poem-reader-body')
   await expect(body).toContainText('晚秋天')
 
   const originalText = await body.textContent()
