@@ -603,6 +603,51 @@ test('mobile catalog title preserves full-width middle dots', async ({ page }) =
   await expect(title).toHaveCSS('font-family', /Noto Sans SC Variable/)
 })
 
+test('font readiness can stall without hiding mobile home and reader forever', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  // 模拟 iOS 字体下载长时间未完成，旧实现会永远停留在 opacity: 0。
+  await page.addInitScript(() => {
+    Object.defineProperty(document.fonts, 'ready', {
+      configurable: true,
+      get: () => new Promise<FontFaceSet>(() => {}),
+    })
+  })
+  await page.goto('/')
+
+  const recommendation = page.getByRole('region', { name: '推荐作品' })
+  const searchSlot = page.locator('[data-home-search-slot]')
+  await expect(recommendation).toContainText('晚秋天')
+  await expect(recommendation).toHaveCSS('opacity', '1', { timeout: 4000 })
+  await expect(searchSlot).toHaveCSS('opacity', '1', { timeout: 4000 })
+  await expect(searchSlot).not.toHaveAttribute('inert', '')
+
+  await page.getByRole('button', { name: '阅读室' }).click()
+  const reader = page.getByRole('region', { name: '诗词阅读' }).locator('.poem-reader')
+  await expect(reader).toContainText('晚秋天')
+  await expect(reader).toHaveCSS('opacity', '1', { timeout: 4000 })
+
+  await page.getByRole('button', { name: 'Poeticus' }).click()
+  await expect(recommendation).toHaveCSS('opacity', '1', { timeout: 4000 })
+  await expect(searchSlot).toHaveCSS('opacity', '1', { timeout: 4000 })
+  await expect(searchSlot).not.toHaveAttribute('inert', '')
+})
+
+test('direct mobile reader entry does not wait indefinitely for fonts', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await page.addInitScript(() => {
+    Object.defineProperty(document.fonts, 'ready', {
+      configurable: true,
+      get: () => new Promise<FontFaceSet>(() => {}),
+    })
+  })
+  await page.goto('/#reader')
+  const reader = page.getByRole('region', { name: '诗词阅读' }).locator('.poem-reader')
+  await expect(reader).toContainText('晚秋天')
+  await expect(reader).toHaveCSS('opacity', '1', { timeout: 4000 })
+})
+
 test('first entries are immediate for reduced-motion users', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')

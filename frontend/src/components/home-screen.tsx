@@ -8,6 +8,7 @@ import { HomeSearch } from '@/components/home-search'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import type { Poem, PoemFilters, PoemPage } from '@/data/poem-library'
+import { whenFontsReadyOrTimeout } from '@/lib/font-readiness'
 
 type HomeScreenProps = {
   featured: Poem | null
@@ -81,7 +82,7 @@ export function HomeScreen({
     let disposed = false
     let firstFrame = 0
     let secondFrame = 0
-    void document.fonts.ready.then(() => {
+    const cancelFontWait = whenFontsReadyOrTimeout(() => {
       if (disposed) return
       firstFrame = window.requestAnimationFrame(() => {
         secondFrame = window.requestAnimationFrame(() => {
@@ -92,6 +93,7 @@ export function HomeScreen({
     })
     return () => {
       disposed = true
+      cancelFontWait()
       window.cancelAnimationFrame(firstFrame)
       window.cancelAnimationFrame(secondFrame)
     }
