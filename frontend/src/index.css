@@ -99,7 +99,9 @@
   --reader-punctuation-opacity: 20%;
   /* 竖排段间距：JS 列数预算与 CSS 共用这一比例。 */
   --reader-source-gap-scale: 0.9;
+  /* 唯一品牌强调色；小字在深色背景下使用同色系亮化的可读版本。 */
   --editorial-red: #aa381e;
+  --editorial-red-readable: var(--editorial-red);
   /* 搜索区不在推荐容器内，字距必须定义在共同祖先上。 */
   --home-search-heading-letter-spacing: 0.12em;
   --card: oklch(1 0 0);
@@ -114,7 +116,7 @@
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
+  --destructive: var(--editorial-red-readable);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
@@ -185,6 +187,7 @@
 
 @theme inline {
   --color-editorial-red: var(--editorial-red);
+  --color-editorial-red-readable: var(--editorial-red-readable);
   --font-heading: var(--font-sans);
   --font-sans:
     'Inter Variable', 'PingFang SC', 'Noto Sans SC Variable', 'Noto Sans SC', 'Source Han Sans SC',
@@ -272,7 +275,9 @@ html.theme-transition #root * {
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  /* #AA381E 在深色背景上的对比度不足以用于小字；只提亮文字用途。 */
+  --editorial-red-readable: color-mix(in srgb, var(--editorial-red) 70%, white);
+  --destructive: var(--editorial-red-readable);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
@@ -285,7 +290,7 @@ html.theme-transition #root * {
 
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: var(--editorial-red);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);

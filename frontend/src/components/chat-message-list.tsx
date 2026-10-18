@@ -84,7 +84,7 @@ export function ChatMessageList({
           <ArrowDown className="size-4" />
           {hasUnreadReply && (
             <>
-              <span className="size-1.5 rounded-full bg-violet-500" />
+              <span className="size-1.5 rounded-full bg-editorial-red-readable" />
               <span>新回复</span>
             </>
           )}
