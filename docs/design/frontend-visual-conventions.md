@@ -20,7 +20,7 @@ W3C [中文排版需求 CLReq](https://www.w3.org/TR/clreq/) 描述汉字竖排�
 | 明暗主题、印章中国红、圆角 | frontend/src/index.css 的 :root、.dark、@theme inline。引用竖线、链接、未读提示、错误语义色、印章与节选统一使用 --editorial-red；原色 --editorial-red-base = #AA381E，深色模式统一 75% 不透明度 |
 | 装饰分隔线 | --editorial-divider-thickness；不代表所有边框必须使用相同厚度 |
 | 首页正文大小、字距、印章字距、作者光学校正、宽度预留 | index.css 的 .home-recommendation-layout 与 .home-featured-poem |
-| 阅读页主标题、正文、作者、小序的字级和行高 | index.css 的 .poem-reader；首页使用有范围的覆盖，不污染阅读页 |
+| 阅读室题头、正文的字级与行高 | index.css 的 .poem-reader 提供基础参数，.poem-reader-content 覆盖阅读室专用字号与间距；首页推荐保留自身覆盖 |
 | 印章字体和字形排布 | .home-read-seal、.home-read-seal-glyphs，苹果苹方优先 |
 | 正文跨段距离 | --reader-source-gap-scale，同时被 JS 的宽度预算和 CSS 的块间距读取 |
 | 桌面应用外壳、阅读页脚 | --desktop-shell-max-width、--reader-footer-max-width；阅读区列份额另用 --reader-column-share |
@@ -34,6 +34,14 @@ W3C [中文排版需求 CLReq](https://www.w3.org/TR/clreq/) 描述汉字竖排�
 - 色值只定义在 --editorial-red-base = #AA381E。浅色 --editorial-red 为原色 100%；深色 --editorial-red 为原色 75% 不透明度，**所有使用处统一**，包括印章边框/文字/悬停、引用竖线/下划线、链接、未读点与 destructive 错误提示，不再为装饰线另建一套透明度。引用正文继续用 text-muted-foreground。
 - 引用竖线使用统一的 --editorial-red 参数；引用文字保留灰色。阅读区中已引用的原文在文字下方绘制细红线，入场时由左向右划出，取消引用即消失；不覆盖文字底色。此标记是独立叠加层，不改变正文 DOM 的字符顺序、复制或引用偏移。
 - **不染红**正文、普通分割线、黑白主按钮或中性等待状态。红色负责强调，而不是覆盖所有灰阶。
+
+### 阅读室题头与字号（桌面、手机）
+
+- 阅读室主词牌：手机 30px、宽度 ≥ 640px 为 36px；正文 22px、行高 1.75。两者在本轮未调整。
+- **作品标题**：20px，行高 1.5；**作者**：16px、思源宋体、字重 500、行高 1.5、字距 0.06em、灰色；**小序**：16px、行高 1.65、灰色、左对齐。标题、作者与小序的这些字号在手机和桌面一致。
+- 题头内部按已确认的视觉节奏：**词牌→作品标题 4px**，**作品标题→作者 8px**（无作品标题时为词牌→作者 8px），**作者→小序 12px**，连续多段小序相隔 12px；**最后一个题头元素→正文 24px**。有无标题、小序由内容决定，不为缺席元素留空。
+- 作者字重 500 定义在 .poem-reader，因此**首页推荐和阅读室共用作者字重**。阅读室的字号、行高、字距和题头间距在 .poem-reader-content 中设置；首页推荐保持自己的作者字号、字距及光学校正，不把阅读室的间距带到竖排首页。
+- 调整入口集中在 frontend/src/index.css：--reader-title-margin-top（4px）、--reader-author-margin-top（8px）、--reader-heading-item-gap（12px）、--reader-header-body-gap / --reader-preface-body-gap（24px）。小序存在时，题头与小序的间距由邻接规则覆盖为 12px。
 
 ## 三、首页有效的视觉规则
 

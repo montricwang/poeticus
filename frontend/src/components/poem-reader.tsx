@@ -49,7 +49,7 @@ export function PoemReader({ work, onSelect, selected, entrance = 'done' }: Poem
                 {work.title}
               </p>
             )}
-            <p className="poem-reader-author text-muted-foreground">
+            <p className="poem-reader-author font-serif text-muted-foreground">
               {work.author ?? '作者未核实'}
             </p>
           </header>
