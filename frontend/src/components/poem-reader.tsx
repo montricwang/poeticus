@@ -9,10 +9,11 @@ import type { SelectedText } from '@/types/poem'
 type PoemReaderProps = {
   work: Poem
   onSelect: (selection: SelectedText) => void
+  selected: SelectedText | null
   entrance?: 'waiting' | 'revealing' | 'done'
 }
 
-export function PoemReader({ work, onSelect, entrance = 'done' }: PoemReaderProps) {
+export function PoemReader({ work, onSelect, selected, entrance = 'done' }: PoemReaderProps) {
   const poem = poemText(work)
   const readerRef = useRef<HTMLDivElement>(null)
   return (
@@ -62,7 +63,12 @@ export function PoemReader({ work, onSelect, entrance = 'done' }: PoemReaderProp
             </p>
           ))}
 
-          <PoemBody poem={poem} selectionScopeRef={readerRef} onSelect={onSelect} />
+          <PoemBody
+            poem={poem}
+            selectionScopeRef={readerRef}
+            onSelect={onSelect}
+            selected={selected}
+          />
         </article>
       </div>
     </div>

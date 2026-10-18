@@ -571,7 +571,12 @@ test('staggering poem lines never enables a transient vertical scrollbar', async
   const samples = await page.evaluate(async () => {
     const port = document.querySelector<HTMLElement>('[data-recommendation-scrollport]')
     if (!port) throw new Error('Missing featured poem scrollport')
-    const values: { overflowX: string; overflowY: string; pageOverflowY: number; pageOverflowX: number }[] = []
+    const values: {
+      overflowX: string
+      overflowY: string
+      pageOverflowY: number
+      pageOverflowX: number
+    }[] = []
     for (let frame = 0; frame < 55; frame++) {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
       values.push({
@@ -771,6 +776,46 @@ test('font readiness can stall without hiding mobile home and reader forever', a
   await expect(recommendation).toHaveCSS('opacity', '1', { timeout: 4000 })
   await expect(searchSlot).toHaveCSS('opacity', '1', { timeout: 4000 })
   await expect(searchSlot).not.toHaveAttribute('inert', '')
+})
+
+test('selected poem text draws one annotation underline per actual line', async ({ page }) => {
+  // Disable the draw animation so width assertions measure final geometry.
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
+    // The desktop app enters the reader through its navigation control.
+    await page.goto('/')
+    await page.getByRole('button', { name: '阅读室' }).click()
+  } else {
+    await page.goto('/#reader')
+  }
+  const body = page.locator('.poem-reader .poem-reader-body')
+  await expect(body).toContainText('晚秋天')
+
+  const originalText = await body.textContent()
+  await body.evaluate((element) => {
+    const lines = element.querySelectorAll('.poem-reader-line')
+    if (lines.length < 2) throw new Error('Two visual poem lines are required')
+    const range = document.createRange()
+    range.setStart(lines[0], 0)
+    range.setEnd(lines[1], lines[1].childNodes.length)
+    const selection = window.getSelection()
+    if (!selection) throw new Error('Text selection is unavailable')
+    selection.removeAllRanges()
+    selection.addRange(range)
+    document.dispatchEvent(new Event('selectionchange'))
+  })
+
+  const marks = body.locator('.poem-quote-underline')
+  await expect(marks).toHaveCount(2)
+  const positions = await marks.evaluateAll((elements) =>
+    elements.map((element) => {
+      const rect = element.getBoundingClientRect()
+      return { top: rect.top, width: rect.width }
+    }),
+  )
+  expect(Math.abs(positions[0].top - positions[1].top)).toBeGreaterThan(5)
+  expect(positions.every(({ width }) => width > 0 && width < 300)).toBe(true)
+  expect(await body.textContent()).toBe(originalText)
 })
 
 test('direct mobile reader entry does not wait indefinitely for fonts', async ({ page }) => {

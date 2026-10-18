@@ -25,7 +25,12 @@ test('source paragraph spacing uses one ratio for CSS and JS', () => {
 })
 
 test('editorial accent and seal spacing are named tokens, not duplicated hex literals', () => {
-  assert.match(css, /--editorial-red:\s*#aa381e/i)
+  assert.match(css, /--editorial-red-base:\s*#aa381e/i)
+  assert.match(css, /--editorial-red:\s*var\(--editorial-red-base\)/)
+  assert.match(
+    css,
+    /--editorial-red:\s*color-mix\(in srgb, var\(--editorial-red-base\) 75%, transparent\)/,
+  )
   assert.match(css, /--color-editorial-red:\s*var\(--editorial-red\)/)
   assert.match(css, /--home-seal-glyph-gap:\s*0\.18em/)
   assert.match(seal, /home-read-seal-glyphs/)

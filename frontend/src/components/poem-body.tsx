@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 
 import { buildPoemLines, buildPoemTextRuns } from '@/lib/poem-layout'
@@ -20,6 +20,7 @@ type PoemBodyProps = {
   poem: string
   selectionScopeRef: RefObject<HTMLDivElement | null>
   onSelect: (selection: SelectedText) => void
+  selected: SelectedText | null
 }
 
 /**
@@ -50,10 +51,118 @@ function textPrefixRect(line: HTMLElement, length: number): DOMRect | null {
   return null
 }
 
+type QuoteUnderline = { left: number; top: number; width: number }
+
+/**
+ * 对引用范围内的每个叶子文本节点分别取几何信息。
+ * 对跨父子节点创建的整段 Range 调用 getClientRects() 会把块级行盒、
+ * 标点 span 和文字矩形一起返回，同一行就会出现重复或超长标线。
+ * 保留 UTF-16 偏移对应关系，不拆分原文 DOM，也不依赖浏览器选区。
+ */
+function quoteTextRects(
+  root: HTMLElement,
+  start: number,
+  end: number,
+): { rect: DOMRect; line: Element }[] {
+  const fragments: { rect: DOMRect; line: Element }[] = []
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  let cursor = 0
+
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node as Text
+    const length = text.data.length
+    const from = Math.max(0, start - cursor)
+    const to = Math.min(length, end - cursor)
+
+    if (to > from) {
+      const line = text.parentElement?.closest('.poem-reader-line')
+      if (line) {
+        const range = document.createRange()
+        range.setStart(text, from)
+        range.setEnd(text, to)
+        for (const rect of range.getClientRects()) {
+          if (rect.width > 0.5 && rect.height > 0.5) fragments.push({ rect, line })
+        }
+      }
+    }
+
+    cursor += length
+    if (cursor >= end) break
+  }
+  return fragments
+}
+
 /** 负责诗文正文的排版、选区引用和复制交互。 */
-export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
+export function PoemBody({ poem, selectionScopeRef, onSelect, selected }: PoemBodyProps) {
   // 正文容器定义选区偏移的计算范围。
   const poemRef = useRef<HTMLParagraphElement>(null)
+  const [quoteUnderlines, setQuoteUnderlines] = useState<QuoteUnderline[]>([])
+
+  useLayoutEffect(() => {
+    const block = poemRef.current
+    if (
+      !block ||
+      !selected ||
+      selected.start >= selected.end ||
+      poem.slice(selected.start, selected.end) !== selected.text
+    ) {
+      setQuoteUnderlines([])
+      return
+    }
+
+    function measure() {
+      if (!block || block.textContent !== poem) return
+      const fragments = quoteTextRects(block, selected!.start, selected!.end)
+      const rows: { line: Element; left: number; right: number; top: number; bottom: number }[] = []
+
+      for (const { rect, line } of fragments) {
+        // 必须属于同一个诗行，且字形盒子在纵向上确实重叠，才算同一显示行；
+        // 不再按 bottom 相差 3px 猜测，也不会把整块的行盒误当成文字宽度。
+        const row = rows.find((item) => {
+          if (item.line !== line) return false
+          const overlap = Math.min(item.bottom, rect.bottom) - Math.max(item.top, rect.top)
+          return overlap > Math.min(item.bottom - item.top, rect.height) / 2
+        })
+        if (row) {
+          row.left = Math.min(row.left, rect.left)
+          row.right = Math.max(row.right, rect.right)
+          row.top = Math.min(row.top, rect.top)
+          row.bottom = Math.max(row.bottom, rect.bottom)
+        } else {
+          rows.push({
+            line,
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+          })
+        }
+      }
+
+      const origin = block.getBoundingClientRect()
+      setQuoteUnderlines(
+        rows.map((row) => ({
+          left: row.left - origin.left,
+          top: row.bottom - origin.top + 1,
+          width: row.right - row.left,
+        })),
+      )
+    }
+
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(block)
+    if (block.parentElement) observer.observe(block.parentElement)
+    let active = true
+    void document.fonts.ready.then(() => {
+      if (active) measure()
+    })
+    return () => {
+      active = false
+      observer.disconnect()
+    }
+  }, [poem, selected])
+
   // 根据原文生成用于展示的诗行。
   const lines = buildPoemLines(poem)
 
@@ -229,7 +338,7 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
   return (
     <p
       ref={poemRef}
-      className="poem-reader-body mx-auto w-fit max-w-full cursor-text select-text whitespace-normal font-serif text-foreground/90 selection:bg-editorial-red/20 selection:text-foreground dark:selection:bg-editorial-red/45 dark:selection:text-foreground"
+      className="poem-reader-body relative mx-auto w-fit max-w-full cursor-text select-text whitespace-normal font-serif text-foreground/90"
     >
       {/* 各诗行及标点节点的文本按 DOM 顺序拼接，应等于完整原文。 */}
       {lines.map((line, index) => (
@@ -249,6 +358,15 @@ export function PoemBody({ poem, selectionScopeRef, onSelect }: PoemBodyProps) {
           )}
         </span>
       ))}
+      {selected &&
+        quoteUnderlines.map((line, index) => (
+          <span
+            key={selected.start + '-' + selected.end + '-' + index}
+            aria-hidden="true"
+            className="poem-quote-underline"
+            style={{ left: line.left, top: line.top, width: line.width }}
+          />
+        ))}
     </p>
   )
 }
