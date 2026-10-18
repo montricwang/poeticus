@@ -62,6 +62,8 @@ python -m scripts.corpus.db_import --import
 
 只有 schema、没有作品数据时，目录为空是正常现象。
 
+前端排版与样式施工前，请先读 [前端视觉与排版规范](design/frontend-visual-conventions.md)：该文件区分行为契约、编辑设计、光学校正，并标明参数的权威入口。
+
 ## 4. 启动本地开发环境
 
 后端：

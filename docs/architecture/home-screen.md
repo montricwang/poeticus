@@ -1,15 +1,15 @@
 # 首页：每日推荐的布局与预览规则
 
-本文只记录当前首页的有效实现。10 月 17 日的试验与封板过程见 [Issue #302](https://github.com/montricwang/poeticus/issues/302)；阅读室排版是独立职责，不应照搬首页截断规则。
+本文只记录当前首页的有效实现。 视觉参数和审美/行为区分见 [前端视觉与排版规范](../design/frontend-visual-conventions.md)。10 月 17 日的试验与封板过程见 [Issue #302](https://github.com/montricwang/poeticus/issues/302)；阅读室排版是独立职责，不应照搬首页截断规则。
 
 ## 组件与数据
 
 - `frontend/src/components/home-screen.tsx`（`HomeScreen`）：组合导航、推荐槽位、分割线和馆藏搜索；通过 `ResizeObserver` 测量推荐槽位，将剩余高度写入 `--home-classic-max-height`。每日推荐由上游 `featured` 提供，首页不生成另一套推荐或会话。
-- `frontend/src/components/daily-recommendation.tsx`（`DailyRecommendation`）：排布印章与作品，印章点击后进入阅读室。手机端取两者横向组合的视觉中心；桌面端保留独立的三栏布局。
+- `frontend/src/components/daily-recommendation.tsx`（`DailyRecommendation`）：排布印章与作品，印章点击后进入阅读室。手机端沿用已封板的印章跟随正文左缘定位；桌面端以 Flex 将「印章＋真实诗文宽度」整体居中。
 - `frontend/src/components/featured-poem-display.tsx`（`FeaturedPoemDisplay`、`ContinuousPoemBody`）：根据空间决定预览哪些完整片段，并将手机正文断为竖列。纯文本列划分由 `frontend/src/lib/home-preview-columns.ts` 的 `arrangeHomeColumns` 负责。
 - `frontend/src/components/home-search.tsx`：馆藏搜索独立于每日推荐；未提交搜索时搜索区靠近首屏底部，提交后切换到结果视图。
 
-首页不提供测试样本切换按钮；每日推荐统一由上游作品数据决定。排版回归仍通过自动化测试中的固定样本验证。
+正式首页不提供样本切换按钮；仅在 Vite 开发环境的桌面首页右下角提供十个词牌的临时排版样本入口，通过现有馆藏 API 读取真词，点击「恢复今日推荐」回到每日推荐。生产构建不显示这一入口。
 
 ## 首页搜索模式（Issue #308）
 
@@ -33,6 +33,15 @@
 - 当前移动断列模式以 `<1024px` 判断；这只是现行实现，不表示所有平板宽度及横屏已完成独立验收。桌面沿用另一种逐句竖排方式。
 
 上述取舍已在 iPhone 17 上获得用户的阶段性视觉认可，不再继续主动调节正文列数、纵向字数或断列代价。**这是手机竖屏的阶段性封板，不是对所有极小屏、横屏或浏览器环境的全面验收。**
+
+## 桌面与 iPad 横屏的宽度约束（2026-10-18）
+
+- `>=1024px` 采用桌面逐句竖排。推荐区真实宽度减去印章、12px 间距及安全余量，得到唯一的诗文宽度预算；不把 `w-max`、滚动窗口的收缩结果当作另一份预算。
+- **桌面排版结构**：诗文最外层保持普通的 `horizontal-tb` 横向 Flex（`row-reverse`）；只有标题列、作者列与每条正文列独立使用 `writing-mode: vertical-rl`。每条正文列的物理宽度明确为 `font-size × line-height`；整个「印章＋诗文」自然按内容收缩并共同居中，印章与诗文保持 12px 间距。不要再给整个竖排 `article` 赋予测量得来的固定宽度——此前 Safari 在这一步出现与 Chrome 不同的布局结果。
+- 桌面 JS 只读取页面实际题署宽度与正文计算后的 `line-height`（每个 `.poem-reader-line` 的横向步长），加上分段间距来决定最多放几列。最终 DOM 自身的横向 Flex 自然计算宽度；不再克隆整首 `vertical-rl` 文章到 `document.body` 做第二次宽度测量，也不用 `overflow-hidden` 兜底裁字或横向滚动。
+- 全文可放下则展示全文；超出时按 `body_segments` 的原有分组顺序只保留尽量多的**完整分组**，下一分组放不下就停止，允许留白。仅当首个分组也放不下时才退回按完整视觉诗句截断，并标记「节选」。不再跨分组逐句补满。`body_segments` 不保证等同词学意义上的上下片。
+- 桌面首页题署与移动题署独立：主标题/词题、作者分列，桌面小序隐藏，阅读室保持全文；手机仍使用最多五列的原有断列规则。
+- 2026-10-18 已在 Chromium 的十个真实词牌 × 1024/1194/1280/1440/1920px 共 50 组确认水平居中、无截列和随宽度增加不丢列；移动端 320/390/402/430/820/1023px 做过三个作品的浏览器回归。**iPad Safari 真机仍需复验**，见 Issue #327，不能用 Chromium 模拟代替真机结论。
 
 ## 验证与已知边界
 

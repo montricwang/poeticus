@@ -30,6 +30,7 @@
 | 去哪里 | 要找的答案 |
 | --- | --- |
 | `docs/architecture/` | **现在**的系统组件、数据模型和接口 |
+| `docs/design/` | 当前有效视觉设计、光学校正与样式参数入口；单纯美学数字不写 ADR |
 | `docs/development.md` / `docs/deployment.md` | **现在**怎么安装、启动、部署和排障 |
 | `docs/corpus/` | EPUB 具体规则与复核操作，不是跨系统 ADR |
 | GitHub Issues / `docs/roadmap.md` | 尚未达成决定或等待条件触发的工作 |
