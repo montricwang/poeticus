@@ -74,4 +74,31 @@ python -m scripts.experiments.document_rag_lexical_baseline
 .venv/bin/python -m scripts.experiments.document_rag_dense_hybrid
 ```
 
-**2026-10-19 的实际验证边界**：14 个回归测试通过；使用真实 Qwen、3 条合成文献与 1 题已打通编码→排序→融合→评分→报告。真实四书 916 条向量缓存完成了 **7/58 个批次**，CPU 端尚未完成全部编码，所以**没有 Dense 或 Hybrid 的四书评测分数**。已有 BM25 成绩保持不变；不能把合成 Smoke 的命中率当真实评测结果。编码期间没有停止或重启 Poem Retrieval 服务，也未修改生产接口。
+**2026-10-19 已完成**：916 条向量缓存全量 **58/58 批**，16 道开发题真实对照结果：BM25 Hit@5=9/16、Dense=10/16、Hybrid=11/16；具体逐题结果见 `document_retrieval_comparison_v0.1.json`。真实 Qwen 的编解码与测试均已运行。该成绩衡量检索 Gold 命中情况，不代表模型回答正确率。未改动生产 Agent 或 Poem Retrieval。
+
+## 第三阶段：本地 RAG 完整问答（LLM Only / Hybrid / Agentic Hybrid）
+
+独立入口：`scripts/experiments/document_rag_answers.py`。复用上述原始语料、Qwen 文献向量和 Hybrid，不改生产 Poeticus Agent/Tools/前端。通过现有 `.env` 中的 `LLM_API_KEY`、`POETICUS_LLM_MODEL` 与 `LLM_BASE_URL` 调用真实 LLM API（可能产生费用）。使用同一模型、`temperature=0` 和通用问答提示语；RAG 路线增加文献证据。
+
+- **LLM Only**：直接回答，不检索。
+- **Hybrid**：原始问题 → BM25 + Qwen Dense → RRF Top5 → 附带原文与出处后回答。
+- **Agentic Hybrid**：同一 LLM 通过 `search_document_corpus` Tool Call 生成 1–2 条补充查询；保留原问题，多条 Hybrid 查询融合排序 → Top5 证据 → 回答。无独立 Planner 服务或别名表。
+
+原文片段有编号、书名、卷次、标题、来源 section key。自动检查只保证**引用编号存在**，不保证被引用的原文能支持相应结论。报告保留查询、证据、回答、检索 Gold 是否命中及耗时；**答案正确性与误读仍待人工审阅**。模型不会看到 Gold 答案或 Gold 引文；仍只跑 16 道 development 题。
+
+```bash
+# 单题前台执行，实际调用模型 API
+.venv/bin/python -u -m scripts.experiments.document_rag_answers --case-id BAI_06
+
+# 全 16 道开发题：耗时较长，会有真实 API 费用
+.venv/bin/python -u -m scripts.experiments.document_rag_answers --all
+
+# 只测指定模式时必须用另一份报告，避免不同条件混合
+.venv/bin/python -u -m scripts.experiments.document_rag_answers --limit 2 --modes hybrid --output ../poeticus-data/document-corpus/evals/results/hybrid_only.json
+```
+
+报告位于私有 `../poeticus-data/document-corpus/evals/results/document_rag_answers_v0.1.json`，每完成一题原子保存；下次同配置运行自动跳过已完成题。若更换模型、语料、题集或模式，改用新 `--output`。关闭终端可能中止当时尚未完成的那一道题，但此前完成的题目不丢。
+
+**2026-10-19 真实单题 Smoke**：`BAI_06` 的三条模式均真实调用 `deepseek-flash`。LLM Only 回答包含未经证实的概括；原始问题 Hybrid 未命中 Gold，模型回答证据不足；Agentic Hybrid 主动生成“陈廷焯 周邦彦 姜夔 比较 清真 白石”等查询，命中《白雨斋词话》卷二“美成、白石，各有至處”的直接评论，并引用对应编号。这是可核对的单题观察，不代表 16 题全部结果。
+
+**第二道真实跨书 Smoke**：`CROSS_01` 对比沈义父与陈廷焯评姜夔。普通 Hybrid Gold Recall@5=0；Agentic Hybrid 通过查询扩展找到《白雨斋词话》关于“沈伯时讥其生硬”的直接反驳，Gold Recall@5=0.5，但没有找到《乐府指迷》沈义父的原段，模型也明确说明证据不充分。故当前不能声称 Agentic 查询已解决跨书问题。
