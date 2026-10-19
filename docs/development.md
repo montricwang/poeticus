@@ -48,6 +48,23 @@ LANGSMITH_TRACING=false
 
 不要把密钥、数据库 URL 或私人语料放入前端 `VITE_*` 变量、源码或提交记录。
 
+### 密钥及本地模型的唯一放置约定
+
+| 类型 | 规定存放位置 | 使用边界 |
+| --- | --- | --- |
+| 本地 Web/Agent 的 `LLM_API_KEY`、`POETICUS_DATABASE_URL`、`LANGSMITH_API_KEY`（若启用） | 仓库根目录 `poeticus/.env`（已被 Git 忽略） | 只供本地后端读取；不写入源码、日志、前端或文档 |
+| WSL Poem Retrieval 的 `POETICUS_RETRIEVAL_TOKEN` | `~/.config/poeticus/retrieval.env`（仓库外） | 仅供 Retrieval Serving 显式 `source`；详情见 [部署文档](deployment.md#4-retrieval-节点及运行条件) |
+| Railway 线上运行所需的密钥 | Railway 对应服务的 Variables/Secrets | 只在托管平台管理，不从本机 `.env` 自动上传 |
+| Cloudflare Tunnel 连接器 Token | Cloudflare Zero Trust 管理的 Tunnel 配置／其 Windows 连接器 | 不等于 Retrieval Bearer Token；不得放入 Railway 或项目 `.env` |
+| 公开 GGUF 模型本地推理 | **不需要 API Key** | 不要为了本地模型新造密钥文件；下载公开模型也不要求 HF Token |
+| 本地模型权重、Tokenizer/Embedding 资产 | 仓库外同级 `poeticus-data/models/` | 具体型号、GGUF 校验值及实验目录见 [私人数据工作区](data-management.md#本地模型目录与核验2026-10-19) |
+
+本机已检查 `poeticus/.env` 与 `~/.config/poeticus/retrieval.env` 都存在，文件权限均为 `600`；仅确认文件和变量**名称**，不记录或输出任何真实值。未来增加 API 时，优先使用已有对应运行边界的配置文件或平台密钥管理，不为了某个模型另建一套全局 Secret Store。模型的下载 URL、SHA-256 和版本可以公开记录，**Token、数据库密码、连接器命令中的凭据不能进入 Git 历史**。
+
+本地 GGUF 模型目前处于「已下载并校验，推理尚未实测」状态，与 Poeticus 生产 Agent 解耦。下一步在隔离环境选择支持其架构的 llama.cpp 推理后端，先执行一次短输出 Smoke Test，再用相同词话材料比较速度和证据忠实度；不要提前修改生产 `LLM_BASE_URL` 或 `POETICUS_LLM_MODEL`。
+
+
+
 ## 3. 数据库
 
 先创建本地 PostgreSQL 数据库，再运行：
