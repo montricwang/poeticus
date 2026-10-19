@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from backend.retrieval.document.lexical import tokenize
 from scripts.experiments.document_rag_lexical_baseline import (
     SectionBM25,
     checked_cases,
@@ -13,7 +14,6 @@ from scripts.experiments.document_rag_lexical_baseline import (
     grade_case,
     run,
     section_key,
-    tokenize,
 )
 
 
@@ -91,14 +91,16 @@ def test_runner_excludes_holdout_and_records_input_fingerprints(tmp_path: Path) 
         fixture_section("书甲", "a.xhtml", "1", "飞卿章法颠倒"),
         fixture_section("书乙", "b.xhtml", "2", "姜夔清空骚雅"),
     ]
-    case = lambda id, split: {
-        "id": id, "question": "姜夔清空",
-        "split": split, "gold_status": "gold_checked", "local_coverage": "in_corpus",
-        "gold_evidence": [{
-            "document": "书乙", "epub_xhtml": "b.xhtml",
-            "epub_section_id": "2", "quote": "姜夔清空",
-        }],
-    }
+
+    def case(id: str, split: str) -> dict:
+        return {
+            "id": id, "question": "姜夔清空",
+            "split": split, "gold_status": "gold_checked", "local_coverage": "in_corpus",
+            "gold_evidence": [{
+                "document": "书乙", "epub_xhtml": "b.xhtml",
+                "epub_section_id": "2", "quote": "姜夔清空",
+            }],
+        }
     corpus = write_json(tmp_path / "corpus.json", sections)
     cases = write_json(tmp_path / "cases.json", {
         "status": "draft", "cases": [case("dev", "development"), case("holdout", "holdout")]

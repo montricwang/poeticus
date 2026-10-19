@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import pytest
 
+from scripts.experiments.document_rag_lexical_baseline import DEFAULT_CORPUS
 from scripts.corpus.document_db import (
     BOOKS,
     RAW_ROOT,
@@ -18,6 +19,10 @@ from scripts.corpus.document_db import (
 
 @pytest.fixture(scope="module")
 def corpus() -> list[dict]:
+    # 私有 EPUB 和原文快照不提交仓库：本地有语料才验证四书端到端一致性。
+    # 若文件存在但损坏或只缺部分 EPUB，prepare() 仍应明确失败。
+    if not DEFAULT_CORPUS.is_file():
+        pytest.skip("需要本地私有 Document Corpus EPUB 与原文快照")
     return prepare()
 
 

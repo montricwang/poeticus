@@ -10,7 +10,6 @@ import hashlib
 import json
 import os
 import uuid
-from collections import Counter
 from pathlib import Path
 from typing import Any, LiteralString, cast
 from zipfile import ZipFile

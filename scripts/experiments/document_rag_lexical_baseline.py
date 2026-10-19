@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.data_paths import DATA_ROOT
-from backend.retrieval.document.lexical import B, K1, SectionBM25, tokenize
+from backend.retrieval.document.lexical import B, K1, SectionBM25
 
 DATASET_DIR = DATA_ROOT / "document-corpus"
 DEFAULT_CORPUS = DATASET_DIR / "normalized/document_sections_extracted.json"
