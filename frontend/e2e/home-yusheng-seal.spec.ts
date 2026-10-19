@@ -52,23 +52,18 @@ test('其他作者的寓声保留原词牌；深色印章填充与边框不重�
 
   await page.evaluate(() => document.documentElement.classList.add('dark'))
   const seal = page.getByRole('button', { name: '读这首词' })
-  await seal.hover()
-  await expect
-    .poll(() =>
-      seal.evaluate((button) => {
-        const style = getComputedStyle(button)
-        return {
-          backgroundClip: style.backgroundClip,
-          backgroundColor: style.backgroundColor,
-          borderColor: style.borderTopColor,
-        }
-      }),
-    )
-    .toMatchObject({ backgroundClip: 'padding-box' })
+  await expect(seal).toHaveCSS('background-clip', 'padding-box')
 
-  const colors = await seal.evaluate((button) => {
-    const style = getComputedStyle(button)
-    return { fill: style.backgroundColor, border: style.borderTopColor }
-  })
-  expect(colors.fill).toBe(colors.border)
+  // 触屏模拟不具备鼠标悬停；桌面则需等待颜色过渡完成后比较。
+  if (test.info().project.name === 'desktop-chromium') {
+    await seal.hover()
+    await expect
+      .poll(() =>
+        seal.evaluate((button) => {
+          const style = getComputedStyle(button)
+          return style.backgroundColor === style.borderTopColor
+        }),
+      )
+      .toBe(true)
+  }
 })
