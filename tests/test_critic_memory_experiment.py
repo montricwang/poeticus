@@ -40,7 +40,9 @@ def test_review_requires_source_and_clear_objections(tmp_path):
     with pytest.raises(ValueError, match="reviewer"):
         store.approve("诗人评价", reviewer="model")
     store.approve("诗人评价", reviewer="human:editor")
-    assert store.current("诗人评价").state == "canonical"
+    snapshot = store.current("诗人评价")
+    assert snapshot is not None
+    assert snapshot.state == "canonical"
 
 
 def test_new_evidence_invalidates_previous_approval(tmp_path):
@@ -49,7 +51,9 @@ def test_new_evidence_invalidates_previous_approval(tmp_path):
     store.approve("清空", reviewer="independent-eval:sample1")
     assert [x.claim_id for x in store.recall("旧结论")] == ["清空"]
     store.revise("清空", "新结论", sources=["external:source2"])
-    assert store.current("清空").state == "candidate"
+    snapshot = store.current("清空")
+    assert snapshot is not None
+    assert snapshot.state == "candidate"
     assert store.recall("新结论") == []
     assert [x.claim_id for x in store.recall("新结论", include_candidates=True)] == ["清空"]
     store.approve("清空", reviewer="human:reviewer2")
@@ -62,7 +66,9 @@ def test_retraction_keeps_history_but_disappears_from_current_recall(tmp_path):
     store.propose("可撤回", "试探性的观点", sources=["library:卷一/1"])
     store.approve("可撤回", reviewer="human:r")
     store.retract("可撤回", "发现出处有误")
-    assert store.current("可撤回").state == "retracted"
+    snapshot = store.current("可撤回")
+    assert snapshot is not None
+    assert snapshot.state == "retracted"
     assert store.recall("观点", include_candidates=True) == []
     assert [event["action"] for event in store.history("可撤回")] == [
         "propose", "approve", "retract"
@@ -99,7 +105,9 @@ def test_consolidation_is_rebuildable_and_never_promotes(tmp_path):
     assert len(digest.contributing_events) == 1
     complete = store.consolidate(include_candidates=True)
     assert "[candidate] A" in complete.text
-    assert store.current("A").state == "candidate"
+    snapshot = store.current("A")
+    assert snapshot is not None
+    assert snapshot.state == "candidate"
     reopened = CriticNotebook(tmp_path / "critic.sqlite3")
     assert reopened.consolidate() == digest
 
@@ -109,7 +117,9 @@ def test_different_claims_are_isolated(tmp_path):
     store.propose("A", "姜夔的风格", sources=["library:A/1"])
     store.propose("B", "苏轼的风格", sources=["library:B/1"])
     store.challenge("A", "有反例")
-    assert store.current("B").state == "candidate"
+    snapshot = store.current("B")
+    assert snapshot is not None
+    assert snapshot.state == "candidate"
     assert len(store.history("B")) == 1
     with pytest.raises(ValueError, match="already exists"):
         store.propose("B", "覆盖旧记录")
