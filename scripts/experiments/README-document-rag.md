@@ -2,7 +2,7 @@
 
 关联 [#133](https://github.com/montricwang/poeticus/issues/133)、外部文献检索 [#237](https://github.com/montricwang/poeticus/issues/237)。
 
-这是 **Document Corpus 离线检索实验**，不属于已经上线的 Poem Retrieval，也没有接入 Agent、外部检索或 LLM。
+本文记录 Document Corpus 从离线检索到本地 Agent 问答的分阶段实验。独立于已上线的 Poem Retrieval；本地 `search_documents` 已接入 Agent，但尚未向公网部署，外部文献检索仍单独评估。
 
 ## 数据与输入
 

@@ -28,6 +28,11 @@ RRF_K = 60
 TOP_K = 5
 MAX_QUERIES = 3
 MAX_EVIDENCE_CHARS = 1600
+RERANK_CANDIDATES_PER_QUERY = 20
+RERANK_POOL_SIZE = 16
+RERANK_MAX_LENGTH = 384
+RERANK_TEXT_CHARS = 1100
+RERANK_MODEL_PATH = MODELS_ROOT / "Qwen3-Reranker-0.6B"
 
 
 class DocumentRetrievalError(RuntimeError):
@@ -66,12 +71,41 @@ def _encode_query(text: str, model_path: Path) -> str:
     return "[" + ",".join(format(float(x), ".9g") for x in vec[0]) + "]"
 
 
-def _rrf(lexical: Sequence[tuple[str, float]], dense: Sequence[tuple[str, float]]) -> list[tuple[str, float]]:
+def _rrf(
+    lexical: Sequence[tuple[str, float]], dense: Sequence[tuple[str, float]],
+    *, limit: int = TOP_K,
+) -> list[tuple[str, float]]:
     scores: dict[str, float] = {}
     for channel in (lexical, dense):
         for idx, (key, _) in enumerate(channel):
             scores[key] = scores.get(key, 0.0) + 1 / (RRF_K + idx + 1)
-    return sorted(scores.items(), key=lambda row: (-row[1], row[0]))[:TOP_K]
+    return sorted(scores.items(), key=lambda row: (-row[1], row[0]))[:limit]
+
+
+@lru_cache(maxsize=1)
+def _reranker(model_path: str) -> Any:
+    # 与 Embedding 一样懒加载，避免应用启动时占用 CPU 与内存。
+    from sentence_transformers import CrossEncoder
+
+    return CrossEncoder(model_path, device="cpu", local_files_only=True,
+                        max_length=RERANK_MAX_LENGTH)
+
+
+def _rerank_documents(
+    question: str, keys: list[str], index: dict[str, dict[str, Any]], model_path: Path,
+) -> list[str]:
+    pairs = [
+        (question, f"《{index[key]['book']}》{index[key]['title']}\n{index[key]['text'][:RERANK_TEXT_CHARS]}")
+        for key in keys
+    ]
+    scores = _reranker(str(model_path)).predict(pairs, batch_size=2, show_progress_bar=False)
+    if len(scores) != len(keys):
+        raise ValueError("Reranker 返回的分数数量不正确")
+    import math
+
+    if any(not math.isfinite(float(score)) for score in scores):
+        raise ValueError("Reranker 返回了非有限分数")
+    return [key for _, key in sorted(zip(scores, keys), key=lambda pair: -float(pair[0]))]
 
 
 class DocumentRetrieval:
@@ -90,6 +124,14 @@ class DocumentRetrieval:
             and bool(self._dsn or os.getenv("POETICUS_DATABASE_URL"))
         )
 
+    @property
+    def rerank_enabled(self) -> bool:
+        return (
+            os.getenv("POETICUS_DOCUMENT_RERANK_ENABLED", "").strip().lower()
+            in ("1", "true", "yes")
+            and RERANK_MODEL_PATH.is_dir()
+        )
+
     def search(self, question: str, *, extra_queries: Sequence[str] = ()) -> DocumentSearchResult:
         question = question.strip()
         if not question or len(question) > 1200:
@@ -100,6 +142,7 @@ class DocumentRetrieval:
             raise ValueError("最多提供两条各不超过 180 字的扩展查询")
 
         queries = list(dict.fromkeys([question, *(q.strip() for q in extra_queries)]))
+        use_reranker = self.rerank_enabled
         if not self.enabled:
             raise DocumentRetrievalError("本地 Document RAG 未启用或查询模型缺失")
         dsn = self._dsn or os.getenv("POETICUS_DATABASE_URL")
@@ -171,6 +214,7 @@ class DocumentRetrieval:
 
                 bm25 = SectionBM25(sections)
                 scores: dict[str, float] = {}
+                baseline_scores: dict[str, float] = {}
                 for query in queries:
                     lexical = bm25.search(query, CANDIDATE_DEPTH)
                     vector = _encode_query(query, self.model_path)
@@ -183,7 +227,16 @@ class DocumentRetrieval:
                            ORDER BY em.embedding <=> %s::vector, n.source_key
                            LIMIT %s""", (vector, MODEL_ID, vector, CANDIDATE_DEPTH)
                     ).fetchall()
-                    ranked = _rrf(lexical, [(key, float(score)) for key, score in dense])
+                    dense_rows = [(key, float(score)) for key, score in dense]
+                    ranked = _rrf(
+                        lexical, dense_rows,
+                        limit=RERANK_CANDIDATES_PER_QUERY if use_reranker else TOP_K,
+                    )
+                    if use_reranker:
+                        # 精排失败时必须回到原先每条 Query 先截 Top5 的 Hybrid。
+                        # 不能把「扩大候选池」引起的排序变化当成原始基线。
+                        for rank, (key, _) in enumerate(_rrf(lexical, dense_rows), 1):
+                            baseline_scores[key] = baseline_scores.get(key, 0.0) + 1 / (RRF_K + rank)
                     for rank, (key, _) in enumerate(ranked, 1):
                         scores[key] = scores.get(key, 0.0) + 1 / (RRF_K + rank)
 
@@ -191,7 +244,15 @@ class DocumentRetrieval:
             logger.warning("Document RAG 查询失败：%s", type(exc).__name__)
             raise DocumentRetrievalError("本地文献检索服务暂时不可用") from exc
 
-        ranked = sorted(scores, key=lambda key: (-scores[key], key))[:TOP_K]
+        ranked = sorted(scores, key=lambda key: (-scores[key], key))
+        if use_reranker:
+            pool = ranked[:RERANK_POOL_SIZE]
+            try:
+                ranked = _rerank_documents(question, pool, index, RERANK_MODEL_PATH)
+            except (RuntimeError, ValueError, ImportError, OSError) as exc:
+                logger.warning("Document Reranker 失败，回退原始 Hybrid 排序：%s", type(exc).__name__)
+                ranked = sorted(baseline_scores, key=lambda key: (-baseline_scores[key], key))
+        ranked = ranked[:TOP_K]
         evidences: list[EvidenceItem] = []
         for key in ranked:
             r = index[key]
