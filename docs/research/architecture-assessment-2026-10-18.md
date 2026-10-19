@@ -94,6 +94,7 @@ flowchart LR
 | 本地注释/词条义项库及离线批注 | **新设计，未实施** | [#335](https://github.com/montricwang/poeticus/issues/335) |
 | 文学知识关系 / 专门图数据库 | **研究阶段，暂不选库** | [#149](https://github.com/montricwang/poeticus/issues/149)；PostgreSQL 小型关系表是待验证候选 |
 | 产品端外部 MCP/API 扩展 | **试验/候选，不等于产品 Agent 已接** | [#233](https://github.com/montricwang/poeticus/issues/233)、[#238](https://github.com/montricwang/poeticus/issues/238) |
+| 对外只读 MCP Server | **已有代码与模拟 Client 测试，真实 Inspector / stdio 人工验收待完成** | [MCP 工具入口](https://github.com/montricwang/poeticus/blob/main/backend/mcp/server.py)、[已合并 PR #229](https://github.com/montricwang/poeticus/pull/229)、[剩余验收 #185](https://github.com/montricwang/poeticus/issues/185)；不同于产品端主动消费外部 MCP |
 | Critic Persona + Style Skill | **近期可进入最小施工/评测** | [#148](https://github.com/montricwang/poeticus/issues/148)、[P0 #311](https://github.com/montricwang/poeticus/issues/311)；原则草案不等于已达到独立审美能力 |
 | Critic Notebook / 自主研究与人格演化 | **远期研究，未上线** | [#311–#314](https://github.com/montricwang/poeticus/issues/311)、[研究提案](https://github.com/montricwang/poeticus/blob/main/docs/research/critic-self-evolution.md) |
 | 文学推荐与作品画像 | **研究，有负面实验结论** | [文学学习研究规划](https://github.com/montricwang/poeticus/blob/main/docs/literary-learning-research-plan.md)、[#156](https://github.com/montricwang/poeticus/issues/156) |
