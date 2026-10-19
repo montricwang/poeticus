@@ -9,42 +9,24 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 import re
 import time
-import unicodedata
-from collections import Counter
 from pathlib import Path
 from typing import Any
 
 from backend.data_paths import DATA_ROOT
+from backend.retrieval.document.lexical import B, K1, SectionBM25, tokenize
 
 DATASET_DIR = DATA_ROOT / "document-corpus"
 DEFAULT_CORPUS = DATASET_DIR / "normalized/document_sections_extracted.json"
 DEFAULT_CASES = DATASET_DIR / "evals/document_rag_seed_v0.1.json"
 DEFAULT_REPORT = DATASET_DIR / "evals/results/document_bm25_dev_v0.1.json"
-LEXICAL_RE = re.compile(r"[\u3400-\u9fff]+|[a-z0-9]+")
 SPACE_RE = re.compile(r"\s+")
-K1 = 1.2
-B = 0.75
 
 
 def section_key(section: dict[str, Any]) -> str:
     """同一 EPUB 的 section_id 可跨卷重复，必须连同来源文件一起定位。"""
     return "|".join((section["doc"], section["file"], str(section["section_id"])))
-
-
-def tokenize(text: str) -> list[str]:
-    """基础版仅作 Unicode 归一化，不偷偷加入繁简转换或人物别名。"""
-    normalized = unicodedata.normalize("NFKC", text).lower()
-    tokens: list[str] = []
-    for match in LEXICAL_RE.finditer(normalized):
-        value = match.group()
-        if value.isascii():
-            tokens.append(value)
-        else:
-            tokens.extend(value[i : i + size] for size in (2, 3) for i in range(len(value) - size + 1))
-    return tokens
 
 
 def read_json(path: Path) -> Any:
@@ -91,41 +73,6 @@ def checked_cases(path: Path, sections: list[dict[str, Any]]) -> list[dict[str, 
             if SPACE_RE.sub("", evidence["quote"]) not in SPACE_RE.sub("", section["text"]):
                 raise ValueError(f"{case_id}: Gold 引文未出现于原文: {key}")
     return cases
-
-
-class SectionBM25:
-    """内存中以原 section 为单位的朴素 BM25，暂不持久化派生索引。"""
-
-    def __init__(self, sections: list[dict[str, Any]]) -> None:
-        self.sections = sections
-        self.keys = [section_key(s) for s in sections]
-        self.counts = [Counter(tokenize(f"{s['title']} {s['text']}")) for s in sections]
-        self.lengths = [sum(c.values()) for c in self.counts]
-        self.average_length = sum(self.lengths) / len(self.lengths)
-        frequencies: Counter[str] = Counter()
-        for counts in self.counts:
-            frequencies.update(counts.keys())
-        count = len(sections)
-        self.idf = {
-            term: math.log(1 + (count - df + 0.5) / (df + 0.5))
-            for term, df in frequencies.items()
-        }
-
-    def search(self, question: str, k: int = 5) -> list[tuple[str, float]]:
-        query = set(tokenize(question))
-        ranked: list[tuple[str, float]] = []
-        for key, counts, length in zip(self.keys, self.counts, self.lengths):
-            score = 0.0
-            for term in query:
-                frequency = counts.get(term, 0)
-                if not frequency:
-                    continue
-                denominator = frequency + K1 * (1 - B + B * length / self.average_length)
-                score += self.idf[term] * frequency * (K1 + 1) / denominator
-            if score > 0:
-                ranked.append((key, score))
-        ranked.sort(key=lambda item: (-item[1], item[0]))
-        return ranked[:k]
 
 
 def grade_case(case: dict[str, Any], ranked: list[tuple[str, float]], k: int) -> dict[str, Any]:

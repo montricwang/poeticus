@@ -57,6 +57,9 @@
 - PostgreSQL 内 `documents=4`、`document_versions=4`、`document_nodes=938`、`retrieval_chunks=916`，两次导入后数量不变。
 - 通过 SQL 从《人间词话》「有我之境与无我之境」Chunk 回读正文、父组和 EPUB 标题锚点。
 - 核对了原 `public.poems` 数量 3491，现有 `public.schema_migrations` 未增新记录。
-- 下一步先补齐服务端 pgvector 扩展并导入缓存向量，再对 PostgreSQL 查询与原本 Hybrid 的 Top5 逐题对照，最后接 Agent/部署，不用原 16 题的指标直接宣称上线通过。
+- 2026-10-19：本机 PostgreSQL 18 已安装并启用 pgvector 0.8.7；向量表建成并导入 916 条缓存 Qwen 向量，真实 SQL 向量查询 Top5 与本地 numpy 计算同序。
+- 独立文献检索工具 `search_documents` 已接入 LangGraph Agent，与 `lookup_allusion`、`lookup_reference`、`search_predecessor_texts` 并列。后端从 PostgreSQL 同版条目派生 BM25，查询向量由本机 Qwen3-Embedding-0.6B 懒加载生成，pgvector 精确 Top50 + BM25 Top50 做 RRF 融合，返回 Top5 评论原文及书名、卷次、EPUB 来源锚点。LLM 可给出最多两条别称/关键词扩展查询，程序始终保留用户原始问题；尚不支持跨版本混检和独立文献阅读 UI。
+- 在本地私有 `.env` 中设置 `POETICUS_DOCUMENT_RAG_ENABLED=true` 才向模型开放工具；模型目录也必须存在。未启用或未安装检索模型的 Railway 环境不加载大模型，也不会宣传此工具。重启后端进程以读取更新的环境变量。
+- 现有 `document_versions.rights_status` 均为 `unreviewed`；本轮限本地实验，**尚未开放文献全文公开服务或 Railway 部署**。后续上线须核对许可与模型部署方案。
 
 四书 EPUB 自身声明 CC BY-SA 3.0 / GFDL，但数据库的 `rights_status` 统一为 `unreviewed`；这不是针对各版文本的再发布许可审查结论。原文版本亦未对照纸本校勘。对外阅读或全文公开应另核来源和再分发条件。

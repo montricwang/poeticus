@@ -70,6 +70,8 @@ python -m scripts.corpus.db_import --import
 
 详见 [Document Corpus 文献数据库](architecture/document-corpus.md)。向量表需 PostgreSQL 服务端支持 pgvector，使用单独的 `--migrate-vectors` / `--import-vectors`，不可仅凭 Python 安装 pgvector 包当作已就绪。
 
+本地词话检索工具接入 Agent 时，需要安装可选的 Qwen3 Embedding 推理依赖（`.venv/bin/python -m pip install -r requirements-retrieval.txt`），并在私人 `.env` 中增加 `POETICUS_DOCUMENT_RAG_ENABLED=true`，然后重启后端。它按需加载本机 Qwen3-Embedding-0.6B，首次检索可能较慢；本地 PostgreSQL 须预先导入文献和向量。未配置/未启用时不会向 Agent 注册 `search_documents`，不会阻止普通 Web 服务启动。这个开关目前**只用于本地实验**，线上部署须先核对词话版本版权、再分发权限与模型资源预算。
+
 只有 schema、没有作品数据时，目录为空是正常现象。
 
 前端排版与样式施工前，请先读 [前端视觉与排版规范](design/frontend-visual-conventions.md)：该文件区分行为契约、编辑设计、光学校正，并标明参数的权威入口。

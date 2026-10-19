@@ -99,12 +99,45 @@ TEXT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
 }
 
 
+DOCUMENT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
+    "type": "function",
+    "function": {
+        "name": "search_documents",
+        "description": (
+            "从本地《人间词话》《白雨斋词话》《乐府指迷》《碧鸡漫志》检索历代词学评论的原文。"
+            "用户询问词论、词家评价、词学概念、风格比较、文学批评史或要求词话原文证据时优先使用。"
+            "检索人物本名可能漏掉字、号（如周邦彦/美成、姜夔/白石）；"
+            "请在 queries 中提供一到两条包含可能别称或关键评语的扩展查询，原始用户问题会自动保留。"
+            "文献只是候选材料，不等于它已经充分支持结论。"
+            "普通典故故事查询使用 lookup_allusion；查前代诗句化用使用 search_predecessor_texts，"
+            "不要混淆词话评论和诗句相似性。"
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "queries": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "一至两条互补的检索表达，适当包含字号、词学术语；不要杜撰别名对应关系。",
+                    "minItems": 1, "maxItems": 2,
+                }
+            },
+            "required": ["queries"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
 def available_tools(
     retrieval_enabled: bool,
+    document_enabled: bool = False,
 ) -> list[ChatCompletionFunctionToolParam]:
     """根据检索服务的启用状态，返回本轮可向模型提供的工具。"""
 
+    tools = list(TOOLS)
     if retrieval_enabled:
-        return [*TOOLS, TEXT_RETRIEVAL_TOOL]
-
-    return list(TOOLS)
+        tools.append(TEXT_RETRIEVAL_TOOL)
+    if document_enabled:
+        tools.append(DOCUMENT_RETRIEVAL_TOOL)
+    return tools

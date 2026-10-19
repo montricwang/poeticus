@@ -26,6 +26,7 @@ from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
 from backend.ai.context import PoemContext, format_poem_context
 from backend.ai.prompt_loader import compose_prompt
+from backend.retrieval.document.service import document_retrieval, DocumentRetrievalError
 from backend.retrieval.poem.client import (
     CurrentPoem,
     RetrievalClientError,
@@ -118,8 +119,9 @@ class _ToolQuery:
     """已经通过边界校验的工具查询；执行阶段不再解析模型原始参数。"""
 
     text: str
-    evidence_type: Literal["allusion", "reference", "text_retrieval"]
+    evidence_type: Literal["allusion", "reference", "text_retrieval", "commentary"]
     max_items: int
+    extra_queries: tuple[str, ...] = ()
 
 
 def _parse_tool_query(call: ToolCall) -> _ToolQuery:
@@ -130,6 +132,22 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
         raise ValueError("工具参数必须是对象")
     # JSON 对象的 key 均为字符串，字段值仍在下方按工具契约校验。
     arguments = cast(dict[str, object], raw)
+
+    # Document Query Expansion 是同一次工具调用的一部分；永远额外保留用户原始问题。
+    if call["name"] == "search_documents":
+        queries = arguments.get("queries")
+        if (
+            not isinstance(queries, list)
+            or not 1 <= len(queries) <= 2
+            or any(not isinstance(q, str) or not q.strip() or len(q) > 180 for q in queries)
+        ):
+            raise ValueError("无效的文献检索查询数组")
+        return _ToolQuery(
+            text=queries[0].strip(),
+            evidence_type="commentary",
+            max_items=5,
+            extra_queries=tuple(q.strip() for q in queries[1:]),
+        )
 
     # 根据工具名称选取查询字段、证据类型和返回条数。
     if call["name"] == "lookup_allusion":
@@ -226,7 +244,7 @@ def _stream_agent_decision(
         "stream": True,
     }
     if tools_enabled:
-        request_kwargs["tools"] = available_tools(text_retrieval_client.enabled)
+        request_kwargs["tools"] = available_tools(text_retrieval_client.enabled, document_retrieval.enabled)
         request_kwargs["tool_choice"] = "auto"
 
     # --- 3.2 初始化正文与工具调用分片缓存 ---
@@ -402,7 +420,7 @@ def agent_decide(state: AgentState) -> AgentStateUpdate:
             "temperature": 0,
         }
         if tools_enabled:
-            request_kwargs["tools"] = available_tools(text_retrieval_client.enabled)
+            request_kwargs["tools"] = available_tools(text_retrieval_client.enabled, document_retrieval.enabled)
             request_kwargs["tool_choice"] = "auto"
 
         try:
@@ -578,7 +596,29 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     max_items = validated.max_items
 
                     # 本地文本检索使用 Retrieval Client，典故与出处查询使用证据服务。
-                    if evidence_type == "text_retrieval":
+                    if evidence_type == "commentary":
+                        document_result = await asyncio.to_thread(
+                            document_retrieval.search,
+                            state["question"],
+                            extra_queries=(validated.text, *validated.extra_queries),
+                        )
+                        evidence_items = [
+                            item.model_dump() for item in document_result.evidences[:max_items]
+                        ]
+                        all_evidences.extend(evidence_items)
+                        result = {
+                            "status": "ok" if evidence_items else "no_hit",
+                            "query": state["question"],
+                            "queries": document_result.queries,
+                            "evidence_type": evidence_type,
+                            "evidences": evidence_items,
+                            "note": (
+                                "检索结果是词话评论候选，不等于已完成论证。"
+                                "引用观点时请明确书名、卷次与条目，区分原文和解释；"
+                                "如果材料不足请说明，不能编造页码或原文。"
+                            ),
+                        }
+                    elif evidence_type == "text_retrieval":
                         context = state.get("context")
                         retrieval = await text_retrieval_client.search(
                             text=query,
@@ -622,6 +662,7 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     TypeError,
                     CNKGraphError,
                     RetrievalClientError,
+                    DocumentRetrievalError,
                 ) as exc:
                     logger.warning(
                         "工具执行失败：%s",
