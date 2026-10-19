@@ -31,6 +31,7 @@
 - [Homepage](architecture/home-screen.md)：首页每日推荐、搜索与入场动效、手机竖排、五列上限及节选规则；
 - [Corpus Database](architecture/corpus-database.md)：私人导入、公开白名单、数据身份；
 - [Poem Retrieval](architecture/text-retrieval.md)：Work/Chunk、Qwen/FAISS/BM25、RRF、Eligibility、Werneror 拼接去重与 Serving。
+- [Document Corpus](architecture/document-corpus.md)：本地四书 PostgreSQL/pgvector 文献库、词话候选证据、可选实验 Reranker 与权利边界；实验方法及结果见 [Document RAG 实验记录](../scripts/experiments/README-document-rag.md)。
 
 ## 当前重要决策
 

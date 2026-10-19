@@ -1,8 +1,8 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-18
+> 更新日期：2026-10-19
 >
-> 当前状态：v0.5.0 已正式发布，v0.6.0 正在整理发布文档。首页入场与搜索过渡、桌面 / iPad 竖排居中、原文引用下划线和统一中国红已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持现有线上链路。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
+> 当前状态：v0.6.0 已发布。首页入场与搜索过渡、桌面 / iPad 竖排居中、原文引用下划线和统一中国红已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持既有线上链路。Document Corpus 四书 916 节、PostgreSQL/pgvector 和本地 `search_documents` 已进入**开发分支实验**，尚未公开部署。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
 
 Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog 和 ADR；具体任务继续进入 GitHub Issues。
 
@@ -124,7 +124,7 @@ Retrieval 已经可以作为一个完成度较高的求职能力面。下一阶�
 - 历代评论；
 - 可靠作者生平 / 编年资料。
 
-目标先做约 10 本高价值材料的小型 Corpus，建立：
+已在本地用四本高价值词话构建结构化 Document Corpus 与 Hybrid/Agentic 查询实验。下一步按 [#343](https://github.com/montricwang/poeticus/issues/343) 扩充到 10、20、40 部并比较规模效应；按 [#344](https://github.com/montricwang/poeticus/issues/344) 建立约 100 题、含独立 holdout 的证据评测集。逐步验证：
 
 ```text
 问题类型
@@ -159,7 +159,7 @@ Document Corpus 与实时业务数据继续分开。订单、库存、余额一�
 
 - pq512；
 - clause BM25；
-- reranker / Cross-Encoder；
+- reranker / Cross-Encoder（Poem Retrieval 仍为 #119 离线待评；Document RAG 已有可选本地实验代码，16 题效果尚不支持默认启用）；
 - learned sparse；
 - LTR；
 - 全局同义词 / 意象扩展；

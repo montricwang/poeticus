@@ -30,15 +30,16 @@ flowchart TD
 
 ## 3. 工具与 Evidence
 
-当前 Agent 可见三类工具：
+当前 Agent 有四种工具定义，实际可见项取决于服务配置：
 
 - `lookup_allusion`：人物故事、掌故、神话与典故性短语；
 - `lookup_reference`：外部 reference evidence；
-- `search_predecessor_texts`：Poeticus 自建 Corpus 的前代文本候选检索。
+- `search_predecessor_texts`：Poeticus 自建 Corpus 的前代文本候选检索；
+- `search_documents`：本地 Document Corpus 的历代词话与评论候选检索（开发实验）。
 
-`backend/ai/tools.py` 定义提供给模型的工具 Schema；`available_tools(retrieval_enabled)` 根据 Retrieval URL 是否已配置，决定是否把 `search_predecessor_texts` 加入工具清单。这项判断只检查配置，不代表服务当前健康。
+`backend/ai/tools.py` 定义提供给模型的工具 Schema；`available_tools(retrieval_enabled, document_enabled)` 根据独立的 Poem Retrieval URL 和 Document Corpus 本地开关，分别决定是否把 `search_predecessor_texts`、`search_documents` 加入工具清单。配置启用不等于检索服务当前健康。
 
-工具调用由 `backend/ai/graph.py` 的 `execute_tools()` 执行：典故与出处查询通过 `EvidenceService.search()` 交给 CNKGraph Provider；文本互文检索通过 `TextRetrievalClient` 请求独立 Retrieval Service。当前作品正文、作者、题名和可用 dynasty 由宿主 Agent 注入，模型只决定检索文本。
+工具调用由 `backend/ai/graph.py` 的 `execute_tools()` 执行：典故与出处查询通过 `EvidenceService.search()` 交给 CNKGraph Provider；诗词互文检索通过 `TextRetrievalClient` 请求独立 Poem Retrieval Service；文献评论检索通过本机 `DocumentRetrieval` 查询 PostgreSQL + BM25/pgvector。文献工具使用用户原始问题，并允许模型补充最多两条查询；返回的是带来源锚点的**候选证据**，不等于校勘或事实认证。
 
 对外 `backend/mcp/server.py` 也通过 `EvidenceService` 查询典故与出处，但它是独立的 MCP 入口；现有 Agent 不经过 MCP Server。`EvidenceService` 负责选择 Provider 并返回 `EvidenceItem`，Agent 与 MCP 分别整理自己的输出格式。
 
