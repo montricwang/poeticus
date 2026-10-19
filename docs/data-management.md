@@ -31,6 +31,23 @@ workspace/
 
 `all_manifest.json` 与 `all_normalized.json` 属于同一批规范化数据，应该同目录。向量或索引的 `manifest.json` 应紧贴其对应 Artifact，不集中放在一个全局 manifests 文件夹。
 
+### 本地模型目录与核验（2026-10-19）
+
+开发机 WSL 的实际根目录是 `~/projects/poeticus-data/models/`，与 `~/projects/poeticus/` 并列。路径按仓库相对关系描述；换电脑时应从 `POETICUS_DATA_ROOT` 或 `backend/data_paths.py` 推导，不把用户名、盘符写死进程序。
+
+| 用途 | 相对 `poeticus-data/models/` 的位置 | 状态 |
+| --- | --- | --- |
+| Poem Retrieval 查询向量 | `Qwen3-Embedding-0.6B-7c0e29cfcdf2/` | 现有 Serving 资产；不要与生成式 Qwen 混用 |
+| BERT/CCPoem 研究 | `BERT_CCPoem_v1/` | 原有实验资产 |
+| 本地生成式推理候选 | `Qwen3.5-4B/Qwen3.5-4B-Q4_K_M.gguf` | 2,740,937,888 bytes；SHA-256 `00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4` |
+| 本地生成式推理候选 | `DeepSeek-R1-0528-Qwen3-8B/DeepSeek-R1-0528-Qwen3-8B-Q4_K_M.gguf` | 5,027,785,216 bytes；SHA-256 `a86349a4180c4e6bb43f874c29c404fa2be3f90b15509bd6d86f697dba724ec1` |
+
+两个 GGUF 从 ModelScope 的 `unsloth/Qwen3.5-4B-GGUF` 与 `unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF` 获取，**已在 WSL 实测 SHA-256 与镜像文件清单一致**；这只证明文件完整，尚不证明模型已成功加载或完成生成测试。私人下载脚本目前位于 `models/download_cn_models.sh`，可断点续传、下载后校验，但不是产品运行依赖。
+
+大模型权重只放在仓库外的 `poeticus-data/models/`，不得复制到公开仓库的 `models/`、`frontend/`、代码提交或 Railway 构建上下文。后续独立推理实验从此路径读取；生成的 Benchmark 结果归 `poeticus-data/reports/evals/`。模型切换不应改写既有 Retrieval 的 Embedding 模型目录或 FAISS 索引。**密钥存放、生产环境变量及安全边界**见 [开发者指南的本地配置](development.md#2-本地配置) 和 [部署指南](deployment.md)。
+
+
+
 **不强制设置顶层 `output/`**。只运行一次、无需留存的临时输出可使用系统临时目录或终端输出；有长期价值的生成数据放在具有稳定职责的目录。
 
 ## 2. 哪些数据应当保留
