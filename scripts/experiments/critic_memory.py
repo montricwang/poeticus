@@ -192,7 +192,7 @@ class CriticNotebook:
             state=state,
             sources=sources,
             related_claims=related,
-            last_event_id=int(events[-1]["id"]),
+            last_event_id=int(str(events[-1]["id"])),
         )
 
     def propose(
