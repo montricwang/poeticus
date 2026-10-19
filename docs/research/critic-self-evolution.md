@@ -2,6 +2,8 @@
 
 状态：研究提案，尚未验证。日期：2026-10-17。源头：#148。
 
+> **2026-10-19 阶段更新**：当前 Critic 的执行优先级以 [#311](https://github.com/montricwang/poeticus/issues/311) 为准（先独立判断与文风，再证据与 Notebook 实验）。本地 4B/8B/27B 推理与短性能测试已完成，见 [#339](https://github.com/montricwang/poeticus/issues/339)；**8B 的文学提炼与 Refine 质量尚无实测**，应先执行 [#341](https://github.com/montricwang/poeticus/issues/341) 的固定文献单轮对照，再决定是否扩大到自主阅读 [#312](https://github.com/montricwang/poeticus/issues/312)。下文保留 10-17 的原始研究思路，其“尽早开展自主研究”等表述不是现行交付顺序。
+
 ## 目标与核心假设
 不修改底层模型权重，让文学批评 Agent 在离线研究中自主选题、阅读、提出假说、寻找反例、维护长期记忆；检验这些经验是否提升其在未见作品上的解释能力与判断质量。不是意识或模型参数自我进化的宣称。
 

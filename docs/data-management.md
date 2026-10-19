@@ -21,7 +21,8 @@ workspace/
     │   ├── lexical/              # BM25 / SQLite 索引
     │   ├── serving/              # Retrieval metadata SQLite 及 manifest
     │   └── relationships/         # 组诗去重快照 v3：SQLite、CSV、manifest
-    ├── models/                   # Qwen / BERT 等模型
+    ├── models/                   # Embedding / GGUF 本地推理模型权重
+    ├── tools/                    # 私人模型运行时与实验日志（若安装）
     └── reports/
         ├── epub-import/          # EPUB 诊断、审计及复核材料
         ├── retrieval/            # 检索评测和构建报告
@@ -46,7 +47,8 @@ workspace/
 | `retrieval/embeddings/` | 原始数千万 float16 向量，重建成本高 | **重点保护** |
 | `retrieval/faiss/`、`lexical/`、`serving/` | 线上可用的检索索引与元数据 | **必须保留可用 Serving 版本** |
 | `retrieval/relationships/v3/` | 组诗重复过滤的 SQLite 快照、导入 CSV 与来源指纹 manifest；不是原始语料，也不是 Railway PostgreSQL 表 | **与当前 Serving 一起保留／备份**，避免启动时缺失或版本不匹配 |
-| `models/` | 模型权重及指纹 | 保护与 Embedding manifest 匹配的模型 |
+| `models/` | Embedding 权重及离线 LLM GGUF 试验权重、校验指纹；后者已在本机验证，不是线上模型服务依赖 | 保留当前所需版本与校验值；大文件不入 Git，按重下成本决定是否备份 |
+| `tools/`（若存在） | 隔离的本地推理运行时、实验脚本与日志，不属于产品虚拟环境 | 正式化前按实验价值保留；勿因清理 Git worktree 误删私人资产 |
 | `reports/` | 诊断、Benchmark、历史研究记录 | 按证据价值归档；不要求永久保留每次运行 |
 
 **恢复成本与“能否重新生成”是两回事**。Embedding 技术上可重算，但很昂贵；人工校对成果更不应因为程序能再次运行而删除。已有报告中人工备注也需要先提取。
