@@ -102,3 +102,35 @@ python -m scripts.experiments.document_rag_lexical_baseline
 **2026-10-19 真实单题 Smoke**：`BAI_06` 的三条模式均真实调用 `deepseek-flash`。LLM Only 回答包含未经证实的概括；原始问题 Hybrid 未命中 Gold，模型回答证据不足；Agentic Hybrid 主动生成“陈廷焯 周邦彦 姜夔 比较 清真 白石”等查询，命中《白雨斋词话》卷二“美成、白石，各有至處”的直接评论，并引用对应编号。这是可核对的单题观察，不代表 16 题全部结果。
 
 **第二道真实跨书 Smoke**：`CROSS_01` 对比沈义父与陈廷焯评姜夔。普通 Hybrid Gold Recall@5=0；Agentic Hybrid 通过查询扩展找到《白雨斋词话》关于“沈伯时讥其生硬”的直接反驳，Gold Recall@5=0.5，但没有找到《乐府指迷》沈义父的原段，模型也明确说明证据不充分。故当前不能声称 Agentic 查询已解决跨书问题。
+
+## 第四阶段：Reranker 对照与候选池诊断（2026-10-19）
+
+试验入口：`scripts/experiments/document_rag_rerank_eval.py`，使用与上一阶段相同的 **16 道 development/in_corpus 题**、原始 Gold 章节以及已经冻结的真实 Agent 查询。Gold 只参与结果判分，不参与查询或候选排序。暂不重新生成 LLM 答案，也不将新排序默认开放给用户。
+
+独立控制三个变量：A 为**每条 Query 先取 Top5** 再跨 Query RRF；B 为**每条 Query 保留更多候选**、跨 Query RRF 后截成 Top16，直接取 Top5；C 使用与 B **完全相同的 Top16 候选池**运行 Qwen3-Reranker-0.6B，然后取 Top5。A→B 是截断位置改变，B→C 才是精排本身的效果。
+
+| 16 道开发题 | A：原 Hybrid | B：延后截断 Hybrid | C：Top16 + Reranker |
+| --- | ---: | ---: | ---: |
+| Hit@5（至少一条 Gold） | 15/16 = 93.75% | 11/16 = 68.75% | 13/16 = 81.25% |
+| All Gold@5（全部必要原文） | 12/16 = 75.00% | 10/16 = 62.50% | 12/16 = 75.00% |
+| Macro Recall@5 | 85.42% | 66.67% | 79.17% |
+| MRR@5（首条正确命中） | 65.62% | 54.37% | **70.83%** |
+
+**结论需区分两个层次**：Reranker 相比延后截断的 B 提高了大部分指标，但它和 B 都没有在整体 Recall@5 上超过原始 A；它提高首条相关证据的排名，不保证跨文献问题所需的**成组证据覆盖**。对 `CROSS_01`，两条 Gold 都已在 Top16，却在精排后位于第 9、11 位，最终 Top5 为 0/2；另有题目的 Gold 根本不在候选池中，精排无法补救。16 道题是开发集，不是独立测试集。
+
+本地 CPU 试验使用 `AutoModelForCausalLM` 的 yes/no logits 评分，避免旧版 SequenceClassification 误载入随机 `score.weight`；现有 `sentence-transformers==5.4.0` 的 `CrossEncoder` 已完成基本兼容性验证。Windows 原生 llama.cpp b11723 + Qwen3-Reranker Q4_K_M GGUF 另通过 `/v1/rerank` 提供了与 WSL 连通的 HTTP 接口，完成 16 题分组重排：**单请求对 16 个候选精排平均约 5.58 秒**（仅 HTTP 重排耗时，未包含查询向量生成、SQL 检索、BM25 或 LLM 回答）。不能把这组时延直接称作整个 Agent 的端到端加速比。
+
+可复现的**本地 CPU**离线命令：
+
+```bash
+# 不加载 Reranker：固定查询、扩展候选池的 A/B 对照
+.venv/bin/python -m scripts.experiments.document_rag_rerank_eval --pool 16 --no-reranker
+# CPU CausalLM 精排对照，耗时较长；结果写入私有报告
+.venv/bin/python -m scripts.experiments.document_rag_rerank_eval --pool 16
+```
+
+离线 Python runner 目前使用本地 CausalLM，**尚未封装 Windows /v1/rerank HTTP 参数**；GPU 16 题报告通过独立 HTTP 请求生成，保存在私有 `document-corpus/evals/results/document_reranker_gpu_v0.1.json`，同目录还保存候选池报告。不要把两者误写成相同推理后端，也不要把隐私或授权未核实的全文上传公开仓库。
+
+**服务代码现状**：`DocumentRetrieval` 提供 `POETICUS_DOCUMENT_RERANK_ENABLED` 本地显式开关，默认为关闭；打开后候选上限 Top16、最终 Top5；精排异常时回退原始 Hybrid。因现有结果和额外时延，**不建议默认启用**，Windows HTTP 服务亦尚未接到服务端。未来尝试借鉴 Query Planning → 多子查询 Hybrid → 可选 Reranker → Evidence Fusion（综合相关性与来源覆盖）；这是待验证的设计候选，不代表已实现。
+
+后续分别由 [#343](https://github.com/montricwang/poeticus/issues/343) 跟进语料扩容、[#344](https://github.com/montricwang/poeticus/issues/344) 跟进约 100 题 Benchmark、[#133](https://github.com/montricwang/poeticus/issues/133) 跟进 Document RAG 证据选择；[#119](https://github.com/montricwang/poeticus/issues/119) 的 Poem Retrieval 精排仍需独立实验。

@@ -46,3 +46,22 @@ def test_no_gold_is_used_in_candidate_merge() -> None:
     result = rrf([["A", "B"], ["A", "C"]], 2)
     assert result == ["A", "B"]
     assert grade(result, gold)["hits"] == 1
+
+
+def test_runtime_reranker_orders_candidate_keys_without_changing_sources(monkeypatch) -> None:
+    from backend.retrieval.document import service
+
+    class FakeReranker:
+        def predict(self, pairs, **kwargs):
+            assert len(pairs) == 3
+            assert all(pair[0] == "姜夔词风" for pair in pairs)
+            return [0.1, 0.8, 0.8]
+
+    monkeypatch.setattr(service, "_reranker", lambda _: FakeReranker())
+    index = {
+        key: {"book": "测试词话", "title": f"标题{key}", "text": "原文"}
+        for key in ("A", "B", "C")
+    }
+    assert service._rerank_documents(
+        "姜夔词风", ["A", "B", "C"], index, service.RERANK_MODEL_PATH,
+    ) == ["B", "C", "A"]
