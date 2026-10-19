@@ -5,7 +5,7 @@ export function ReadPoemSeal({ onClick, disabled }: { onClick: () => void; disab
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="home-read-seal inline-flex h-auto w-6 shrink-0 items-center justify-center rounded-sm border-2 border-editorial-red bg-transparent px-1 py-1.5 text-xs font-semibold leading-none text-editorial-red transition-colors hover:bg-editorial-red hover:text-background active:bg-editorial-red active:text-background focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-editorial-red disabled:cursor-not-allowed disabled:opacity-50"
+      className="home-read-seal inline-flex h-auto w-6 shrink-0 items-center justify-center rounded-sm border-2 border-editorial-red bg-clip-padding bg-transparent px-1 py-1.5 text-xs font-semibold leading-none text-editorial-red transition-colors hover:bg-editorial-red hover:text-background active:bg-editorial-red active:text-background focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-editorial-red disabled:cursor-not-allowed disabled:opacity-50"
       aria-label="读这首词"
     >
       {/* 汉字各自横排，纵向堆叠；不使用竖排字形度量。 */}
