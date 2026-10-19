@@ -1,0 +1,616 @@
+{
+  "source": {
+    "postman_url": "https://open.cnkgraph.com/Api/postman.zip",
+    "postman_sha256": "cf8ed129682f67a7df6033893ee3cbcd97109a0808dd3d72aa1f6767033a21f3",
+    "postman_zip_bytes": 12473,
+    "swagger_url": "https://open.cnkgraph.com/swagger/v1/swagger.json",
+    "swagger_sha256": "f0c0fac7baccdce5633e6e0f4f7d53ed4c67ff5f9c34aa864aa5ce3081b27a9f",
+    "swagger_version": "3.0.4",
+    "terms_url": "https://cnkgraph.com/Home/OpenResources",
+    "retrieved_at_utc": "2026-10-19T23:07:30+00:00"
+  },
+  "batch": 2,
+  "results": [
+    {
+      "tested_at_utc": "2026-10-19T23:07:30+00:00",
+      "method": "POST",
+      "path": "/api/quTune/find",
+      "domain": "曲谱",
+      "name": "搜索名称含某一关键词的曲谱",
+      "test_path": "/api/quTune/find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 225,
+      "bytes_sampled": 5366,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 43,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Name",
+            "Path",
+            "Aliases",
+            "NameComment",
+            "WritingCount"
+          ],
+          "id_examples": {
+            "Id": "15"
+          },
+          "list_field": "Aliases",
+          "list_length": 1,
+          "first_item": {
+            "kind": "str"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:31+00:00",
+      "method": "GET",
+      "path": "/api/category",
+      "domain": "类书",
+      "name": "获取类书列表",
+      "test_path": "/api/category",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 29,
+      "bytes_sampled": 152,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Books"
+        ],
+        "id_examples": {},
+        "list_field": "Books",
+        "list_length": 8,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:31+00:00",
+      "method": "GET",
+      "path": "/api/category/钦定古今图书集成",
+      "domain": "类书",
+      "name": "获取某一本类书的目录结构",
+      "test_path": "/api/category/钦定古今图书集成",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 57,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:32+00:00",
+      "method": "GET",
+      "path": "/api/category/钦定古今图书集成/0002/KR7a0001_018",
+      "domain": "类书",
+      "name": "获取古今图书集成某一条目某一卷的详细内容",
+      "test_path": "/api/category/钦定古今图书集成/0002/KR7a0001_018",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 124,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:32+00:00",
+      "method": "GET",
+      "path": "/api/category/渊鉴类函/0024",
+      "domain": "类书",
+      "name": "获取渊鉴类函某一条目的详细内容",
+      "test_path": "/api/category/渊鉴类函/0024",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 63,
+      "bytes_sampled": 11799,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Name",
+          "Alias",
+          "Note",
+          "VolumeIds",
+          "Content",
+          "ImageUrls"
+        ],
+        "id_examples": {
+          "Id": "0024"
+        },
+        "list_field": "ImageUrls",
+        "list_length": 26,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:33+00:00",
+      "method": "GET",
+      "path": "/api/category/方舆胜览/0012",
+      "domain": "类书",
+      "name": "获取方舆胜览某一条目详细内容",
+      "test_path": "/api/category/方舆胜览/0012",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 17,
+      "bytes_sampled": 8473,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Name",
+          "Alias",
+          "Note",
+          "VolumeIds",
+          "Content",
+          "ImageUrls"
+        ],
+        "id_examples": {
+          "Id": "0012"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:33+00:00",
+      "method": "POST",
+      "path": "/api/category/find",
+      "domain": "类书",
+      "name": "查询含某一关键词的条目",
+      "test_path": "/api/category/find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 35,
+      "bytes_sampled": 5177,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 3,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Book",
+            "Items"
+          ],
+          "id_examples": {},
+          "list_field": "Items",
+          "list_length": 30,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "VolumeIds",
+              "SubItems"
+            ],
+            "id_examples": {
+              "Id": "0307"
+            },
+            "list_field": "VolumeIds",
+            "list_length": 35,
+            "first_item": {
+              "kind": "str"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:34+00:00",
+      "method": "GET",
+      "path": "/api/glossary/词典/10",
+      "domain": "词汇、典故",
+      "name": "按词汇 Id 查询",
+      "test_path": "/api/glossary/词典/10",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 21,
+      "bytes_sampled": 544,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Word",
+          "OriginalWord",
+          "From",
+          "Spellings",
+          "Explains",
+          "Categories",
+          "Kind",
+          "Id"
+        ],
+        "id_examples": {
+          "Id": "10"
+        },
+        "list_field": "Explains",
+        "list_length": 3,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:34+00:00",
+      "method": "GET",
+      "path": "/api/glossary/典故/1000",
+      "domain": "词汇、典故",
+      "name": "按典故 Id 查询",
+      "test_path": "/api/glossary/典故/1000",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 1466,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "CountInWritings",
+          "Keys",
+          "RelatedPersons",
+          "Correlations",
+          "References",
+          "Quotes",
+          "Explains",
+          "Kind",
+          "Id"
+        ],
+        "id_examples": {
+          "Id": "1000"
+        },
+        "list_field": "Keys",
+        "list_length": 8,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:35+00:00",
+      "method": "GET",
+      "path": "/api/glossary/佛典/100",
+      "domain": "词汇、典故",
+      "name": "按佛典 Id 查询",
+      "test_path": "/api/glossary/佛典/100",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 407,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Word",
+          "OriginalWord",
+          "From",
+          "Spellings",
+          "Explains",
+          "Categories",
+          "Kind",
+          "Id"
+        ],
+        "id_examples": {
+          "Id": "100"
+        },
+        "list_field": "Explains",
+        "list_length": 2,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:35+00:00",
+      "method": "POST",
+      "path": "/api/glossary/词典",
+      "domain": "词汇、典故",
+      "name": "按词典 Id 批量查询",
+      "test_path": "/api/glossary/词典",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 19,
+      "bytes_sampled": 3441,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 4,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Word",
+            "OriginalWord",
+            "From",
+            "Spellings",
+            "Explains",
+            "Categories",
+            "Kind",
+            "Id"
+          ],
+          "id_examples": {
+            "Id": "10"
+          },
+          "list_field": "Explains",
+          "list_length": 3,
+          "first_item": {
+            "kind": "str"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:36+00:00",
+      "method": "POST",
+      "path": "/api/glossary/典故/find",
+      "domain": "词汇、典故",
+      "name": "按关键词查询典故",
+      "test_path": "/api/glossary/典故/find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 22,
+      "bytes_sampled": 7510,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 3,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "CountInWritings",
+            "Keys",
+            "RelatedPersons",
+            "Correlations",
+            "References",
+            "Quotes",
+            "Explains",
+            "Kind",
+            "Id"
+          ],
+          "id_examples": {
+            "Id": "733"
+          },
+          "list_field": "Keys",
+          "list_length": 69,
+          "first_item": {
+            "kind": "str"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:37+00:00",
+      "method": "GET",
+      "path": "/api/ciTune",
+      "domain": "词谱",
+      "name": "词谱总览",
+      "test_path": "/api/ciTune",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 26,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:37+00:00",
+      "method": "GET",
+      "path": "/api/ciTune/90",
+      "domain": "词谱",
+      "name": "查询特定词谱",
+      "test_path": "/api/ciTune/90",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 77,
+      "bytes_sampled": 4779,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Formats",
+          "Id",
+          "Type",
+          "Name",
+          "Aliases",
+          "Desc",
+          "WritingCount"
+        ],
+        "id_examples": {
+          "Id": "90"
+        },
+        "list_field": "Formats",
+        "list_length": 3,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "FormatIndex",
+            "Desc",
+            "Comment",
+            "SampleAuthor",
+            "SampleContent",
+            "Definition",
+            "LeadingChars",
+            "FormatHtml"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:38+00:00",
+      "method": "GET",
+      "path": "/api/ciTune/1/writings",
+      "domain": "词谱",
+      "name": "查询历代使用指定词谱的作品",
+      "test_path": "/api/ciTune/1/writings",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 7956,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Name",
+          "Writings"
+        ],
+        "id_examples": {
+          "Id": "1"
+        },
+        "list_field": "Writings",
+        "list_length": 6,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Dynasty",
+            "Authors"
+          ],
+          "id_examples": {},
+          "list_field": "Authors",
+          "list_length": 6,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Name",
+              "AuthorId",
+              "WritingIds"
+            ],
+            "id_examples": {},
+            "list_field": "WritingIds",
+            "list_length": 1,
+            "first_item": {
+              "kind": "int"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:38+00:00",
+      "method": "POST",
+      "path": "/api/ciTune/find",
+      "domain": "词谱",
+      "name": "搜索含某一关键词的词谱",
+      "test_path": "/api/ciTune/find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 23,
+      "bytes_sampled": 16168,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 49,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Type",
+            "Name",
+            "Aliases",
+            "Desc",
+            "WritingCount"
+          ],
+          "id_examples": {
+            "Id": "5"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:39+00:00",
+      "method": "POST",
+      "path": "/api/ciTune/pattern",
+      "domain": "词谱",
+      "name": "查询哪些词牌含有与输入句子平仄结构相同的片段",
+      "test_path": "/api/ciTune/pattern",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 55,
+      "bytes_sampled": 31242,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Pattern",
+          "MatchedLength",
+          "MatchedTuneFormats"
+        ],
+        "id_examples": {},
+        "list_field": "MatchedTuneFormats",
+        "list_length": 9,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "MatchedIndex",
+            "Tune"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:39+00:00",
+      "method": "GET",
+      "path": "/api/writing",
+      "domain": "诗文库",
+      "name": "总览",
+      "test_path": "/api/writing",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 17,
+      "bytes_sampled": 898,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Total",
+          "Dynasties"
+        ],
+        "id_examples": {},
+        "list_field": "Dynasties",
+        "list_length": 15,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "AuthorCount",
+            "WritingCount"
+          ],
+          "id_examples": {}
+        }
+      }
+    }
+  ]
+}

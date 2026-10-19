@@ -1,0 +1,752 @@
+{
+  "source": {
+    "postman_url": "https://open.cnkgraph.com/Api/postman.zip",
+    "postman_sha256": "cf8ed129682f67a7df6033893ee3cbcd97109a0808dd3d72aa1f6767033a21f3",
+    "postman_zip_bytes": 12473,
+    "swagger_url": "https://open.cnkgraph.com/swagger/v1/swagger.json",
+    "swagger_sha256": "f0c0fac7baccdce5633e6e0f4f7d53ed4c67ff5f9c34aa864aa5ce3081b27a9f",
+    "swagger_version": "3.0.4",
+    "terms_url": "https://cnkgraph.com/Home/OpenResources",
+    "retrieved_at_utc": "2026-10-19T23:06:59+00:00"
+  },
+  "batch": 0,
+  "results": [
+    {
+      "tested_at_utc": "2026-10-19T23:06:59+00:00",
+      "method": "GET",
+      "path": "/api/people",
+      "domain": "人物",
+      "name": "人物总览",
+      "test_path": "/api/people",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 82,
+      "bytes_sampled": 2092,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Total",
+          "Dynasties"
+        ],
+        "id_examples": {},
+        "list_field": "Dynasties",
+        "list_length": 38,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "Start",
+            "End",
+            "Count"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:00+00:00",
+      "method": "GET",
+      "path": "/api/people/{{dynasty}}",
+      "domain": "人物",
+      "name": "按朝代浏览",
+      "test_path": "/api/people/宋",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 29,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Message"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"Message\":\"人物不存在\"}"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:00+00:00",
+      "method": "GET",
+      "path": "/api/people/15188",
+      "domain": "人物",
+      "name": "获取特定人物介绍",
+      "test_path": "/api/people/15188",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 50,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:01+00:00",
+      "method": "POST",
+      "path": "/api/people/find",
+      "domain": "人物",
+      "name": "搜索符合指定籍贯与生卒时间范围的人物",
+      "test_path": "/api/people/find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 64,
+      "bytes_sampled": 30803,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "People"
+        ],
+        "id_examples": {},
+        "list_field": "People",
+        "list_length": 111,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Name",
+            "BirthYear",
+            "Birthday",
+            "DeathYear",
+            "Deathday",
+            "Dynasty",
+            "Aliases",
+            "Titles",
+            "Hometown"
+          ],
+          "id_examples": {
+            "Id": "32170"
+          },
+          "list_field": "Aliases",
+          "list_length": 1,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Name",
+              "Type",
+              "From"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:01+00:00",
+      "method": "POST",
+      "path": "/api/people/find",
+      "domain": "人物",
+      "name": "按姓氏搜索人物列表",
+      "test_path": "/api/people/find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 32,
+      "bytes_sampled": 99574,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "People"
+        ],
+        "id_examples": {},
+        "list_field": "People",
+        "list_length": 323,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Name",
+            "BirthYear",
+            "Birthday",
+            "DeathYear",
+            "Deathday",
+            "Dynasty",
+            "Aliases",
+            "Titles",
+            "Hometown"
+          ],
+          "id_examples": {
+            "Id": "450"
+          },
+          "list_field": "Aliases",
+          "list_length": 1,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Name",
+              "Type",
+              "From"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:02+00:00",
+      "method": "POST",
+      "path": "/api/people/find",
+      "domain": "人物",
+      "name": "按谥号搜索人物列表",
+      "test_path": "/api/people/find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 16,
+      "bytes_sampled": 26357,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "People"
+        ],
+        "id_examples": {},
+        "list_field": "People",
+        "list_length": 42,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Name",
+            "BirthYear",
+            "Birthday",
+            "DeathYear",
+            "Deathday",
+            "Dynasty",
+            "Aliases",
+            "Titles",
+            "Hometown"
+          ],
+          "id_examples": {
+            "Id": "21921"
+          },
+          "list_field": "Aliases",
+          "list_length": 2,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Name",
+              "Type",
+              "From"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:02+00:00",
+      "method": "GET",
+      "path": "/api/book",
+      "domain": "古籍库",
+      "name": "获取古籍库总览",
+      "test_path": "/api/book",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 16,
+      "bytes_sampled": 3644,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Total",
+          "Categories"
+        ],
+        "id_examples": {},
+        "list_field": "Categories",
+        "list_length": 6,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "Groups"
+          ],
+          "id_examples": {},
+          "list_field": "Groups",
+          "list_length": 15,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Name",
+              "Count"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:03+00:00",
+      "method": "GET",
+      "path": "/api/book/史部/正史类",
+      "domain": "古籍库",
+      "name": "获取某一分类下详细书目",
+      "test_path": "/api/book/史部/正史类",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 13077,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Category",
+          "Group",
+          "Books"
+        ],
+        "id_examples": {},
+        "list_field": "Books",
+        "list_length": 119,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Name",
+            "Author",
+            "AuthorIds",
+            "Dynasty",
+            "Versions"
+          ],
+          "id_examples": {
+            "Id": "2681"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:03+00:00",
+      "method": "GET",
+      "path": "/api/book/2180",
+      "domain": "古籍库",
+      "name": "获取某一部书的详细信息",
+      "test_path": "/api/book/2180",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 19,
+      "bytes_sampled": 41823,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Book"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:04+00:00",
+      "method": "GET",
+      "path": "/api/book/volume/KR4h0140_024",
+      "domain": "古籍库",
+      "name": "获取某一卷详细内容",
+      "test_path": "/api/book/volume/KR4h0140_024",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 35,
+      "bytes_sampled": 80962,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "VolumeId",
+          "Text",
+          "Html"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:04+00:00",
+      "method": "POST",
+      "path": "/Api/Book/Find",
+      "domain": "古籍库",
+      "name": "按关键词搜索古籍库",
+      "test_path": "/Api/Book/Find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 474,
+      "bytes_sampled": 44346,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Count",
+          "PageSize",
+          "Key",
+          "PageNo",
+          "Notification",
+          "Summary",
+          "Result",
+          "Error"
+        ],
+        "id_examples": {
+          "Key": "黄鹤楼"
+        },
+        "list_field": "Result",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Category",
+            "Books"
+          ],
+          "id_examples": {},
+          "list_field": "Books",
+          "list_length": 18,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Book",
+              "BookId",
+              "Volumes"
+            ],
+            "id_examples": {},
+            "list_field": "Volumes",
+            "list_length": 3,
+            "first_item": {
+              "kind": "object",
+              "keys": [
+                "Volume",
+                "VolumeId",
+                "Pages"
+              ],
+              "id_examples": {},
+              "list_field": "Pages",
+              "list_length": 1,
+              "first_item": {
+                "kind": "object",
+                "keys": [
+                  "Page",
+                  "PreviousText",
+                  "MatchedText",
+                  "LaterText"
+                ],
+                "id_examples": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:05+00:00",
+      "method": "POST",
+      "path": "/Api/Book/Find",
+      "domain": "古籍库",
+      "name": "检索古籍库时在关键词中使用问号通配符",
+      "test_path": "/Api/Book/Find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 315,
+      "bytes_sampled": 58556,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Count",
+          "PageSize",
+          "Key",
+          "PageNo",
+          "Notification",
+          "Summary",
+          "Result",
+          "Error"
+        ],
+        "id_examples": {
+          "Key": "黄鹤？楼"
+        },
+        "list_field": "Summary",
+        "list_length": 16,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Category",
+            "Books"
+          ],
+          "id_examples": {},
+          "list_field": "Books",
+          "list_length": 7,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "Count"
+            ],
+            "id_examples": {
+              "Id": "KR7a0006"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:06+00:00",
+      "method": "POST",
+      "path": "/Api/Book/Find",
+      "domain": "古籍库",
+      "name": "检索同时包含多个关键词的古籍",
+      "test_path": "/Api/Book/Find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 286,
+      "bytes_sampled": 49388,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Count",
+          "PageSize",
+          "Key",
+          "PageNo",
+          "Notification",
+          "Summary",
+          "Result",
+          "Error"
+        ],
+        "id_examples": {
+          "Key": "黄鹤楼 鹦鹉洲"
+        },
+        "list_field": "Summary",
+        "list_length": 28,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Category",
+            "Books"
+          ],
+          "id_examples": {},
+          "list_field": "Books",
+          "list_length": 9,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "Count"
+            ],
+            "id_examples": {
+              "Id": "KR7a0006"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:07+00:00",
+      "method": "GET",
+      "path": "/api/map/region",
+      "domain": "地理",
+      "name": "行政区划总览",
+      "test_path": "/api/map/region",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 81,
+      "bytes_sampled": 51989,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 21,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Region",
+            "Childs"
+          ],
+          "id_examples": {},
+          "list_field": "Childs",
+          "list_length": 34,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "Latitude",
+              "Longitude",
+              "PeopleCount",
+              "ParentId",
+              "HasChild",
+              "Links",
+              "HistoryRecords"
+            ],
+            "id_examples": {
+              "Id": "CN11"
+            },
+            "list_field": "HistoryRecords",
+            "list_length": 8,
+            "first_item": {
+              "kind": "object",
+              "keys": [
+                "HistoryId",
+                "NewName",
+                "TName",
+                "ExternalId",
+                "Type",
+                "BelongToCity",
+                "BelongToTown",
+                "BeginYear",
+                "EndYear",
+                "BeginReason",
+                "EndReason",
+                "BelongTos",
+                "Id",
+                "Name",
+                "Scope",
+                "Latitude",
+                "Longitude",
+                "Aliases",
+                "MetaData"
+              ],
+              "id_examples": {
+                "Id": "CN11"
+              },
+              "list_field": "BelongTos",
+              "list_length": 1,
+              "first_item": {
+                "kind": "str"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:08+00:00",
+      "method": "GET",
+      "path": "/api/map/region/{{regionId}}",
+      "domain": "地理",
+      "name": "按 Id 查询某一行政区划及其下级区划的信息",
+      "test_path": "/api/map/region/CN11",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 17,
+      "bytes_sampled": 3267,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Region",
+            "Childs"
+          ],
+          "id_examples": {},
+          "list_field": "Childs",
+          "list_length": 2,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "Latitude",
+              "Longitude",
+              "PeopleCount",
+              "ParentId",
+              "HasChild",
+              "Links",
+              "HistoryRecords"
+            ],
+            "id_examples": {
+              "Id": "CN1101"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:09+00:00",
+      "method": "GET",
+      "path": "/api/map/region/{{regionName}}",
+      "domain": "地理",
+      "name": "按名称查询某一行政区划及其下级区划的信息",
+      "test_path": "/api/map/region/潮州市",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 16,
+      "bytes_sampled": 19034,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Region",
+            "Childs"
+          ],
+          "id_examples": {},
+          "list_field": "Childs",
+          "list_length": 4,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "Latitude",
+              "Longitude",
+              "PeopleCount",
+              "ParentId",
+              "HasChild",
+              "Links",
+              "HistoryRecords"
+            ],
+            "id_examples": {
+              "Id": "CN445101"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:10+00:00",
+      "method": "GET",
+      "path": "/api/map/region/{{regionId}}/links",
+      "domain": "地理",
+      "name": "查询与某一行政区划相关的链接",
+      "test_path": "/api/map/region/CN11/links",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 23,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:10+00:00",
+      "method": "GET",
+      "path": "/api/map/scenery/{{regionId}}",
+      "domain": "地理",
+      "name": "查询某一行政区划下有哪些景观",
+      "test_path": "/api/map/scenery/CN11",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 209,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    }
+  ]
+}

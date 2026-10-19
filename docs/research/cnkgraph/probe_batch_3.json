@@ -1,0 +1,630 @@
+{
+  "source": {
+    "postman_url": "https://open.cnkgraph.com/Api/postman.zip",
+    "postman_sha256": "cf8ed129682f67a7df6033893ee3cbcd97109a0808dd3d72aa1f6767033a21f3",
+    "postman_zip_bytes": 12473,
+    "swagger_url": "https://open.cnkgraph.com/swagger/v1/swagger.json",
+    "swagger_sha256": "f0c0fac7baccdce5633e6e0f4f7d53ed4c67ff5f9c34aa864aa5ce3081b27a9f",
+    "swagger_version": "3.0.4",
+    "terms_url": "https://cnkgraph.com/Home/OpenResources",
+    "retrieved_at_utc": "2026-10-19T23:07:40+00:00"
+  },
+  "batch": 3,
+  "results": [
+    {
+      "tested_at_utc": "2026-10-19T23:07:40+00:00",
+      "method": "GET",
+      "path": "/api/writing/{{dynasty}}",
+      "domain": "诗文库",
+      "name": "按朝代浏览",
+      "test_path": "/api/writing/宋",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 73,
+      "bytes_sampled": 39671,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Key",
+          "Dynasties"
+        ],
+        "id_examples": {
+          "Key": "宋"
+        },
+        "list_field": "Dynasties",
+        "list_length": 49,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "Authors"
+          ],
+          "id_examples": {},
+          "list_field": "Authors",
+          "list_length": 1,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "Surname",
+              "Life",
+              "WritingCount"
+            ],
+            "id_examples": {
+              "Id": "20938"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:41+00:00",
+      "method": "GET",
+      "path": "/api/writing/{{dynasty}}/{{authorName}}/{{authorId}}/{{writingType}}",
+      "domain": "诗文库",
+      "name": "按作家浏览",
+      "test_path": "/api/writing/宋/杜甫/17270/诗",
+      "status": "http_error",
+      "http_status": 400,
+      "mime": "application/problem+json",
+      "latency_ms": 17,
+      "bytes_sampled": 251,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "errors",
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"errors\":{\"writingType\":[\"The value '诗' is not valid.\"]},\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors o"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:41+00:00",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}",
+      "domain": "诗文库",
+      "name": "获取特定作品",
+      "test_path": "/api/writing/136925",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 16,
+      "bytes_sampled": 8021,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Writing",
+          "Links"
+        ],
+        "id_examples": {},
+        "list_field": "Links",
+        "list_length": 11,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "LabelData",
+            "LabelType",
+            "LabelIdentity",
+            "LabelDescription",
+            "ResourceType",
+            "ResourceId",
+            "ResourcePath",
+            "Value",
+            "Start",
+            "Length",
+            "Weight"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:43+00:00",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}",
+      "domain": "诗文库",
+      "name": "获取特定作品，返回结果不作繁简转换",
+      "test_path": "/api/writing/136925",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 17,
+      "bytes_sampled": 8021,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Writing",
+          "Links"
+        ],
+        "id_examples": {},
+        "list_field": "Links",
+        "list_length": 11,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "LabelData",
+            "LabelType",
+            "LabelIdentity",
+            "LabelDescription",
+            "ResourceType",
+            "ResourceId",
+            "ResourcePath",
+            "Value",
+            "Start",
+            "Length",
+            "Weight"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:43+00:00",
+      "method": "GET",
+      "path": "/api/writing/couplet/{{coupletWords}}",
+      "domain": "诗文库",
+      "name": "获取含特定对仗词汇组的律句",
+      "test_path": "/api/writing/couplet/天地,古今",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 19,
+      "bytes_sampled": 44620,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Word1",
+          "Word2",
+          "Couplets"
+        ],
+        "id_examples": {},
+        "list_field": "Couplets",
+        "list_length": 317,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "WritingId",
+            "Author",
+            "Title",
+            "Sentence"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:44+00:00",
+      "method": "POST",
+      "path": "/api/writing/find",
+      "domain": "诗文库",
+      "name": "组合搜索",
+      "test_path": "/api/writing/find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 49,
+      "bytes_sampled": 27012,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Notification",
+          "WritingCount",
+          "PageNo",
+          "PageSize",
+          "MatchedKeys",
+          "Writings"
+        ],
+        "id_examples": {},
+        "list_field": "Writings",
+        "list_length": 20,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Classes",
+            "GroupIndex",
+            "Froms",
+            "Allusions",
+            "Pictures",
+            "Dynasty",
+            "Author",
+            "AuthorId",
+            "AuthorDate",
+            "AuthorYears",
+            "AuthorPlace",
+            "Type",
+            "TypeDetail",
+            "Rhyme",
+            "Rank",
+            "FirstClauseRhyme",
+            "Title",
+            "SubTitle",
+            "Preface",
+            "Clauses",
+            "Note",
+            "Comments"
+          ],
+          "id_examples": {
+            "Id": "121788"
+          },
+          "list_field": "Clauses",
+          "list_length": 4,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Content",
+              "Rhyme",
+              "Comments",
+              "BreakAfter"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:44+00:00",
+      "method": "GET",
+      "path": "/api/writing/SimilarClauses/{{key}}",
+      "domain": "诗文库",
+      "name": "获取作品库中有相似句子的作品",
+      "test_path": "/api/writing/SimilarClauses/31190",
+      "status": "unexpected_response",
+      "http_status": 302,
+      "mime": "",
+      "latency_ms": 18,
+      "bytes_sampled": 0,
+      "truncated": false,
+      "response": {
+        "kind": "non_json"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:45+00:00",
+      "method": "GET",
+      "path": "/api/writing/SameRhymes/{{key}}",
+      "domain": "诗文库",
+      "name": "获取作品库中与指定作品所押韵脚相同的作品",
+      "test_path": "/api/writing/SameRhymes/31190",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 49,
+      "bytes_sampled": 8062,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 84,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Author",
+            "Dynasty",
+            "Title"
+          ],
+          "id_examples": {
+            "Id": "31190"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:46+00:00",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}/tones",
+      "domain": "诗文库",
+      "name": "为作品标注平仄",
+      "test_path": "/api/writing/136925/tones",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 9659,
+      "bytes_sampled": 10585,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Writing",
+          "ClauseTones"
+        ],
+        "id_examples": {},
+        "list_field": "ClauseTones",
+        "list_length": 26,
+        "first_item": {
+          "kind": "array",
+          "length_in_sample": 5,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Character",
+              "Tone"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:56+00:00",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}/bookLinks",
+      "domain": "诗文库",
+      "name": "获取作品在古籍库中的出处及引用信息",
+      "test_path": "/api/writing/136925/bookLinks",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 46,
+      "bytes_sampled": 734,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Froms",
+          "ResourceType",
+          "ResourceId",
+          "Count",
+          "PageSize",
+          "PageNo",
+          "Links"
+        ],
+        "id_examples": {},
+        "list_field": "Links",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Book",
+            "Category",
+            "Volume",
+            "VolumeId",
+            "StartPage",
+            "EndPage",
+            "Start",
+            "Length",
+            "MatchedText",
+            "PreviousText",
+            "LaterText",
+            "PageImages",
+            "MatchedPercentage"
+          ],
+          "id_examples": {},
+          "list_field": "PageImages",
+          "list_length": 1,
+          "first_item": {
+            "kind": "str"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:56+00:00",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}/labelize",
+      "domain": "诗文库",
+      "name": "自动笺注",
+      "test_path": "/api/writing/136925/labelize",
+      "status": "http_error",
+      "http_status": 406,
+      "mime": "",
+      "latency_ms": 20,
+      "bytes_sampled": 0,
+      "truncated": false,
+      "response": {
+        "kind": "non_json"
+      },
+      "error_excerpt": ""
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:57+00:00",
+      "method": "POST",
+      "path": "/api/writing/find",
+      "domain": "诗文库",
+      "name": "查询符合某一平仄句式的律句",
+      "test_path": "/api/writing/find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 467,
+      "bytes_sampled": 2993,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Notification",
+          "WritingCount",
+          "PageNo",
+          "PageSize",
+          "MatchedKeys",
+          "WritingSentences"
+        ],
+        "id_examples": {},
+        "list_field": "WritingSentences",
+        "list_length": 20,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "WritingId",
+            "Author",
+            "Title",
+            "Sentence"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:58+00:00",
+      "method": "GET",
+      "path": "/api/rhyme",
+      "domain": "韵典",
+      "name": "总览",
+      "test_path": "/api/rhyme",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 19,
+      "bytes_sampled": 68,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Books"
+        ],
+        "id_examples": {},
+        "list_field": "Books",
+        "list_length": 4,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:58+00:00",
+      "method": "GET",
+      "path": "/api/rhyme/平水韵",
+      "domain": "韵典",
+      "name": "获取某一韵书韵目信息",
+      "test_path": "/api/rhyme/平水韵",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 21,
+      "bytes_sampled": 6087,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Book",
+          "Categories"
+        ],
+        "id_examples": {},
+        "list_field": "Categories",
+        "list_length": 106,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "Id",
+            "Tone",
+            "Chars"
+          ],
+          "id_examples": {
+            "Id": "東"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:59+00:00",
+      "method": "GET",
+      "path": "/api/rhyme/平水韵/青",
+      "domain": "韵典",
+      "name": "获取某一韵目字表",
+      "test_path": "/api/rhyme/平水韵/青",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 21,
+      "bytes_sampled": 10656,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Book",
+          "Categories"
+        ],
+        "id_examples": {},
+        "list_field": "Categories",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "Id",
+            "Tone",
+            "Chars"
+          ],
+          "id_examples": {
+            "Id": "靑"
+          },
+          "list_field": "Chars",
+          "list_length": 244,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Char",
+              "Comment",
+              "Sames"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:59+00:00",
+      "method": "GET",
+      "path": "/api/rhyme/平水韵/侵/参",
+      "domain": "韵典",
+      "name": "获取韵字详细信息",
+      "test_path": "/api/rhyme/平水韵/侵/参",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 34,
+      "bytes_sampled": 59843,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Char",
+          "Comment",
+          "Sames",
+          "Spellings",
+          "WordStartsWith",
+          "WordEndsWith",
+          "ReferToPeiWenYunFu",
+          "ReferToChars",
+          "WritingSentences"
+        ],
+        "id_examples": {},
+        "list_field": "Spellings",
+        "list_length": 2,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:08:00+00:00",
+      "method": "POST",
+      "path": "/api/rhyme/find",
+      "domain": "韵典",
+      "name": "查某字在某一韵书中的信息",
+      "test_path": "/api/rhyme/find",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 36,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    }
+  ]
+}

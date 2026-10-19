@@ -1,0 +1,679 @@
+{
+  "source": {
+    "postman_url": "https://open.cnkgraph.com/Api/postman.zip",
+    "postman_sha256": "cf8ed129682f67a7df6033893ee3cbcd97109a0808dd3d72aa1f6767033a21f3",
+    "postman_zip_bytes": 12473,
+    "swagger_url": "https://open.cnkgraph.com/swagger/v1/swagger.json",
+    "swagger_sha256": "f0c0fac7baccdce5633e6e0f4f7d53ed4c67ff5f9c34aa864aa5ce3081b27a9f",
+    "swagger_version": "3.0.4",
+    "terms_url": "https://cnkgraph.com/Home/OpenResources",
+    "retrieved_at_utc": "2026-10-19T23:07:11+00:00"
+  },
+  "batch": 1,
+  "results": [
+    {
+      "tested_at_utc": "2026-10-19T23:07:11+00:00",
+      "method": "GET",
+      "path": "/api/map/scenery/CN3301/西湖",
+      "domain": "地理",
+      "name": "查询某一景观的详细信息",
+      "test_path": "/api/map/scenery/CN3301/西湖",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 93,
+      "bytes_sampled": 1144,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Province",
+          "City",
+          "Name",
+          "Latitude",
+          "Longitude",
+          "Aliases",
+          "Links",
+          "Summary",
+          "Detail"
+        ],
+        "id_examples": {},
+        "list_field": "Aliases",
+        "list_length": 12,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:12+00:00",
+      "method": "GET",
+      "path": "/api/map/scenery/CN4201/黄鹤楼/links",
+      "domain": "地理",
+      "name": "查询某一景观的相关链接",
+      "test_path": "/api/map/scenery/CN4201/黄鹤楼/links",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 30,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:13+00:00",
+      "method": "GET",
+      "path": "/api/char/中",
+      "domain": "字典",
+      "name": "查字",
+      "test_path": "/api/char/中",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 95,
+      "bytes_sampled": 18339,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "ModernDictionary",
+          "KangXiDictionary",
+          "ShuoWenDictionary"
+        ],
+        "id_examples": {},
+        "list_field": "ModernDictionary",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Value",
+            "Advance",
+            "Standard"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:13+00:00",
+      "method": "POST",
+      "path": "/api/tool/charsetConvert",
+      "domain": "工具",
+      "name": "简体转繁体",
+      "test_path": "/api/tool/charsetConvert",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 29,
+      "bytes_sampled": 20949,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "ConvertedContent",
+          "CharOptionExplanations"
+        ],
+        "id_examples": {},
+        "list_field": "ConvertedContent",
+        "list_length": 5,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "ConvertedChars",
+            "Options"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:14+00:00",
+      "method": "POST",
+      "path": "/api/tool/charsetConvert",
+      "domain": "工具",
+      "name": "繁体转简体",
+      "test_path": "/api/tool/charsetConvert",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 28,
+      "bytes_sampled": 13626,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "ConvertedContent",
+          "CharOptionExplanations"
+        ],
+        "id_examples": {},
+        "list_field": "ConvertedContent",
+        "list_length": 2,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "ConvertedChars",
+            "Options"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:14+00:00",
+      "method": "POST",
+      "path": "/api/tool/labelize",
+      "domain": "工具",
+      "name": "自动笺注",
+      "test_path": "/api/tool/labelize",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "",
+      "latency_ms": 18,
+      "bytes_sampled": 0,
+      "truncated": false,
+      "response": {
+        "kind": "non_json"
+      },
+      "error_excerpt": ""
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:15+00:00",
+      "method": "POST",
+      "path": "/api/tool/reference",
+      "domain": "工具",
+      "name": "出处与化用分析",
+      "test_path": "/api/tool/reference",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 982,
+      "bytes_sampled": 2747,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Sentences"
+        ],
+        "id_examples": {},
+        "list_field": "Sentences",
+        "list_length": 8,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Clause",
+            "Notification",
+            "References"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:16+00:00",
+      "method": "POST",
+      "path": "/api/tool/texting",
+      "domain": "工具",
+      "name": "短信息查询",
+      "test_path": "/api/tool/texting",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 214,
+      "bytes_sampled": 589,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Html"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:17+00:00",
+      "method": "GET",
+      "path": "/api/calendar",
+      "domain": "年历",
+      "name": "总览",
+      "test_path": "/api/calendar",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 37,
+      "bytes_sampled": 45436,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Dynasties"
+        ],
+        "id_examples": {},
+        "list_field": "Dynasties",
+        "list_length": 20,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "BeginYear",
+            "EndYear",
+            "SubDynasties"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:17+00:00",
+      "method": "GET",
+      "path": "/api/calendar/{{dynasty}}",
+      "domain": "年历",
+      "name": "按朝代浏览",
+      "test_path": "/api/calendar/宋",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 31,
+      "bytes_sampled": 3194,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Name",
+          "Dynasties"
+        ],
+        "id_examples": {},
+        "list_field": "Dynasties",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "BeginYear",
+            "EndYear",
+            "Kings"
+          ],
+          "id_examples": {},
+          "list_field": "Kings",
+          "list_length": 8,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "GovernBeginTime",
+              "GovernEndTime",
+              "AuthorId",
+              "EraYears"
+            ],
+            "id_examples": {
+              "Id": "4840"
+            },
+            "list_field": "EraYears",
+            "list_length": 1,
+            "first_item": {
+              "kind": "object",
+              "keys": [
+                "Id",
+                "Name",
+                "BeginYear",
+                "EndYear",
+                "InheritedOffsetYears",
+                "ExtendedSpan",
+                "Span",
+                "Comment",
+                "CalculatedYear"
+              ],
+              "id_examples": {
+                "Id": "4841"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:18+00:00",
+      "method": "GET",
+      "path": "/api/calendar/eraYear/宋绍兴",
+      "domain": "年历",
+      "name": "查看某一年号详细信息",
+      "test_path": "/api/calendar/eraYear/宋绍兴",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 23,
+      "bytes_sampled": 314,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Name",
+          "GovernBeginTime",
+          "GovernEndTime",
+          "AuthorId",
+          "EraYears"
+        ],
+        "id_examples": {
+          "Id": "11020"
+        },
+        "list_field": "EraYears",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Name",
+            "BeginYear",
+            "EndYear",
+            "InheritedOffsetYears",
+            "ExtendedSpan",
+            "Span",
+            "Comment",
+            "CalculatedYear"
+          ],
+          "id_examples": {
+            "Id": "11022"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:18+00:00",
+      "method": "GET",
+      "path": "/api/calendar/date/901年",
+      "domain": "年历",
+      "name": "查某一年",
+      "test_path": "/api/calendar/date/901年",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 23,
+      "bytes_sampled": 2192,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Date",
+          "EraYears",
+          "Links",
+          "ShuoLeapTable"
+        ],
+        "id_examples": {},
+        "list_field": "EraYears",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Dynasty",
+            "Kings"
+          ],
+          "id_examples": {},
+          "list_field": "Kings",
+          "list_length": 2,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "GovernBeginTime",
+              "GovernEndTime",
+              "AuthorId",
+              "EraYears"
+            ],
+            "id_examples": {
+              "Id": "8040"
+            },
+            "list_field": "EraYears",
+            "list_length": 2,
+            "first_item": {
+              "kind": "object",
+              "keys": [
+                "Id",
+                "Name",
+                "BeginYear",
+                "EndYear",
+                "InheritedOffsetYears",
+                "ExtendedSpan",
+                "Span",
+                "Comment",
+                "CalculatedYear"
+              ],
+              "id_examples": {
+                "Id": "8045"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:19+00:00",
+      "method": "GET",
+      "path": "/api/calendar/date/宋绍兴五年七月丁酉",
+      "domain": "年历",
+      "name": "查某一日期",
+      "test_path": "/api/calendar/date/宋绍兴五年七月丁酉",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 23,
+      "bytes_sampled": 4064,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Date",
+          "EraYears",
+          "Links",
+          "ShuoLeapTable"
+        ],
+        "id_examples": {},
+        "list_field": "EraYears",
+        "list_length": 5,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Dynasty",
+            "Kings"
+          ],
+          "id_examples": {},
+          "list_field": "Kings",
+          "list_length": 4,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "GovernBeginTime",
+              "GovernEndTime",
+              "AuthorId",
+              "EraYears"
+            ],
+            "id_examples": {
+              "Id": "11020"
+            },
+            "list_field": "EraYears",
+            "list_length": 1,
+            "first_item": {
+              "kind": "object",
+              "keys": [
+                "Id",
+                "Name",
+                "BeginYear",
+                "EndYear",
+                "InheritedOffsetYears",
+                "ExtendedSpan",
+                "Span",
+                "Comment",
+                "CalculatedYear"
+              ],
+              "id_examples": {
+                "Id": "11022"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:20+00:00",
+      "method": "GET",
+      "path": "/api/calendar/GanZhi/庚子",
+      "domain": "年历",
+      "name": "查历代某一干支年",
+      "test_path": "/api/calendar/GanZhi/庚子",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 29,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:20+00:00",
+      "method": "GET",
+      "path": "/api/calendar/date/901年/links",
+      "domain": "年历",
+      "name": "查询与某一时间相关的链接",
+      "test_path": "/api/calendar/date/901年/links",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 86,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:21+00:00",
+      "method": "GET",
+      "path": "/api/quTune",
+      "domain": "曲谱",
+      "name": "曲谱总览",
+      "test_path": "/api/quTune",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 84,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:21+00:00",
+      "method": "GET",
+      "path": "/api/quTune/90",
+      "domain": "曲谱",
+      "name": "查询特定曲谱",
+      "test_path": "/api/quTune/90",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 89,
+      "bytes_sampled": 5473,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Formats",
+          "Id",
+          "Name",
+          "Path",
+          "Aliases",
+          "NameComment",
+          "WritingCount"
+        ],
+        "id_examples": {
+          "Id": "90"
+        },
+        "list_field": "Formats",
+        "list_length": 2,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "FormatIndex",
+            "FormatComment",
+            "Comment",
+            "SampleFrom",
+            "TuneFrom",
+            "Definition"
+          ],
+          "id_examples": {},
+          "list_field": "Definition",
+          "list_length": 38,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Type",
+              "Text",
+              "Tone",
+              "Pattern"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:07:22+00:00",
+      "method": "GET",
+      "path": "/api/quTune/1/writings",
+      "domain": "曲谱",
+      "name": "查询历代使用指定曲谱的作品",
+      "test_path": "/api/quTune/1/writings",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 27,
+      "bytes_sampled": 742,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Name",
+          "Writings"
+        ],
+        "id_examples": {
+          "Id": "1"
+        },
+        "list_field": "Writings",
+        "list_length": 3,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Dynasty",
+            "Authors"
+          ],
+          "id_examples": {},
+          "list_field": "Authors",
+          "list_length": 5,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Name",
+              "AuthorId",
+              "WritingIds"
+            ],
+            "id_examples": {},
+            "list_field": "WritingIds",
+            "list_length": 1,
+            "first_item": {
+              "kind": "int"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,2145 @@
+{
+  "source": {
+    "postman_url": "https://open.cnkgraph.com/Api/postman.zip",
+    "postman_sha256": "cf8ed129682f67a7df6033893ee3cbcd97109a0808dd3d72aa1f6767033a21f3",
+    "postman_zip_bytes": 12473,
+    "swagger_url": "https://open.cnkgraph.com/swagger/v1/swagger.json",
+    "swagger_sha256": "f0c0fac7baccdce5633e6e0f4f7d53ed4c67ff5f9c34aa864aa5ce3081b27a9f",
+    "swagger_version": "3.0.4",
+    "terms_url": "https://cnkgraph.com/Home/OpenResources",
+    "retrieved_at_utc": "2026-10-19T23:10:49+00:00"
+  },
+  "batch": 4,
+  "results": [
+    {
+      "tested_at_utc": "2026-10-19T23:10:49+00:00",
+      "method": "GET",
+      "path": "/api/Biography",
+      "domain": "Biography",
+      "name": "查询诗人生平（事件时间线、交游、活动轨迹等）。",
+      "test_path": "/api/Biography",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 76,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:49+00:00",
+      "method": "GET",
+      "path": "/api/Biography/WritingStat",
+      "domain": "Biography",
+      "name": "按时间/作品统计诗人创作概况（例如分年度字数、篇数等）。",
+      "test_path": "/api/Biography/WritingStat",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 173,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:50+00:00",
+      "method": "GET",
+      "path": "/api/Biography/Places",
+      "domain": "Biography",
+      "name": "获取所有（或指定时代分界）活动地名称及其对应的活动条目键集合。",
+      "test_path": "/api/Biography/Places",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 80,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:50+00:00",
+      "method": "GET",
+      "path": "/api/Biography/Places/{id}",
+      "domain": "Biography",
+      "name": "根据模糊或层级地址解析当前（“当代”视角）对应的活动地点列表。",
+      "test_path": "/api/Biography/Places/90",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 71,
+      "bytes_sampled": 33,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Category",
+          "Places"
+        ],
+        "id_examples": {},
+        "list_field": "Places",
+        "list_length": 0
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:51+00:00",
+      "method": "GET",
+      "path": "/api/Biography/Poems/{key}",
+      "domain": "Biography",
+      "name": "按作品 key 查询其关联的活动 / 生平事件信息。",
+      "test_path": "/api/Biography/Poems/31190",
+      "status": "unexpected_response",
+      "http_status": 204,
+      "mime": "",
+      "latency_ms": 19,
+      "bytes_sampled": 0,
+      "truncated": false,
+      "response": {
+        "kind": "non_json"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:51+00:00",
+      "method": "GET",
+      "path": "/api/Biography/Stat",
+      "domain": "Biography",
+      "name": "按年份范围统计传记数据（例如活动或作者相关度量）。",
+      "test_path": "/api/Biography/Stat",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 147,
+      "bytes_sampled": 28587,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "AuthorCount",
+          "BeginYear",
+          "EndYear",
+          "PoemCounts",
+          "ArticleCounts",
+          "FuCounts",
+          "CiCounts",
+          "ByRegion"
+        ],
+        "id_examples": {},
+        "list_field": "PoemCounts",
+        "list_length": 744,
+        "first_item": {
+          "kind": "int"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:52+00:00",
+      "method": "GET",
+      "path": "/api/Biography/Export/{key}",
+      "domain": "Biography",
+      "name": "以 CSV 格式导出指定作家的行迹数据。",
+      "test_path": "/api/Biography/Export/31190",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:52+00:00",
+      "method": "GET",
+      "path": "/api/Book/{category}/{group}",
+      "domain": "Book",
+      "name": "按主目録 + 次目録列出书籍。",
+      "test_path": "/api/Book/史部/正史类",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 13077,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Category",
+          "Group",
+          "Books"
+        ],
+        "id_examples": {},
+        "list_field": "Books",
+        "list_length": 119,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Name",
+            "Author",
+            "AuthorIds",
+            "Dynasty",
+            "Versions"
+          ],
+          "id_examples": {
+            "Id": "2681"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:53+00:00",
+      "method": "GET",
+      "path": "/api/Book/{id}",
+      "domain": "Book",
+      "name": "按书籍 ID 获取书籍详细（含版本与卷）。",
+      "test_path": "/api/Book/90",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 9571,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Book"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:53+00:00",
+      "method": "GET",
+      "path": "/api/Book/Volume/{id}",
+      "domain": "Book",
+      "name": "获取某卷全文与 HTML。",
+      "test_path": "/api/Book/Volume/90",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 32,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Message"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"Message\":\"指定卷不存在\"}"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:54+00:00",
+      "method": "POST",
+      "path": "/api/Book/Search",
+      "domain": "Book",
+      "name": "简单检索：关键词 + 可选单书（Search）。",
+      "test_path": "/api/Book/Search",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 152,
+      "bytes_sampled": 89773,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Count",
+          "PageSize",
+          "Key",
+          "PageNo",
+          "Notification",
+          "Summary",
+          "Result",
+          "Error"
+        ],
+        "id_examples": {
+          "Key": "黄鹤楼"
+        },
+        "list_field": "Summary",
+        "list_length": 47,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Category",
+            "Books"
+          ],
+          "id_examples": {},
+          "list_field": "Books",
+          "list_length": 25,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "Count"
+            ],
+            "id_examples": {
+              "Id": "KR7a0006"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:54+00:00",
+      "method": "GET",
+      "path": "/api/Calendar/{dynasty}",
+      "domain": "Calendar",
+      "name": "根据朝代或子朝代名称获取其下所有细分政权（子朝代）及君主年号信息。",
+      "test_path": "/api/Calendar/宋",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 17,
+      "bytes_sampled": 3194,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Name",
+          "Dynasties"
+        ],
+        "id_examples": {},
+        "list_field": "Dynasties",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "BeginYear",
+            "EndYear",
+            "Kings"
+          ],
+          "id_examples": {},
+          "list_field": "Kings",
+          "list_length": 8,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Name",
+              "GovernBeginTime",
+              "GovernEndTime",
+              "AuthorId",
+              "EraYears"
+            ],
+            "id_examples": {
+              "Id": "4840"
+            },
+            "list_field": "EraYears",
+            "list_length": 1,
+            "first_item": {
+              "kind": "object",
+              "keys": [
+                "Id",
+                "Name",
+                "BeginYear",
+                "EndYear",
+                "InheritedOffsetYears",
+                "ExtendedSpan",
+                "Span",
+                "Comment",
+                "CalculatedYear"
+              ],
+              "id_examples": {
+                "Id": "4841"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:55+00:00",
+      "method": "GET",
+      "path": "/api/Calendar/EraYear/{key}",
+      "domain": "Calendar",
+      "name": "根据年号键（年号 ID 或日期文本）解析并返回君主及相关年号集合。",
+      "test_path": "/api/Calendar/EraYear/31190",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 19,
+      "bytes_sampled": 43,
+      "truncated": false,
+      "response": {
+        "kind": "str"
+      },
+      "error_excerpt": "\"没法從“31190”中找到年號信息\""
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:55+00:00",
+      "method": "GET",
+      "path": "/api/Calendar/GanZhi/{key}",
+      "domain": "Calendar",
+      "name": "解析干支（如“甲子”）列出所有可能公元年份及该年对应的年号分组。",
+      "test_path": "/api/Calendar/GanZhi/31190",
+      "status": "http_error",
+      "http_status": 400,
+      "mime": "application/json",
+      "latency_ms": 17,
+      "bytes_sampled": 43,
+      "truncated": false,
+      "response": {
+        "kind": "str"
+      },
+      "error_excerpt": "\"輸入内容“31190”不是干支格式\""
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:56+00:00",
+      "method": "GET",
+      "path": "/api/Calendar/Date/{key}",
+      "domain": "Calendar",
+      "name": "解析日期（可含年号、闰月、干支等），返回结构化日期、年号候选分组、相关链接统计与朔闰表。",
+      "test_path": "/api/Calendar/Date/31190",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 17,
+      "bytes_sampled": 182,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Date",
+          "EraYears",
+          "Links",
+          "ShuoLeapTable"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:56+00:00",
+      "method": "GET",
+      "path": "/api/Calendar/Date/{key}/Links",
+      "domain": "Calendar",
+      "name": "获取日期（唯一年号）在知识图谱中的关联实体分页结果。",
+      "test_path": "/api/Calendar/Date/31190/Links",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 17,
+      "bytes_sampled": 193,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Date",
+          "Links"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:57+00:00",
+      "method": "GET",
+      "path": "/api/Category/{book}",
+      "domain": "Category",
+      "name": "按類書名稱獲取其所有分類與條目概要（僅返回精簡字段，不含正文內容）。",
+      "test_path": "/api/Category/钦定古今图书集成",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 43,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:57+00:00",
+      "method": "GET",
+      "path": "/api/Category/{book}/{itemId}/{volumeId}",
+      "domain": "Category",
+      "name": "取得某類書中指定條目（以及可選卷內容）詳情。",
+      "test_path": "/api/Category/钦定古今图书集成/0002/KR7a0001_018",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 112,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:58+00:00",
+      "method": "GET",
+      "path": "/api/Char/{key}",
+      "domain": "Char",
+      "name": "查詢單個漢字的多來源字典與訓詁信息。\r\n包含：現代字典（自建/綜合）、《康熙字典》、《說文解字》。若某來源無資料則為 null。",
+      "test_path": "/api/Char/31190",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 94,
+      "bytes_sampled": 47,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Message"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"Message\":\"未找到該字相關字典資料\"}"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:59+00:00",
+      "method": "GET",
+      "path": "/api/CiTune/{tuneId}/Writings",
+      "domain": "CiTune",
+      "name": "獲取指定詞牌的例詞（按朝代分類）與基礎信息。",
+      "test_path": "/api/CiTune/90/Writings",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 24,
+      "bytes_sampled": 1970,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Name",
+          "Writings"
+        ],
+        "id_examples": {
+          "Id": "90"
+        },
+        "list_field": "Writings",
+        "list_length": 5,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Dynasty",
+            "Authors"
+          ],
+          "id_examples": {},
+          "list_field": "Authors",
+          "list_length": 2,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Name",
+              "AuthorId",
+              "WritingIds"
+            ],
+            "id_examples": {},
+            "list_field": "WritingIds",
+            "list_length": 2,
+            "first_item": {
+              "kind": "int"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:59+00:00",
+      "method": "GET",
+      "path": "/api/CiTune/{tuneId}/Writings/Export",
+      "domain": "CiTune",
+      "name": "獲取指定詞牌的例詞 Excel 文件。",
+      "test_path": "/api/CiTune/90/Writings/Export",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:59+00:00",
+      "method": "GET",
+      "path": "/api/CiTune/{tuneId}/Writings/Export/Text",
+      "domain": "CiTune",
+      "name": "獲取指定詞牌的例詞純文本文件。",
+      "test_path": "/api/CiTune/90/Writings/Export/Text",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:10:59+00:00",
+      "method": "GET",
+      "path": "/api/CiTune/{tuneId}/{formatIndex}",
+      "domain": "CiTune",
+      "name": "獲取詞牌詳情；可指定格式索引返回單一格式並支援高亮匹配片段。",
+      "test_path": "/api/CiTune/90/0",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 22,
+      "bytes_sampled": 1494,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Name",
+          "Format"
+        ],
+        "id_examples": {
+          "Id": "90"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:00+00:00",
+      "method": "GET",
+      "path": "/api/Glossary/{category}/{id}",
+      "domain": "Glossary",
+      "name": "按类别与唯一 Id 获取单个词条或典故。",
+      "test_path": "/api/Glossary/典故/90",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 24,
+      "bytes_sampled": 1284,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "CountInWritings",
+          "Keys",
+          "RelatedPersons",
+          "Correlations",
+          "References",
+          "Quotes",
+          "Explains",
+          "Kind",
+          "Id"
+        ],
+        "id_examples": {
+          "Id": "90"
+        },
+        "list_field": "Keys",
+        "list_length": 5,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:00+00:00",
+      "method": "POST",
+      "path": "/api/Glossary/{category}",
+      "domain": "Glossary",
+      "name": "按类别批量获取多个词条或典故。",
+      "test_path": "/api/Glossary/典故",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 22,
+      "bytes_sampled": 1468,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "CountInWritings",
+            "Keys",
+            "RelatedPersons",
+            "Correlations",
+            "References",
+            "Quotes",
+            "Explains",
+            "Kind",
+            "Id"
+          ],
+          "id_examples": {
+            "Id": "1000"
+          },
+          "list_field": "Keys",
+          "list_length": 8,
+          "first_item": {
+            "kind": "str"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:01+00:00",
+      "method": "POST",
+      "path": "/api/Glossary/{category}/Find",
+      "domain": "Glossary",
+      "name": "按类别与关键词检索典故或词汇。\r\n若检索到典故集合则返回典故；否则返回首组匹配的词汇。",
+      "test_path": "/api/Glossary/典故/Find",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 22,
+      "bytes_sampled": 7510,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 3,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "CountInWritings",
+            "Keys",
+            "RelatedPersons",
+            "Correlations",
+            "References",
+            "Quotes",
+            "Explains",
+            "Kind",
+            "Id"
+          ],
+          "id_examples": {
+            "Id": "733"
+          },
+          "list_field": "Keys",
+          "list_length": 69,
+          "first_item": {
+            "kind": "str"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:01+00:00",
+      "method": "GET",
+      "path": "/api/Glossary/CategoryWords/{category}",
+      "domain": "Glossary",
+      "name": "按“分类”获取对应词汇列表（含 Id）。",
+      "test_path": "/api/Glossary/CategoryWords/典故",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 27,
+      "bytes_sampled": 572,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Category",
+          "Words"
+        ],
+        "id_examples": {},
+        "list_field": "Words",
+        "list_length": 10,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Word",
+            "OriginalWord"
+          ],
+          "id_examples": {
+            "Id": "2341"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:02+00:00",
+      "method": "GET",
+      "path": "/api/Glossary/CoupletTrain/{id}",
+      "domain": "Glossary",
+      "name": "获取对语链",
+      "test_path": "/api/Glossary/CoupletTrain/90",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 23,
+      "bytes_sampled": 32,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Message"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"Message\":\"未找到對語鏈\"}"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:02+00:00",
+      "method": "GET",
+      "path": "/api/Label/{type}/{id}/{subId}",
+      "domain": "Label",
+      "name": "获取指定标签（支持带子标识）对应的标签数据与分页内容。",
+      "test_path": "/api/Label/Writing/90/1",
+      "status": "http_error",
+      "http_status": 400,
+      "mime": "application/problem+json",
+      "latency_ms": 36,
+      "bytes_sampled": 248,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "errors",
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"errors\":{\"type\":[\"The value 'Writing' is not valid.\"]},\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors occu"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:03+00:00",
+      "method": "GET",
+      "path": "/api/Label/Writing/Export/{Category}",
+      "domain": "Label",
+      "name": "按标签及可选分类查询知识图谱中的作品，并导出为 CSV 文件。",
+      "test_path": "/api/Label/Writing/Export/典故",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:03+00:00",
+      "method": "GET",
+      "path": "/api/Map/Region/{key}",
+      "domain": "Map",
+      "name": "按关键字（名称模糊）搜索区域，返回匹配区域集合。",
+      "test_path": "/api/Map/Region/31190",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 24,
+      "bytes_sampled": 35,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Message"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"Message\":\"未找到匹配区域\"}"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:03+00:00",
+      "method": "GET",
+      "path": "/api/Map/Region/{RegionId}/Links",
+      "domain": "Map",
+      "name": "获取指定区域的关联知识图谱节点（分页）。",
+      "test_path": "/api/Map/Region/CN3301/Links",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 29,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:05+00:00",
+      "method": "GET",
+      "path": "/api/Map/Region/{RegionId}/OutsideOfficials/{Dynasty}",
+      "domain": "Map",
+      "name": "获取指定区域（及可选朝代过滤）的外地官员（在此区域任职的外来人员）统计明细CSV文件。",
+      "test_path": "/api/Map/Region/CN3301/OutsideOfficials/宋",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "text/csv",
+      "latency_ms": 116,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:06+00:00",
+      "method": "GET",
+      "path": "/api/Map/Region/{RegionId}/Officials/{Dynasty}",
+      "domain": "Map",
+      "name": "获取指定区域（及可选朝代过滤）的本地官员统计明细CSV文件。",
+      "test_path": "/api/Map/Region/CN3301/Officials/宋",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "text/csv",
+      "latency_ms": 152,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:06+00:00",
+      "method": "GET",
+      "path": "/api/Map/Scenery/{RegionId}/{Name}/Links",
+      "domain": "Map",
+      "name": "获取指定景点的关联知识图谱节点（分页）。",
+      "test_path": "/api/Map/Scenery/CN3301/西湖/Links",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 83,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:07+00:00",
+      "method": "GET",
+      "path": "/api/Map/Scenery/{key}",
+      "domain": "Map",
+      "name": "按关键字或 Id 搜索景点（模糊匹配或精确 Id），不返回详情正文。",
+      "test_path": "/api/Map/Scenery/31190",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 78,
+      "bytes_sampled": 126,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Province",
+            "City",
+            "Name",
+            "Latitude",
+            "Longitude",
+            "Aliases",
+            "Links"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:08+00:00",
+      "method": "GET",
+      "path": "/api/Map/Scenery/{RegionId}/{Name}",
+      "domain": "Map",
+      "name": "获取指定景点的详细信息（含简介、正文与关联链接计数）。",
+      "test_path": "/api/Map/Scenery/CN3301/西湖",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 28,
+      "bytes_sampled": 1144,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Province",
+          "City",
+          "Name",
+          "Latitude",
+          "Longitude",
+          "Aliases",
+          "Links",
+          "Summary",
+          "Detail"
+        ],
+        "id_examples": {},
+        "list_field": "Aliases",
+        "list_length": 12,
+        "first_item": {
+          "kind": "str"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:08+00:00",
+      "method": "POST",
+      "path": "/mcp",
+      "domain": "Mcp",
+      "name": "",
+      "test_path": "/mcp",
+      "status": "not_tested",
+      "reason": "no_valid_post_body_sample"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:08+00:00",
+      "method": "POST",
+      "path": "/api/mcp",
+      "domain": "Mcp",
+      "name": "",
+      "test_path": "/api/mcp",
+      "status": "not_tested",
+      "reason": "excluded_service_or_session_endpoint"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:08+00:00",
+      "method": "GET",
+      "path": "/api/People/{id}",
+      "domain": "People",
+      "name": "按输入标识获取：\r\n1. 数字 → 指定人物详请；2. 朝代键 → 对应朝代人物列表；3. 解析姓名/别名 → 人物详请。",
+      "test_path": "/api/People/90",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 22,
+      "bytes_sampled": 3595,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Person",
+          "Links"
+        ],
+        "id_examples": {},
+        "list_field": "Links",
+        "list_length": 12,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "LabelData",
+            "LabelType",
+            "LabelIdentity",
+            "LabelDescription",
+            "ResourceType",
+            "ResourceId",
+            "ResourcePath",
+            "Value",
+            "Start",
+            "Length",
+            "Weight"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:09+00:00",
+      "method": "GET",
+      "path": "/api/People/{id}/MapInfo",
+      "domain": "People",
+      "name": "获取人物地理（籍贯 / 活动）映射视图数据。",
+      "test_path": "/api/People/90/MapInfo",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 470,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Markers",
+          "Center",
+          "ZoomLevel"
+        ],
+        "id_examples": {},
+        "list_field": "Markers",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Latitude",
+            "Longitude",
+            "OffsetLeft",
+            "OffsetTop",
+            "Invisible",
+            "RegionLevel1",
+            "RegionLevel2",
+            "RegionId",
+            "Key",
+            "Activities",
+            "Poems",
+            "Logo",
+            "Marked",
+            "Title",
+            "RequestUri",
+            "Summary",
+            "Detail"
+          ],
+          "id_examples": {
+            "Key": "鲁国"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:09+00:00",
+      "method": "GET",
+      "path": "/api/People/{id}/Mentionship",
+      "domain": "People",
+      "name": "获取人物“述及 / 被述及”关系概览CSV文件。",
+      "test_path": "/api/People/90/Mentionship",
+      "status": "unexpected_response",
+      "http_status": 200,
+      "mime": "text/csv",
+      "latency_ms": 22,
+      "bytes_sampled": 1989,
+      "truncated": false,
+      "response": {
+        "kind": "non_json"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:10+00:00",
+      "method": "GET",
+      "path": "/api/People/{id}/Mentionship/{targetId}",
+      "domain": "People",
+      "name": "获取“述及”作品列表（某人物针对另一人物的引用作品，分页）。",
+      "test_path": "/api/People/90/Mentionship/15188",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 35,
+      "bytes_sampled": 50,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Message"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"Message\":\"未找到提及目标人物的作品\"}"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:10+00:00",
+      "method": "GET",
+      "path": "/api/Poem/{id}",
+      "domain": "Poem",
+      "name": "根据作品 Id 获取诗作（可选附带知识图谱链接）。",
+      "test_path": "/api/Poem/90",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 18,
+      "bytes_sampled": 717,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Classes",
+          "GroupIndex",
+          "Froms",
+          "Allusions",
+          "Pictures",
+          "Dynasty",
+          "Author",
+          "AuthorId",
+          "AuthorDate",
+          "AuthorYears",
+          "AuthorPlace",
+          "Type",
+          "TypeDetail",
+          "Rhyme",
+          "Rank",
+          "FirstClauseRhyme",
+          "Title",
+          "SubTitle",
+          "Preface",
+          "Clauses",
+          "Note",
+          "Comments"
+        ],
+        "id_examples": {
+          "Id": "90"
+        },
+        "list_field": "Clauses",
+        "list_length": 2,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Content",
+            "Rhyme",
+            "Comments",
+            "BreakAfter"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:11+00:00",
+      "method": "GET",
+      "path": "/api/Poem/{id}/MapInfo",
+      "domain": "Poem",
+      "name": "获取诗作的地域标注与地域关联视图（MapInfo）。",
+      "test_path": "/api/Poem/90/MapInfo",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 31,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "PoemId",
+          "RegionView"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:11+00:00",
+      "method": "GET",
+      "path": "/api/Poem/{id}/BookLinks",
+      "domain": "Poem",
+      "name": "分页获取诗作在典籍资源中的引用 / 链接（刊佚 / 版本 / 对勘来源）。",
+      "test_path": "/api/Poem/90/BookLinks",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 34,
+      "bytes_sampled": 2492,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "PoemId",
+          "PageNo",
+          "Data"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:12+00:00",
+      "method": "GET",
+      "path": "/api/Poem/SimilarClauses/{key}",
+      "domain": "Poem",
+      "name": "查找与给定诗句或指定诗作全部句子相似的其他作品诗句。",
+      "test_path": "/api/Poem/SimilarClauses/31190",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 403,
+      "bytes_sampled": 80139,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 8,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "OriginalClause",
+            "SimilarClauses"
+          ],
+          "id_examples": {},
+          "list_field": "SimilarClauses",
+          "list_length": 27,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Id",
+              "Index",
+              "Dynasty",
+              "Author",
+              "Title",
+              "Content"
+            ],
+            "id_examples": {
+              "Id": "612551"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:13+00:00",
+      "method": "GET",
+      "path": "/api/Poem/SameRhymes/{key}",
+      "domain": "Poem",
+      "name": "按韵脚序列匹配与指定作品或输入韵脚序列同韵的作品集合。",
+      "test_path": "/api/Poem/SameRhymes/31190",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 50,
+      "bytes_sampled": 7998,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 83,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Author",
+            "Dynasty",
+            "Title"
+          ],
+          "id_examples": {
+            "Id": "415880"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:13+00:00",
+      "method": "GET",
+      "path": "/api/QuTune/{tuneId}/{formatIndex}",
+      "domain": "QuTune",
+      "name": "获取指定曲牌详情；可指定格式索引返回单一曲谱格式。",
+      "test_path": "/api/QuTune/90/0",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 19,
+      "bytes_sampled": 3055,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Name",
+          "Format"
+        ],
+        "id_examples": {
+          "Id": "90"
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:14+00:00",
+      "method": "GET",
+      "path": "/api/QuTune/{tuneId}/Writings",
+      "domain": "QuTune",
+      "name": "获取指定曲牌的例作品（按朝代分类聚合）。",
+      "test_path": "/api/QuTune/90/Writings",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 21,
+      "bytes_sampled": 1740,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Id",
+          "Name",
+          "Writings"
+        ],
+        "id_examples": {
+          "Id": "90"
+        },
+        "list_field": "Writings",
+        "list_length": 4,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Dynasty",
+            "Authors"
+          ],
+          "id_examples": {},
+          "list_field": "Authors",
+          "list_length": 16,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Name",
+              "AuthorId",
+              "WritingIds"
+            ],
+            "id_examples": {},
+            "list_field": "WritingIds",
+            "list_length": 4,
+            "first_item": {
+              "kind": "int"
+            }
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:14+00:00",
+      "method": "GET",
+      "path": "/api/Rhyme/{book}",
+      "domain": "Rhyme",
+      "name": "按韵书获取全部韵部分类。",
+      "test_path": "/api/Rhyme/平水韵",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 6087,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Book",
+          "Categories"
+        ],
+        "id_examples": {},
+        "list_field": "Categories",
+        "list_length": 106,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "Id",
+            "Tone",
+            "Chars"
+          ],
+          "id_examples": {
+            "Id": "東"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:15+00:00",
+      "method": "GET",
+      "path": "/api/Rhyme/{book}/{category}",
+      "domain": "Rhyme",
+      "name": "按韵书与韵部名称获取韵部详情（含映射 / 字表 / 归属差异）。",
+      "test_path": "/api/Rhyme/平水韵/青",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 21,
+      "bytes_sampled": 10656,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Book",
+          "Categories"
+        ],
+        "id_examples": {},
+        "list_field": "Categories",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Name",
+            "Id",
+            "Tone",
+            "Chars"
+          ],
+          "id_examples": {
+            "Id": "靑"
+          },
+          "list_field": "Chars",
+          "list_length": 244,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Char",
+              "Comment",
+              "Sames"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:15+00:00",
+      "method": "GET",
+      "path": "/api/Rhyme/{book}/{category}/{character}",
+      "domain": "Rhyme",
+      "name": "按韵书 + 韵部 + 单字查询其归属与同韵信息。",
+      "test_path": "/api/Rhyme/平水韵/青/中",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 21,
+      "bytes_sampled": 23,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Message"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"Message\":\"没找到\"}"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:16+00:00",
+      "method": "GET",
+      "path": "/api/SilkRoad",
+      "domain": "SilkRoad",
+      "name": "获取丝绸之路行旅总览数据（含多个线路 Traces 及公共信息）。",
+      "test_path": "/api/SilkRoad",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 78,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:16+00:00",
+      "method": "GET",
+      "path": "/api/SilkRoad/{id}",
+      "domain": "SilkRoad",
+      "name": "按线路标题获取该线路的详细标注点视图。\r\n若未匹配到指定标题，则返回空标题与默认中心/缩放（0 值），Markers 为全量 DetailView。",
+      "test_path": "/api/SilkRoad/90",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 161,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:17+00:00",
+      "method": "POST",
+      "path": "/api/Tool/Label",
+      "domain": "Tool",
+      "name": "文本標簽化（實體抽取 / 知识链接抽取）。",
+      "test_path": "/api/Tool/Label",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 85,
+      "bytes_sampled": 356,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Subject",
+          "Content",
+          "SubjectLabels",
+          "ContentLabels",
+          "Entities"
+        ],
+        "id_examples": {},
+        "list_field": "ContentLabels",
+        "list_length": 3,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Type",
+            "Identity",
+            "Value",
+            "Start",
+            "Length"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:18+00:00",
+      "method": "POST",
+      "path": "/api/Tool/LabelAndResolveEntity",
+      "domain": "Tool",
+      "name": "文本標簽化（實體抽取 / 知识链接抽取）兼返回實體詳細資料。",
+      "test_path": "/api/Tool/LabelAndResolveEntity",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 27,
+      "bytes_sampled": 1511,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Subject",
+          "Content",
+          "SubjectLabels",
+          "ContentLabels",
+          "Entities"
+        ],
+        "id_examples": {},
+        "list_field": "ContentLabels",
+        "list_length": 3,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Type",
+            "Identity",
+            "Value",
+            "Start",
+            "Length"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:18+00:00",
+      "method": "POST",
+      "path": "/api/Tool/AnalyzePoem",
+      "domain": "Tool",
+      "name": "律詩校驗接口。對輸入詩作進行平仄、押韻、句式等規則校驗並返回結構化結果。",
+      "test_path": "/api/Tool/AnalyzePoem",
+      "status": "network_error",
+      "reason": "ReadTimeout",
+      "latency_ms": 12005
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:31+00:00",
+      "method": "POST",
+      "path": "/api/Tool/AnalyzeCi",
+      "domain": "Tool",
+      "name": "词作格律校验接口。对输入词作按照词牌规则进行平仄、押韵、句式等校验并返回结构化结果。",
+      "test_path": "/api/Tool/AnalyzeCi",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 9810,
+      "bytes_sampled": 173,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "ErrorMessage",
+          "Notification",
+          "QinPuValidationResult",
+          "LongPuValidationResult"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:42+00:00",
+      "method": "POST",
+      "path": "/api/Tool/AnalyzeCouplet",
+      "domain": "Tool",
+      "name": "",
+      "test_path": "/api/Tool/AnalyzeCouplet",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 7479,
+      "bytes_sampled": 695,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "MultiSpells",
+          "UncertainTones",
+          "Clauses",
+          "ErrorMessage"
+        ],
+        "id_examples": {},
+        "list_field": "Clauses",
+        "list_length": 2,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "NeedBreak",
+            "Chars"
+          ],
+          "id_examples": {},
+          "list_field": "Chars",
+          "list_length": 6,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Character",
+              "Tone",
+              "Status"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:50+00:00",
+      "method": "GET",
+      "path": "/api/WeChat/Message/{text}",
+      "domain": "WeChat",
+      "name": "直接以明文方式查询（绕过微信服务器），用于调试或独立调用。",
+      "test_path": "/api/WeChat/Message/诗词",
+      "status": "not_tested",
+      "reason": "excluded_service_or_session_endpoint"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:50+00:00",
+      "method": "POST",
+      "path": "/api/WeChat",
+      "domain": "WeChat",
+      "name": "处理来自微信服务器的消息推送。\r\n支持：订阅事件（返回欢迎语）与文本 / 链接消息（进入查询逻辑）。",
+      "test_path": "/api/WeChat",
+      "status": "not_tested",
+      "reason": "excluded_service_or_session_endpoint"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:50+00:00",
+      "method": "GET",
+      "path": "/api/WeChat",
+      "domain": "WeChat",
+      "name": "微信服务器配置校验接口（首次接入 / 每次修改服务器地址时调用）。",
+      "test_path": "/api/WeChat",
+      "status": "not_tested",
+      "reason": "excluded_service_or_session_endpoint"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:50+00:00",
+      "method": "GET",
+      "path": "/api/Writing/{id}",
+      "domain": "Writing",
+      "name": "根據輸入 Id / 名稱 / 朝代鍵進行解析：\r\n1. 若為可識別朝代且允許簡化 → 返回該朝代作者分佈；\r\n2. 若為數字 → 視為作品 Id；\r\n3. 否則視為作者名稱模糊搜索。",
+      "test_path": "/api/Writing/90",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 18,
+      "bytes_sampled": 944,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Writing",
+          "Links"
+        ],
+        "id_examples": {},
+        "list_field": "Links",
+        "list_length": 1,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "LabelData",
+            "LabelType",
+            "LabelIdentity",
+            "LabelDescription",
+            "ResourceType",
+            "ResourceId",
+            "ResourcePath",
+            "Value",
+            "Start",
+            "Length",
+            "Weight"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:51+00:00",
+      "method": "GET",
+      "path": "/api/Writing/{dynasty}/{author}/{authorId}/{writingType}",
+      "domain": "Writing",
+      "name": "按（朝代 + 作者 + 可選作者 Id）導出指定作者作品列表CSV文件（可篩選作品類型）。",
+      "test_path": "/api/Writing/宋/杜甫/17270/诗",
+      "status": "http_error",
+      "http_status": 400,
+      "mime": "application/problem+json",
+      "latency_ms": 19,
+      "bytes_sampled": 251,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "errors",
+          "type",
+          "title",
+          "status",
+          "traceId"
+        ],
+        "id_examples": {}
+      },
+      "error_excerpt": "{\"errors\":{\"writingType\":[\"The value '诗' is not valid.\"]},\"type\":\"https://tools.ietf.org/html/rfc9110#section-15.5.1\",\"title\":\"One or more validation errors o"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:51+00:00",
+      "method": "GET",
+      "path": "/api/Writing/{id}/MapInfo",
+      "domain": "Writing",
+      "name": "獲取作品地域標註視圖（MapInfo）。",
+      "test_path": "/api/Writing/90/MapInfo",
+      "status": "unexpected_response",
+      "http_status": 204,
+      "mime": "",
+      "latency_ms": 23,
+      "bytes_sampled": 0,
+      "truncated": false,
+      "response": {
+        "kind": "non_json"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:52+00:00",
+      "method": "GET",
+      "path": "/api/Writing/{id}/BookLinks/Export",
+      "domain": "Writing",
+      "name": "導出與指定作品（或輸入單句）相似的詩句集合到CSV文件。",
+      "test_path": "/api/Writing/90/BookLinks/Export",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:52+00:00",
+      "method": "GET",
+      "path": "/api/Writing/{id}/BookLinks",
+      "domain": "Writing",
+      "name": "分頁獲取作品在典籍 / 勘校資源中的引用鏈接。",
+      "test_path": "/api/Writing/90/BookLinks",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 23,
+      "bytes_sampled": 2600,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Froms",
+          "ResourceType",
+          "ResourceId",
+          "Count",
+          "PageSize",
+          "PageNo",
+          "Links"
+        ],
+        "id_examples": {},
+        "list_field": "Links",
+        "list_length": 4,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Book",
+            "Category",
+            "Volume",
+            "VolumeId",
+            "StartPage",
+            "EndPage",
+            "Start",
+            "Length",
+            "MatchedText",
+            "PreviousText",
+            "LaterText",
+            "PageImages",
+            "MatchedPercentage"
+          ],
+          "id_examples": {},
+          "list_field": "PageImages",
+          "list_length": 1,
+          "first_item": {
+            "kind": "str"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:52+00:00",
+      "method": "GET",
+      "path": "/api/Writing/{id}/CreatedGlossary",
+      "domain": "Writing",
+      "name": "獲取指定作品創造或首用的典故及詞彙",
+      "test_path": "/api/Writing/90/CreatedGlossary",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 20,
+      "bytes_sampled": 46,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "WritingId",
+          "Allusions",
+          "Words"
+        ],
+        "id_examples": {}
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:53+00:00",
+      "method": "GET",
+      "path": "/api/Writing/SimilarClauses/{key}",
+      "domain": "Writing",
+      "name": "查找與指定作品（或輸入單句）相似的詩句集合。",
+      "test_path": "/api/Writing/SimilarClauses/31190",
+      "status": "unexpected_response",
+      "http_status": 302,
+      "mime": "",
+      "latency_ms": 21,
+      "bytes_sampled": 0,
+      "truncated": false,
+      "response": {
+        "kind": "non_json"
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:11:53+00:00",
+      "method": "GET",
+      "path": "/api/Writing/SameClausePattern/{writingId}/{clauseIndex}",
+      "domain": "Writing",
+      "name": "查找與輸入句子相同的詩句集合。",
+      "test_path": "/api/Writing/SameClausePattern/136925/0",
+      "status": "network_error",
+      "reason": "ReadTimeout",
+      "latency_ms": 12011
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:06+00:00",
+      "method": "GET",
+      "path": "/api/Writing/SameClausePattern/{clause}",
+      "domain": "Writing",
+      "name": "查找與輸入句子相同的詩句集合。",
+      "test_path": "/api/Writing/SameClausePattern/大江东去",
+      "status": "network_error",
+      "reason": "ReadTimeout",
+      "latency_ms": 12170
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:20+00:00",
+      "method": "GET",
+      "path": "/api/Writing/SimilarClauses/{key}/Export",
+      "domain": "Writing",
+      "name": "導出與指定作品（或輸入單句）相似的詩句集合到Csv文件。",
+      "test_path": "/api/Writing/SimilarClauses/31190/Export",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:20+00:00",
+      "method": "GET",
+      "path": "/api/Writing/SameRhymes/{key}",
+      "domain": "Writing",
+      "name": "查找與指定作品或韻腳序列同韻的作品集合。",
+      "test_path": "/api/Writing/SameRhymes/31190",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 101,
+      "bytes_sampled": 8062,
+      "truncated": false,
+      "response": {
+        "kind": "array",
+        "length_in_sample": 84,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "Id",
+            "Author",
+            "Dynasty",
+            "Title"
+          ],
+          "id_examples": {
+            "Id": "31190"
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:21+00:00",
+      "method": "GET",
+      "path": "/api/Writing/SameRhymes/{id}/Export",
+      "domain": "Writing",
+      "name": "將與指定作品同韻的作品導出為 CSV 文件。",
+      "test_path": "/api/Writing/SameRhymes/90/Export",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:21+00:00",
+      "method": "GET",
+      "path": "/api/Writing/FollowedRhymes/{id}/Export",
+      "domain": "Writing",
+      "name": "將指定作品的跨世步韻作品導出為 CSV 文件。",
+      "test_path": "/api/Writing/FollowedRhymes/90/Export",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:21+00:00",
+      "method": "GET",
+      "path": "/api/Writing/Couplet/{id}",
+      "domain": "Writing",
+      "name": "查詢含指定對語（對仗詞組）的詩句示例。",
+      "test_path": "/api/Writing/Couplet/90",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 18,
+      "bytes_sampled": 121,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Value",
+          "Formatters",
+          "ContentTypes",
+          "DeclaredType",
+          "StatusCode"
+        ],
+        "id_examples": {},
+        "list_field": "Formatters",
+        "list_length": 0
+      },
+      "error_excerpt": "{\"Value\":\"没找到含對語“90”的律句。\",\"Formatters\":[],\"ContentTypes\":[],\"DeclaredType\":null,\"StatusCode\":404}"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:21+00:00",
+      "method": "GET",
+      "path": "/api/Writing/Export",
+      "domain": "Writing",
+      "name": "導出指定搜索上下文的作品（最多 6000 首）。",
+      "test_path": "/api/Writing/Export",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:21+00:00",
+      "method": "POST",
+      "path": "/api/Writing/Export",
+      "domain": "Writing",
+      "name": "導出指定搜索上下文的作品（最多 6000 首）。",
+      "test_path": "/api/Writing/Export",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:21+00:00",
+      "method": "GET",
+      "path": "/api/Writing/Export/Text",
+      "domain": "Writing",
+      "name": "將指定搜索上下文的作品導出為純文本（最多 6000 首）。",
+      "test_path": "/api/Writing/Export/Text",
+      "status": "not_tested",
+      "reason": "potential_bulk_export_not_probed"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:21+00:00",
+      "method": "GET",
+      "path": "/api/Writing/{id}/Tones",
+      "domain": "Writing",
+      "name": "獲取作品的句內字聲調（平仄）標註。",
+      "test_path": "/api/Writing/90/Tones",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 17,
+      "bytes_sampled": 1419,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Writing",
+          "ClauseTones"
+        ],
+        "id_examples": {},
+        "list_field": "ClauseTones",
+        "list_length": 2,
+        "first_item": {
+          "kind": "array",
+          "length_in_sample": 6,
+          "first_item": {
+            "kind": "object",
+            "keys": [
+              "Character",
+              "Tone"
+            ],
+            "id_examples": {}
+          }
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:22+00:00",
+      "method": "GET",
+      "path": "/api/Writing/{id}/Labeling",
+      "domain": "Writing",
+      "name": "獲取作品的標簽（知識鏈接）結果。",
+      "test_path": "/api/Writing/90/Labeling",
+      "status": "valid_shape",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 19,
+      "bytes_sampled": 2430,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Writing",
+          "Links"
+        ],
+        "id_examples": {},
+        "list_field": "Links",
+        "list_length": 8,
+        "first_item": {
+          "kind": "object",
+          "keys": [
+            "LabelData",
+            "LabelType",
+            "LabelIdentity",
+            "LabelDescription",
+            "ResourceType",
+            "ResourceId",
+            "ResourcePath",
+            "Value",
+            "Start",
+            "Length",
+            "Weight"
+          ],
+          "id_examples": {}
+        }
+      }
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:22+00:00",
+      "method": "GET",
+      "path": "/api/Writing/Author/{authorId}/{region}/{name}",
+      "domain": "Writing",
+      "name": "獲取作者在某一地域（或地域下某景點）相關的作品聚合（地圖視圖）。",
+      "test_path": "/api/Writing/Author/17270/CN3301/苏轼",
+      "status": "http_error",
+      "http_status": 404,
+      "mime": "application/json",
+      "latency_ms": 44,
+      "bytes_sampled": 98,
+      "truncated": false,
+      "response": {
+        "kind": "object",
+        "keys": [
+          "Value",
+          "Formatters",
+          "ContentTypes",
+          "DeclaredType",
+          "StatusCode"
+        ],
+        "id_examples": {},
+        "list_field": "Formatters",
+        "list_length": 0
+      },
+      "error_excerpt": "{\"Value\":\"作品不存在\",\"Formatters\":[],\"ContentTypes\":[],\"DeclaredType\":null,\"StatusCode\":404}"
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:23+00:00",
+      "method": "GET",
+      "path": "/api/Writing/HasLabel",
+      "domain": "Writing",
+      "name": "判斷是否存在包含指定標簽的作品，如有，以CSV文件方式返回具體數據。",
+      "test_path": "/api/Writing/HasLabel",
+      "status": "http_error",
+      "http_status": 400,
+      "mime": "application/json",
+      "latency_ms": 19,
+      "bytes_sampled": 20,
+      "truncated": false,
+      "response": {
+        "kind": "str"
+      },
+      "error_excerpt": "\"標簽格式有誤\""
+    },
+    {
+      "tested_at_utc": "2026-10-19T23:12:23+00:00",
+      "method": "GET",
+      "path": "/api/Writing/UsedByCento/Author/{authorId}",
+      "domain": "Writing",
+      "name": "查詢某作者作品中被後世詩文（集句 / 摭拾）引用的句子（Cento）。",
+      "test_path": "/api/Writing/UsedByCento/Author/17270",
+      "status": "partial_truncated",
+      "http_status": 200,
+      "mime": "application/json",
+      "latency_ms": 49,
+      "bytes_sampled": 102400,
+      "truncated": true,
+      "response": {
+        "kind": "unparsed"
+      }
+    }
+  ]
+}

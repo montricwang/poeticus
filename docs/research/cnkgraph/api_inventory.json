@@ -1,0 +1,2561 @@
+{
+  "source": {
+    "postman_url": "https://open.cnkgraph.com/Api/postman.zip",
+    "postman_sha256": "cf8ed129682f67a7df6033893ee3cbcd97109a0808dd3d72aa1f6767033a21f3",
+    "postman_zip_bytes": 12473,
+    "swagger_url": "https://open.cnkgraph.com/swagger/v1/swagger.json",
+    "swagger_sha256": "f0c0fac7baccdce5633e6e0f4f7d53ed4c67ff5f9c34aa864aa5ce3081b27a9f",
+    "swagger_version": "3.0.4",
+    "terms_url": "https://cnkgraph.com/Home/OpenResources",
+    "retrieved_at_utc": "2026-10-19T23:10:49+00:00"
+  },
+  "postman_count": 71,
+  "postman_domains": {
+    "人物": 6,
+    "古籍库": 7,
+    "地理": 7,
+    "字典": 1,
+    "工具": 5,
+    "年历": 7,
+    "曲谱": 4,
+    "类书": 6,
+    "词汇、典故": 5,
+    "词谱": 5,
+    "诗文库": 13,
+    "韵典": 5
+  },
+  "postman_unique_method_paths_exact": 64,
+  "swagger_method_count": 105,
+  "swagger_path_count": 103,
+  "postman_examples": [
+    {
+      "id": "01-01",
+      "domain": "人物",
+      "name": "人物总览",
+      "method": "GET",
+      "path": "/api/people",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "02-02",
+      "domain": "人物",
+      "name": "按朝代浏览",
+      "method": "GET",
+      "path": "/api/people/{{dynasty}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "02-03",
+      "domain": "人物",
+      "name": "获取特定人物介绍",
+      "method": "GET",
+      "path": "/api/people/15188",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "02-04",
+      "domain": "人物",
+      "name": "搜索符合指定籍贯与生卒时间范围的人物",
+      "method": "POST",
+      "path": "/api/people/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "scope": "HomeTown",
+        "key": "潮州市",
+        "begin": 920,
+        "end": 1520
+      }
+    },
+    {
+      "id": "02-05",
+      "domain": "人物",
+      "name": "按姓氏搜索人物列表",
+      "method": "POST",
+      "path": "/api/people/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "scope": "Xing",
+        "key": "司马"
+      }
+    },
+    {
+      "id": "02-06",
+      "domain": "人物",
+      "name": "按谥号搜索人物列表",
+      "method": "POST",
+      "path": "/api/people/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "scope": "ShiHao",
+        "key": "文正"
+      }
+    },
+    {
+      "id": "02-01",
+      "domain": "古籍库",
+      "name": "获取古籍库总览",
+      "method": "GET",
+      "path": "/api/book",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "03-02",
+      "domain": "古籍库",
+      "name": "获取某一分类下详细书目",
+      "method": "GET",
+      "path": "/api/book/史部/正史类",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "03-03",
+      "domain": "古籍库",
+      "name": "获取某一部书的详细信息",
+      "method": "GET",
+      "path": "/api/book/2180",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "03-04",
+      "domain": "古籍库",
+      "name": "获取某一卷详细内容",
+      "method": "GET",
+      "path": "/api/book/volume/KR4h0140_024",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "03-05",
+      "domain": "古籍库",
+      "name": "按关键词搜索古籍库",
+      "method": "POST",
+      "path": "/Api/Book/Find",
+      "query": "",
+      "url_source": "api.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "key": "黄鹤楼",
+        "pageNo": 1
+      }
+    },
+    {
+      "id": "03-06",
+      "domain": "古籍库",
+      "name": "检索古籍库时在关键词中使用问号通配符",
+      "method": "POST",
+      "path": "/Api/Book/Find",
+      "query": "",
+      "url_source": "api.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "key": "黄鹤？楼"
+      }
+    },
+    {
+      "id": "03-07",
+      "domain": "古籍库",
+      "name": "检索同时包含多个关键词的古籍",
+      "method": "POST",
+      "path": "/Api/Book/Find",
+      "query": "",
+      "url_source": "api.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "key": "黄鹤楼 鹦鹉洲"
+      }
+    },
+    {
+      "id": "03-01",
+      "domain": "地理",
+      "name": "行政区划总览",
+      "method": "GET",
+      "path": "/api/map/region",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "regionId": "CN11",
+        "regionName": "潮州市"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "04-02",
+      "domain": "地理",
+      "name": "按 Id 查询某一行政区划及其下级区划的信息",
+      "method": "GET",
+      "path": "/api/map/region/{{regionId}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "regionId": "CN11",
+        "regionName": "潮州市"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "04-03",
+      "domain": "地理",
+      "name": "按名称查询某一行政区划及其下级区划的信息",
+      "method": "GET",
+      "path": "/api/map/region/{{regionName}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "regionId": "CN11",
+        "regionName": "潮州市"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "04-04",
+      "domain": "地理",
+      "name": "查询与某一行政区划相关的链接",
+      "method": "GET",
+      "path": "/api/map/region/{{regionId}}/links",
+      "query": "pageNo=0",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "regionId": "CN11",
+        "regionName": "潮州市"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "04-05",
+      "domain": "地理",
+      "name": "查询某一行政区划下有哪些景观",
+      "method": "GET",
+      "path": "/api/map/scenery/{{regionId}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "regionId": "CN11",
+        "regionName": "潮州市"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "04-06",
+      "domain": "地理",
+      "name": "查询某一景观的详细信息",
+      "method": "GET",
+      "path": "/api/map/scenery/CN3301/西湖",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "regionId": "CN11",
+        "regionName": "潮州市"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "04-07",
+      "domain": "地理",
+      "name": "查询某一景观的相关链接",
+      "method": "GET",
+      "path": "/api/map/scenery/CN4201/黄鹤楼/links",
+      "query": "pageNo=0",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "regionId": "CN11",
+        "regionName": "潮州市"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "04-01",
+      "domain": "字典",
+      "name": "查字",
+      "method": "GET",
+      "path": "/api/char/中",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "05-01",
+      "domain": "工具",
+      "name": "简体转繁体",
+      "method": "POST",
+      "path": "/api/tool/charsetConvert",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "content": "白发惊看镜里秋",
+        "mode": "ToTraditional"
+      }
+    },
+    {
+      "id": "06-02",
+      "domain": "工具",
+      "name": "繁体转简体",
+      "method": "POST",
+      "path": "/api/tool/charsetConvert",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "content": "暫到此中閒",
+        "mode": "ToSimplified"
+      }
+    },
+    {
+      "id": "06-03",
+      "domain": "工具",
+      "name": "自动笺注",
+      "method": "POST",
+      "path": "/api/tool/labelize",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "content": "<text:303 chars>",
+        "dynasty": "北齐"
+      }
+    },
+    {
+      "id": "06-04",
+      "domain": "工具",
+      "name": "出处与化用分析",
+      "method": "POST",
+      "path": "/api/tool/reference",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "content": "<text:64 chars>"
+      }
+    },
+    {
+      "id": "06-05",
+      "domain": "工具",
+      "name": "短信息查询",
+      "method": "POST",
+      "path": "/api/tool/texting",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "content": "乾隆三年正月甲子，乾隆帝……"
+      }
+    },
+    {
+      "id": "06-01",
+      "domain": "年历",
+      "name": "总览",
+      "method": "GET",
+      "path": "/api/calendar",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "07-02",
+      "domain": "年历",
+      "name": "按朝代浏览",
+      "method": "GET",
+      "path": "/api/calendar/{{dynasty}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "07-03",
+      "domain": "年历",
+      "name": "查看某一年号详细信息",
+      "method": "GET",
+      "path": "/api/calendar/eraYear/宋绍兴",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "07-04",
+      "domain": "年历",
+      "name": "查某一年",
+      "method": "GET",
+      "path": "/api/calendar/date/901年",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "07-05",
+      "domain": "年历",
+      "name": "查某一日期",
+      "method": "GET",
+      "path": "/api/calendar/date/宋绍兴五年七月丁酉",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "07-06",
+      "domain": "年历",
+      "name": "查历代某一干支年",
+      "method": "GET",
+      "path": "/api/calendar/GanZhi/庚子",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "07-07",
+      "domain": "年历",
+      "name": "查询与某一时间相关的链接",
+      "method": "GET",
+      "path": "/api/calendar/date/901年/links",
+      "query": "pageNo=0",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "07-01",
+      "domain": "曲谱",
+      "name": "曲谱总览",
+      "method": "GET",
+      "path": "/api/quTune",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "08-02",
+      "domain": "曲谱",
+      "name": "查询特定曲谱",
+      "method": "GET",
+      "path": "/api/quTune/90",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "08-03",
+      "domain": "曲谱",
+      "name": "查询历代使用指定曲谱的作品",
+      "method": "GET",
+      "path": "/api/quTune/1/writings",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "08-04",
+      "domain": "曲谱",
+      "name": "搜索名称含某一关键词的曲谱",
+      "method": "POST",
+      "path": "/api/quTune/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "key": "春"
+      }
+    },
+    {
+      "id": "08-01",
+      "domain": "类书",
+      "name": "获取类书列表",
+      "method": "GET",
+      "path": "/api/category",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "09-02",
+      "domain": "类书",
+      "name": "获取某一本类书的目录结构",
+      "method": "GET",
+      "path": "/api/category/钦定古今图书集成",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "09-03",
+      "domain": "类书",
+      "name": "获取古今图书集成某一条目某一卷的详细内容",
+      "method": "GET",
+      "path": "/api/category/钦定古今图书集成/0002/KR7a0001_018",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "09-04",
+      "domain": "类书",
+      "name": "获取渊鉴类函某一条目的详细内容",
+      "method": "GET",
+      "path": "/api/category/渊鉴类函/0024",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "09-05",
+      "domain": "类书",
+      "name": "获取方舆胜览某一条目详细内容",
+      "method": "GET",
+      "path": "/api/category/方舆胜览/0012",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "09-06",
+      "domain": "类书",
+      "name": "查询含某一关键词的条目",
+      "method": "POST",
+      "path": "/api/category/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "key": "潮州"
+      }
+    },
+    {
+      "id": "09-01",
+      "domain": "词汇、典故",
+      "name": "按词汇 Id 查询",
+      "method": "GET",
+      "path": "/api/glossary/词典/10",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "10-02",
+      "domain": "词汇、典故",
+      "name": "按典故 Id 查询",
+      "method": "GET",
+      "path": "/api/glossary/典故/1000",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "10-03",
+      "domain": "词汇、典故",
+      "name": "按佛典 Id 查询",
+      "method": "GET",
+      "path": "/api/glossary/佛典/100",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "10-04",
+      "domain": "词汇、典故",
+      "name": "按词典 Id 批量查询",
+      "method": "POST",
+      "path": "/api/glossary/词典",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": [
+        10
+      ]
+    },
+    {
+      "id": "10-05",
+      "domain": "词汇、典故",
+      "name": "按关键词查询典故",
+      "method": "POST",
+      "path": "/api/glossary/典故/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "key": "桃花",
+        "charIndex": "end"
+      }
+    },
+    {
+      "id": "10-01",
+      "domain": "词谱",
+      "name": "词谱总览",
+      "method": "GET",
+      "path": "/api/ciTune",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "11-02",
+      "domain": "词谱",
+      "name": "查询特定词谱",
+      "method": "GET",
+      "path": "/api/ciTune/90",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "11-03",
+      "domain": "词谱",
+      "name": "查询历代使用指定词谱的作品",
+      "method": "GET",
+      "path": "/api/ciTune/1/writings",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "11-04",
+      "domain": "词谱",
+      "name": "搜索含某一关键词的词谱",
+      "method": "POST",
+      "path": "/api/ciTune/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "key": "月"
+      }
+    },
+    {
+      "id": "11-05",
+      "domain": "词谱",
+      "name": "查询哪些词牌含有与输入句子平仄结构相同的片段",
+      "method": "POST",
+      "path": "/api/ciTune/pattern",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "pattern": "对潇潇暮雨洒江天"
+      }
+    },
+    {
+      "id": "11-01",
+      "domain": "诗文库",
+      "name": "总览",
+      "method": "GET",
+      "path": "/api/writing",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-02",
+      "domain": "诗文库",
+      "name": "按朝代浏览",
+      "method": "GET",
+      "path": "/api/writing/{{dynasty}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-03",
+      "domain": "诗文库",
+      "name": "按作家浏览",
+      "method": "GET",
+      "path": "/api/writing/{{dynasty}}/{{authorName}}/{{authorId}}/{{writingType}}",
+      "query": "pageNo={{pageNo}}",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-04",
+      "domain": "诗文库",
+      "name": "获取特定作品",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-05",
+      "domain": "诗文库",
+      "name": "获取特定作品，返回结果不作繁简转换",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-06",
+      "domain": "诗文库",
+      "name": "获取含特定对仗词汇组的律句",
+      "method": "GET",
+      "path": "/api/writing/couplet/{{coupletWords}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-07",
+      "domain": "诗文库",
+      "name": "组合搜索",
+      "method": "POST",
+      "path": "/api/writing/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": {
+        "key": "八景",
+        "exactlyMatch": true,
+        "clauseIndex": "title"
+      }
+    },
+    {
+      "id": "12-08",
+      "domain": "诗文库",
+      "name": "获取作品库中有相似句子的作品",
+      "method": "GET",
+      "path": "/api/writing/SimilarClauses/{{key}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-09",
+      "domain": "诗文库",
+      "name": "获取作品库中与指定作品所押韵脚相同的作品",
+      "method": "GET",
+      "path": "/api/writing/SameRhymes/{{key}}",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-10",
+      "domain": "诗文库",
+      "name": "为作品标注平仄",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}/tones",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-11",
+      "domain": "诗文库",
+      "name": "获取作品在古籍库中的出处及引用信息",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}/bookLinks",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-12",
+      "domain": "诗文库",
+      "name": "自动笺注",
+      "method": "GET",
+      "path": "/api/writing/{{writingId}}/labelize",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": null
+    },
+    {
+      "id": "12-13",
+      "domain": "诗文库",
+      "name": "查询符合某一平仄句式的律句",
+      "method": "POST",
+      "path": "/api/writing/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {
+        "authorId": "17270",
+        "authorName": "杜甫",
+        "writingId": "10000",
+        "coupletWords": "天地,古今",
+        "key": "31190"
+      },
+      "body_fields": {
+        "key": "中平中仄仄平平"
+      }
+    },
+    {
+      "id": "12-01",
+      "domain": "韵典",
+      "name": "总览",
+      "method": "GET",
+      "path": "/api/rhyme",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "13-02",
+      "domain": "韵典",
+      "name": "获取某一韵书韵目信息",
+      "method": "GET",
+      "path": "/api/rhyme/平水韵",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "13-03",
+      "domain": "韵典",
+      "name": "获取某一韵目字表",
+      "method": "GET",
+      "path": "/api/rhyme/平水韵/青",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "13-04",
+      "domain": "韵典",
+      "name": "获取韵字详细信息",
+      "method": "GET",
+      "path": "/api/rhyme/平水韵/侵/参",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": null
+    },
+    {
+      "id": "13-05",
+      "domain": "韵典",
+      "name": "查某字在某一韵书中的信息",
+      "method": "POST",
+      "path": "/api/rhyme/find",
+      "query": "",
+      "url_source": "open.cnkgraph.com",
+      "variables": {},
+      "body_fields": {
+        "Character": "冠",
+        "Book": "平水韵"
+      }
+    }
+  ],
+  "swagger_operations": [
+    {
+      "method": "GET",
+      "path": "/api/Biography",
+      "domain": "Biography",
+      "summary": "查询诗人生平（事件时间线、交游、活动轨迹等）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/TravelTraceData"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Biography/WritingStat",
+      "domain": "Biography",
+      "summary": "按时间/作品统计诗人创作概况（例如分年度字数、篇数等）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/WritingStatResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Biography/Places",
+      "domain": "Biography",
+      "summary": "获取所有（或指定时代分界）活动地名称及其对应的活动条目键集合。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/PlaceActivitiesResponse"
+        }
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Biography/Places/{id}",
+      "domain": "Biography",
+      "summary": "根据模糊或层级地址解析当前（“当代”视角）对应的活动地点列表。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/ModernPlacesResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Biography/Poems/{key}",
+      "domain": "Biography",
+      "summary": "按作品 key 查询其关联的活动 / 生平事件信息。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/TravelTraceData"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Biography/Stat",
+      "domain": "Biography",
+      "summary": "按年份范围统计传记数据（例如活动或作者相关度量）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/ArticleStat"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Biography/Export/{key}",
+      "domain": "Biography",
+      "summary": "以 CSV 格式导出指定作家的行迹数据。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Book",
+      "domain": "Book",
+      "summary": "获取全部典籍分类与分组概要统计。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/BookCategoriesSummaryResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Book/{category}/{group}",
+      "domain": "Book",
+      "summary": "按主目録 + 次目録列出书籍。",
+      "required_path_params": [
+        "category",
+        "group"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/BooksInGroupResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Book/{id}",
+      "domain": "Book",
+      "summary": "按书籍 ID 获取书籍详细（含版本与卷）。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/BookDetailResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Book/Volume/{id}",
+      "domain": "Book",
+      "summary": "获取某卷全文与 HTML。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/VolumeContentResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Book/Find",
+      "domain": "Book",
+      "summary": "复合检索：关键词 + 多书（Find）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/BookModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/KanripoSearchResult"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/Book/Search",
+      "domain": "Book",
+      "summary": "简单检索：关键词 + 可选单书（Search）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "type": "string"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/KanripoSearchResult"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Calendar",
+      "domain": "Calendar",
+      "summary": "获取所有（排除“近代”段）朝代及其子朝代（若存在多政权）的起止年份信息。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CalendarDynastyListResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Calendar/{dynasty}",
+      "domain": "Calendar",
+      "summary": "根据朝代或子朝代名称获取其下所有细分政权（子朝代）及君主年号信息。",
+      "required_path_params": [
+        "dynasty"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/DynastyDetailResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Calendar/EraYear/{key}",
+      "domain": "Calendar",
+      "summary": "根据年号键（年号 ID 或日期文本）解析并返回君主及相关年号集合。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/KingEraYearsDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Calendar/GanZhi/{key}",
+      "domain": "Calendar",
+      "summary": "解析干支（如“甲子”）列出所有可能公元年份及该年对应的年号分组。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/GanZhiResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Calendar/Date/{key}",
+      "domain": "Calendar",
+      "summary": "解析日期（可含年号、闰月、干支等），返回结构化日期、年号候选分组、相关链接统计与朔闰表。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/DateParseResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Calendar/Date/{key}/Links",
+      "domain": "Calendar",
+      "summary": "获取日期（唯一年号）在知识图谱中的关联实体分页结果。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/DateLinksResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Category",
+      "domain": "Category",
+      "summary": "獲取所有已加載的類書（類目典籍）名稱清單。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CategoryBookListResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Category/{book}",
+      "domain": "Category",
+      "summary": "按類書名稱獲取其所有分類與條目概要（僅返回精簡字段，不含正文內容）。",
+      "required_path_params": [
+        "book"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CategoryBookDetailResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Category/{book}/{itemId}/{volumeId}",
+      "domain": "Category",
+      "summary": "取得某類書中指定條目（以及可選卷內容）詳情。",
+      "required_path_params": [
+        "book",
+        "itemId",
+        "volumeId"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CategoryItemSummaryDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Category/Find",
+      "domain": "Category",
+      "summary": "按關鍵字全文檢索所有類書，按書籍分組返回匹配條目概要。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/CategoryModel"
+      },
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/CategorySearchGroupDto"
+        }
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Char/{key}",
+      "domain": "Char",
+      "summary": "查詢單個漢字的多來源字典與訓詁信息。\r\n包含：現代字典（自建/綜合）、《康熙字典》、《說文解字》。若某來源無資料則為 null。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CharDictionaryResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/CiTune",
+      "domain": "CiTune",
+      "summary": "獲取全部詞牌（不含具體格式列表），返回基礎資訊集合。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/CiTuneSummaryDto"
+        }
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/CiTune/Find",
+      "domain": "CiTune",
+      "summary": "按關鍵詞搜索詞牌（名稱或別名 / 規範化後模糊匹配）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/CiTuneModel"
+      },
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/CiTuneSummaryDto"
+        }
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/CiTune/Pattern",
+      "domain": "CiTune",
+      "summary": "透過輸入的詞譜模式（格律 / 平仄與字數模式）匹配可能的詞牌格式。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/CiTuneModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/CiTunePatternResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/CiTune/{tuneId}/Writings",
+      "domain": "CiTune",
+      "summary": "獲取指定詞牌的例詞（按朝代分類）與基礎信息。",
+      "required_path_params": [
+        "tuneId"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CiTuneWritingsResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/CiTune/{tuneId}/Writings/Export",
+      "domain": "CiTune",
+      "summary": "獲取指定詞牌的例詞 Excel 文件。",
+      "required_path_params": [
+        "tuneId"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/CiTune/{tuneId}/Writings/Export/Text",
+      "domain": "CiTune",
+      "summary": "獲取指定詞牌的例詞純文本文件。",
+      "required_path_params": [
+        "tuneId"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/CiTune/{tuneId}/{formatIndex}",
+      "domain": "CiTune",
+      "summary": "獲取詞牌詳情；可指定格式索引返回單一格式並支援高亮匹配片段。",
+      "required_path_params": [
+        "tuneId",
+        "formatIndex"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CiTuneSingleFormatResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Glossary/{category}/{id}",
+      "domain": "Glossary",
+      "summary": "按类别与唯一 Id 获取单个词条或典故。",
+      "required_path_params": [
+        "category",
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/GlossaryAllusionDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Glossary/{category}",
+      "domain": "Glossary",
+      "summary": "按类别批量获取多个词条或典故。",
+      "required_path_params": [
+        "category"
+      ],
+      "request_body_required": false,
+      "request_schema": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/GlossaryItemDto"
+        }
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Glossary/{category}/Find",
+      "domain": "Glossary",
+      "summary": "按类别与关键词检索典故或词汇。\r\n若检索到典故集合则返回典故；否则返回首组匹配的词汇。",
+      "required_path_params": [
+        "category"
+      ],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/GlossaryModel"
+      },
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/GlossaryWordDto"
+        }
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Glossary/CategoryWords/{category}",
+      "domain": "Glossary",
+      "summary": "按“分类”获取对应词汇列表（含 Id）。",
+      "required_path_params": [
+        "category"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/GlossaryCategoryWordsDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Glossary/CoupletTrain/{id}",
+      "domain": "Glossary",
+      "summary": "获取对语链",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CoupletWordTrain"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Label/{type}/{id}/{subId}",
+      "domain": "Label",
+      "summary": "获取指定标签（支持带子标识）对应的标签数据与分页内容。",
+      "required_path_params": [
+        "type",
+        "id",
+        "subId"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/LabelDataResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Label/Writing/Export/{Category}",
+      "domain": "Label",
+      "summary": "按标签及可选分类查询知识图谱中的作品，并导出为 CSV 文件。",
+      "required_path_params": [
+        "category"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Map/Region",
+      "domain": "Map",
+      "summary": "获取最高层级国家 / 区域树（含子级概要与关联链接数量）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RegionTreeNodeDto"
+        }
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Map/Region/{key}",
+      "domain": "Map",
+      "summary": "按关键字（名称模糊）搜索区域，返回匹配区域集合。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RegionTreeNodeDto"
+        }
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Map/Region/{RegionId}/Links",
+      "domain": "Map",
+      "summary": "获取指定区域的关联知识图谱节点（分页）。",
+      "required_path_params": [
+        "regionId"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/RegionLinksResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Map/Region/{RegionId}/OutsideOfficials/{Dynasty}",
+      "domain": "Map",
+      "summary": "获取指定区域（及可选朝代过滤）的外地官员（在此区域任职的外来人员）统计明细CSV文件。",
+      "required_path_params": [
+        "regionId",
+        "dynasty"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Map/Region/{RegionId}/Officials/{Dynasty}",
+      "domain": "Map",
+      "summary": "获取指定区域（及可选朝代过滤）的本地官员统计明细CSV文件。",
+      "required_path_params": [
+        "regionId",
+        "dynasty"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Map/Scenery/{RegionId}/{Name}/Links",
+      "domain": "Map",
+      "summary": "获取指定景点的关联知识图谱节点（分页）。",
+      "required_path_params": [
+        "regionId",
+        "name"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/SceneryLinksResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Map/Scenery/{key}",
+      "domain": "Map",
+      "summary": "按关键字或 Id 搜索景点（模糊匹配或精确 Id），不返回详情正文。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ScenerySummaryDto"
+        }
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Map/Scenery/{RegionId}/{Name}",
+      "domain": "Map",
+      "summary": "获取指定景点的详细信息（含简介、正文与关联链接计数）。",
+      "required_path_params": [
+        "regionId",
+        "name"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/SceneryDetailDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/mcp",
+      "domain": "Mcp",
+      "summary": "",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/JsonNode"
+        }
+      },
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/mcp",
+      "domain": "Mcp",
+      "summary": "",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/components/schemas/JsonNode"
+        }
+      },
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/People",
+      "domain": "People",
+      "summary": "获取人物总量及各主/次时间线（朝代）对应人物数量统计。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/PeopleStatResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/People/{id}",
+      "domain": "People",
+      "summary": "按输入标识获取：\r\n1. 数字 → 指定人物详请；2. 朝代键 → 对应朝代人物列表；3. 解析姓名/别名 → 人物详请。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/DynastyPeopleListResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/People/{id}/MapInfo",
+      "domain": "People",
+      "summary": "获取人物地理（籍贯 / 活动）映射视图数据。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/People/{id}/Mentionship",
+      "domain": "People",
+      "summary": "获取人物“述及 / 被述及”关系概览CSV文件。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/People/{id}/Mentionship/{targetId}",
+      "domain": "People",
+      "summary": "获取“述及”作品列表（某人物针对另一人物的引用作品，分页）。",
+      "required_path_params": [
+        "id",
+        "targetId"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/MentionshipWritingListResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/People/Find",
+      "domain": "People",
+      "summary": "综合查询（姓名 / 区域 / 朝代）。支持区域歧义、区域人物、人物列表多种返回。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/PeopleModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/PeopleListResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Poem/{id}",
+      "domain": "Poem",
+      "summary": "根据作品 Id 获取诗作（可选附带知识图谱链接）。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/Shi"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Poem/{id}/MapInfo",
+      "domain": "Poem",
+      "summary": "获取诗作的地域标注与地域关联视图（MapInfo）。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/PoemMapInfoResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Poem/{id}/BookLinks",
+      "domain": "Poem",
+      "summary": "分页获取诗作在典籍资源中的引用 / 链接（刊佚 / 版本 / 对勘来源）。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/PoemBookLinksResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Poem/SimilarClauses/{key}",
+      "domain": "Poem",
+      "summary": "查找与给定诗句或指定诗作全部句子相似的其他作品诗句。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/SimilarClauseMatchDto"
+        }
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Poem/SameRhymes/{key}",
+      "domain": "Poem",
+      "summary": "按韵脚序列匹配与指定作品或输入韵脚序列同韵的作品集合。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/PoemInfo"
+        }
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/QuTune",
+      "domain": "QuTune",
+      "summary": "获取全部曲牌的基础信息（不包含格式定义）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/QuTuneSummaryDto"
+        }
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/QuTune/{tuneId}/{formatIndex}",
+      "domain": "QuTune",
+      "summary": "获取指定曲牌详情；可指定格式索引返回单一曲谱格式。",
+      "required_path_params": [
+        "tuneId",
+        "formatIndex"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/QuTuneSingleFormatResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/QuTune/{tuneId}/Writings",
+      "domain": "QuTune",
+      "summary": "获取指定曲牌的例作品（按朝代分类聚合）。",
+      "required_path_params": [
+        "tuneId"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/QuTuneWritingsResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/QuTune/Find",
+      "domain": "QuTune",
+      "summary": "通过关键词（名称或别名，支持繁简统一）检索曲牌（不含格式）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/QuTuneModel"
+      },
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/QuTuneSummaryDto"
+        }
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Rhyme",
+      "domain": "Rhyme",
+      "summary": "获取支持的韵书名称列表。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/RhymeBooksResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Rhyme/{book}",
+      "domain": "Rhyme",
+      "summary": "按韵书获取全部韵部分类。",
+      "required_path_params": [
+        "book"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/TongYunBookCategoriesResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Rhyme/{book}/{category}",
+      "domain": "Rhyme",
+      "summary": "按韵书与韵部名称获取韵部详情（含映射 / 字表 / 归属差异）。",
+      "required_path_params": [
+        "book",
+        "category"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/RhymeBookCategoryDetailResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Rhyme/{book}/{category}/{character}",
+      "domain": "Rhyme",
+      "summary": "按韵书 + 韵部 + 单字查询其归属与同韵信息。",
+      "required_path_params": [
+        "book",
+        "category",
+        "character"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/RhymeCharResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Rhyme/Find",
+      "domain": "Rhyme",
+      "summary": "通用查询（模型中可提供：书名 / 韵部 / 字）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/RhymeModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/RhymeCharResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/SilkRoad",
+      "domain": "SilkRoad",
+      "summary": "获取丝绸之路行旅总览数据（含多个线路 Traces 及公共信息）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/TravelTraceData"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/SilkRoad/{id}",
+      "domain": "SilkRoad",
+      "summary": "按线路标题获取该线路的详细标注点视图。\r\n若未匹配到指定标题，则返回空标题与默认中心/缩放（0 值），Markers 为全量 DetailView。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/TravelTraceData"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Tool/CharsetConvert",
+      "domain": "Tool",
+      "summary": "繁简转换接口。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/CharsetConvertModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/CharsetConvertResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/Tool/Label",
+      "domain": "Tool",
+      "summary": "文本標簽化（實體抽取 / 知识链接抽取）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/LabelingModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/LabelingResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Tool/LabelAndResolveEntity",
+      "domain": "Tool",
+      "summary": "文本標簽化（實體抽取 / 知识链接抽取）兼返回實體詳細資料。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/LabelingModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/LabelingResponse"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Tool/Reference",
+      "domain": "Tool",
+      "summary": "句子出處與化用 / 引用檢測。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/ReferenceModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/ReferenceResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/Tool/Texting",
+      "domain": "Tool",
+      "summary": "文本快速解析 / 助手接口（輸入文本 → 解析 HTML）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/TextingModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/TextingResponse"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/Tool/AnalyzePoem",
+      "domain": "Tool",
+      "summary": "律詩校驗接口。對輸入詩作進行平仄、押韻、句式等規則校驗並返回結構化結果。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/PoemAnalyzeModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/PoemAnalyzeResultWithSuggestion"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Tool/AnalyzeCi",
+      "domain": "Tool",
+      "summary": "词作格律校验接口。对输入词作按照词牌规则进行平仄、押韵、句式等校验并返回结构化结果。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/CiAnalyzeModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/CiAnalyzeResultWithSuggestion"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Tool/AnalyzeCouplet",
+      "domain": "Tool",
+      "summary": "",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/CoupletAnalyzeModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/CoupletValidationResult"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/WeChat/Message/{text}",
+      "domain": "WeChat",
+      "summary": "直接以明文方式查询（绕过微信服务器），用于调试或独立调用。",
+      "required_path_params": [
+        "text"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "string"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/WeChat",
+      "domain": "WeChat",
+      "summary": "处理来自微信服务器的消息推送。\r\n支持：订阅事件（返回欢迎语）与文本 / 链接消息（进入查询逻辑）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "string"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/WeChat",
+      "domain": "WeChat",
+      "summary": "微信服务器配置校验接口（首次接入 / 每次修改服务器地址时调用）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "string"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing",
+      "domain": "Writing",
+      "summary": "獲取全站作品總量與各朝代作品/作者統計匯總。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/WritingStatisticsDto"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/{id}",
+      "domain": "Writing",
+      "summary": "根據輸入 Id / 名稱 / 朝代鍵進行解析：\r\n1. 若為可識別朝代且允許簡化 → 返回該朝代作者分佈；\r\n2. 若為數字 → 視為作品 Id；\r\n3. 否則視為作者名稱模糊搜索。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/WritingWithLinksDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/{dynasty}/{author}/{authorId}/{writingType}",
+      "domain": "Writing",
+      "summary": "按（朝代 + 作者 + 可選作者 Id）導出指定作者作品列表CSV文件（可篩選作品類型）。",
+      "required_path_params": [
+        "dynasty",
+        "author",
+        "authorId",
+        "writingType"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/{id}/MapInfo",
+      "domain": "Writing",
+      "summary": "獲取作品地域標註視圖（MapInfo）。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/{id}/BookLinks/Export",
+      "domain": "Writing",
+      "summary": "導出與指定作品（或輸入單句）相似的詩句集合到CSV文件。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/{id}/BookLinks",
+      "domain": "Writing",
+      "summary": "分頁獲取作品在典籍 / 勘校資源中的引用鏈接。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/{id}/CreatedGlossary",
+      "domain": "Writing",
+      "summary": "獲取指定作品創造或首用的典故及詞彙",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CreatedGlossaryDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/SimilarClauses/{key}",
+      "domain": "Writing",
+      "summary": "查找與指定作品（或輸入單句）相似的詩句集合。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ClauseResultDto"
+        }
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/SameClausePattern/{writingId}/{clauseIndex}",
+      "domain": "Writing",
+      "summary": "查找與輸入句子相同的詩句集合。",
+      "required_path_params": [
+        "writingId",
+        "clauseIndex"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/ClauseResultDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/SameClausePattern/{clause}",
+      "domain": "Writing",
+      "summary": "查找與輸入句子相同的詩句集合。",
+      "required_path_params": [
+        "clause"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/ClauseResultDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/SimilarClauses/{key}/Export",
+      "domain": "Writing",
+      "summary": "導出與指定作品（或輸入單句）相似的詩句集合到Csv文件。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/SameRhymes/{key}",
+      "domain": "Writing",
+      "summary": "查找與指定作品或韻腳序列同韻的作品集合。",
+      "required_path_params": [
+        "key"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/PoemInfo"
+        }
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/SameRhymes/{id}/Export",
+      "domain": "Writing",
+      "summary": "將與指定作品同韻的作品導出為 CSV 文件。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/FollowedRhymes/{id}/Export",
+      "domain": "Writing",
+      "summary": "將指定作品的跨世步韻作品導出為 CSV 文件。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/Couplet/{id}",
+      "domain": "Writing",
+      "summary": "查詢含指定對語（對仗詞組）的詩句示例。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/CoupletResultDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/Export",
+      "domain": "Writing",
+      "summary": "導出指定搜索上下文的作品（最多 6000 首）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Writing/Export",
+      "domain": "Writing",
+      "summary": "導出指定搜索上下文的作品（最多 6000 首）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/SearchContext"
+      },
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/Export/Text",
+      "domain": "Writing",
+      "summary": "將指定搜索上下文的作品導出為純文本（最多 6000 首）。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {},
+      "covered_by_postman": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/Writing/Find",
+      "domain": "Writing",
+      "summary": "綜合搜尋接口：支持關鍵詞 / 作者 / 韻部 / 標簽等復合條件。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {
+        "$ref": "#/components/schemas/WritingModel"
+      },
+      "response_schema": {
+        "$ref": "#/components/schemas/WritingSearchResultDto"
+      },
+      "covered_by_postman": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/{id}/Tones",
+      "domain": "Writing",
+      "summary": "獲取作品的句內字聲調（平仄）標註。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/WritingTonesDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/{id}/Labeling",
+      "domain": "Writing",
+      "summary": "獲取作品的標簽（知識鏈接）結果。",
+      "required_path_params": [
+        "id"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/WritingLabelingDto"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/Author/{authorId}/{region}/{name}",
+      "domain": "Writing",
+      "summary": "獲取作者在某一地域（或地域下某景點）相關的作品聚合（地圖視圖）。",
+      "required_path_params": [
+        "authorId",
+        "region",
+        "name"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/TravelTraceData"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/HasLabel",
+      "domain": "Writing",
+      "summary": "判斷是否存在包含指定標簽的作品，如有，以CSV文件方式返回具體數據。",
+      "required_path_params": [],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "type": "string",
+        "format": "binary"
+      },
+      "covered_by_postman": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/Writing/UsedByCento/Author/{authorId}",
+      "domain": "Writing",
+      "summary": "查詢某作者作品中被後世詩文（集句 / 摭拾）引用的句子（Cento）。",
+      "required_path_params": [
+        "authorId"
+      ],
+      "request_body_required": false,
+      "request_schema": {},
+      "response_schema": {
+        "$ref": "#/components/schemas/UsedByCentoResultDto"
+      },
+      "covered_by_postman": false
+    }
+  ]
+}
