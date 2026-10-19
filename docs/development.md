@@ -60,6 +60,16 @@ python -m scripts.corpus.db_import --import
 
 默认私有导入检查点是仓库相邻的 `poeticus-data/reading-corpus/normalized/all_normalized.json`；源 EPUB、glyph maps 与中间快照均不进入公开仓库。默认数据目录根据仓库位置计算，与当前工作目录无关；特殊部署可通过绝对路径环境变量 `POETICUS_DATA_ROOT` 覆盖。目录布局、迁移说明与恢复方法见 [本地数据管理](data-management.md) 和 [作品数据库架构](architecture/corpus-database.md)。
 
+词话等独立文献的本地导入走另一条可复现流程，不会修改原作品表：
+
+```bash
+.venv/bin/python -m scripts.corpus.document_db --check
+.venv/bin/python -m scripts.corpus.document_db --migrate
+.venv/bin/python -m scripts.corpus.document_db --import
+```
+
+详见 [Document Corpus 文献数据库](architecture/document-corpus.md)。向量表需 PostgreSQL 服务端支持 pgvector，使用单独的 `--migrate-vectors` / `--import-vectors`，不可仅凭 Python 安装 pgvector 包当作已就绪。
+
 只有 schema、没有作品数据时，目录为空是正常现象。
 
 前端排版与样式施工前，请先读 [前端视觉与排版规范](design/frontend-visual-conventions.md)：该文件区分行为契约、编辑设计、光学校正，并标明参数的权威入口。
