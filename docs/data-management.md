@@ -31,6 +31,24 @@ workspace/
 
 `all_manifest.json` 与 `all_normalized.json` 属于同一批规范化数据，应该同目录。向量或索引的 `manifest.json` 应紧贴其对应 Artifact，不集中放在一个全局 manifests 文件夹。
 
+### 本地模型目录与核验（2026-10-19）
+
+开发机 WSL 的实际根目录是 `~/projects/poeticus-data/models/`，与 `~/projects/poeticus/` 并列。路径按仓库相对关系描述；换电脑时应从 `POETICUS_DATA_ROOT` 或 `backend/data_paths.py` 推导，不把用户名、盘符写死进程序。
+
+| 用途 | 相对 `poeticus-data/models/` 的位置 | 状态 |
+| --- | --- | --- |
+| Poem Retrieval 查询向量 | `Qwen3-Embedding-0.6B-7c0e29cfcdf2/` | 现有 Serving 资产；不要与生成式 Qwen 混用 |
+| BERT/CCPoem 研究 | `BERT_CCPoem_v1/` | 原有实验资产 |
+| 本地生成式推理 | `Qwen3.5-4B/Qwen3.5-4B-Q4_K_M.gguf` | 2,740,937,888 bytes；SHA-256 `00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4`；CPU / Windows Vulkan 已生成中文回答 |
+| 本地生成式推理 | `DeepSeek-R1-0528-Qwen3-8B/DeepSeek-R1-0528-Qwen3-8B-Q4_K_M.gguf` | 5,027,785,216 bytes；SHA-256 `a86349a4180c4e6bb43f874c29c404fa2be3f90b15509bd6d86f697dba724ec1`；CPU / Windows Vulkan 已生成 Token，短测试未得到完整文学回答 |
+| 低比特生成式推理 | `Ternary-Bonsai-2-27B/Ternary-Bonsai-2-27B-PTQ1_0.gguf` | 5,946,648,928 bytes；SHA-256 `53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3`；**需 Prism ML 定制版 llama.cpp**，Windows Vulkan 已生成完整中文短答 |
+| Document RAG 精排实验 | `Qwen3-Reranker-0.6B/`（含原始模型与 `Qwen3-Reranker-0.6B-Q4_K_M.gguf`） | GGUF 396,476,288 bytes；SHA-256 `c04f5f5657c52e04538c455e8c62817db3d3b795b39e9f547f8581510445f075`；本地 CPU 与 Windows Vulkan `/v1/rerank` 均已验证，**产品默认关闭** |
+
+Qwen3.5-4B 与 DeepSeek 8B 的 GGUF 从 ModelScope 的 `unsloth/Qwen3.5-4B-GGUF`、`unsloth/DeepSeek-R1-0528-Qwen3-8B-GGUF` 获取，原先已核对 SHA-256 与镜像文件清单一致；Bonsai 27B 和 Reranker 的上述 SHA-256 则于 2026-10-19 从本地现存文件重新计算。**哈希校验与能否完成推理是不同的验证**：前三款生成式模型的 CPU/Windows Vulkan 短测试见 [当日 devlog](devlog/2026-10-19.md) 与 [#339](https://github.com/montricwang/poeticus/issues/339)；Reranker 的 16 题精排结果见 [Document RAG 实验记录](../scripts/experiments/README-document-rag.md)。后续仍需独立检验长上下文、稳定性、实际文学分析质量与推理开销。
+
+私人下载脚本位于 `poeticus-data/models/download_cn_models.sh`，不是产品运行依赖。所有模型权重保留在仓库外的 `poeticus-data/models/`，不得复制到公开仓库、前端资产或 Railway 构建上下文；本机推理运行时另放 `poeticus-data/tools/`。Benchmark 与报告应放在所属私有实验目录（如 `document-corpus/evals/results/` 或 `reports/evals/`）。模型切换不应改写现有 Poem Retrieval 的 Embedding 模型目录与 FAISS 索引。**密钥存放、生产环境变量及安全边界**见 [开发者指南的本地配置](development.md#2-本地配置) 和 [部署指南](deployment.md)。
+
+
 **不强制设置顶层 `output/`**。只运行一次、无需留存的临时输出可使用系统临时目录或终端输出；有长期价值的生成数据放在具有稳定职责的目录。
 
 ## 2. 哪些数据应当保留
