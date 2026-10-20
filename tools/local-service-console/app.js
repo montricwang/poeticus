@@ -1,0 +1,176 @@
+"use strict";
+const $ = (selector) => document.querySelector(selector);
+let csrfToken = "";
+let current = "frontend";
+let logFeed = null;
+let refreshing = false;
+let working = false;
+let allServices = [];
+let toastTimeout;
+const names = {running:"运行中", starting:"启动中", stopped:"已停止", external:"外部运行"};
+const output = $("#output");
+
+function toast(message) {
+  const element = $("#toast");
+  element.textContent = message;
+  element.classList.add("visible");
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => element.classList.remove("visible"), 4000);
+}
+
+function appendLog(text) {
+  output.textContent += text;
+  if (output.textContent.length > 110000) output.textContent = output.textContent.slice(-85000);
+  $("#log-size").textContent = output.textContent.split("\n").length + " lines";
+  if ($("#follow").checked) output.scrollTop = output.scrollHeight;
+}
+
+function switchLog(key) {
+  current = key;
+  $("#log-select").value = key;
+  if (logFeed) logFeed.close();
+  output.textContent = "";
+  $("#log-size").textContent = "0 lines";
+  $("#log-hint").textContent = key === "mcp" ? "MCP 巡检日志 · 其余四条 Worker 日志由原管理器保存" : "持续读取本地日志文件 · SSE";
+  logFeed = new EventSource("/api/services/" + key + "/events");
+  logFeed.onmessage = (event) => {
+    try { appendLog(JSON.parse(event.data).text); } catch (error) { console.error(error); }
+  };
+  logFeed.onerror = () => { $("#log-hint").textContent = "日志连接断开 · 正在自动重连"; };
+  document.querySelectorAll(".service").forEach(card => card.classList.toggle("selected", card.dataset.id === key));
+}
+
+async function api(path, method = "GET") {
+  const headers = method === "GET" ? {} : {"X-Console-Token":csrfToken};
+  const response = await fetch(path, { method, headers, cache:"no-store" });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || "HTTP " + response.status);
+  return body;
+}
+
+function button(label, action, key, disabled) {
+  const btn = document.createElement("button");
+  btn.className = "btn-mini" + (action === "stop" ? " btn-stop" : "");
+  btn.textContent = label;
+  btn.disabled = disabled || working;
+  btn.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    await act(key, action);
+  });
+  return btn;
+}
+
+function renderServices() {
+  const target = $("#services");
+  target.replaceChildren();
+  for (const service of allServices) {
+    const card = document.createElement("div");
+    card.className = "service" + (service.id === current ? " selected" : "");
+    card.dataset.id = service.id;
+    card.setAttribute("role", "group");
+    card.tabIndex = 0;
+    const main = document.createElement("div"); main.className = "svc-main";
+    const icon = document.createElement("div"); icon.className = "service-icon";
+    icon.textContent = {frontend:"FE", backend:"BE", langgraph:"AG", retrieval:"RG", reranker:"LL", tunnel:"CF", mcp:"MC"}[service.id];
+    const description = document.createElement("div");
+    const title = document.createElement("div"); title.className = "svc-title"; title.textContent = service.title;
+    const meta = document.createElement("div"); meta.className = "svc-meta";
+    meta.textContent = service.environment + (service.port ? " · :" + service.port : "") + (service.pid ? " · PID " + service.pid : "");
+    description.append(title,meta); main.append(icon,description);
+    const control = document.createElement("div"); control.className = "svc-control";
+    const state = document.createElement("span"); state.className = "status " + service.state;
+    const dot = document.createElement("i"); dot.className = "dot";
+    state.append(dot, document.createTextNode(names[service.state] || service.state));
+    control.append(state);
+    if (service.state === "stopped") control.append(button("启动", "start", service.id, false));
+    if (service.managed) {
+      control.append(button("重启", "restart", service.id, false));
+      control.append(button("停止", "stop", service.id, false));
+    }
+    card.append(main,control);
+    card.addEventListener("click", () => switchLog(service.id));
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && e.target === card) switchLog(service.id);
+    });
+    target.append(card);
+  }
+  const active = allServices.filter(s => s.state !== "stopped").length;
+  $("#total").textContent = String(allServices.length).padStart(2,"0");
+  $("#active").textContent = String(active).padStart(2,"0");
+  $("#idle").textContent = String(allServices.length - active).padStart(2,"0");
+}
+
+async function refresh() {
+  if (refreshing) return;
+  refreshing = true;
+  try {
+    allServices = (await api("/api/services")).services;
+    const selection = $("#log-select");
+    if (selection.options.length !== allServices.length) {
+      selection.replaceChildren();
+      for (const service of allServices) {
+        const option = document.createElement("option");
+        option.value = service.id;
+        option.textContent = service.title;
+        selection.append(option);
+      }
+      switchLog(current);
+    }
+    renderServices();
+  } catch(error) {
+    toast("状态获取失败：" + error.message);
+  } finally {
+    refreshing = false;
+  }
+}
+
+async function act(key, action) {
+  if (working) return;
+  working = true; renderServices();
+  try {
+    const answer = await api("/api/services/" + key + "/" + action, "POST");
+    toast(answer.message);
+    await refresh();
+  } catch(error) {
+    toast("操作失败：" + error.message);
+  } finally {
+    working = false; renderServices();
+  }
+}
+
+async function bulk(action) {
+  if (working) return;
+  if (action === "stop" && !confirm("确定停止控制台所管理的全部服务吗？外部进程不会被关闭。")) return;
+  working = true;
+  document.querySelectorAll("[data-all]").forEach(b => b.disabled = true);
+  renderServices();
+  try {
+    const answer = await api("/api/all/" + action, "POST");
+    const failed = Object.entries(answer.results).filter(([,msg]) => msg.startsWith("失败"));
+    toast(failed.length ? failed.map(([key,msg])=> key+": "+msg).join("；") : "批量操作已完成");
+    await refresh();
+  } catch(error) {
+    toast("批量操作失败：" + error.message);
+  } finally {
+    working = false;
+    document.querySelectorAll("[data-all]").forEach(b => b.disabled = false);
+    renderServices();
+  }
+}
+
+async function init() {
+  try {
+    csrfToken = (await api("/api/token")).token;
+    await refresh();
+  } catch(error) {
+    toast("无法连接本地管理器：" + error.message);
+  }
+  $("#refresh").addEventListener("click",refresh);
+  $("#log-select").addEventListener("change", event => switchLog(event.target.value));
+  $("#clear").addEventListener("click", () => {output.textContent = "";$("#log-size").textContent = "0 lines";});
+  document.querySelectorAll("[data-all]").forEach(btn => btn.addEventListener("click",()=>bulk(btn.dataset.all)));
+  function updateClock(){ $("#clock").textContent = new Date().toLocaleTimeString("zh-CN",{hour12:false}); }
+  updateClock(); setInterval(updateClock,1000);
+  setInterval(refresh,4500);
+}
+init();

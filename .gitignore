@@ -25,3 +25,8 @@ models/
 basedpyright-report.json
 index.scip
 
+
+# Machine-specific local service console configuration
+tools/local-service-console/settings.local.json
+tools/local-service-console/__pycache__/
+tools/local-service-console/tests/__pycache__/

@@ -1,0 +1,8 @@
+{
+  "wsl_distro": "Ubuntu",
+  "wsl_project": "/home/montric/projects/poeticus",
+  "cloudflared_exe": "C:\\Program Files (x86)\\cloudflared\\cloudflared.exe",
+  "reranker_exe": "D:\\path\\to\\llama-server.exe",
+  "reranker_model": "\\\\wsl.localhost\\Ubuntu\\home\\username\\projects\\poeticus-data\\models\\Qwen3-Reranker-0.6B\\Qwen3-Reranker-0.6B-Q4_K_M.gguf",
+  "mcp_manager_script": "C:\\Users\\username\\Desktop\\local-mcp-manager\\MCP-Manager.ps1"
+}
