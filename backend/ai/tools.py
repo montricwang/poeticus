@@ -13,7 +13,7 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
                 "查询中国古典诗词中的人物故事、掌故、神话传说和典故性短语的出处或含义。"
                 "适合回答‘这个典故是什么故事/什么意思’；"
                 "如果用户明确问‘借了谁哪一句诗、化用了哪段前代文本’，"
-                "不要用本工具，应优先使用 search_predecessor_texts。"
+                "不要当作典故事义查，应优先使用本轮实际提供的前代诗句检索工具。"
                 "不要用于整句诗文的全文相似检索、作品创作年代、作者生平、"
                 "诗中人物身份或普通文学赏析。"
             ),
@@ -44,7 +44,7 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
                 "返回结果只是候选，可能包含当前作品或后代作品，"
                 "必须结合作者年代和文本关系判断。"
                 "不适合解释人物故事型典故，也不能保证识别高度压缩或反用。"
-                "若 search_predecessor_texts 可用，同一个文本来源问题不要先用本工具重复试探；"
+                "若本地前代诗句检索工具可用，同一个文本来源问题不要先用本工具重复试探；"
                 "只有本地 Corpus Tool 不可用，或已有明确理由需要外部 reference evidence 时再使用。"
             ),
             "parameters": {
@@ -109,7 +109,7 @@ DOCUMENT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
             "检索人物本名可能漏掉字、号（如周邦彦/美成、姜夔/白石）；"
             "请在 queries 中提供一到两条包含可能别称或关键评语的扩展查询，原始用户问题会自动保留。"
             "文献只是候选材料，不等于它已经充分支持结论。"
-            "普通典故故事查询使用 lookup_allusion；查前代诗句化用使用 search_predecessor_texts，"
+            "普通典故故事查询使用 lookup_allusion；查前代诗句化用优先用实际提供的诗文来源工具，"
             "不要混淆词话评论和诗句相似性。"
         ),
         "parameters": {
@@ -129,9 +129,152 @@ DOCUMENT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
 }
 
 
+# CNKGraph external capabilities are experimental non-commercial research tools.
+# Do not register them for anonymous production visitors without separate permission.
+CNKGRAPH_RESEARCH_TOOLS: list[ChatCompletionFunctionToolParam] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_ci_meter",
+            "description": (
+                "按 CNKGraph 钦谱与龙谱检查一首词的词牌体式、平仄和押韵疑点。"
+                "适合用户问‘这首词押韵吗、是否合词谱、有何变格’时使用。"
+                "默认直接使用当前阅读作品正文，不要机械重复提交原诗。"
+                "后世词谱形式符合与宋代实际合乐是不同概念，"
+                "此工具不能单独证明词在宋代是否可唱，也不能代替词学文献。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tune_name": {
+                        "type": "string",
+                        "description": "作品所属词牌名称，如‘醉花间’或‘念奴娇’，不能填作品副题。",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "可选：只有分析非当前阅读作品时才提供完整词正文；默认使用当前作品。",
+                    },
+                },
+                "required": ["tune_name"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_classical_books",
+            "description": (
+                "从外部古籍库中检索含指定关键词的书、卷和短原文上下文；"
+                "适合查‘哪本古书记过这句话、某个词学概念见于何书’。"
+                "提供候选的书卷与可回查 ID，不能据字面命中断定原始出处或学术结论。"
+                "要找本地已导入的词话研究评论优先用 search_documents；"
+                "典故故事优先用 lookup_allusion；诗句化用优先用本轮提供的前代诗句检索工具。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "准确且有区分度的古文短语或关键词，不要提交整篇文章。",
+                    },
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_ci_tune",
+            "description": (
+                "查词牌名称或别名，并在能唯一确认词牌时返回不同体式的字数、韵位、"
+                "谱式与例词。适合分析格律前查标准词谱，或比较正体与变格；"
+                "与 analyze_ci_meter 的实际作品校验不同。"
+                "词牌名称不确定时先返回候选，不要擅自挑选。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tune_name": {
+                        "type": "string",
+                        "description": "要查的词牌名或别名，不是作品副题，如‘念奴娇’。",
+                    },
+                },
+                "required": ["tune_name"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_rhyme",
+            "description": (
+                "查平水韵、词林正韵、中原音韵或中华通韵的韵部分类。"
+                "先按 book 取得可查询的韵部 ID；再传 category_id 取得该部的字表摘要，"
+                "可同时指定 character 判断该字是否出现在这一部。"
+                "不指定 category_id 时不能判定字归属；"
+                "宋词的押韵分析一般优先参考词林正韵，注意历史音韵与多音字。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "book": {
+                        "type": "string",
+                        "enum": ["平水韵", "词林正韵", "中原音韵", "中华通韵"],
+                        "description": "韵书名称。",
+                    },
+                    "category_id": {
+                        "type": "string",
+                        "description": "可选。上次目录返回的韵部 Id，例如词林正韵 0 或平水韵 青。",
+                    },
+                    "character": {
+                        "type": "string",
+                        "description": "可选，指定韵部时判断该单字是否被字表收录。",
+                    },
+                },
+                "required": ["book"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "resolve_entities",
+            "description": (
+                "对当前诗词或指定短文本提取候选人物、地名、词牌、词汇等"
+                "外部知识图谱实体，返回标注位置、类型、实体 ID 和少量属性。"
+                "适合识别可能需要继续检索的历史实体；外部标注可能把词牌误标成普通词汇，"
+                "不能直接作为事实，也不能修改 Poeticus 自己的作品主库。"
+                "默认分析当前阅读选区（如果有）或当前诗词。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "可选：分析非当前诗词/选区时提交短文本；默认使用当前阅读文本。",
+                    },
+                    "epoch": {
+                        "type": "string",
+                        "description": "可选。历史时代，如‘宋’；默认从阅读作品的朝代推断。",
+                    },
+                },
+                "required": [],
+                "additionalProperties": False,
+            },
+        },
+    },
+]
+
+
 def available_tools(
     retrieval_enabled: bool,
     document_enabled: bool = False,
+    cnkgraph_research_enabled: bool = False,
 ) -> list[ChatCompletionFunctionToolParam]:
     """根据检索服务的启用状态，返回本轮可向模型提供的工具。"""
 
@@ -140,4 +283,6 @@ def available_tools(
         tools.append(TEXT_RETRIEVAL_TOOL)
     if document_enabled:
         tools.append(DOCUMENT_RETRIEVAL_TOOL)
+    if cnkgraph_research_enabled:
+        tools.extend(CNKGRAPH_RESEARCH_TOOLS)
     return tools

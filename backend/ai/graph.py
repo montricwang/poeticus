@@ -9,6 +9,7 @@ import asyncio
 import logging
 import json
 from dataclasses import dataclass
+from inspect import signature
 from typing import Literal, NotRequired, TypedDict, cast
 from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, START, END
@@ -21,9 +22,18 @@ from openai.types.chat.completion_create_params import (
 
 from backend.ai.model import client
 from backend.ai.tools import available_tools
-from backend.config import AGENT_MAX_TOOL_CALLS, LLM_MAX_OUTPUT_TOKENS, LLM_MODEL
+from backend.config import (
+    AGENT_MAX_TOOL_CALLS,
+    CNKGRAPH_RESEARCH_TOOLS_ENABLED,
+    LLM_MAX_OUTPUT_TOKENS,
+    LLM_MODEL,
+)
 from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
+from backend.evidence.providers.cnkgraph_research import (
+    CNKGraphResearchClient,
+    CNKGraphResearchError,
+)
 from backend.ai.context import PoemContext, format_poem_context
 from backend.ai.prompt_loader import compose_prompt
 from backend.retrieval.document.service import document_retrieval, DocumentRetrievalError
@@ -87,6 +97,7 @@ evidence_service = EvidenceService(
         "cnkgraph": CNKGraphProvider(),
     }
 )
+cnkgraph_research_client = CNKGraphResearchClient()
 
 
 # ===== 2. 消息、工具调用与工作流状态 =====
@@ -119,9 +130,42 @@ class _ToolQuery:
     """已经通过边界校验的工具查询；执行阶段不再解析模型原始参数。"""
 
     text: str
-    evidence_type: Literal["allusion", "reference", "text_retrieval", "commentary"]
+    evidence_type: Literal[
+        "allusion", "reference", "text_retrieval", "commentary",
+        "ci_meter", "classical_books", "ci_tune", "rhyme", "entities",
+    ]
     max_items: int
+    tune_name: str | None = None
+    book: str | None = None
+    category_id: str = ""
+    character: str = ""
+    epoch: str = ""
     extra_queries: tuple[str, ...] = ()
+
+
+def _validate_registered_tool(call: ToolCall) -> None:
+    """Only tools advertised to the model can be executed."""
+    registered = {
+        tool["function"]["name"]
+        for tool in available_tools(
+            text_retrieval_client.enabled,
+            document_retrieval.enabled,
+            CNKGRAPH_RESEARCH_TOOLS_ENABLED,
+        )
+    }
+    if call["name"] not in registered:
+        # Disambiguate a model-invented function from a real but disabled one.
+        # The registry grows with optional providers, so derive known names
+        # from its actual signature instead of hardcoding old tool families.
+        all_known = {
+            tool["function"]["name"]
+            for tool in available_tools(
+                *(True for _ in signature(available_tools).parameters)
+            )
+        }
+        if call["name"] not in all_known:
+            raise ValueError(f"未知工具：{call['name']}")
+        raise ValueError(f"本轮未开放工具：{call['name']}")
 
 
 def _parse_tool_query(call: ToolCall) -> _ToolQuery:
@@ -132,6 +176,71 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
         raise ValueError("工具参数必须是对象")
     # JSON 对象的 key 均为字符串，字段值仍在下方按工具契约校验。
     arguments = cast(dict[str, object], raw)
+
+    if (
+        call["name"] in (
+            "analyze_ci_meter", "search_classical_books",
+            "lookup_ci_tune", "lookup_rhyme", "resolve_entities",
+        )
+        and not CNKGRAPH_RESEARCH_TOOLS_ENABLED
+    ):
+        raise ValueError("CNKGraph 研究工具未启用")
+
+    if call["name"] == "analyze_ci_meter":
+        tune_name = arguments.get("tune_name")
+        content = arguments.get("content", "")
+        if not isinstance(tune_name, str) or not 1 <= len(tune_name.strip()) <= 40:
+            raise ValueError("无效的词牌名")
+        if not isinstance(content, str) or len(content) > 1200:
+            raise ValueError("词律分析正文必须是至多 1200 字的文本")
+        return _ToolQuery(
+            text=content.strip(), evidence_type="ci_meter", max_items=0,
+            tune_name=tune_name.strip(),
+        )
+
+    if call["name"] == "search_classical_books":
+        query = arguments.get("query")
+        if not isinstance(query, str) or not 1 <= len(query.strip()) <= 70:
+            raise ValueError("古籍检索关键词必须为 1–70 字")
+        return _ToolQuery(
+            text=query.strip(), evidence_type="classical_books", max_items=5,
+        )
+
+    if call["name"] == "lookup_ci_tune":
+        tune_name = arguments.get("tune_name")
+        if not isinstance(tune_name, str) or not 1 <= len(tune_name.strip()) <= 40:
+            raise ValueError("无效的词牌名")
+        return _ToolQuery(
+            text=tune_name.strip(), evidence_type="ci_tune", max_items=0,
+        )
+
+    if call["name"] == "lookup_rhyme":
+        book = arguments.get("book")
+        category_id = arguments.get("category_id", "")
+        character = arguments.get("character", "")
+        if book not in ("平水韵", "词林正韵", "中原音韵", "中华通韵"):
+            raise ValueError("无效的韵书名")
+        if not isinstance(category_id, str) or len(category_id) > 40:
+            raise ValueError("无效的韵部 ID")
+        if not isinstance(character, str) or len(character) > 1:
+            raise ValueError("韵部字表一次只验证一个字")
+        return _ToolQuery(
+            text="", evidence_type="rhyme", max_items=0,
+            book=book, category_id=category_id.strip(),
+            character=character.strip(),
+        )
+
+    if call["name"] == "resolve_entities":
+        content = arguments.get("text", "")
+        epoch = arguments.get("epoch", "")
+        if not isinstance(content, str) or len(content) > 450:
+            raise ValueError("实体标注正文最多 450 字")
+        if not isinstance(epoch, str) or len(epoch) > 24:
+            raise ValueError("无效的历史时代")
+        return _ToolQuery(
+            text=content.strip(), evidence_type="entities", max_items=0,
+            epoch=epoch.strip(),
+        )
 
     # Document Query Expansion 是同一次工具调用的一部分；永远额外保留用户原始问题。
     if call["name"] == "search_documents":
@@ -244,7 +353,11 @@ def _stream_agent_decision(
         "stream": True,
     }
     if tools_enabled:
-        request_kwargs["tools"] = available_tools(text_retrieval_client.enabled, document_retrieval.enabled)
+        request_kwargs["tools"] = available_tools(
+            text_retrieval_client.enabled,
+            document_retrieval.enabled,
+            CNKGRAPH_RESEARCH_TOOLS_ENABLED,
+        )
         request_kwargs["tool_choice"] = "auto"
 
     # --- 3.2 初始化正文与工具调用分片缓存 ---
@@ -420,7 +533,11 @@ def agent_decide(state: AgentState) -> AgentStateUpdate:
             "temperature": 0,
         }
         if tools_enabled:
-            request_kwargs["tools"] = available_tools(text_retrieval_client.enabled, document_retrieval.enabled)
+            request_kwargs["tools"] = available_tools(
+                text_retrieval_client.enabled,
+                document_retrieval.enabled,
+                CNKGRAPH_RESEARCH_TOOLS_ENABLED,
+            )
             request_kwargs["tool_choice"] = "auto"
 
         try:
@@ -590,13 +707,47 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                 count += 1
 
                 try:
+                    _validate_registered_tool(call)
                     validated = _parse_tool_query(call)
                     query = validated.text
                     evidence_type = validated.evidence_type
                     max_items = validated.max_items
 
                     # 本地文本检索使用 Retrieval Client，典故与出处查询使用证据服务。
-                    if evidence_type == "commentary":
+                    if evidence_type == "ci_meter":
+                        # The user-selected/loaded poem is authoritative when the model omits content.
+                        content = query or state["poem"].strip()
+                        if not content or len(content) > 1200:
+                            raise ValueError("词律分析正文必须为 1–1200 字的完整作品")
+                        if validated.tune_name is None:
+                            raise ValueError("缺少词牌名")
+                        result = await cnkgraph_research_client.analyze_ci(
+                            content=content, tune_name=validated.tune_name,
+                        )
+                    elif evidence_type == "classical_books":
+                        result = await cnkgraph_research_client.search_books(query)
+                    elif evidence_type == "ci_tune":
+                        result = await cnkgraph_research_client.lookup_ci_tune(query)
+                    elif evidence_type == "rhyme":
+                        if validated.book is None:
+                            raise ValueError("缺少韵书名")
+                        result = await cnkgraph_research_client.lookup_rhyme(
+                            validated.book,
+                            validated.category_id,
+                            validated.character,
+                        )
+                    elif evidence_type == "entities":
+                        context = state.get("context")
+                        content = query or state.get("selection") or state["poem"]
+                        if not isinstance(content, str) or not 1 <= len(content.strip()) <= 450:
+                            raise ValueError("实体标注正文必须为 1–450 字")
+                        epoch = validated.epoch or (
+                            context.dynasty if context and context.dynasty else "宋"
+                        )
+                        result = await cnkgraph_research_client.resolve_entities(
+                            text=content.strip(), epoch=epoch,
+                        )
+                    elif evidence_type == "commentary":
                         document_result = await asyncio.to_thread(
                             document_retrieval.search,
                             state["question"],
@@ -661,6 +812,7 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     KeyError,
                     TypeError,
                     CNKGraphError,
+                    CNKGraphResearchError,
                     RetrievalClientError,
                     DocumentRetrievalError,
                 ) as exc:

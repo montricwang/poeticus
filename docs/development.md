@@ -91,6 +91,30 @@ python -m scripts.corpus.db_import --import
 
 本地词话检索工具接入 Agent 时，需要安装可选的 Qwen3 Embedding 推理依赖（`.venv/bin/python -m pip install -r requirements-retrieval.txt`），并在私人 `.env` 中增加 `POETICUS_DOCUMENT_RAG_ENABLED=true`，然后重启后端。它按需加载本机 Qwen3-Embedding-0.6B，首次检索可能较慢；本地 PostgreSQL 须预先导入文献和向量。未配置/未启用时不会向 Agent 注册 `search_documents`，不会阻止普通 Web 服务启动。可选 `POETICUS_DOCUMENT_RERANK_ENABLED=true` 仅在本机有 Qwen3-Reranker 模型且手动启用时尝试精排；默认关闭，异常回退到原 Hybrid。当前 16 题的 Recall/延迟结果不支持默认开启；详情见 [实验报告](../scripts/experiments/README-document-rag.md)。这两个开关目前**只用于本地实验**，线上部署须先核对词话版本版权、再分发权限与模型资源预算。
 
+### CNKGraph 新研究工具（仅本地、默认关闭）
+
+CNKGraph 官方公开 API 限非商业研究学习（[开放资源条款](https://cnkgraph.com/Home/OpenResources)），目前尚未取得公开 Web 服务/商业用途许可。**不要在 Railway、外网 Tunnel 或公众可访问的后端开启此实验开关。**
+
+在隔离的个人本地非商业研究环境，可在私有 `.env` 手动开启：
+
+```dotenv
+POETICUS_CNKGRAPH_RESEARCH_TOOLS_ENABLED=true
+# 可选，默认值为 https://open.cnkgraph.com
+# CNKGRAPH_RESEARCH_BASE_URL=https://open.cnkgraph.com
+```
+
+重启本地后端后，现有 ReAct Agent 会额外看到五个只读研究工具（先接入第一批中较实用的能力；未做全接口接入）：
+
+- `analyze_ci_meter`：按词牌与当前作品正文（或明确指定的短文本）调用 `POST /api/Tool/AnalyzeCi`，返回钦谱/龙谱匹配体式和错韵摘要。只判断后世词谱的形式校验，不证明宋代实际合乐。
+- `search_classical_books`：在古籍库检索短关键词，使用已实测的区分大小写路由 `POST /Api/Book/Find`；只返回最多五条带书卷 ID 的短命中片段，不抓全卷。
+- `lookup_ci_tune`：以词牌名或别名检索，唯一匹配时查询词谱详情，返回正体、变格、谱式与简短例词；多义时只返回词牌候选。
+- `lookup_rhyme`：按韵书查询韵部目录，传入韵部 ID 后获取该部字表概要，也可以在已知韵部内判断指定单字是否收录。由于原厂的单字综合接口可能返回数 MB，目前**不支持仅凭一个字直接判定完整韵书中的唯一韵部**；需先定位韵部。
+- `resolve_entities`：对当前选区或短诗文做候选实体标注，返回人物、地点、词汇等的类型、外部 ID、原文位置和少量属性；外部标注不直接写回主库。
+
+五者仅在开关打开时向模型注册；开关关闭时即使模型构造工具调用也会拒绝。 Agent 在执行模型提出的工具调用前，还会检查**本轮真实注册的工具名**；即使提示词、旧对话或模型自行输出了未开放的名称，也不会进入网络适配器。原有典故、出处、作品检索和词话 RAG 不受影响。古籍 `/Api/Book/Find` 仅在 404 JSON **恰为** `{"Message":"没找到"}` 时按成功零命中处理，其他 HTTP 404 仍为错误。单次请求 12 秒超时、每次响应最多读取 96 KiB；模型与资料来源仍需核验结果。**不支持批量导出与长期缓存**。
+
+入口：`backend/ai/tools.py` 工具声明；`backend/ai/graph.py` 参数校验及回传；`backend/evidence/providers/cnkgraph_research.py` 外部 HTTP。离线回归：`.venv/bin/python -m pytest -q tests/test_cnkgraph_research_tools.py tests/test_agent.py`。2026-10-20 真实模型针对 reader_016、057、077、084 的小规模回归：016/057 改用已开放的 `lookup_reference`；077/084 的明确无命中不再是 404 错误。研究型回答 Prompt 增加「本次检得证据」与「已有知识／待核推断」区分；这只能降低误引风险，不能代替真实答案核查。完整研究型 Tool Trace（词律细节、书卷命中摘要）见题库 PR #358 的运行脚本。具体模型自主工具选择需要统一进行本地真实对话验收。完整公开端点探测资产见 [CNKGraph 普查 PR #353](https://github.com/montricwang/poeticus/pull/353)，接入任务为 [#355](https://github.com/montricwang/poeticus/issues/355)。
+
 只有 schema、没有作品数据时，目录为空是正常现象。
 
 前端排版与样式施工前，请先读 [前端视觉与排版规范](design/frontend-visual-conventions.md)：该文件区分行为契约、编辑设计、光学校正，并标明参数的权威入口。

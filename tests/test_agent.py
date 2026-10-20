@@ -617,7 +617,7 @@ def test_agent_prompt_prioritizes_corpus_retrieval_for_textual_provenance(agent)
     assert "应优先使用它" in prompt
     assert "即使目标短语同时带有典故色彩" in prompt
     assert "不要仅因为首轮 miss 就改用典故工具" in prompt
-    assert "不要先用 `lookup_reference`" in prompt
+    assert "不要先用外部出处工具重复试探" in prompt
 
 
 @pytest.mark.parametrize(
