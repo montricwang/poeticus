@@ -12,8 +12,23 @@ Eval 用来回答**哪一类问题改善了、改善是否真的来自工具证�
 | Seed AI Eval | `seed_cases.json`、`scripts.evals.run_seed` | 当前 Agent 使用 Tool / Evidence 的选择和回答表现 |
 | Retrieval Increment Eval | `retrieval_increment_cases.json`、`scripts.evals.run_retrieval_increment` | 独立 LLM 与一次 Retrieval Tool 增强的增量、目标候选是否确实由工具提供 |
 | 真实 Agent / 生产 E2E | Tool routing、必要时二次 Query、Railway → Retrieval → 最终回答 | 真实服务链能否工作；与离线 Eval 不相互替代 |
+| **Reader 100 综合候选题** | `agent_reader_100_cases.json` + [100 题审阅表](agent_reader_100_review.md) | 初中高级读者的真实问题覆盖、Agent 自主工具选用与回答质量（**题库阶段，尚未跑模型/人工 Gold**） |
 
 注意两种对照**不是同一个控制组**：Seed 的 `control_no_tools` 仍使用当前 Agent Prompt / Tool Schema、只禁用执行；Retrieval Increment 的 `standalone_llm` 则不注入 Poeticus Agent Prompt 或 Tool Schema，才能观察更接近模型自身参数知识的表现。
+
+## Reader 100：综合读者题库（2026-10-20 草案）
+
+新题库独立于 [#344 Document RAG 专项 100 题](https://github.com/montricwang/poeticus/issues/344)；它讨论的是文学阅读与研究型 Agent 的**综合对话能力**，不是只检查 Document Hybrid 召回率。
+
+- 源数据：[agent_reader_100_cases.json](agent_reader_100_cases.json)，**100 题**（基础 40 / 进阶 35 / 研究 25），涉及 17 类问题域，部分与已有 Seed Eval 的作品上下文复用，另有独立研究问答。
+- 人工快速审阅：[agent_reader_100_review.md](agent_reader_100_review.md)，按读者层级列出完整 100 题。生成命令：`python -m scripts.evals.render_agent_reader_questions`，避免维护第二份人工拷贝。
+- JSON 每题只包含 `question`、可选 `fixture_id`／`selection`、`level`、`topic`、`review_focus`、分组与待核验标记；**不提供预设 Tool Policy、标准答案、检索答案片段**。
+- `fixtures` 保留公共领域古典词作的**候选原文**，包含来源为旧 Seed 的关联与新增片段，均标记待独立核查准确版本；`text_scope=excerpt` 代表节选，不能假装给词律工具提供了完整作品。
+- 80 题标记为开发整理，20 题标记为预留人工复查。**预留不等于正式 held-out**；只有经人工审核、固定源版本和实验隔离后才可称为验证集。
+- 部分题可能需要尚未接入的类书、词人行迹、年历及更强古籍查证能力，这是**发现覆盖缺口**，不要求为每个问题写固定路线。
+- 尚无为此题库执行 100 道 LLM 问答的 Runner，也未完成 Gold 史料核对和文学质量评分。未来复用现有 Agent 环路及可观测性，先记录工具选择与回答，再做增量对照；不要根据当前 Topic 标签硬编码工具调用。
+
+检查：`python -m pytest -q tests/evals/test_agent_reader_100_cases.py`。进度见 [#357](https://github.com/montricwang/poeticus/issues/357)，CNKGraph 实验关联 [#355](https://github.com/montricwang/poeticus/issues/355)。
 
 ## Dataset
 
