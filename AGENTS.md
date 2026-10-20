@@ -2,6 +2,11 @@
 
 These requirements apply to all AI-generated code changes and GitHub operations in this repository.
 
+## Development entry and PR closeout
+
+- **Actually read current guidance before substantive work:** open the [teaching and development collaboration manual](https://github.com/montricwang/gpt-finishing-school/blob/main/%E5%AE%A1%E6%A0%A1%E4%B8%8E%E5%B7%A5%E4%BD%9C%E6%B5%81/%E6%95%99%E5%AD%A6%E4%B8%8E%E5%BC%80%E5%8F%91%E5%8D%8F%E4%BD%9C%E6%89%8B%E5%86%8C.md) and the [六花 manual index](https://github.com/montricwang/chatgpt-vault/blob/main/%E5%85%AD%E8%8A%B1/%E8%AF%A6%E7%BB%86%E6%93%8D%E4%BD%9C%E6%89%8B%E5%86%8C/README.md) plus only the relevant submanuals. Restore the related Issues, PRs, code, and previous decisions before designing or implementing. Recheck the relevant sections at major architecture, merge, and release milestones; do not claim a review was completed if the sources were inaccessible. Keep this lightweight for small, deterministic edits.
+- **Clean up at PR closeout:** after a PR is merged or closed, inspect its worktree for tracked, untracked, and ignored private files, active processes, and independent commits. Archive needed data, then remove the unused worktree without `--force`. Preserve branches or worktrees that still serve a real purpose, and report anything left for follow-up. Opening a PR alone does not trigger worktree removal.
+
 - **Commits (including squash-merge commits): English Conventional Commits**, with **type and subject required, scope optional**: `type: subject` or `type(scope): subject`. Examples: `ci: update GitHub workflows` and `fix(retrieval): reject empty tokens`. Use English for commit body and footer. Include a scope when it usefully identifies an affected module, but never invent one to satisfy formatting. Breaking changes may use `type!: subject` or `type(scope)!: subject`.
 - Allowed types: `build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test`.
 - **PR title and PR description: Chinese** (technical names, commands, paths, and identifiers may remain English). Issue title and body: Chinese.
