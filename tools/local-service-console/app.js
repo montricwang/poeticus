@@ -6,6 +6,8 @@ let logFeed = null;
 let refreshing = false;
 let working = false;
 let allServices = [];
+let allConfigs = {};
+let editingService = null;
 let toastTimeout;
 const names = {running:"运行中", starting:"启动中", stopped:"已停止", external:"外部运行"};
 const output = $("#output");
@@ -48,6 +50,48 @@ async function api(path, method = "GET") {
   return body;
 }
 
+async function openSettings(key) {
+  if (working) return;
+  try {
+    allConfigs = (await api("/api/config")).services;
+    const data = allConfigs[key];
+    if (!data?.editable) return toast("此服务的启动命令由独立管理器维护");
+    editingService = key;
+    const service = allServices.find(s => s.id === key);
+    $("#settings-title").textContent = (service?.title || key) + " · 启动配置";
+    $("#settings-port").value = data.port;
+    $("#settings-args").value = data.arguments;
+    $("#settings-dialog").showModal();
+  } catch (error) {
+    toast("读取配置失败：" + error.message);
+  }
+}
+
+async function saveSettings(event) {
+  event.preventDefault();
+  if (!editingService) return;
+  const key = editingService;
+  const value = {
+    port: Number($("#settings-port").value),
+    arguments: $("#settings-args").value.trim()
+  };
+  try {
+    const response = await fetch("/api/config/" + key, {
+      method:"POST",
+      headers: {"X-Console-Token":csrfToken,"Content-Type":"application/json"},
+      body:JSON.stringify(value)
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "保存失败");
+    $("#settings-dialog").close();
+    editingService = null;
+    toast("配置已保存；下次启动时生效");
+    await refresh();
+  } catch (error) {
+    toast("保存失败：" + error.message);
+  }
+}
+
 function button(label, action, key, disabled) {
   const btn = document.createElement("button");
   btn.className = "btn-mini" + (action === "stop" ? " btn-stop" : "");
@@ -82,6 +126,18 @@ function renderServices() {
     const dot = document.createElement("i"); dot.className = "dot";
     state.append(dot, document.createTextNode(names[service.state] || service.state));
     control.append(state);
+    if (service.id !== "mcp" && service.id !== "tunnel") {
+      const settings = document.createElement("button");
+      settings.className = "btn-mini btn-settings";
+      settings.textContent = "⚙";
+      settings.title = "配置启动参数";
+      settings.setAttribute("aria-label", "配置 " + service.title);
+      settings.addEventListener("click", event => {
+        event.stopPropagation();
+        openSettings(service.id);
+      });
+      control.append(settings);
+    }
     if (service.state === "stopped") control.append(button("启动", "start", service.id, false));
     if (service.managed) {
       control.append(button("重启", "restart", service.id, false));
@@ -165,6 +221,10 @@ async function init() {
   } catch(error) {
     toast("无法连接本地管理器：" + error.message);
   }
+  $("#settings-form").addEventListener("submit", saveSettings);
+  $("#settings-close").addEventListener("click", () => $("#settings-dialog").close());
+  $("#settings-cancel").addEventListener("click", () => $("#settings-dialog").close());
+  $("#settings-dialog").addEventListener("close", () => { editingService = null; });
   $("#refresh").addEventListener("click",refresh);
   $("#log-select").addEventListener("change", event => switchLog(event.target.value));
   $("#clear").addEventListener("click", () => {output.textContent = "";$("#log-size").textContent = "0 lines";});

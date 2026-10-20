@@ -82,6 +82,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send({"token": TOKEN})
         if path == "/api/services":
             return self._send({"services": SUPERVISOR.all_statuses()})
+        if path == "/api/config":
+            return self._send({"services": {
+                key: SUPERVISOR.launch_settings(key) for key in LOOKUP
+            }})
         log_match = re.fullmatch(r"/api/services/([a-z]+)/events", path)
         if log_match and log_match.group(1) in LOOKUP:
             return self._events(log_match.group(1))
@@ -91,9 +95,23 @@ class Handler(BaseHTTPRequestHandler):
         if not self._origin_ok() or not secrets.compare_digest(
                 self.headers.get("X-Console-Token", ""), TOKEN):
             return self._send({"error": "请求被拒绝"}, 403)
-        if int(self.headers.get("Content-Length", "0")) > 1024:
-            return self._send({"error": "请求体过大"}, 413)
+        try:
+            body_size = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            return self._send({"error": "请求体长度无效"}, 400)
+        if body_size < 0 or body_size > 2048:
+            return self._send({"error": "请求体过大或长度无效"}, 413)
         path = urlsplit(self.path).path
+        settings_match = re.fullmatch(r"/api/config/([a-z]+)", path)
+        if settings_match:
+            key = settings_match.group(1)
+            if key not in LOOKUP:
+                return self._send({"error": "未知服务"}, 404)
+            try:
+                payload = json.loads(self.rfile.read(body_size))
+                return self._send({"settings": SUPERVISOR.update_launch_settings(key, payload)})
+            except (ValueError, UnicodeDecodeError) as exc:
+                return self._send({"error": str(exc)}, 409)
         match = re.fullmatch(r"/api/services/([a-z]+)/(start|stop|restart)", path)
         bulk = re.fullmatch(r"/api/all/(start|stop)", path)
         if not match and not bulk:

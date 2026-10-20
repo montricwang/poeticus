@@ -14,7 +14,9 @@
 
 ## 服务边界与限制
 
-- WSL：Frontend、Backend、LangGraph、Retrieval 使用 WSL 内项目的 .venv，Retrieval 读取 WSL 私有环境文件；启动 Vite 不重复执行 npm ci。
+- WSL：Frontend、Backend、LangGraph、Retrieval 使用 WSL 内项目的 .venv，Retrieval 读取 WSL 私有环境文件；启动 Vite 不重复执行 npm ci。Windows 发起的非交互式 WSL 会显式加载 NVM 并选取默认 Linux Node.js，避免 Windows npm 的 UNC 错误；Linux Node/npm 不存在时，Frontend 将直接报错。
+- 网页齿轮设置支持 Frontend、Backend、LangGraph、Retrieval、Reranker 的端口和附加启动参数。保存到本机 %LOCALAPPDATA% 下的 Poeticus/service-console/launch-options.json，下次启动生效。端口会自动转换为对应的 --port 参数，附加参数不能覆盖监听地址、端口或认证参数。
+- 网页不开放任意 Shell / PowerShell 执行。程序路径和模型资产位置通过 Windows 安装目录的 settings.local.json 管理；更换基础命令尚不支持网页编辑。
 - Windows：Reranker、Cloudflare Tunnel 启动参数固定，Cloudflare token 只从现有私有文件读取。
 - MCP Manager：调用现有 MCP-Manager.ps1 的 Start / Stop，继续由原管理器维护四条隧道和巡检；网页当前展示 watch.log，Worker 的详细日志仍在 LocalMCPManager 目录中。
 - 端口被非管理器进程占用会显示“外部运行”，不会重复启动或越权关闭。端口连通性不是完整的 HTTP 健康检查。

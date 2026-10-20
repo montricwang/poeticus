@@ -55,6 +55,9 @@ WSL_COMMANDS = {
     "retrieval": "source ~/.config/poeticus/retrieval.env && exec python -m scripts.retrieval.run_serving --device cpu",
 }
 
+CONFIGURABLE_SERVICES = frozenset((*WSL_COMMANDS, "reranker"))
+FORBIDDEN_FLAGS = frozenset(("--port", "--host", "--api-token", "--token", "--token-file"))
+
 
 def read_config() -> dict:
     config = DEFAULTS.copy()
@@ -97,7 +100,14 @@ class Supervisor:
         self.directory.mkdir(parents=True, exist_ok=True)
         self.config = config or read_config()
         self.state_file = self.directory / "owned.json"
+        self.launch_file = self.directory / "launch-options.json"
         self.lock = threading.RLock()
+        try:
+            self.launch_options = json.loads(self.launch_file.read_text(encoding="utf-8"))
+            if not isinstance(self.launch_options, dict):
+                self.launch_options = {}
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.launch_options = {}
         self.handles: dict[str, subprocess.Popen] = {}
         try:
             self.owned = json.loads(self.state_file.read_text(encoding="utf-8"))
@@ -108,6 +118,50 @@ class Supervisor:
         temp = self.state_file.with_suffix(".tmp")
         temp.write_text(json.dumps(self.owned, indent=2), encoding="utf-8")
         temp.replace(self.state_file)
+
+    def launch_settings(self, key: str) -> dict:
+        """Safe, editable options. Binary paths/secrets are never exposed over HTTP."""
+        service = LOOKUP[key]
+        saved = self.launch_options.get(key, {})
+        if key not in CONFIGURABLE_SERVICES:
+            return {"editable": False, "port": service.port, "arguments": ""}
+        port = saved.get("port", service.port)
+        args = saved.get("arguments", "")
+        return {"editable": True, "port": port, "arguments": args}
+
+    def update_launch_settings(self, key: str, value: dict) -> dict:
+        if key not in CONFIGURABLE_SERVICES:
+            raise ValueError("此服务使用固定启动命令，不能在网页修改")
+        if not isinstance(value, dict) or set(value) != {"port", "arguments"}:
+            raise ValueError("只能配置端口和附加参数")
+        port, arguments = value["port"], value["arguments"]
+        if type(port) is not int or not (1024 <= port <= 65535):
+            raise ValueError("端口必须是 1024–65535 的整数")
+        if not isinstance(arguments, str) or len(arguments) > 500:
+            raise ValueError("启动参数长度不得超过 500 字符")
+        try:
+            tokens = shlex.split(arguments, posix=True)
+        except ValueError as exc:
+            raise ValueError("启动参数的引号不完整") from exc
+        if len(tokens) > 30 or any(
+            token.split("=", 1)[0].lower() in FORBIDDEN_FLAGS for token in tokens
+        ):
+            raise ValueError("附加参数不可覆盖端口、监听地址或认证参数")
+        with self.lock:
+            if process_for(self.owned.get(key)):
+                raise ValueError("请先停止控制台管理的服务，再修改启动配置")
+            self.launch_options[key] = {"port": port, "arguments": arguments}
+            temp = self.launch_file.with_suffix(".tmp")
+            temp.write_text(json.dumps(self.launch_options, ensure_ascii=False, indent=2),
+                            encoding="utf-8")
+            temp.replace(self.launch_file)
+        return self.launch_settings(key)
+
+    def _port(self, key: str) -> int | None:
+        return self.launch_settings(key)["port"]
+
+    def _args(self, key: str) -> list[str]:
+        return shlex.split(self.launch_settings(key)["arguments"])
 
     def log_path(self, key: str) -> Path:
         if key == "mcp":
@@ -136,7 +190,7 @@ class Supervisor:
             state = "running" if running and healthy else "starting" if running else "external" if healthy else "stopped"
             pid = running.pid if running else None
         else:
-            reachable = port_open(service.port)
+            reachable = port_open(self._port(key))
             if owned:
                 state = "running" if (reachable or service.port is None) else "starting"
             else:
@@ -144,7 +198,7 @@ class Supervisor:
             pid = owned.pid if owned else None
         return {
             "id": key, "title": service.title, "environment": service.environment,
-            "port": service.port, "state": state, "pid": pid,
+            "port": self._port(key), "state": state, "pid": pid,
             "managed": bool(owned) if key != "mcp" else bool(self._mcp_process()),
         }
 
@@ -153,11 +207,27 @@ class Supervisor:
         if key in WSL_COMMANDS:
             project = shlex.quote(cfg["wsl_project"])
             pidfile = "$HOME/.cache/poeticus-service-console/" + key + ".pid"
+            port = self._port(key)
+            extra = " ".join(shlex.quote(arg) for arg in self._args(key))
+            # Login-style non-interactive WSL shells do not load .bashrc / NVM by default.
+            # Ensure node/npm are Linux binaries rather than Windows npm on the inherited PATH.
+            node_init = (
+                'if [ -s "$HOME/.nvm/nvm.sh" ]; then '
+                '. "$HOME/.nvm/nvm.sh" && nvm use --silent default >/dev/null; fi; '
+            )
+            if key == "frontend":
+                node_init += (
+                    'case "$(command -v node || true):$(command -v npm || true)" in '
+                    '/mnt/*|*:/mnt/*|:* ) echo "Linux Node/npm not found; configure WSL NVM" >&2; exit 127;; esac; '
+                )
+            command = WSL_COMMANDS[key] + " --port " + str(port)
+            if extra:
+                command += " " + extra
             worker = (
-                "export POETICUS_CONSOLE_RUN_ID=" + shlex.quote(run_id) +
+                "set -e; export POETICUS_CONSOLE_RUN_ID=" + shlex.quote(run_id) +
                 "; printf '%s %s\\n' \"$$\" \"$POETICUS_CONSOLE_RUN_ID\" > \"" + pidfile + "\""
                 "; cd " + project + " && source .venv/bin/activate && "
-                "export PYTHONUNBUFFERED=1 && " + WSL_COMMANDS[key]
+                "export PYTHONUNBUFFERED=1; " + node_init + command
             )
             script = "mkdir -p \"$HOME/.cache/poeticus-service-console\"; exec setsid -w bash -lc " + shlex.quote(worker)
             return ["wsl.exe", "-d", cfg["wsl_distro"], "--exec", "bash", "-lc", script]
@@ -166,7 +236,8 @@ class Supervisor:
             if not (Path(exe).is_file() and model):
                 raise ValueError("请先在 settings.local.json 配置 reranker_exe 和 reranker_model")
             return [exe, "-m", model, "--reranking", "--pooling", "rank", "--embedding",
-                    "-ngl", "99", "--host", "127.0.0.1", "--port", "18081", "-c", "2048"]
+                    "-ngl", "99", "--host", "127.0.0.1", "--port", str(self._port(key)), "-c", "2048",
+                    *self._args(key)]
         if key == "tunnel":
             exe = cfg["cloudflared_exe"] or shutil.which("cloudflared")
             token_file = Path(os.environ["LOCALAPPDATA"]) / "Poeticus" / "secrets" / "cloudflare-tunnel.token"

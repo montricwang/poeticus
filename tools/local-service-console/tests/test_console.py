@@ -70,6 +70,28 @@ class ProcessTests(unittest.TestCase):
                 if mgr.owned.get("frontend"):
                     mgr.stop("frontend")
 
+    def test_launch_configuration_is_persistent_and_safe(self):
+        with tempfile.TemporaryDirectory() as folder:
+            mgr = DummySupervisor(state_dir=Path(folder), config={})
+            self.assertEqual(mgr.launch_settings("frontend")["port"], 5173)
+            settings = mgr.update_launch_settings("frontend", {
+                "port": 15317, "arguments": "--strictPort --clearScreen false"
+            })
+            self.assertEqual(settings["port"], 15317)
+            self.assertEqual(Supervisor(state_dir=Path(folder), config={})._port("frontend"), 15317)
+            command = mgr._build_command("frontend", "smoke")
+            self.assertIn("--port 15317", command[-1])
+            self.assertIn(".nvm/nvm.sh", command[-1])
+            self.assertIn("npm", command[-1])
+            for args in ("--api-token secret", "--port 1", "--host 0.0.0.0"):
+                with self.assertRaises(ValueError):
+                    mgr.update_launch_settings("frontend", {"port": 15317, "arguments": args})
+            with self.assertRaises(ValueError):
+                mgr.update_launch_settings("frontend", {"port": 70000, "arguments": ""})
+            with self.assertRaises(ValueError):
+                mgr.update_launch_settings("mcp", {"port": 8080, "arguments": ""})
+            self.assertEqual(mgr._port("frontend"), 15317)
+
     def test_recover_owned_pid_after_manager_restart(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder)
@@ -156,6 +178,34 @@ class ApiTests(unittest.TestCase):
                 self.assertTrue(any(b"line-added-later" in l for l in observed))
             finally:
                 server.SUPERVISOR = real
+
+    def test_config_api(self):
+        with tempfile.TemporaryDirectory() as folder:
+            original = server.SUPERVISOR
+            try:
+                server.SUPERVISOR = DummySupervisor(state_dir=Path(folder), config={})
+                with self.request("/api/config") as response:
+                    config = json.load(response)
+                self.assertEqual(config["services"]["frontend"]["port"], 5173)
+                payload = json.dumps({"port": 15517, "arguments": "--strictPort"}).encode()
+                headers = {"X-Console-Token": server.TOKEN, "Content-Type": "application/json"}
+                request = urllib.request.Request(
+                    self.url + "/api/config/frontend", method="POST",
+                    data=payload, headers=headers
+                )
+                with urllib.request.urlopen(request, timeout=5) as response:
+                    saved = json.load(response)
+                self.assertEqual(saved["settings"]["port"], 15517)
+                self.assertEqual(server.SUPERVISOR._port("frontend"), 15517)
+                bad = urllib.request.Request(
+                    self.url + "/api/config/frontend", method="POST",
+                    data=json.dumps({"port": 15517, "arguments": "--port 55"}).encode(),
+                    headers=headers)
+                with self.assertRaises(urllib.error.HTTPError) as e:
+                    urllib.request.urlopen(bad, timeout=5)
+                self.assertEqual(e.exception.code, 409)
+            finally:
+                server.SUPERVISOR = original
 
     def test_log_sse(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -18,3 +18,17 @@ button,select{font:inherit}button{cursor:pointer;transition:background .15s,bord
 #toast{position:fixed;bottom:28px;right:28px;max-width:400px;padding:12px 18px;border:1px solid #405367;background:#223041;color:#eff4fa;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s;box-shadow:0 10px 40px #0004}#toast.visible{opacity:1}
 footer{display:flex;justify-content:space-between;gap:15px;border-top:1px solid #273241;margin:32px 0 20px;padding-top:18px;color:#6e7c8d;font-size:10px;letter-spacing:1px}
 @media(max-width:1050px){.workspace{grid-template-columns:1fr}.logs{min-height:500px}}@media(max-width:640px){.shell{width:calc(100% - 30px)}.topbar{padding:18px 0}.clock{display:none}.intro{display:block;padding:28px 0}.intro h2{font-size:22px}.actions{margin-top:23px}.stats{grid-template-columns:1fr 1fr}.metric{padding:16px}.metric strong{font-size:23px}.workspace{gap:14px}.services,.logs{padding:17px}.service{padding:10px}.svc-control{gap:6px}.status{font-size:9px}.btn-mini{padding:6px 8px}footer{font-size:9px}}
+
+.btn-settings{padding:6px 9px;font-size:15px;line-height:1;color:#adbbcb}
+#settings-dialog{background:#17202c;border:1px solid #435163;color:#e8edf5;border-radius:13px;padding:0;width:min(440px,calc(100vw - 30px));box-shadow:0 25px 85px #000b}
+#settings-dialog::backdrop{background:#0009;backdrop-filter:blur(3px)}
+#settings-form{padding:27px}
+.settings-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.settings-header h3{font-size:19px;margin:7px 0 0}
+#settings-close{font-size:25px;color:#9aa9bb;border:0;background:transparent;padding:0 4px}
+.settings-tip,.settings-example{color:#98a7b9;font-size:12px;line-height:1.8;margin:0 0 21px}
+.settings-example{font-size:11px;margin:11px 0 21px}
+.settings-field{display:flex;flex-direction:column;gap:9px;margin:15px 0;font-size:12px;color:#bbc7d5}
+.settings-field input{width:100%;background:#0e1621;color:#eaf0f6;border:1px solid #3c4b60;border-radius:7px;padding:11px 12px;font:13px Consolas,monospace}
+.settings-field input:focus{outline:1px solid #b24c41}
+.settings-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}
