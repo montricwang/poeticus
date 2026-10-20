@@ -44,7 +44,7 @@
     <dialog id="settings-dialog" aria-labelledby="settings-title">
       <form id="settings-form">
         <div class="settings-header"><div><p class="overline">SERVICE CONFIGURATION</p><h3 id="settings-title">启动配置</h3></div><button type="button" id="settings-close" aria-label="关闭">×</button></div>
-        <p class="settings-tip">完整的启动定义。修改只影响下次启动，不会自动重启正在运行的服务。</p>
+        <p class="settings-tip" id="settings-tip">完整的启动定义。修改只影响下次启动，不会自动重启正在运行的服务。</p>
         <div class="settings-simple">
           <label class="settings-field" id="port-field">服务端口<input type="number" id="settings-port" min="1024" max="65535" required></label>
           <label class="settings-field" id="extra-field">附加参数<input type="text" id="settings-args" maxlength="500" placeholder="例如 --strictPort"></label>
@@ -75,7 +75,7 @@
           <button type="button" class="ghost" id="settings-reset">恢复默认</button>
           <span class="settings-spacer"></span>
           <button type="button" class="ghost" id="settings-cancel">取消</button>
-          <button type="submit" class="primary">保存配置</button>
+          <button type="submit" class="primary" id="settings-save">保存配置</button>
         </div>
       </form>
     </dialog>

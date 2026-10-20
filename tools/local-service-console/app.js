@@ -58,6 +58,12 @@ async function openSettings(key) {
     editingService = key;
     const service = allServices.find(s => s.id === key);
     $("#settings-title").textContent = (service?.title || key) + " · 启动配置";
+    const managed = Boolean(service?.managed);
+    $("#settings-tip").textContent = managed
+      ? "服务正在运行。可以查看启动定义；请先停止该服务再修改或恢复默认。"
+      : "完整的启动定义。修改只影响下次启动，不会自动重启正在运行的服务。";
+    $("#settings-save").disabled = managed;
+    $("#settings-reset").disabled = managed;
     $("#port-field").hidden = data.port === null;
     $("#extra-field").hidden = key === "mcp" || key === "tunnel";
     $("#distro-field").hidden = data.platform !== "WSL";
