@@ -59,7 +59,7 @@ Poeticus 的目标是帮助用户阅读中国古典诗词，必要时查阅**可
 - **然后补真实高频缺口**：[#24](https://github.com/montricwang/poeticus/issues/24) 字词义项/典故证据，或 [#133](https://github.com/montricwang/poeticus/issues/133) 历代评论；以用户 Case 与实际错误选择其一，不因最近听说某 API 就插队。
 - **多个证据域已同时出现时再优化路由**：[#154](https://github.com/montricwang/poeticus/issues/154)。先用 Tool description、Prompt、有限预算和回归评测，不预设独立 Planner 或多 Agent。
 
-首次 Map 核查建议控制在**半天至一天**，完成覆盖、现状、缺口和下一步最多 2–3 项建议即可关闭 [#202](https://github.com/montricwang/poeticus/issues/202)。之后每个具体缺口先给半天至一天的限时 Spike，遇到以下任一情况即收口：现有方案已满足最低要求；新资源已明确补足缺口；授权/接口不满足；缺乏真实 Case；预算用尽而证据仍不足（标记“暂缓/待验证”）。
+首次能力地图核查已于 2026-10-20 按原定范围完成并关闭 [#202](https://github.com/montricwang/poeticus/issues/202)。该结论仅确认能力范围与缺口已整理，不代表所有能力上线或经过文学效果验收。之后针对具体缺口可先做半天至一天的限时 Spike，遇到以下任一情况即收口：现有方案已满足最低要求；新资源已明确补足缺口；授权/接口不满足；缺乏真实 Case；预算用尽而证据仍不足（标记“暂缓/待验证”）。
 
 **不做**：穷尽所有数字人文资源、每发现 API 就增加 Tool、提前自建通用古籍平台/Neo4j、把本页改成供应商清单，或在此文档保存大量实验日志。
 
