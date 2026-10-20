@@ -545,3 +545,15 @@ Werneror/Poetry 适合作为大规模候选发现语料，但不能把其中的�
 - 原先本文第 11 节历史方案完整留在 [整理前 Git 版本](https://github.com/montricwang/poeticus/blob/4e44f3e96873d1bff885e83faa0f1ae8d7a73c4c/docs/architecture/text-retrieval.md#11-实验阶段的设计演进2026-10-07历史记录)。
 
 当前参数和流程以本文前述章节及 [部署说明](../deployment.md) 为准。
+
+## 11. 新的检索失败先按层归因
+
+Poem Retrieval v1 的召回与在线链路已经跑通。后续面对某句化用、题名错配或简繁未命中时，不应一开始就换 Embedding 或增加 Reranker：
+
+1. **候选身份**：核原始 Work、Chunk、`work_id`、题名/作者/全文是否同源，避免把 Agent 最终错引误判为 FAISS 行错配。
+2. **候选发现**：固定原始 Query、候选池和 Gold，区分短 Query 信息不足、字形不匹配、稀疏索引/向量召回不足与过滤过严。
+3. **候选排序**：在同一候选池比较 RRF、可选 Cross-Encoder；同时报告目标名次、无关候选、延迟与资源成本，避免把扩池带来的收益误算作重排。
+4. **证据呈现**：Retriever 返回候选 ≠ Agent 已看到必要的上下文；可按 Work ID 回读相邻句/短篇全文，同时保留来源定位。文本相似、前代可能性、明确的引用关系和作者意图是不同强度的主张。
+5. **回答归因**：对照真实 Tool payload 与模型回答，分别标记 Tool 数据错误、证据取舍错误、模型推论过度或没有调用 Tool。时间元数据未知时保留未知，不根据宽泛朝代标签推断精确影响关系。
+
+检索质量实验必须能**不实施任何新模型也以证据收口**。仍需修复的具体 Case 见 [#119](https://github.com/montricwang/poeticus/issues/119) 的 Sub-issues；Document Corpus 的 Gold 属于另一套评测 [#344](https://github.com/montricwang/poeticus/issues/344)。

@@ -76,3 +76,14 @@ W3C [中文排版需求 CLReq](https://www.w3.org/TR/clreq/) 描述汉字竖排�
 5. ADR 记录长期架构权衡，不为每个 px 建立。设计规范在本文件，实际配置在代码，错误复盘在 coding-lessons，未完成或试验性选择在 Issue。
 
 参阅：[首页架构](../architecture/home-screen.md) · [ADR 边界](../adr/README.md) · [iPad 问题 #327](https://github.com/montricwang/poeticus/issues/327)
+
+## 七、阅读室排版与选区的行为边界
+
+首页竖排的五列节选算法不能直接用于阅读室；阅读室以**忠实呈现可阅读的完整原文**为先。横排正文已在 PR #206 实现根据标点视觉分行、弱化标点与原文位置映射；2026-10 月提出的三种阶梯排版是历史候选，不是当前必须同时实现的模式。
+
+- **显示结构不改变底本。** `body_segments` 是来源抽取的有序段落，不保证每段都是一阕。现代标点也不能充当词律的唯一分片依据。新的留白/换行只作用于视觉层，不能插回数据库正文或传给模型的原始文本。
+- **选区必须可回到原文。** DOM 分行、`span` 和样式标点不得破坏原文字符、UTF-16 索引与 Python code point 的转换；复制与引用必须能定位到相同的来源范围，遇到无法确认的 DOM 范围不得伪造偏移。
+- **真机触摸需要单独验收。** Safari 的选区拖柄可能在 `mouseup` 之外更新；引用卡片与红色下划线需与最终选区同步。桌面/Chromium 回归无法替代 iPhone Safari 的实际拖柄测试（见 [#86](https://github.com/montricwang/poeticus/issues/86)）。
+- **形制探索先实测。** 词律匹配、旁注标点、特殊括号与缩进必须有真实作品对照；审美方案需用户确认，不因为能写 CSS 就改动已封板规则。
+
+原文分组与来源归类问题另查[作品数据契约](../architecture/corpus-database.md)；现行排版目标、未验收事项见 [#74](https://github.com/montricwang/poeticus/issues/74)。
