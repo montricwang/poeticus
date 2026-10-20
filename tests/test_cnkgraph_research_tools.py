@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 import json
 
 import httpx
@@ -71,7 +72,7 @@ def test_analyze_ci_preserves_both_standards_and_flags_rhyme(monkeypatch):
         })
 
     client = fake_client(monkeypatch, handler)
-    result = asyncio.run(client.analyze_ci("深相忆，莫相忆。", "醉花间"))
+    result: Any = asyncio.run(client.analyze_ci("深相忆，莫相忆。", "醉花间"))
 
     assert called == [(
         "/api/Tool/AnalyzeCi",
@@ -108,7 +109,7 @@ def test_book_search_retains_provenance_but_limits_excerpt(monkeypatch):
         })
 
     client = fake_client(monkeypatch, handler)
-    result = asyncio.run(client.search_books("黄鹤楼"))
+    result: Any = asyncio.run(client.search_books("黄鹤楼"))
     assert result["status"] == "ok"
     assert result["total_matches_reported"] == 140
     assert result["hits"][0]["volume_id"] == "KR7a0006_1186"
@@ -118,7 +119,7 @@ def test_book_search_retains_provenance_but_limits_excerpt(monkeypatch):
 
 def test_book_search_empty_is_no_hit(monkeypatch):
     client = fake_client(monkeypatch, lambda _: response({"Count": 0, "Result": []}))
-    result = asyncio.run(client.search_books("一个肯定不存在的词"))
+    result: Any = asyncio.run(client.search_books("一个肯定不存在的词"))
     assert result["status"] == "no_hit"
     assert result["hits"] == []
 
@@ -155,7 +156,7 @@ def test_agent_parser_and_dispatch_default_disabled_then_enabled(monkeypatch):
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
     from backend.ai import graph as agent
 
-    call = {
+    call: Any = {
         "id": "call-cnkg-1", "name": "analyze_ci_meter",
         "arguments": json.dumps({"tune_name": "醉花间"}),
     }
@@ -181,7 +182,7 @@ def test_agent_parser_and_dispatch_default_disabled_then_enabled(monkeypatch):
         return {"status": "ok", "analyses": [{"standard": "钦谱"}]}
 
     monkeypatch.setattr(agent.cnkgraph_research_client, "analyze_ci", analyze_ci)
-    result = agent.execute_tools({
+    result: Any = agent.execute_tools({
         "poem": "深相忆，莫相忆。",
         "question": "押韵吗？",
         "messages": [],
@@ -203,7 +204,7 @@ def test_agent_book_search_errors_remain_errors(monkeypatch):
         raise CNKGraphResearchError("CNKGraph 网络请求失败或超时")
 
     monkeypatch.setattr(agent.cnkgraph_research_client, "search_books", fail)
-    result = agent.execute_tools({
+    result: Any = agent.execute_tools({
         "poem": "大江东去",
         "question": "黄鹤楼在哪部书？",
         "messages": [],
@@ -229,7 +230,7 @@ def test_external_timeout_is_not_a_no_hit(monkeypatch):
 
 def test_book_response_without_current_page_hits_is_partial(monkeypatch):
     client = fake_client(monkeypatch, lambda _: response({"Count": 18, "Result": []}))
-    result = asyncio.run(client.search_books("黄鹤楼"))
+    result: Any = asyncio.run(client.search_books("黄鹤楼"))
     assert result["status"] == "partial"
     assert result["total_matches_reported"] == 18
 
@@ -267,7 +268,7 @@ def test_ci_tune_find_by_alias_then_returns_compact_formats(monkeypatch):
         })
 
     client = fake_client(monkeypatch, handler)
-    data = asyncio.run(client.lookup_ci_tune("醉花间"))
+    data: Any = asyncio.run(client.lookup_ci_tune("醉花间"))
     assert data["status"] == "ok"
     assert data["id"] == 90
     assert data["format_count"] == 1
@@ -281,7 +282,7 @@ def test_ci_tune_ambiguous_results_are_not_silently_selected(monkeypatch):
         {"Id": 1, "Name": "朝天子", "Aliases": []},
         {"Id": 2, "Name": "朝天乐", "Aliases": []},
     ]))
-    result = asyncio.run(client.lookup_ci_tune("朝天"))
+    result: Any = asyncio.run(client.lookup_ci_tune("朝天"))
     assert result["status"] == "candidates"
     assert len(result["candidates"]) == 2
 
@@ -312,10 +313,10 @@ def test_rhyme_book_categories_and_character_membership(monkeypatch):
         })
 
     client = fake_client(monkeypatch, handler)
-    summary = asyncio.run(client.lookup_rhyme("词林正韵"))
+    summary: Any = asyncio.run(client.lookup_rhyme("词林正韵"))
     assert summary["categories"][0]["id"] == "0"
     assert summary["categories"][0]["character_present"] is None
-    detail = asyncio.run(client.lookup_rhyme("词林正韵", "0", "风"))
+    detail: Any = asyncio.run(client.lookup_rhyme("词林正韵", "0", "风"))
     assert detail["categories"][0]["character_present"] is True
     assert detail["categories"][0]["char_count"] == 2
     assert requested == ["/api/rhyme/词林正韵", "/api/rhyme/词林正韵/0"]
@@ -340,7 +341,7 @@ def test_entity_labels_keep_ids_offsets_and_small_properties(monkeypatch):
         })
 
     client = fake_client(monkeypatch, handler)
-    result = asyncio.run(client.resolve_entities("苏轼在黄州"))
+    result: Any = asyncio.run(client.resolve_entities("苏轼在黄州"))
     assert result["status"] == "ok"
     assert result["labels"] == [
         {"type": "People", "id": "29937", "text": "苏轼", "start": 0, "length": 2}
@@ -382,7 +383,7 @@ def test_first_batch_registered_and_dispatched_through_existing_agent(monkeypatc
     monkeypatch.setattr(agent.cnkgraph_research_client, "resolve_entities", fake_entities)
 
     from backend.ai.context import PoemContext
-    state = {
+    state: Any = {
         "poem": "大江东去",
         "selection": "苏轼在黄州",
         "context": PoemContext(id="poem-1", title="念奴娇", dynasty="北宋"),
@@ -396,7 +397,7 @@ def test_first_batch_registered_and_dispatched_through_existing_agent(monkeypatc
     }
     # Normal AGENT_MAX_TOOL_CALLS is two: exercise all three without changing config globally.
     monkeypatch.setattr(agent, "AGENT_MAX_TOOL_CALLS", 3)
-    output = agent.execute_tools(state)
+    output: Any = agent.execute_tools(state)
     assert called == [
         ("tune", "念奴娇"),
         ("rhyme", "词林正韵", "0", "风"),
@@ -437,7 +438,7 @@ def test_book_search_cnkg_known_404_empty_is_no_hit(monkeypatch):
         monkeypatch,
         lambda _: response({"Message": "没找到"}, status=404),
     )
-    result = asyncio.run(client.search_books("怎敵他晚來風急"))
+    result: Any = asyncio.run(client.search_books("怎敵他晚來風急"))
     assert result["status"] == "no_hit"
     assert result["total_matches_reported"] == 0
     assert result["hits"] == []
@@ -462,7 +463,7 @@ def test_unregistered_tool_rejected_by_parser_and_execution(monkeypatch):
         enabled = False
 
     monkeypatch.setattr(agent, "text_retrieval_client", DisabledTextRetrieval())
-    call = {
+    call: Any = {
         "id": "missing-text-service",
         "name": "search_predecessor_texts",
         "arguments": '{"text":"落花人独立"}',
@@ -470,7 +471,7 @@ def test_unregistered_tool_rejected_by_parser_and_execution(monkeypatch):
     with pytest.raises(ValueError, match="未开放工具"):
         agent._validate_registered_tool(call)
 
-    response = agent.execute_tools({
+    response: Any = agent.execute_tools({
         "poem": "落花人独立", "question": "从哪来？",
         "messages": [], "tool_calls": [call],
     })

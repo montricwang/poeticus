@@ -9,6 +9,7 @@ import asyncio
 import logging
 import json
 from dataclasses import dataclass
+from inspect import signature
 from typing import Literal, NotRequired, TypedDict, cast
 from langgraph.config import get_stream_writer
 from langgraph.graph import StateGraph, START, END
@@ -153,6 +154,17 @@ def _validate_registered_tool(call: ToolCall) -> None:
         )
     }
     if call["name"] not in registered:
+        # Disambiguate a model-invented function from a real but disabled one.
+        # The registry grows with optional providers, so derive known names
+        # from its actual signature instead of hardcoding old tool families.
+        all_known = {
+            tool["function"]["name"]
+            for tool in available_tools(
+                *(True for _ in signature(available_tools).parameters)
+            )
+        }
+        if call["name"] not in all_known:
+            raise ValueError(f"未知工具：{call['name']}")
         raise ValueError(f"本轮未开放工具：{call['name']}")
 
 
