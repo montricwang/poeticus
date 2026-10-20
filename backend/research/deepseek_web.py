@@ -152,6 +152,11 @@ class DeepSeekWebClient:
         validated = _safe_public_url(url)
         if validated is None or validated not in allowed_urls:
             raise ValueError("只能读取本轮搜索结果中出现的公开网页 URL")
+        # Shidian's public user agreement (2.4/4.3/4.4) restricts
+        # unauthorized automated retrieval. Keep links for human reading.
+        domain = urlsplit(validated).hostname or ""
+        if domain == "shidianguji.com" or domain.endswith(".shidianguji.com"):
+            raise ValueError("识典古籍未授权自动抓取：请人工打开原站核查或取得许可")
         raw = await self._post(
             "/v1/tools/fetch", {"url": validated}, self.FETCH_LIMIT_BYTES,
         )

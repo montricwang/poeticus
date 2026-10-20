@@ -220,3 +220,17 @@ def test_search_accepts_only_schema_valid_query(monkeypatch):
             agent._parse_tool_query({
                 "id": "x", "name": "web_search", "arguments": json.dumps({"query": value})
             })
+
+
+@pytest.mark.parametrize("url", [
+    "https://www.shidianguji.com/book/abc/chapter/def",
+    "https://shidianguji.com/zh",
+    "https://www-lf.shidianguji.com/book/xyz",
+])
+def test_official_shidian_policy_keeps_result_link_but_disallows_fetch(monkeypatch, url):
+    def fail_handler(_):
+        raise AssertionError("Do not make an unauthorized fetch request")
+    c = make_client(monkeypatch, fail_handler)
+    with pytest.raises(ValueError, match="未授权自动抓取"):
+        asyncio.run(c.fetch(url, {url}))
+    assert _safe_public_url(url) == url
