@@ -233,13 +233,11 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
                   {poem.author ?? '作者未核实'}
                 </p>
               </div>
-              {poem.yusheng_title &&
-                poem.cipai &&
-                poem.id !== 'b3f3a428-ad69-4bef-90ff-797cc7dac849' && (
-                  <p className="poem-reader-secondary-heading ml-3 text-muted-foreground lg:ml-2.5">
-                    {poem.cipai}
-                  </p>
-                )}
+              {poem.yusheng_title && poem.cipai && poem.author !== '贺铸' && (
+                <p className="poem-reader-secondary-heading ml-3 text-muted-foreground lg:ml-2.5">
+                  {poem.cipai}
+                </p>
+              )}
               {poem.title && (
                 <p className="poem-reader-title ml-3 hidden whitespace-pre-line font-serif text-foreground/85 lg:ml-2.5">
                   {poem.title}
@@ -253,13 +251,11 @@ export function FeaturedPoemDisplay({ poem, continuous }: { poem: Poem; continuo
                 <h2 className="poem-reader-heading shrink-0 font-serif">
                   {poem.yusheng_title ?? poem.cipai ?? '词牌未核实'}
                 </h2>
-                {poem.yusheng_title &&
-                  poem.cipai &&
-                  poem.id !== 'b3f3a428-ad69-4bef-90ff-797cc7dac849' && (
-                    <p className="poem-reader-secondary-heading shrink-0 !text-base text-muted-foreground">
-                      {poem.cipai}
-                    </p>
-                  )}
+                {poem.yusheng_title && poem.cipai && poem.author !== '贺铸' && (
+                  <p className="poem-reader-secondary-heading shrink-0 !text-base text-muted-foreground">
+                    {poem.cipai}
+                  </p>
+                )}
                 {poem.title && (
                   <p className="poem-reader-title !mt-0 shrink-0 whitespace-pre-line font-serif text-foreground/85">
                     {poem.title}
