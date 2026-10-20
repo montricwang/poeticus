@@ -19,6 +19,7 @@ import time
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import cast
 
 from dotenv import load_dotenv
 
@@ -68,7 +69,7 @@ def main() -> None:
 
     from backend.ai import graph as agent_graph
     from backend.ai.tools import available_tools
-    from backend.ai.graph import graph, text_retrieval_client, document_retrieval
+    from backend.ai.graph import graph, text_retrieval_client, document_retrieval, AgentState
     research_enabled = bool(getattr(agent_graph, "CNKGRAPH_RESEARCH_TOOLS_ENABLED", False))
     has_research_flag = "cnkgraph_research_enabled" in inspect.signature(
         available_tools
@@ -149,7 +150,7 @@ def main() -> None:
             "started_at": datetime.now(timezone.utc).isoformat(),
         }
         try:
-            response = graph.invoke(build_state(case, dataset["fixtures"]))
+            response = graph.invoke(cast(AgentState, build_state(case, dataset["fixtures"])))
             answer = response.get("reply", "")
             messages = [dict(x) for x in response.get("messages", [])]
             trace = _tool_trace(messages)

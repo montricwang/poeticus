@@ -1,5 +1,6 @@
 """Eval runner 的 Process Trace 离线测试。"""
 
+from typing import Any
 import json
 
 
@@ -88,7 +89,7 @@ def test_structured_tool_trace_keeps_cnkgraph_book_and_ci_provenance(monkeypatch
     from scripts.evals.run_seed import _tool_trace
 
     long_text = "不得上传的受限全文" * 500
-    messages = [
+    messages: Any = [
         {
             "role": "tool", "tool_call_id": "book-1",
             "content": json.dumps({
@@ -120,7 +121,7 @@ def test_structured_tool_trace_keeps_cnkgraph_book_and_ci_provenance(monkeypatch
             }, ensure_ascii=False),
         },
     ]
-    records = _tool_trace(messages)["results"]
+    records: Any = _tool_trace(messages)["results"]
     assert records[0]["hits"][0]["volume_id"] == "KR7a0006_1186"
     assert records[0]["hits"][0]["matched_text"] == "黄鹤楼"
     assert records[1]["analyses"][0]["wrong_rhymes"][0]["wrong_characters"] == ["壁"]
@@ -131,7 +132,7 @@ def test_bounded_source_provenance_for_web_dictionary_and_wikisource():
     from scripts.evals.run_seed import _structured_tool_preview
 
     long_text = "甲" * 6000
-    search = _structured_tool_preview({
+    search: Any = _structured_tool_preview({
         "provider": "deepseek_web", "source": "ctext",
         "results": [{"title": "词源", "url": "https://ctext.org/wiki.pl?chapter=123",
                      "snippet": long_text}],
@@ -140,7 +141,7 @@ def test_bounded_source_provenance_for_web_dictionary_and_wikisource():
     assert search["results"][0]["url"].startswith("https://ctext.org/")
     assert len(search["results"][0]["snippet"]) <= 130
 
-    page = _structured_tool_preview({
+    page: Any = _structured_tool_preview({
         "provider": "wikisource", "pageid": 7216,
         "revision_id": 2599003,
         "url": "https://zh.wikisource.org/w/index.php?oldid=2599003",
@@ -149,7 +150,7 @@ def test_bounded_source_provenance_for_web_dictionary_and_wikisource():
     assert page["revision_id"] == 2599003
     assert len(page["wikitext_excerpt"]) <= 240
 
-    dictionary = _structured_tool_preview({
+    dictionary: Any = _structured_tool_preview({
         "provider": "moedict", "headword": "將息",
         "url": "https://www.moedict.tw/a/%E5%B0%87%E6%81%AF",
         "entries": [{"bopomofo": "ㄐㄧㄤ ㄒㄧˊ", "definitions": [
