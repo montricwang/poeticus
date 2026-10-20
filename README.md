@@ -21,6 +21,8 @@ Poeticus 使用 React、TypeScript 和 Vite 构建前端，FastAPI 提供作品�
 
 前代文本检索使用 Qwen3-Embedding、FAISS 和 SQLite FTS5/BM25 进行混合召回，再按作品汇总候选。检索服务当前运行在开发机 WSL，通过 Cloudflare Tunnel 按需连接线上应用；检索节点离线时，该项能力会受影响。网站及公开作品库部署在 Railway。
 
+另有**仅限私人研究、默认关闭**的文献检索、字词、古籍和联网查证工具，以及文学批评 Persona / 长期札记的研究项目。它们不等同于公开网站已经开放的功能；进度分别见 [Document Corpus](docs/architecture/document-corpus.md)、[Critic 研究 #311](https://github.com/montricwang/poeticus/issues/311) 和 [记忆实验 #347](https://github.com/montricwang/poeticus/issues/347)。
+
 ## 开发与文档
 
 项目代码与文档公开，作品数据库的私人原始资料及凭据不包含在仓库中。自行运行阅读功能需要准备具有使用权限的作品数据；在线体验无需账号，AI 功能设有共享用量限制。

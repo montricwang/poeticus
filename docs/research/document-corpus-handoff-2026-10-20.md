@@ -1,5 +1,7 @@
 # 2026-10-20｜Document Corpus 扩容与 Agent 知识形态：对话交接
 
+> **时间线补注（2026-10-20 当日晚间）**：下文“四部原有文献、916 节”的口径是本对话**两次回退完成后的早些时刻**。当天稍后，另一个获用户明确授权的任务从维基文库新增《詞概》115 节、《海綃說詞》121 节，私有 PostgreSQL 最终为**六书、1152 节/向量**。两种数值都是真实的不同时间点；新增两书的专项 Adapter 尚未合并为通用四书 CLI，详见 [Document Corpus 当前文档](../architecture/document-corpus.md) 与 [#343](https://github.com/montricwang/poeticus/issues/343)。
+
 > 本文将用户已确认的事实、实际回退、研究结果和未决方案分别记录。关联 [Issue #343](https://github.com/montricwang/poeticus/issues/343)（扩容）、[#133](https://github.com/montricwang/poeticus/issues/133)（Document RAG）、[#354](https://github.com/montricwang/poeticus/issues/354)（批评方法）。**不构成新增书籍、代码、数据库操作的授权**。
 
 ## 1. 当前数据与回退
