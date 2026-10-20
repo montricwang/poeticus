@@ -4,7 +4,9 @@
 
 ## 阅读报告
 
-打开 [深色交互式 HTML 报告](cnkgraph_audit_report.html)。HTML 内嵌完整元数据，可离线使用，提供路径/领域/状态筛选、响应结构展开和人工复核。复核标记仅保存在浏览器本地，也可以主动导出 JSON；源 JSON 不受影响。
+先读 [**CNKGraph 能力资产与复用手册**](capability-atlas.md)：全面记录各类接口的用途、实际样本、风险、未来 Agent 的调用方向及下次专项复测入口，附带完整的 Swagger 105 操作和 Postman 71 样例目录。这是长期资产档案，**不等于本轮要实现全部工具**。
+
+再打开 [深色交互式 HTML 报告](cnkgraph_audit_report.html)。HTML 内嵌完整元数据，可离线使用，提供路径/领域/状态筛选、响应结构展开和人工复核。复核标记仅保存在浏览器本地，也可以主动导出 JSON；源 JSON 不受影响。
 
 本轮素材：
 
@@ -27,7 +29,8 @@
 .venv/bin/python -m scripts.experiments.cnkgraph_api_audit --probe --batch 3
 .venv/bin/python -m scripts.experiments.cnkgraph_api_audit --probe --batch 4
 .venv/bin/python -m scripts.experiments.render_cnkgraph_audit
-.venv/bin/python -m pytest -q tests/test_cnkgraph_audit_report.py
+.venv/bin/python -m scripts.experiments.render_cnkgraph_capability_matrix
+.venv/bin/python -m pytest -q tests/test_cnkgraph_audit_report.py tests/test_cnkgraph_capability_atlas.py
 ```
 
 探测脚本有 0.5 秒串行间隔、只读方法白名单、响应截断与导出/协议/会话端点保护。**不要把复现命令当作每次开发的默认测试**：重新请求远端有服务负担，也会覆盖原始结果；仅在需要验证新版本时单独运行，并保留新的日期证据。
