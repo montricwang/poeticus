@@ -101,14 +101,17 @@ POETICUS_CNKGRAPH_RESEARCH_TOOLS_ENABLED=true
 # CNKGRAPH_RESEARCH_BASE_URL=https://open.cnkgraph.com
 ```
 
-重启本地后端后，现有 ReAct Agent 会额外看到两个只读工具：
+重启本地后端后，现有 ReAct Agent 会额外看到五个只读研究工具（先接入第一批中较实用的能力；未做全接口接入）：
 
 - `analyze_ci_meter`：按词牌与当前作品正文（或明确指定的短文本）调用 `POST /api/Tool/AnalyzeCi`，返回钦谱/龙谱匹配体式和错韵摘要。只判断后世词谱的形式校验，不证明宋代实际合乐。
 - `search_classical_books`：在古籍库检索短关键词，使用已实测的区分大小写路由 `POST /Api/Book/Find`；只返回最多五条带书卷 ID 的短命中片段，不抓全卷。
+- `lookup_ci_tune`：以词牌名或别名检索，唯一匹配时查询词谱详情，返回正体、变格、谱式与简短例词；多义时只返回词牌候选。
+- `lookup_rhyme`：按韵书查询韵部目录，传入韵部 ID 后获取该部字表概要，也可以在已知韵部内判断指定单字是否收录。由于原厂的单字综合接口可能返回数 MB，目前**不支持仅凭一个字直接判定完整韵书中的唯一韵部**；需先定位韵部。
+- `resolve_entities`：对当前选区或短诗文做候选实体标注，返回人物、地点、词汇等的类型、外部 ID、原文位置和少量属性；外部标注不直接写回主库。
 
-两者仅在开关打开时向模型注册；开关关闭时即使模型构造工具调用也会拒绝。原有典故、出处、作品检索和词话 RAG 不受影响。工具失败与成功无命中分别返回，单次请求 12 秒超时、响应最多读取 96 KiB；模型与资料来源仍需核验结果。**不支持批量导出与长期缓存**。
+五者仅在开关打开时向模型注册；开关关闭时即使模型构造工具调用也会拒绝。原有典故、出处、作品检索和词话 RAG 不受影响。工具失败与成功无命中分别返回，单次请求 12 秒超时、每次响应最多读取 96 KiB；模型与资料来源仍需核验结果。**不支持批量导出与长期缓存**。
 
-入口：`backend/ai/tools.py` 工具声明；`backend/ai/graph.py` 参数校验及回传；`backend/evidence/providers/cnkgraph_research.py` 外部 HTTP。测试：`.venv/bin/python -m pytest -q tests/test_cnkgraph_research_tools.py tests/test_agent.py`。完整公开端点探测资产见 [CNKGraph 普查 PR #353](https://github.com/montricwang/poeticus/pull/353)，接入任务为 [#355](https://github.com/montricwang/poeticus/issues/355)。
+入口：`backend/ai/tools.py` 工具声明；`backend/ai/graph.py` 参数校验及回传；`backend/evidence/providers/cnkgraph_research.py` 外部 HTTP。离线回归：`.venv/bin/python -m pytest -q tests/test_cnkgraph_research_tools.py tests/test_agent.py`。具体模型自主工具选择需要统一进行本地真实对话验收。完整公开端点探测资产见 [CNKGraph 普查 PR #353](https://github.com/montricwang/poeticus/pull/353)，接入任务为 [#355](https://github.com/montricwang/poeticus/issues/355)。
 
 只有 schema、没有作品数据时，目录为空是正常现象。
 

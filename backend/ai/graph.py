@@ -131,10 +131,14 @@ class _ToolQuery:
     text: str
     evidence_type: Literal[
         "allusion", "reference", "text_retrieval", "commentary",
-        "ci_meter", "classical_books",
+        "ci_meter", "classical_books", "ci_tune", "rhyme", "entities",
     ]
     max_items: int
     tune_name: str | None = None
+    book: str | None = None
+    category_id: str = ""
+    character: str = ""
+    epoch: str = ""
     extra_queries: tuple[str, ...] = ()
 
 
@@ -148,7 +152,10 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
     arguments = cast(dict[str, object], raw)
 
     if (
-        call["name"] in ("analyze_ci_meter", "search_classical_books")
+        call["name"] in (
+            "analyze_ci_meter", "search_classical_books",
+            "lookup_ci_tune", "lookup_rhyme", "resolve_entities",
+        )
         and not CNKGRAPH_RESEARCH_TOOLS_ENABLED
     ):
         raise ValueError("CNKGraph 研究工具未启用")
@@ -171,6 +178,42 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
             raise ValueError("古籍检索关键词必须为 1–70 字")
         return _ToolQuery(
             text=query.strip(), evidence_type="classical_books", max_items=5,
+        )
+
+    if call["name"] == "lookup_ci_tune":
+        tune_name = arguments.get("tune_name")
+        if not isinstance(tune_name, str) or not 1 <= len(tune_name.strip()) <= 40:
+            raise ValueError("无效的词牌名")
+        return _ToolQuery(
+            text=tune_name.strip(), evidence_type="ci_tune", max_items=0,
+        )
+
+    if call["name"] == "lookup_rhyme":
+        book = arguments.get("book")
+        category_id = arguments.get("category_id", "")
+        character = arguments.get("character", "")
+        if book not in ("平水韵", "词林正韵", "中原音韵", "中华通韵"):
+            raise ValueError("无效的韵书名")
+        if not isinstance(category_id, str) or len(category_id) > 40:
+            raise ValueError("无效的韵部 ID")
+        if not isinstance(character, str) or len(character) > 1:
+            raise ValueError("韵部字表一次只验证一个字")
+        return _ToolQuery(
+            text="", evidence_type="rhyme", max_items=0,
+            book=book, category_id=category_id.strip(),
+            character=character.strip(),
+        )
+
+    if call["name"] == "resolve_entities":
+        content = arguments.get("text", "")
+        epoch = arguments.get("epoch", "")
+        if not isinstance(content, str) or len(content) > 450:
+            raise ValueError("实体标注正文最多 450 字")
+        if not isinstance(epoch, str) or len(epoch) > 24:
+            raise ValueError("无效的历史时代")
+        return _ToolQuery(
+            text=content.strip(), evidence_type="entities", max_items=0,
+            epoch=epoch.strip(),
         )
 
     # Document Query Expansion 是同一次工具调用的一部分；永远额外保留用户原始问题。
@@ -656,6 +699,27 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                         )
                     elif evidence_type == "classical_books":
                         result = await cnkgraph_research_client.search_books(query)
+                    elif evidence_type == "ci_tune":
+                        result = await cnkgraph_research_client.lookup_ci_tune(query)
+                    elif evidence_type == "rhyme":
+                        if validated.book is None:
+                            raise ValueError("缺少韵书名")
+                        result = await cnkgraph_research_client.lookup_rhyme(
+                            validated.book,
+                            validated.category_id,
+                            validated.character,
+                        )
+                    elif evidence_type == "entities":
+                        context = state.get("context")
+                        content = query or state.get("selection") or state["poem"]
+                        if not isinstance(content, str) or not 1 <= len(content.strip()) <= 450:
+                            raise ValueError("实体标注正文必须为 1–450 字")
+                        epoch = validated.epoch or (
+                            context.dynasty if context and context.dynasty else "宋"
+                        )
+                        result = await cnkgraph_research_client.resolve_entities(
+                            text=content.strip(), epoch=epoch,
+                        )
                     elif evidence_type == "commentary":
                         document_result = await asyncio.to_thread(
                             document_retrieval.search,

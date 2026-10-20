@@ -23,7 +23,7 @@ def test_research_tools_disabled_by_default():
     assert tool_names() == ["lookup_allusion", "lookup_reference"]
     assert tool_names(cnkgraph_research_enabled=True) == [
         "lookup_allusion", "lookup_reference", "analyze_ci_meter",
-        "search_classical_books",
+        "search_classical_books", "lookup_ci_tune", "lookup_rhyme", "resolve_entities",
     ]
 
 
@@ -238,3 +238,195 @@ def test_ci_response_with_missing_validation_results_is_error(monkeypatch):
     client = fake_client(monkeypatch, lambda _: response({"ErrorMessage": None}))
     with pytest.raises(CNKGraphResearchError, match="词谱校验结果"):
         asyncio.run(client.analyze_ci("深相忆，莫相忆。", "醉花间"))
+
+
+def test_ci_tune_find_by_alias_then_returns_compact_formats(monkeypatch):
+    requested = []
+
+    def handler(request):
+        requested.append((request.method, request.url.path))
+        if request.method == "POST":
+            assert json.loads(request.content) == {"key": "醉花间"}
+            return response([{"Id": 90, "Name": "醉花间", "Aliases": ["醉花閒"]}])
+        return response({
+            "Id": 90,
+            "Name": "醉花间",
+            "Aliases": ["醉花閒"],
+            "Desc": "唐教坊曲名",
+            "WritingCount": 44,
+            "Formats": [
+                {
+                    "FormatIndex": 0,
+                    "Desc": "双调四十一字",
+                    "Definition": "○○●韵●○●叠",
+                    "SampleAuthor": "毛文锡",
+                    "SampleContent": "深相忆，莫相忆……",
+                    "FormatHtml": "<script>must-not-leak</script>",
+                }
+            ],
+        })
+
+    client = fake_client(monkeypatch, handler)
+    data = asyncio.run(client.lookup_ci_tune("醉花间"))
+    assert data["status"] == "ok"
+    assert data["id"] == 90
+    assert data["format_count"] == 1
+    assert data["formats"][0]["definition"] == "○○●韵●○●叠"
+    assert "FormatHtml" not in json.dumps(data)
+    assert requested == [("POST", "/api/ciTune/find"), ("GET", "/api/ciTune/90")]
+
+
+def test_ci_tune_ambiguous_results_are_not_silently_selected(monkeypatch):
+    client = fake_client(monkeypatch, lambda request: response([
+        {"Id": 1, "Name": "朝天子", "Aliases": []},
+        {"Id": 2, "Name": "朝天乐", "Aliases": []},
+    ]))
+    result = asyncio.run(client.lookup_ci_tune("朝天"))
+    assert result["status"] == "candidates"
+    assert len(result["candidates"]) == 2
+
+
+def test_rhyme_book_categories_and_character_membership(monkeypatch):
+    requested = []
+
+    def handler(request):
+        requested.append(request.url.path)
+        if request.url.path.endswith("/0"):
+            return response({
+                "Book": "词林正韵",
+                "Categories": [{
+                    "Group": "第一部", "Name": "平声 一东二冬 通用",
+                    "Id": "0", "Tone": "平",
+                    "PingShuiCategories": [{
+                        "Id": "东", "Name": "一东",
+                        "Chars": [{"Char": "风"}, {"Char": "中"}],
+                    }],
+                }],
+            })
+        return response({
+            "Book": "词林正韵",
+            "Categories": [{
+                "Group": "第一部", "Name": "平声 一东二冬 通用",
+                "Id": "0", "Tone": "平",
+            }],
+        })
+
+    client = fake_client(monkeypatch, handler)
+    summary = asyncio.run(client.lookup_rhyme("词林正韵"))
+    assert summary["categories"][0]["id"] == "0"
+    assert summary["categories"][0]["character_present"] is None
+    detail = asyncio.run(client.lookup_rhyme("词林正韵", "0", "风"))
+    assert detail["categories"][0]["character_present"] is True
+    assert detail["categories"][0]["char_count"] == 2
+    assert requested == ["/api/rhyme/词林正韵", "/api/rhyme/词林正韵/0"]
+
+
+def test_entity_labels_keep_ids_offsets_and_small_properties(monkeypatch):
+    def handler(request):
+        assert request.url.path == "/api/Tool/LabelAndResolveEntity"
+        assert json.loads(request.content) == {"Epoch": "宋", "Content": "苏轼在黄州"}
+        return response({
+            "ContentLabels": [
+                {"Type": "People", "Identity": "29937", "Value": "苏轼", "Start": 0, "Length": 2}
+            ],
+            "Entities": [{
+                "Type": "People", "Id": "29937",
+                "Properties": [
+                    {"Key": "显示名", "Value": "蘇軾"},
+                    {"Key": "小传", "Value": "过长的传记" * 300},
+                    {"Key": "字", "Value": "子瞻"},
+                ],
+            }],
+        })
+
+    client = fake_client(monkeypatch, handler)
+    result = asyncio.run(client.resolve_entities("苏轼在黄州"))
+    assert result["status"] == "ok"
+    assert result["labels"] == [
+        {"type": "People", "id": "29937", "text": "苏轼", "start": 0, "length": 2}
+    ]
+    assert result["entities"][0]["properties"] == [
+        {"name": "显示名", "value": "蘇軾"}, {"name": "字", "value": "子瞻"}
+    ]
+    assert "过长的传记" not in json.dumps(result, ensure_ascii=False)
+
+
+def test_first_batch_registered_and_dispatched_through_existing_agent(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
+    from backend.ai import graph as agent
+
+    enabled = tool_names(cnkgraph_research_enabled=True)
+    assert enabled == [
+        "lookup_allusion", "lookup_reference",
+        "analyze_ci_meter", "search_classical_books",
+        "lookup_ci_tune", "lookup_rhyme", "resolve_entities",
+    ]
+    monkeypatch.setattr(agent, "CNKGRAPH_RESEARCH_TOOLS_ENABLED", True)
+
+    called = []
+
+    async def fake_tune(name):
+        called.append(("tune", name))
+        return {"status": "ok", "name": name}
+
+    async def fake_rhyme(book, category_id="", character=""):
+        called.append(("rhyme", book, category_id, character))
+        return {"status": "ok", "categories": []}
+
+    async def fake_entities(text, epoch="宋"):
+        called.append(("entities", text, epoch))
+        return {"status": "ok", "labels": []}
+
+    monkeypatch.setattr(agent.cnkgraph_research_client, "lookup_ci_tune", fake_tune)
+    monkeypatch.setattr(agent.cnkgraph_research_client, "lookup_rhyme", fake_rhyme)
+    monkeypatch.setattr(agent.cnkgraph_research_client, "resolve_entities", fake_entities)
+
+    from backend.ai.context import PoemContext
+    state = {
+        "poem": "大江东去",
+        "selection": "苏轼在黄州",
+        "context": PoemContext(id="poem-1", title="念奴娇", dynasty="北宋"),
+        "question": "词牌是什么？",
+        "messages": [],
+        "tool_calls": [
+            {"id": "a", "name": "lookup_ci_tune", "arguments": '{"tune_name":"念奴娇"}'},
+            {"id": "b", "name": "lookup_rhyme", "arguments": '{"book":"词林正韵","category_id":"0","character":"风"}'},
+            {"id": "c", "name": "resolve_entities", "arguments": "{}"},
+        ],
+    }
+    # Normal AGENT_MAX_TOOL_CALLS is two: exercise all three without changing config globally.
+    monkeypatch.setattr(agent, "AGENT_MAX_TOOL_CALLS", 3)
+    output = agent.execute_tools(state)
+    assert called == [
+        ("tune", "念奴娇"),
+        ("rhyme", "词林正韵", "0", "风"),
+        ("entities", "苏轼在黄州", "北宋"),
+    ]
+    assert len(output["tool_results"]) == 3
+    assert all(json.loads(result["content"])["status"] == "ok"
+               for result in output["tool_results"])
+
+
+def test_first_batch_tools_reject_unsafe_parameters_when_disabled(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
+    from backend.ai import graph as agent
+
+    monkeypatch.setattr(agent, "CNKGRAPH_RESEARCH_TOOLS_ENABLED", False)
+    for tool_name in ("lookup_ci_tune", "lookup_rhyme", "resolve_entities"):
+        with pytest.raises(ValueError, match="未启用"):
+            agent._parse_tool_query({
+                "id": "1", "name": tool_name, "arguments": "{}",
+            })
+
+    monkeypatch.setattr(agent, "CNKGRAPH_RESEARCH_TOOLS_ENABLED", True)
+    for name, payload in [
+        ("lookup_ci_tune", {"tune_name": 99}),
+        ("lookup_rhyme", {"book": "evil", "category_id": "1"}),
+        ("lookup_rhyme", {"book": "平水韵", "category_id": "x" * 41}),
+        ("resolve_entities", {"text": "x" * 451}),
+    ]:
+        with pytest.raises(ValueError):
+            agent._parse_tool_query({
+                "id": "1", "name": name,
+                "arguments": json.dumps(payload),
+            })

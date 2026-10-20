@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -28,14 +29,22 @@ class CNKGraphResearchClient:
         ).rstrip("/")
         self.timeout = 12.0
 
-    async def _post(self, path: str, payload: dict[str, object]) -> dict[str, Any]:
+    async def _get(self, path: str) -> object:
+        return await self._request_json("GET", path)
+
+    async def _post(self, path: str, payload: dict[str, object]) -> object:
+        return await self._request_json("POST", path, payload)
+
+    async def _request_json(
+        self, method: str, path: str, payload: dict[str, object] | None = None,
+    ) -> object:
         try:
             async with httpx.AsyncClient(
                 base_url=self.base_url,
                 timeout=self.timeout,
                 follow_redirects=False,
             ) as client:
-                async with client.stream("POST", path, json=payload) as response:
+                async with client.stream(method, path, json=payload) as response:
                     response.raise_for_status()
                     if "json" not in response.headers.get("content-type", "").lower():
                         raise CNKGraphResearchError("CNKGraph 返回非 JSON 数据")
@@ -60,8 +69,8 @@ class CNKGraphResearchClient:
             parsed = json.loads(data)
         except (ValueError, UnicodeDecodeError) as exc:
             raise CNKGraphResearchError("CNKGraph JSON 格式无效") from exc
-        if not isinstance(parsed, dict):
-            raise CNKGraphResearchError("CNKGraph 返回的数据结构不是对象")
+        if not isinstance(parsed, (dict, list)):
+            raise CNKGraphResearchError("CNKGraph 返回的数据结构不是对象或数组")
         return parsed
 
     async def analyze_ci(self, content: str, tune_name: str) -> dict[str, object]:
@@ -70,6 +79,8 @@ class CNKGraphResearchClient:
             "/api/Tool/AnalyzeCi",
             {"Content": content, "TuneName": tune_name, "RhymeBook": "词林正韵"},
         )
+        if not isinstance(raw, dict):
+            raise CNKGraphResearchError("CNKGraph 词律分析响应结构异常")
         err = raw.get("ErrorMessage")
         if isinstance(err, str) and err.strip():
             raise CNKGraphResearchError("CNKGraph 词律分析报告错误：" + err[:160])
@@ -143,6 +154,8 @@ class CNKGraphResearchClient:
         """在古籍中按短关键词检索，保留书卷 ID 与短命中片段。"""
         # 实测可用的 Postman 路由是 /Api/Book/Find，大小写与 Swagger 不同。
         raw = await self._post("/Api/Book/Find", {"key": query, "pageNo": 1})
+        if not isinstance(raw, dict):
+            raise CNKGraphResearchError("CNKGraph 古籍检索响应结构异常")
         error = raw.get("Error")
         if error:
             raise CNKGraphResearchError("CNKGraph 古籍检索失败：" + str(error)[:130])
@@ -206,5 +219,185 @@ class CNKGraphResearchClient:
             "note": (
                 "只返回检索候选的书卷与短上下文；匹配不等于已证实出处、版本"
                 "或文学影响关系。需要时根据书卷 ID 单独查证。"
+            ),
+        }
+    async def lookup_ci_tune(self, tune_name: str) -> dict[str, object]:
+        """以词牌名称/别名查谱，按需取匹配词牌详情，返回简短体式候选。"""
+        raw = await self._post("/api/ciTune/find", {"key": tune_name})
+        if not isinstance(raw, list):
+            raise CNKGraphResearchError("CNKGraph 词牌搜索结果结构异常")
+        choices = [
+            entry for entry in raw[:15]
+            if isinstance(entry, dict) and isinstance(entry.get("Id"), int)
+        ]
+        summaries = [
+            {
+                "id": x["Id"],
+                "name": str(x.get("Name") or "")[:45],
+                "aliases": [str(a)[:40] for a in (x.get("Aliases") or [])[:8]],
+                "writing_count": x.get("WritingCount"),
+            }
+            for x in choices[:7]
+        ]
+        if not choices:
+            return {
+                "status": "no_hit", "provider": "cnkgraph",
+                "tune_query": tune_name, "candidates": [],
+            }
+
+        # 模糊搜索若同时命中多个词牌，先回候选，避免擅自消歧。
+        exact = [
+            x for x in choices
+            if tune_name == x.get("Name") or tune_name in (x.get("Aliases") or [])
+        ]
+        if len(exact) != 1:
+            return {
+                "status": "candidates", "provider": "cnkgraph",
+                "tune_query": tune_name, "candidates": summaries,
+                "note": "查询词可能对应多个词牌，请结合当前作品选择词牌。",
+            }
+
+        item = exact[0]
+        detail = await self._get("/api/ciTune/" + str(item["Id"]))
+        if not isinstance(detail, dict):
+            raise CNKGraphResearchError("CNKGraph 词牌详情结构异常")
+        formats = detail.get("Formats") or []
+        if not isinstance(formats, list):
+            raise CNKGraphResearchError("CNKGraph 词牌格式列表结构异常")
+        return {
+            "status": "ok",
+            "provider": "cnkgraph",
+            "id": detail.get("Id"),
+            "name": str(detail.get("Name") or "")[:60],
+            "aliases": [str(a)[:45] for a in (detail.get("Aliases") or [])[:12]],
+            "description": str(detail.get("Desc") or "")[:240],
+            "writing_count": detail.get("WritingCount"),
+            "format_count": len(formats),
+            "formats": [
+                {
+                    "index": f.get("FormatIndex"),
+                    "description": str(f.get("Desc") or "")[:190],
+                    "sample_author": str(f.get("SampleAuthor") or "")[:60],
+                    "sample_excerpt": str(f.get("SampleContent") or "")[:95],
+                    "definition": str(f.get("Definition") or "")[:400],
+                }
+                for f in formats[:12] if isinstance(f, dict)
+            ],
+            "note": "词谱提供后世整理的不同体式与押韵范式，不能直接证明宋代原曲调。",
+        }
+
+    async def lookup_rhyme(
+        self, book: str, category_id: str = "", character: str = "",
+    ) -> dict[str, object]:
+        """只读韵书分类或单韵部字表，不调用返回数 MB 的综合单字接口。"""
+        supported = {"平水韵", "词林正韵", "中原音韵", "中华通韵"}
+        if book not in supported:
+            raise ValueError("不支持的韵书")
+        if not category_id:
+            raw = await self._get("/api/rhyme/" + quote(book, safe=""))
+        else:
+            raw = await self._get(
+                "/api/rhyme/" + quote(book, safe="")
+                + "/" + quote(category_id, safe="")
+            )
+        if not isinstance(raw, dict) or not isinstance(raw.get("Categories"), list):
+            raise CNKGraphResearchError("CNKGraph 韵部目录结构异常")
+        entries = []
+        for category in raw["Categories"][:110]:
+            if not isinstance(category, dict):
+                continue
+            groups = category.get("PingShuiCategories") or []
+            candidates = []
+            for member in (category.get("Chars") or []):
+                if isinstance(member, dict) and isinstance(member.get("Char"), str):
+                    candidates.append(member["Char"])
+            for group in groups:
+                if not isinstance(group, dict):
+                    continue
+                for member in group.get("Chars") or []:
+                    if isinstance(member, dict) and isinstance(member.get("Char"), str):
+                        candidates.append(member["Char"])
+            entries.append({
+                "group": str(category.get("Group") or "")[:50],
+                "name": str(category.get("Name") or "")[:90],
+                "id": str(category.get("Id") or "")[:30],
+                "tone": str(category.get("Tone") or "")[:25],
+                "char_count": len(candidates),
+                "characters_sample": candidates[:70] if category_id else [],
+                "character_present": character in candidates if character and category_id else None,
+                "sub_categories": [
+                    {"name": str(sub.get("Name") or "")[:50],
+                     "id": str(sub.get("Id") or "")[:30],
+                     "char_count": len(sub.get("Chars") or [])}
+                    for sub in groups[:12] if isinstance(sub, dict)
+                ] if category_id else [],
+            })
+        return {
+            "status": "ok" if entries else "no_hit",
+            "provider": "cnkgraph",
+            "book": book, "category_id": category_id or None,
+            "character": character or None,
+            "categories": entries,
+            "note": (
+                "若未指定 category_id，此结果仅为韵部目录，并没有查定单字归属。"
+                "若指定韵部，可根据 character_present 判断该韵部的字表是否收录该字；"
+                "多音字、通韵与历史读音仍需结合语境。"
+            ),
+        }
+
+    async def resolve_entities(self, text: str, epoch: str = "宋") -> dict[str, object]:
+        """抽取知识图谱候选：实体 ID、类型、在原文中的位置及有限属性。"""
+        raw = await self._post(
+            "/api/Tool/LabelAndResolveEntity", {"Content": text, "Epoch": epoch}
+        )
+        if not isinstance(raw, dict):
+            raise CNKGraphResearchError("CNKGraph 实体标注结构异常")
+        labels = raw.get("ContentLabels")
+        entities = raw.get("Entities")
+        if not isinstance(labels, list) or not isinstance(entities, list):
+            raise CNKGraphResearchError("CNKGraph 实体标注缺少候选列表")
+
+        candidates = []
+        for label in labels[:22]:
+            if not isinstance(label, dict):
+                continue
+            candidates.append({
+                "type": str(label.get("Type") or "")[:35],
+                "id": str(label.get("Identity") or "")[:75],
+                "text": str(label.get("Value") or "")[:70],
+                "start": label.get("Start"),
+                "length": label.get("Length"),
+            })
+        details = []
+        identifiers = {(x["type"], x["id"]) for x in candidates}
+        for entity in entities[:35]:
+            if not isinstance(entity, dict):
+                continue
+            entity_type = str(entity.get("Type") or "")[:35]
+            entity_id = str(entity.get("Id") or "")[:75]
+            if (entity_type, entity_id) not in identifiers:
+                continue
+            properties = entity.get("Properties") or []
+            details.append({
+                "type": entity_type,
+                "id": entity_id,
+                "properties": [
+                    {"name": str(prop.get("Key") or "")[:32],
+                     "value": str(prop.get("Value") or "")[:140]}
+                    for prop in properties[:9] if isinstance(prop, dict)
+                    and prop.get("Key") not in ("小传", "著作", "職稱", "职称")
+                ][:6],
+            })
+            if len(details) >= 10:
+                break
+        return {
+            "status": "ok" if candidates else "no_hit",
+            "provider": "cnkgraph", "epoch": epoch,
+            "query_length": len(text),
+            "labels": candidates, "entities": details,
+            "note": (
+                "实体只是外部候选，词牌也可能误识别为普通词汇；"
+                "应结合上下文、人物时代与 Poeticus 自有作品数据消歧。"
+                "原文 Start/Length 只适用于此次提交的 text，不得映射到另一版本。"
             ),
         }

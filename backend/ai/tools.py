@@ -184,6 +184,90 @@ CNKGRAPH_RESEARCH_TOOLS: list[ChatCompletionFunctionToolParam] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_ci_tune",
+            "description": (
+                "查词牌名称或别名，并在能唯一确认词牌时返回不同体式的字数、韵位、"
+                "谱式与例词。适合分析格律前查标准词谱，或比较正体与变格；"
+                "与 analyze_ci_meter 的实际作品校验不同。"
+                "词牌名称不确定时先返回候选，不要擅自挑选。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tune_name": {
+                        "type": "string",
+                        "description": "要查的词牌名或别名，不是作品副题，如‘念奴娇’。",
+                    },
+                },
+                "required": ["tune_name"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_rhyme",
+            "description": (
+                "查平水韵、词林正韵、中原音韵或中华通韵的韵部分类。"
+                "先按 book 取得可查询的韵部 ID；再传 category_id 取得该部的字表摘要，"
+                "可同时指定 character 判断该字是否出现在这一部。"
+                "不指定 category_id 时不能判定字归属；"
+                "宋词的押韵分析一般优先参考词林正韵，注意历史音韵与多音字。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "book": {
+                        "type": "string",
+                        "enum": ["平水韵", "词林正韵", "中原音韵", "中华通韵"],
+                        "description": "韵书名称。",
+                    },
+                    "category_id": {
+                        "type": "string",
+                        "description": "可选。上次目录返回的韵部 Id，例如词林正韵 0 或平水韵 青。",
+                    },
+                    "character": {
+                        "type": "string",
+                        "description": "可选，指定韵部时判断该单字是否被字表收录。",
+                    },
+                },
+                "required": ["book"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "resolve_entities",
+            "description": (
+                "对当前诗词或指定短文本提取候选人物、地名、词牌、词汇等"
+                "外部知识图谱实体，返回标注位置、类型、实体 ID 和少量属性。"
+                "适合识别可能需要继续检索的历史实体；外部标注可能把词牌误标成普通词汇，"
+                "不能直接作为事实，也不能修改 Poeticus 自己的作品主库。"
+                "默认分析当前阅读选区（如果有）或当前诗词。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "description": "可选：分析非当前诗词/选区时提交短文本；默认使用当前阅读文本。",
+                    },
+                    "epoch": {
+                        "type": "string",
+                        "description": "可选。历史时代，如‘宋’；默认从阅读作品的朝代推断。",
+                    },
+                },
+                "required": [],
+                "additionalProperties": False,
+            },
+        },
+    },
 ]
 
 
