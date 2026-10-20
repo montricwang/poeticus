@@ -70,3 +70,21 @@
 - 现有 `document_versions.rights_status` 均为 `unreviewed`；本轮限本地实验，**尚未开放文献全文公开服务或 Railway 部署**。后续上线须核对许可与模型部署方案。
 
 四书 EPUB 自身声明 CC BY-SA 3.0 / GFDL，但数据库的 `rights_status` 统一为 `unreviewed`；这不是针对各版文本的再发布许可审查结论。原文版本亦未对照纸本校勘。对外阅读或全文公开应另核来源和再分发条件。
+
+## 文献库的阅读目标与当前实现边界
+
+Document Corpus 不只是「将几本书切块给 RAG」。同一份**有版本、有层级、有来源位置的文献**，应同时支持独立阅读和检索证据：
+
+```text
+有权使用的原始文献 + 版本证据
+  → Document / Version / 原文章节 Node
+      ├─ 后续阅读接口：书 → 卷 → 条 → 相邻上下文（尚未实现）
+      └─ 派生 Retrieval Chunk / BM25 / Dense → Agent 候选证据（本地实验）
+```
+
+- **原文不是 Chunk 的附属品。** 章节顺序、出处、版本和上下文必须能独立回读；Agent 引用应可沿文献 ID/Node/来源定位跳回可合法访问的位置，而不是只能展示截断片段。
+- **工具按用户问题分工。** 语义候选查找、按卷/条定位、完整枚举/计数、跨书评论比较可能共用受限查询接口，但不能拿 Top5 向量结果冒充准确计数，也不应让 Agent 执行任意 SQL。
+- **版本与权利各自成立。** 私人 EPUB、第三方整理本、公开底本和现代笺注可能需要不同授权；数据库记录 `rights_status=unreviewed` 时，不得因此提供公众全文服务。
+- **扩容不是验收本体。** 文献数量增加和检索质量提高是两件事；后者应由有原文 Gold、来源定位与错引检查的固定问题集核验。
+
+现已实现的 PostgreSQL 表和首批实验见上文；**独立词话阅读 UI、公开阅读/全文 API、版本勘校与通用新书 Adapter 尚未完成**。当前阶段工作在 [#133](https://github.com/montricwang/poeticus/issues/133)，规模试验 [#343](https://github.com/montricwang/poeticus/issues/343)，检索评测 [#344](https://github.com/montricwang/poeticus/issues/344)。
