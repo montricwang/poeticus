@@ -53,6 +53,25 @@ def _safe_public_url(raw: object) -> str | None:
     return raw
 
 
+# Scoped web discovery complements official JSON APIs.  No site-specific
+# undocumented endpoints or generic arbitrary-domain crawler.
+SEARCH_SOURCES = {
+    "all": None,
+    "zdic": "zdic.net",
+    "shidian": "shidianguji.com",
+    "ctext": "ctext.org",
+    "souyun": "sou-yun.cn",
+    "wikimedia": "wikisource.org",
+}
+
+
+def _matches_source(url: str, domain: str | None) -> bool:
+    if domain is None:
+        return True
+    host = (urlsplit(url).hostname or "").rstrip(".").lower()
+    return host == domain or host.endswith("." + domain)
+
+
 class DeepSeekWebClient:
     API_ORIGIN = "https://api.deepseek.com"
     SEARCH_LIMIT_BYTES = 192 * 1024
@@ -99,12 +118,16 @@ class DeepSeekWebClient:
             raise DeepSeekWebError("DeepSeek 响应结构异常")
         return value
 
-    async def search(self, query: str) -> dict[str, object]:
-        if not isinstance(query, str) or not 1 <= len(query.strip()) <= 128:
-            raise ValueError("联网搜索关键词必须为 1–128 字")
+    async def search(self, query: str, source: str = "all") -> dict[str, object]:
+        if not isinstance(query, str) or not 1 <= len(query.strip()) <= 100:
+            raise ValueError("联网搜索关键词必须为 1–100 字")
+        if source not in SEARCH_SOURCES:
+            raise ValueError("不支持的检索来源")
+        domain = SEARCH_SOURCES[source]
+        search_query = query.strip() + (f" site:{domain}" if domain else "")
         raw = await self._post(
             "/v1/tools/search",
-            {"query": query.strip(), "count": 5, "need_content": False},
+            {"query": search_query, "count": 5, "need_content": False},
             self.SEARCH_LIMIT_BYTES,
         )
         matches = raw.get("results")
@@ -116,7 +139,7 @@ class DeepSeekWebClient:
             if not isinstance(item, dict):
                 continue
             url = _safe_public_url(item.get("url"))
-            if url is None or url in seen:
+            if url is None or url in seen or not _matches_source(url, domain):
                 continue
             seen.add(url)
             results.append({
@@ -140,6 +163,7 @@ class DeepSeekWebClient:
             "status": "ok" if results else "no_hit",
             "provider": "deepseek_web",
             "query": query.strip(),
+            "source": source,
             "results": results,
             "note": (
                 "网页搜索结果仅为候选来源，摘要可能不准确；"

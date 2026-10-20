@@ -53,6 +53,11 @@ DEEPSEEK_WEB_TOOLS_ENABLED = (
     os.getenv("POETICUS_DEEPSEEK_WEB_TOOLS_ENABLED", "").lower() == "true"
 )
 
+# Official Wikisource and MoeDict read-only reference lookups; opt-in.
+CLASSIC_REFERENCE_TOOLS_ENABLED = (
+    os.getenv("POETICUS_CLASSIC_REFERENCE_TOOLS_ENABLED", "").lower() == "true"
+)
+
 # Text Retrieval Service 独立于 Railway Web 进程部署，
 # 因为 FAISS、BM25 索引及 Query 编码模型远大于 Web 应用本身。
 # 未配置服务地址时，Agent 不会看到对应检索工具。

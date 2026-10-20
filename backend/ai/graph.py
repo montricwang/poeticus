@@ -26,10 +26,12 @@ from backend.config import (
     AGENT_MAX_TOOL_CALLS,
     CNKGRAPH_RESEARCH_TOOLS_ENABLED,
     DEEPSEEK_WEB_TOOLS_ENABLED,
+    CLASSIC_REFERENCE_TOOLS_ENABLED,
     LLM_MAX_OUTPUT_TOKENS,
     LLM_MODEL,
 )
 from backend.research.deepseek_web import DeepSeekWebClient, DeepSeekWebError
+from backend.research.classic_references import ClassicReferencesClient, ReferenceSourceError
 from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
 from backend.evidence.providers.cnkgraph_research import (
@@ -101,6 +103,7 @@ evidence_service = EvidenceService(
 )
 cnkgraph_research_client = CNKGraphResearchClient()
 deepseek_web_client = DeepSeekWebClient()
+classic_references_client = ClassicReferencesClient()
 
 
 # ===== 2. 消息、工具调用与工作流状态 =====
@@ -137,6 +140,7 @@ class _ToolQuery:
         "allusion", "reference", "text_retrieval", "commentary",
         "ci_meter", "classical_books", "ci_tune", "rhyme", "entities",
         "web_search", "web_fetch",
+        "moedict", "wikisource_search", "wikisource_page",
     ]
     max_items: int
     tune_name: str | None = None
@@ -145,6 +149,8 @@ class _ToolQuery:
     character: str = ""
     epoch: str = ""
     url: str = ""
+    source: str = "all"
+    pageid: int = 0
     extra_queries: tuple[str, ...] = ()
 
 
@@ -157,6 +163,7 @@ def _validate_registered_tool(call: ToolCall) -> None:
             document_retrieval.enabled,
             CNKGRAPH_RESEARCH_TOOLS_ENABLED,
             DEEPSEEK_WEB_TOOLS_ENABLED,
+            CLASSIC_REFERENCE_TOOLS_ENABLED,
         )
     }
     if call["name"] not in registered:
@@ -253,13 +260,40 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
             raise ValueError("联网搜索工具未启用")
         if call["name"] == "web_search":
             query = arguments.get("query")
-            if not isinstance(query, str) or not 1 <= len(query.strip()) <= 128:
-                raise ValueError("联网搜索关键词必须为 1–128 字")
-            return _ToolQuery(text=query.strip(), evidence_type="web_search", max_items=5)
+            source = arguments.get("source", "all")
+            if not isinstance(query, str) or not 1 <= len(query.strip()) <= 100:
+                raise ValueError("联网搜索关键词必须为 1–100 字")
+            if source not in ("all", "zdic", "shidian", "ctext", "souyun", "wikimedia"):
+                raise ValueError("不支持的联网来源")
+            return _ToolQuery(
+                text=query.strip(), evidence_type="web_search", max_items=5,
+                source=source,
+            )
         url = arguments.get("url")
         if not isinstance(url, str) or not 1 <= len(url) <= 2048:
             raise ValueError("无效的网页地址")
         return _ToolQuery(text="", evidence_type="web_fetch", max_items=0, url=url)
+
+    if call["name"] in ("lookup_moedict", "search_wikisource", "read_wikisource_page"):
+        if not CLASSIC_REFERENCE_TOOLS_ENABLED:
+            raise ValueError("文献与词典工具未启用")
+        if call["name"] == "read_wikisource_page":
+            pageid = arguments.get("pageid")
+            if type(pageid) is not int or pageid <= 0:
+                raise ValueError("无效的维基文库 pageid")
+            return _ToolQuery(
+                text="", evidence_type="wikisource_page", max_items=0, pageid=pageid,
+            )
+        field = "term" if call["name"] == "lookup_moedict" else "query"
+        text = arguments.get(field)
+        upper = 16 if field == "term" else 100
+        if not isinstance(text, str) or not 1 <= len(text.strip()) <= upper:
+            raise ValueError("无效的字词或文库查询文本")
+        return _ToolQuery(
+            text=text.strip(),
+            evidence_type="moedict" if field == "term" else "wikisource_search",
+            max_items=0 if field == "term" else 5,
+        )
 
     # Document Query Expansion 是同一次工具调用的一部分；永远额外保留用户原始问题。
     if call["name"] == "search_documents":
@@ -377,6 +411,7 @@ def _stream_agent_decision(
             document_retrieval.enabled,
             CNKGRAPH_RESEARCH_TOOLS_ENABLED,
             DEEPSEEK_WEB_TOOLS_ENABLED,
+            CLASSIC_REFERENCE_TOOLS_ENABLED,
         )
         request_kwargs["tool_choice"] = "auto"
 
@@ -558,6 +593,7 @@ def agent_decide(state: AgentState) -> AgentStateUpdate:
                 document_retrieval.enabled,
                 CNKGRAPH_RESEARCH_TOOLS_ENABLED,
                 DEEPSEEK_WEB_TOOLS_ENABLED,
+                CLASSIC_REFERENCE_TOOLS_ENABLED,
             )
             request_kwargs["tool_choice"] = "auto"
 
@@ -734,6 +770,23 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     if isinstance(item, dict) and isinstance(item.get("url"), str)
                 )
 
+        permitted_pageids: set[int] = set()
+        for prior in state.get("tool_results") or []:
+            try:
+                payload = json.loads(prior["content"])
+            except (ValueError, KeyError, TypeError):
+                continue
+            if (
+                isinstance(payload, dict)
+                and payload.get("provider") == "wikisource"
+                and payload.get("status") == "ok"
+                and isinstance(payload.get("results"), list)
+            ):
+                permitted_pageids.update(
+                    item["pageid"] for item in payload["results"]
+                    if isinstance(item, dict) and type(item.get("pageid")) is int
+                )
+
         # --- 5.2 检查预算、解析参数并执行各项工具调用 ---
 
         for call in calls:
@@ -756,7 +809,9 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
 
                     # 本地文本检索使用 Retrieval Client，典故与出处查询使用证据服务。
                     if evidence_type == "web_search":
-                        result = await deepseek_web_client.search(query)
+                        result = await deepseek_web_client.search(
+                            query, source=validated.source
+                        )
                         search_rows = result.get("results")
                         if not isinstance(search_rows, list):
                             raise DeepSeekWebError("联网搜索结果缺少列表")
@@ -764,6 +819,23 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                             entry["url"]
                             for entry in search_rows
                             if isinstance(entry, dict) and isinstance(entry.get("url"), str)
+                        )
+                    elif evidence_type == "moedict":
+                        result = await classic_references_client.lookup_moedict(query)
+                    elif evidence_type == "wikisource_search":
+                        result = await classic_references_client.search_wikisource(query)
+                        pages = result.get("results")
+                        if not isinstance(pages, list):
+                            raise ReferenceSourceError("维基文库搜索结果缺少列表")
+                        permitted_pageids.update(
+                            item["pageid"] for item in pages
+                            if isinstance(item, dict) and type(item.get("pageid")) is int
+                        )
+                    elif evidence_type == "wikisource_page":
+                        if validated.pageid not in permitted_pageids:
+                            raise ValueError("只能读取本轮维基文库搜索命中的 pageid")
+                        result = await classic_references_client.read_wikisource(
+                            validated.pageid
                         )
                     elif evidence_type == "web_fetch":
                         if validated.url not in permitted_urls:
@@ -869,6 +941,7 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     CNKGraphError,
                     CNKGraphResearchError,
                     DeepSeekWebError,
+                    ReferenceSourceError,
                     RetrievalClientError,
                     DocumentRetrievalError,
                 ) as exc:
