@@ -43,7 +43,7 @@ class ClassicReferencesClient:
         )
         self.timeout = httpx.Timeout(15.0)
 
-    async def _get(self, url: str, params: dict[str, object] | None = None) -> object | None:
+    async def _get(self, url: str, params: dict[str, str | int] | None = None) -> dict[str, object] | None:
         try:
             async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=False) as client:
                 async with client.stream(
@@ -144,9 +144,10 @@ class ClassicReferencesClient:
             "srnamespace": 0, "srlimit": 5, "srprop": "snippet",
             "format": "json", "formatversion": 2,
         })
-        if data is None or not isinstance(data.get("query"), dict):
+        query_info = data.get("query") if data is not None else None
+        if not isinstance(query_info, dict):
             raise ReferenceSourceError("维基文库搜索没有有效查询响应")
-        rows = data["query"].get("search")
+        rows = query_info.get("search")
         if not isinstance(rows, list):
             raise ReferenceSourceError("维基文库搜索缺少 search 数组")
         results: list[dict[str, object]] = []
@@ -181,9 +182,10 @@ class ClassicReferencesClient:
             "pageids": pageid, "rvprop": "ids|timestamp|content", "rvslots": "main",
             "format": "json", "formatversion": 2,
         })
-        if data is None or not isinstance(data.get("query"), dict):
+        query_info = data.get("query") if data is not None else None
+        if not isinstance(query_info, dict):
             raise ReferenceSourceError("维基文库正文查询失败")
-        pages = data["query"].get("pages")
+        pages = query_info.get("pages")
         if not isinstance(pages, list) or not pages:
             raise ReferenceSourceError("维基文库正文查询缺少页面")
         page = pages[0]

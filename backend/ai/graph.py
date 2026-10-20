@@ -824,8 +824,11 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                         result = await classic_references_client.lookup_moedict(query)
                     elif evidence_type == "wikisource_search":
                         result = await classic_references_client.search_wikisource(query)
+                        pages = result.get("results")
+                        if not isinstance(pages, list):
+                            raise ReferenceSourceError("维基文库搜索结果缺少列表")
                         permitted_pageids.update(
-                            item["pageid"] for item in result["results"]
+                            item["pageid"] for item in pages
                             if isinstance(item, dict) and type(item.get("pageid")) is int
                         )
                     elif evidence_type == "wikisource_page":

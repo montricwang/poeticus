@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 import json
 
 import httpx
@@ -45,7 +46,7 @@ def test_moedict_official_api_preserves_original_and_citation(monkeypatch):
             "q":["\u0060宋~\u0060李清照~〈聲聲慢〉：乍暖還寒。"],
         }]}]})
     client = mock_client(monkeypatch, handler)
-    result = asyncio.run(client.lookup_moedict("將息"))
+    result: Any = asyncio.run(client.lookup_moedict("將息"))
     assert result["status"] == "ok"
     assert result["entries"][0]["definitions"][0]["definition_original"] == "\u0060調養~\u0060休息~。"
     assert "《重编国语辞典修订本》" in result["license_note"]
@@ -70,7 +71,7 @@ def test_wikisource_search_provides_page_ids_and_strips_html(monkeypatch):
             {"pageid":1214281,"title":"人間詞話 (1926)","snippet":"已刊"},
         ]}})
     client = mock_client(monkeypatch, handler)
-    data = asyncio.run(client.search_wikisource("人間詞話"))
+    data: Any = asyncio.run(client.search_wikisource("人間詞話"))
     assert data["status"] == "ok"
     assert [i["pageid"] for i in data["results"]] == [7216,1214281]
     assert data["results"][0]["snippet"] == "境界為最上"
@@ -86,7 +87,7 @@ def test_wikisource_read_returns_exact_revision_and_excerpt(monkeypatch):
             "slots":{"main":{"content":"詞以境界為最上，" + "甲"*4000}},
         }]}]}})
     client = mock_client(monkeypatch, handler)
-    d = asyncio.run(client.read_wikisource(7216))
+    d: Any = asyncio.run(client.read_wikisource(7216))
     assert d["status"] == "ok"
     assert d["revision_id"] == 2222
     assert d["url"].endswith("oldid=2222")
@@ -121,7 +122,7 @@ def test_scoped_search_is_domain_filtered(monkeypatch,source,domain):
                         original(*args,transport=transport,**kwargs))
     monkeypatch.setenv("DEEPSEEK_WEB_API_KEY","placeholder")
     c=DeepSeekWebClient()
-    r=asyncio.run(c.search("李清照 词论",source=source))
+    r: Any=asyncio.run(c.search("李清照 词论",source=source))
     assert r["source"] == source
     assert [x["title"] for x in r["results"]]==["valid"]
 
@@ -133,10 +134,10 @@ def test_agent_requires_prior_wikisource_search(monkeypatch):
     async def forbid(pageid):
         raise AssertionError("Unsearched page cannot be read")
     monkeypatch.setattr(ag.classic_references_client,"read_wikisource",forbid)
-    state={"poem":"","question":"原文","messages":[],
+    state: Any={"poem":"","question":"原文","messages":[],
            "tool_calls":[{"id":"w0","name":"read_wikisource_page",
                           "arguments":'{"pageid":7216}'}]}
-    out=ag.execute_tools(state)
+    out: Any=ag.execute_tools(state)
     assert json.loads(out["tool_results"][0]["content"])["status"] == "error"
     assert "本轮" in json.loads(out["tool_results"][0]["content"])["message"]
 
@@ -152,7 +153,7 @@ def test_agent_search_and_read_same_request(monkeypatch):
         return {"provider":"wikisource","status":"ok","revision_id":2222,"wikitext_excerpt":"境界"}
     monkeypatch.setattr(ag.classic_references_client,"search_wikisource",search)
     monkeypatch.setattr(ag.classic_references_client,"read_wikisource",read)
-    out=ag.execute_tools({"poem":"","question":"查词话","messages":[],"tool_calls":[
+    out: Any=ag.execute_tools({"poem":"","question":"查词话","messages":[],"tool_calls":[
         {"id":"one","name":"search_wikisource","arguments":'{"query":"人間詞話"}'},
         {"id":"two","name":"read_wikisource_page","arguments":'{"pageid":7216}'},
     ]})
@@ -168,7 +169,7 @@ def test_agent_source_search_routing(monkeypatch):
         assert source=="zdic"
         return {"status":"no_hit","provider":"deepseek_web","results":[]}
     monkeypatch.setattr(ag.deepseek_web_client,"search",search)
-    out=ag.execute_tools({"poem":"","question":"字义","messages":[],"tool_calls":[
+    out: Any=ag.execute_tools({"poem":"","question":"字义","messages":[],"tool_calls":[
         {"id":"z","name":"web_search","arguments":'{"query":"綢繆","source":"zdic"}'},
     ]})
     assert json.loads(out["tool_results"][0]["content"])["status"]=="no_hit"
