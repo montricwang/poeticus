@@ -25,9 +25,11 @@ from backend.ai.tools import available_tools
 from backend.config import (
     AGENT_MAX_TOOL_CALLS,
     CNKGRAPH_RESEARCH_TOOLS_ENABLED,
+    DEEPSEEK_WEB_TOOLS_ENABLED,
     LLM_MAX_OUTPUT_TOKENS,
     LLM_MODEL,
 )
+from backend.research.deepseek_web import DeepSeekWebClient, DeepSeekWebError
 from backend.evidence.service import EvidenceService
 from backend.evidence.providers.cnkgraph import CNKGraphProvider, CNKGraphError
 from backend.evidence.providers.cnkgraph_research import (
@@ -98,6 +100,7 @@ evidence_service = EvidenceService(
     }
 )
 cnkgraph_research_client = CNKGraphResearchClient()
+deepseek_web_client = DeepSeekWebClient()
 
 
 # ===== 2. 消息、工具调用与工作流状态 =====
@@ -133,6 +136,7 @@ class _ToolQuery:
     evidence_type: Literal[
         "allusion", "reference", "text_retrieval", "commentary",
         "ci_meter", "classical_books", "ci_tune", "rhyme", "entities",
+        "web_search", "web_fetch",
     ]
     max_items: int
     tune_name: str | None = None
@@ -140,6 +144,7 @@ class _ToolQuery:
     category_id: str = ""
     character: str = ""
     epoch: str = ""
+    url: str = ""
     extra_queries: tuple[str, ...] = ()
 
 
@@ -151,6 +156,7 @@ def _validate_registered_tool(call: ToolCall) -> None:
             text_retrieval_client.enabled,
             document_retrieval.enabled,
             CNKGRAPH_RESEARCH_TOOLS_ENABLED,
+            DEEPSEEK_WEB_TOOLS_ENABLED,
         )
     }
     if call["name"] not in registered:
@@ -241,6 +247,19 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
             text=content.strip(), evidence_type="entities", max_items=0,
             epoch=epoch.strip(),
         )
+
+    if call["name"] in ("web_search", "web_fetch"):
+        if not DEEPSEEK_WEB_TOOLS_ENABLED:
+            raise ValueError("联网搜索工具未启用")
+        if call["name"] == "web_search":
+            query = arguments.get("query")
+            if not isinstance(query, str) or not 1 <= len(query.strip()) <= 128:
+                raise ValueError("联网搜索关键词必须为 1–128 字")
+            return _ToolQuery(text=query.strip(), evidence_type="web_search", max_items=5)
+        url = arguments.get("url")
+        if not isinstance(url, str) or not 1 <= len(url) <= 2048:
+            raise ValueError("无效的网页地址")
+        return _ToolQuery(text="", evidence_type="web_fetch", max_items=0, url=url)
 
     # Document Query Expansion 是同一次工具调用的一部分；永远额外保留用户原始问题。
     if call["name"] == "search_documents":
@@ -357,6 +376,7 @@ def _stream_agent_decision(
             text_retrieval_client.enabled,
             document_retrieval.enabled,
             CNKGRAPH_RESEARCH_TOOLS_ENABLED,
+            DEEPSEEK_WEB_TOOLS_ENABLED,
         )
         request_kwargs["tool_choice"] = "auto"
 
@@ -537,6 +557,7 @@ def agent_decide(state: AgentState) -> AgentStateUpdate:
                 text_retrieval_client.enabled,
                 document_retrieval.enabled,
                 CNKGRAPH_RESEARCH_TOOLS_ENABLED,
+                DEEPSEEK_WEB_TOOLS_ENABLED,
             )
             request_kwargs["tool_choice"] = "auto"
 
@@ -693,6 +714,26 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
         all_evidences: list[dict[str, object]] = []
         count = tool_count
 
+        # Only URLs from actual successful web_search tool responses in THIS
+        # Agent request may be fetched. No cross-user global cache.
+        permitted_urls: set[str] = set()
+        for prior in state.get("tool_results") or []:
+            try:
+                payload = json.loads(prior["content"])
+            except (ValueError, KeyError, TypeError):
+                continue
+            if (
+                isinstance(payload, dict)
+                and payload.get("provider") == "deepseek_web"
+                and payload.get("status") == "ok"
+                and isinstance(payload.get("results"), list)
+            ):
+                permitted_urls.update(
+                    item["url"]
+                    for item in payload["results"]
+                    if isinstance(item, dict) and isinstance(item.get("url"), str)
+                )
+
         # --- 5.2 检查预算、解析参数并执行各项工具调用 ---
 
         for call in calls:
@@ -714,7 +755,18 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     max_items = validated.max_items
 
                     # 本地文本检索使用 Retrieval Client，典故与出处查询使用证据服务。
-                    if evidence_type == "ci_meter":
+                    if evidence_type == "web_search":
+                        result = await deepseek_web_client.search(query)
+                        permitted_urls.update(
+                            entry["url"]
+                            for entry in result["results"]
+                            if isinstance(entry, dict) and isinstance(entry.get("url"), str)
+                        )
+                    elif evidence_type == "web_fetch":
+                        if validated.url not in permitted_urls:
+                            raise ValueError("只能读取本轮搜索结果中出现的公开网页 URL")
+                        result = await deepseek_web_client.fetch(validated.url, permitted_urls)
+                    elif evidence_type == "ci_meter":
                         # The user-selected/loaded poem is authoritative when the model omits content.
                         content = query or state["poem"].strip()
                         if not content or len(content) > 1200:
@@ -813,6 +865,7 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     TypeError,
                     CNKGraphError,
                     CNKGraphResearchError,
+                    DeepSeekWebError,
                     RetrievalClientError,
                     DocumentRetrievalError,
                 ) as exc:

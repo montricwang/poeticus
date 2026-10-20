@@ -115,6 +115,27 @@ POETICUS_CNKGRAPH_RESEARCH_TOOLS_ENABLED=true
 
 入口：`backend/ai/tools.py` 工具声明；`backend/ai/graph.py` 参数校验及回传；`backend/evidence/providers/cnkgraph_research.py` 外部 HTTP。离线回归：`.venv/bin/python -m pytest -q tests/test_cnkgraph_research_tools.py tests/test_agent.py`。2026-10-20 真实模型针对 reader_016、057、077、084 的小规模回归：016/057 改用已开放的 `lookup_reference`；077/084 的明确无命中不再是 404 错误。研究型回答 Prompt 增加「本次检得证据」与「已有知识／待核推断」区分；这只能降低误引风险，不能代替真实答案核查。完整研究型 Tool Trace（词律细节、书卷命中摘要）见题库 PR #358 的运行脚本。具体模型自主工具选择需要统一进行本地真实对话验收。完整公开端点探测资产见 [CNKGraph 普查 PR #353](https://github.com/montricwang/poeticus/pull/353)，接入任务为 [#355](https://github.com/montricwang/poeticus/issues/355)。
 
+### DeepSeek Search / Fetch 联网研究（独立付费 API，默认关闭）
+
+Poeticus 仍由当前 `deepseek-flash` 聊天模型自主选择 LangGraph 工具；这里接入的是 **DeepSeek 独立的 Search/Fetch HTTP API**，不是假定 Flash 聊天接口会自动联网。官方说明：[Search & Fetch](https://api-docs.deepseek.com/zh-cn/guides/search/)。2026-10-20 参考价格两项均为每千次有效请求约 **5 元**；按 DeepSeek 的实际账单为准。
+
+使用个人私有 `.env` / **隔离的本地环境**手动开启，公开服务暂保持关闭，避免匿名用户消耗付费配额：
+
+```dotenv
+POETICUS_DEEPSEEK_WEB_TOOLS_ENABLED=true
+# 可选；不填时复用 LLM_API_KEY（仅当它本身是 DeepSeek API Key）
+# DEEPSEEK_WEB_API_KEY=...
+```
+
+本轮增加两个工具：
+
+- `web_search`：调用 `POST https://api.deepseek.com/v1/tools/search`，限制关键词 128 字、请求仅返回最多 5 条公开结果，`need_content=false`；返回标题、URL、时间、摘要和来源等级。不把搜索摘要当成已经查阅过的原典。
+- `web_fetch`：调用 `POST https://api.deepseek.com/v1/tools/fetch`，**URL 必须精确匹配同一用户请求中此前成功 `web_search` 返回的 URL**；不接受本地/内网主机、IP 字面量、特殊端口、带账号密码的 URL，不允许任意跳转。只返回最多 3,500 字的 Markdown 节选，正文是**不可信数据**，不能按里面的指令执行任何操作。
+
+模型和联网服务返回的内容受到响应大小与超时限制，失败与正常零命中分开。Search/Fetch 属于独立计费的只读请求，不在服务器中长期缓存网页内容，也不对私人文献批量抓取。一次 Search + Fetch 会用完当前单题 **2 次工具调用预算**。原有典故、词学 RAG 和 CNKGraph 功能不变。
+
+实现入口 `backend/research/deepseek_web.py`、`backend/ai/tools.py`、`backend/ai/graph.py`；离线测试 `.venv/bin/python -m pytest -q tests/test_deepseek_web_tools.py`。研究任务见 [#364](https://github.com/montricwang/poeticus/issues/364)，当前实现为叠加在 [PR #356](https://github.com/montricwang/poeticus/pull/356) 之上的研究分支，仍需真实交互验收和预算评估。
+
 只有 schema、没有作品数据时，目录为空是正常现象。
 
 前端排版与样式施工前，请先读 [前端视觉与排版规范](design/frontend-visual-conventions.md)：该文件区分行为契约、编辑设计、光学校正，并标明参数的权威入口。
