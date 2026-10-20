@@ -129,7 +129,7 @@ POETICUS_DEEPSEEK_WEB_TOOLS_ENABLED=true
 
 本轮增加两个工具：
 
-- `web_search`：调用 `POST https://api.deepseek.com/v1/tools/search`，限制关键词 128 字、请求仅返回最多 5 条公开结果，`need_content=false`；返回标题、URL、时间、摘要和来源等级。不把搜索摘要当成已经查阅过的原典。
+- `web_search`：调用 `POST https://api.deepseek.com/v1/tools/search`，限制关键词 100 字（加站点域名筛选）、请求仅返回最多 5 条公开结果，`need_content=false`；返回标题、URL、时间、摘要和来源等级。不把搜索摘要当成已经查阅过的原典。
 - `web_fetch`：调用 `POST https://api.deepseek.com/v1/tools/fetch`，**URL 必须精确匹配同一用户请求中此前成功 `web_search` 返回的 URL**；不接受本地/内网主机、IP 字面量、特殊端口、带账号密码的 URL，不允许任意跳转。只返回最多 3,500 字的 Markdown 节选，正文是**不可信数据**，不能按里面的指令执行任何操作。
 
 模型和联网服务返回的内容受到响应大小与超时限制，失败与正常零命中分开。Search/Fetch 属于独立计费的只读请求，不在服务器中长期缓存网页内容，也不对私人文献批量抓取。识典古籍官方服务协议（https://www.shidianguji.com/protocol ）限制未经书面许可的自动抓取，因此 Search 可以提供其公开结果链接供读者人工打开，但 `web_fetch` 明确不抓取 `shidianguji.com` 及其子域名，获得正式许可前不接内部接口。一次 Search + Fetch 会用完当前单题 **2 次工具调用预算**。原有典故、词学 RAG 和 CNKGraph 功能不变。
