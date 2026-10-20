@@ -19,6 +19,7 @@
 | 尚未确认的 `font1` / `kaiti` 源书样本 | [EPUB 分类复核记录](corpus/epub-classifier-design.md) | 研究与未决问题，不是权威解析 Schema |
 | 产品/工程的下一阶段方向 | [Roadmap](roadmap.md) / [GitHub Issues](https://github.com/montricwang/poeticus/issues) | Roadmap 按阶段，Issue 按单个可验收工作 |
 | 文学推荐、诗学画像、持续学习与 Prompt 优化的跨模块研究 | [文学学习研究规划](literary-learning-research-plan.md) | 只保存整体研究地图、文献复用与阶段性启动条件；实际任务仍以对应 Issue 为准 |
+| **Critic 人格、方法、材料与札记的研究设计** | [#148 四层模型](https://github.com/montricwang/poeticus/issues/148) / [#311 研究顺序](https://github.com/montricwang/poeticus/issues/311) / [#347 记忆框架](https://github.com/montricwang/poeticus/issues/347) | 尚在设计/隔离实验；不等于已有在线长期记忆、审美自进化或多 Agent |
 | 本地开源模型的离线推理、性能边界与文献 Refine 质量实验 | [推理可行性 #339](https://github.com/montricwang/poeticus/issues/339) / [文献 Refine #341](https://github.com/montricwang/poeticus/issues/341) | Issue 维护实验进度与验收；私人模型权重、路径和日志不入仓库 |
 | **已有数字人文资源**：古籍、典故、词话、API、论文与授权 | [数字人文资源地图](digital-humanities-resources.md) / [复用验证 #184](https://github.com/montricwang/poeticus/issues/184) | 资源地图保存现有外部成果与核实状态；Issue 记录实际实验 |
 | 某天怎么做、哪些假设被推翻 | [开发日志](devlog/) | 按日期冻结，不追着现行代码改 |
@@ -31,7 +32,7 @@
 - [Homepage](architecture/home-screen.md)：首页每日推荐、搜索与入场动效、手机竖排、五列上限及节选规则；
 - [Corpus Database](architecture/corpus-database.md)：私人导入、公开白名单、数据身份；
 - [Poem Retrieval](architecture/text-retrieval.md)：Work/Chunk、Qwen/FAISS/BM25、RRF、Eligibility、Werneror 拼接去重与 Serving。
-- [Document Corpus](architecture/document-corpus.md)：本地四书 PostgreSQL/pgvector 文献库、词话候选证据、可选实验 Reranker 与权利边界；实验方法及结果见 [Document RAG 实验记录](../scripts/experiments/README-document-rag.md)。
+- [Document Corpus](architecture/document-corpus.md)：本地首批四书的可复现导入与 2026-10-20 **两书私有增量**（共六书）、候选证据、实验 Reranker、尚未通用化的导入器及权利边界；实验方法见 [Document RAG 实验记录](../scripts/experiments/README-document-rag.md)。
 
 ## 当前重要决策
 

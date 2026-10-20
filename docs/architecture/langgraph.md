@@ -30,16 +30,19 @@ flowchart TD
 
 ## 3. 工具与 Evidence
 
-当前 Agent 有四种工具定义，实际可见项取决于服务配置：
+当前 Agent 以四种基础/原有工具为起点，另有三组**默认关闭、仅本地研究用**的工具集；实际可见项由本轮服务配置决定：
 
 - `lookup_allusion`：人物故事、掌故、神话与典故性短语；
 - `lookup_reference`：外部 reference evidence；
 - `search_predecessor_texts`：Poeticus 自建 Corpus 的前代文本候选检索；
 - `search_documents`：本地 Document Corpus 的历代词话与评论候选检索（开发实验）。
+- CNKGraph 研究组（5 项）：`analyze_ci_meter`、`search_classical_books`、`lookup_ci_tune`、`lookup_rhyme`、`resolve_entities`。服务条款限定个人非商业研究，不能默认给公开 Railway 用户使用。
+- DeepSeek 联网组（2 项）：`web_search`、`web_fetch`；独立计费，`web_fetch` 只能读取本轮已搜索返回的 URL，默认关闭。
+- 字词/原文组（3 项）：`lookup_moedict`、`search_wikisource`、`read_wikisource_page`；保留辞典/维基文库的来源与授权语义，默认关闭。
 
-`backend/ai/tools.py` 定义提供给模型的工具 Schema；`available_tools(retrieval_enabled, document_enabled)` 根据独立的 Poem Retrieval URL 和 Document Corpus 本地开关，分别决定是否把 `search_predecessor_texts`、`search_documents` 加入工具清单。配置启用不等于检索服务当前健康。
+`backend/ai/tools.py` 定义模型可见的 Schema；`available_tools(...)` 按五种独立开关组合工具：Poem Retrieval、Document Corpus、CNKGraph Research、DeepSeek Web、Classic References。图节点在执行前重新核对**本轮实际注册工具名单**，未启用的工具不能因为模型自行说出名字就绕过开关。配置启用不等于对应服务健康、许可通过或线上已经启用。设置及权限边界见 [开发者指南](../development.md)。
 
-工具调用由 `backend/ai/graph.py` 的 `execute_tools()` 执行：典故与出处查询通过 `EvidenceService.search()` 交给 CNKGraph Provider；诗词互文检索通过 `TextRetrievalClient` 请求独立 Poem Retrieval Service；文献评论检索通过本机 `DocumentRetrieval` 查询 PostgreSQL + BM25/pgvector。文献工具使用用户原始问题，并允许模型补充最多两条查询；返回的是带来源锚点的**候选证据**，不等于校勘或事实认证。
+工具调用由 `backend/ai/graph.py` 的 `execute_tools()` 执行：典故与出处查询通过 `EvidenceService.search()` 交给 CNKGraph Provider；诗词互文检索通过 `TextRetrievalClient` 请求独立 Poem Retrieval Service；文献评论检索通过本机 `DocumentRetrieval` 查询 PostgreSQL + BM25/pgvector；三个研究工具组通过各自只读 HTTP Adapter 执行，并使用独立的权限、预算与来源限制。文献工具使用用户原始问题，并允许模型补充最多两条查询；返回的是带来源锚点的**候选证据**，不等于校勘或事实认证。
 
 对外 `backend/mcp/server.py` 也通过 `EvidenceService` 查询典故与出处，但它是独立的 MCP 入口；现有 Agent 不经过 MCP Server。`EvidenceService` 负责选择 Provider 并返回 `EvidenceItem`，Agent 与 MCP 分别整理自己的输出格式。
 
