@@ -95,3 +95,21 @@ def test_question_bank_preserves_simple_prompts_and_exploratory_coverage():
 
 def test_human_review_sheet_exactly_matches_source_json():
     assert REVIEW_PATH.read_text(encoding="utf-8") == render(bank())
+
+
+def test_runner_uses_real_fixture_or_explicitly_empty_standalone_context():
+    from scripts.evals.run_agent_reader_100 import build_state
+
+    data = bank()
+    contextual = next(c for c in data["cases"] if "fixture_id" in c["input"])
+    standalone = next(c for c in data["cases"] if "fixture_id" not in c["input"])
+    contextual_state = build_state(contextual, data["fixtures"])
+    assert contextual_state["poem"]
+    assert contextual_state["context"].title
+    assert contextual_state["selection"] == contextual["input"].get("selection")
+    assert contextual_state["question"] == contextual["input"]["question"]
+    independent_state = build_state(standalone, data["fixtures"])
+    assert independent_state["poem"] == ""
+    assert independent_state["context"] is None
+    assert independent_state["selection"] is None
+    assert independent_state["question"] == standalone["input"]["question"]
