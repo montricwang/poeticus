@@ -99,9 +99,18 @@ class Handler(BaseHTTPRequestHandler):
             body_size = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             return self._send({"error": "请求体长度无效"}, 400)
-        if body_size < 0 or body_size > 2048:
+        if body_size < 0 or body_size > 8192:
             return self._send({"error": "请求体过大或长度无效"}, 413)
         path = urlsplit(self.path).path
+        reset_match = re.fullmatch(r"/api/config/([a-z]+)/reset", path)
+        if reset_match:
+            key = reset_match.group(1)
+            if key not in LOOKUP:
+                return self._send({"error": "未知服务"}, 404)
+            try:
+                return self._send({"settings": SUPERVISOR.reset_launch_settings(key)})
+            except ValueError as exc:
+                return self._send({"error": str(exc)}, 409)
         settings_match = re.fullmatch(r"/api/config/([a-z]+)", path)
         if settings_match:
             key = settings_match.group(1)

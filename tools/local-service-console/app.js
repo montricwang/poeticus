@@ -55,12 +55,26 @@ async function openSettings(key) {
   try {
     allConfigs = (await api("/api/config")).services;
     const data = allConfigs[key];
-    if (!data?.editable) return toast("此服务的启动命令由独立管理器维护");
     editingService = key;
     const service = allServices.find(s => s.id === key);
     $("#settings-title").textContent = (service?.title || key) + " · 启动配置";
-    $("#settings-port").value = data.port;
+    $("#port-field").hidden = data.port === null;
+    $("#extra-field").hidden = key === "mcp" || key === "tunnel";
+    $("#distro-field").hidden = data.platform !== "WSL";
+    $("#script-field").hidden = key !== "mcp";
+    $("#settings-port").required = data.port !== null;
+    $("#settings-port").value = data.port ?? "";
     $("#settings-args").value = data.arguments;
+    $("#settings-platform").value = data.platform;
+    $("#settings-distro").value = data.distro;
+    $("#settings-program").value = data.program;
+    $("#settings-command-args").value = data.command_args;
+    $("#settings-command-args").readOnly = key === "mcp" || key === "tunnel";
+    $("#settings-working-dir").value = data.working_directory;
+    $("#settings-init").value = data.initialization;
+    $("#settings-init").disabled = data.platform === "Windows";
+    $("#settings-script-path").value = data.script_path;
+    $("#settings-preview").textContent = data.preview;
     $("#settings-dialog").showModal();
   } catch (error) {
     toast("读取配置失败：" + error.message);
@@ -71,9 +85,16 @@ async function saveSettings(event) {
   event.preventDefault();
   if (!editingService) return;
   const key = editingService;
+  const isWSL = allConfigs[key].platform === "WSL";
   const value = {
-    port: Number($("#settings-port").value),
-    arguments: $("#settings-args").value.trim()
+    port: $("#settings-port").required ? Number($("#settings-port").value) : null,
+    arguments: $("#extra-field").hidden ? "" : $("#settings-args").value.trim(),
+    program: $("#settings-program").value.trim(),
+    command_args: $("#settings-command-args").value.trim(),
+    working_directory: $("#settings-working-dir").value.trim(),
+    initialization: isWSL ? $("#settings-init").value : "none",
+    distro: isWSL ? $("#settings-distro").value.trim() : "",
+    script_path: key === "mcp" ? $("#settings-script-path").value.trim() : ""
   };
   try {
     const response = await fetch("/api/config/" + key, {
@@ -89,6 +110,21 @@ async function saveSettings(event) {
     await refresh();
   } catch (error) {
     toast("保存失败：" + error.message);
+  }
+}
+
+async function resetSettings() {
+  const key = editingService;
+  if (!key || !confirm("恢复这项服务的默认启动配置？不会改变其他服务。")) return;
+  try {
+    const result = await api("/api/config/" + key + "/reset", "POST");
+    allConfigs[key] = result.settings;
+    $("#settings-dialog").close();
+    editingService = null;
+    toast("已恢复默认配置");
+    await refresh();
+  } catch (error) {
+    toast("恢复失败：" + error.message);
   }
 }
 
@@ -126,7 +162,7 @@ function renderServices() {
     const dot = document.createElement("i"); dot.className = "dot";
     state.append(dot, document.createTextNode(names[service.state] || service.state));
     control.append(state);
-    if (service.id !== "mcp" && service.id !== "tunnel") {
+    {
       const settings = document.createElement("button");
       settings.className = "btn-mini btn-settings";
       settings.textContent = "⚙";
@@ -222,6 +258,7 @@ async function init() {
     toast("无法连接本地管理器：" + error.message);
   }
   $("#settings-form").addEventListener("submit", saveSettings);
+  $("#settings-reset").addEventListener("click", resetSettings);
   $("#settings-close").addEventListener("click", () => $("#settings-dialog").close());
   $("#settings-cancel").addEventListener("click", () => $("#settings-dialog").close());
   $("#settings-dialog").addEventListener("close", () => { editingService = null; });

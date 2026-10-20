@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import os
 import shlex
-import shutil
 import socket
 import subprocess
 import threading
@@ -48,15 +47,10 @@ SERVICES = [
 ]
 LOOKUP = {service.id: service for service in SERVICES}
 
-WSL_COMMANDS = {
-    "frontend": "exec npm --prefix frontend run dev -- --host 0.0.0.0",
-    "backend": "exec uvicorn backend.app:app --reload",
-    "langgraph": "exec langgraph dev",
-    "retrieval": "source ~/.config/poeticus/retrieval.env && exec python -m scripts.retrieval.run_serving --device cpu",
-}
-
-CONFIGURABLE_SERVICES = frozenset((*WSL_COMMANDS, "reranker"))
+WSL_SERVICE_IDS = frozenset(("frontend", "backend", "langgraph", "retrieval"))
+CONFIGURABLE_SERVICES = frozenset((*WSL_SERVICE_IDS, "reranker", "tunnel", "mcp"))
 FORBIDDEN_FLAGS = frozenset(("--port", "--host", "--api-token", "--token", "--token-file"))
+INIT_PRESETS = frozenset(("venv", "venv-nvm", "venv-retrieval", "none"))
 
 
 def read_config() -> dict:
@@ -119,43 +113,146 @@ class Supervisor:
         temp.write_text(json.dumps(self.owned, indent=2), encoding="utf-8")
         temp.replace(self.state_file)
 
+    def _defaults_for(self, key: str) -> dict:
+        cfg = self.config
+        work = cfg["wsl_project"]
+        windows_cwd = str(Path(os.getenv("SystemRoot", "C:\\\\Windows")) / "System32")
+        base = {
+            "frontend": ("npm", "--prefix frontend run dev -- --host 0.0.0.0", work, "venv-nvm"),
+            "backend": ("uvicorn", "backend.app:app --reload", work, "venv"),
+            "langgraph": ("langgraph", "dev", work, "venv-nvm"),
+            "retrieval": ("python", "-m scripts.retrieval.run_serving --device cpu", work, "venv-retrieval"),
+            "reranker": (
+                cfg["reranker_exe"], shlex.join([
+                    "-m", cfg["reranker_model"], "--reranking", "--pooling", "rank",
+                    "--embedding", "-ngl", "99", "--host", "127.0.0.1", "-c", "2048"
+                ]), str(Path(cfg["reranker_exe"]).parent), "none"
+            ),
+            "tunnel": (cfg["cloudflared_exe"], "tunnel run", windows_cwd, "none"),
+            "mcp": ("powershell.exe", "-NoProfile -ExecutionPolicy Bypass", windows_cwd, "none"),
+        }
+        program, command_args, working_directory, initialization = base[key]
+        return {
+            "editable": True,
+            "platform": "WSL" if key in WSL_SERVICE_IDS else "Windows",
+            "distro": cfg["wsl_distro"] if key in WSL_SERVICE_IDS else "",
+            "program": program,
+            "command_args": command_args,
+            "working_directory": working_directory,
+            "initialization": initialization,
+            "port": LOOKUP[key].port,
+            "arguments": "",
+            "script_path": cfg["mcp_manager_script"] if key == "mcp" else "",
+        }
+
     def launch_settings(self, key: str) -> dict:
-        """Safe, editable options. Binary paths/secrets are never exposed over HTTP."""
-        service = LOOKUP[key]
+        """One effective runtime profile, layered over legacy settings and safe defaults."""
+        default = self._defaults_for(key)
         saved = self.launch_options.get(key, {})
-        if key not in CONFIGURABLE_SERVICES:
-            return {"editable": False, "port": service.port, "arguments": ""}
-        port = saved.get("port", service.port)
-        args = saved.get("arguments", "")
-        return {"editable": True, "port": port, "arguments": args}
+        if not isinstance(saved, dict):
+            saved = {}
+        settings = {**default, **{field: saved[field] for field in default if field in saved}}
+        settings["preview"] = self._command_preview(key, settings)
+        return settings
+
+    def _command_preview(self, key: str, settings: dict) -> str:
+        command = shlex.join([settings["program"], *shlex.split(settings["command_args"])])
+        if key in WSL_SERVICE_IDS or key == "reranker":
+            command += " --port " + str(settings["port"])
+            if settings["arguments"]:
+                command += " " + shlex.join(shlex.split(settings["arguments"]))
+        if key == "tunnel":
+            command += " --token-file <本机私有文件>"
+        if key == "mcp":
+            command += " -File " + shlex.quote(settings["script_path"]) + " -Action Start"
+        return command
+
+    def _validate_settings(self, key: str, value: dict) -> dict:
+        defaults = self._defaults_for(key)
+        editable_fields = {"program", "command_args", "working_directory", "initialization",
+                           "distro", "port", "arguments", "script_path"}
+        if not isinstance(value, dict) or not set(value) <= editable_fields:
+            raise ValueError("启动配置包含未知字段")
+        updated = {**self.launch_settings(key), **value}
+        updated.pop("preview", None)
+        # platform, editable and all runtime responsibility boundaries remain fixed.
+        if not isinstance(updated["initialization"], str) or updated["initialization"] not in INIT_PRESETS:
+            raise ValueError("未知环境初始化预设")
+        if key not in WSL_SERVICE_IDS and updated["initialization"] != "none":
+            raise ValueError("Windows 服务不能使用 WSL 初始化预设")
+        if key in WSL_SERVICE_IDS and updated["initialization"] == "none":
+            raise ValueError("WSL 服务必须明确选择初始化预设")
+        for name in ("program", "command_args", "working_directory", "arguments", "distro", "script_path"):
+            v = updated[name]
+            if not isinstance(v, str) or len(v) > 1000 or "\\n" in v or "\\r" in v or "\\x00" in v:
+                raise ValueError(f"{name} 不符合字符串长度与换行约束")
+        if not updated["program"].strip() or not updated["working_directory"].strip():
+            raise ValueError("执行程序与工作目录不能为空")
+        if updated["port"] is None:
+            if key not in ("mcp", "tunnel"):
+                raise ValueError("端口不能为空")
+        elif type(updated["port"]) is not int or not 1024 <= updated["port"] <= 65535:
+            raise ValueError("端口必须是 1024–65535 的整数")
+        if key in WSL_SERVICE_IDS and (not updated["working_directory"].startswith("/")
+                                       or not updated["distro"].strip()):
+            raise ValueError("WSL 工作目录应为绝对路径，发行版名称不能为空")
+        if key not in WSL_SERVICE_IDS:
+            if updated["distro"]:
+                raise ValueError("Windows 服务不使用 WSL 发行版")
+            if not Path(updated["working_directory"]).is_absolute():
+                raise ValueError("Windows 工作目录需要绝对路径")
+        for field in ("command_args", "arguments"):
+            try:
+                values = shlex.split(updated[field])
+            except ValueError as exc:
+                raise ValueError(f"{field} 的引号不完整") from exc
+            if len(values) > 50:
+                raise ValueError("单组命令参数不能超过 50 项")
+            if key in WSL_SERVICE_IDS or key == "reranker":
+                if any(token.split("=", 1)[0].lower() in FORBIDDEN_FLAGS for token in
+                       shlex.split(updated["arguments"])):
+                    raise ValueError("附加参数不可覆盖端口、监听地址或认证参数")
+        if key in ("tunnel", "mcp"):
+            # These integrations keep their own credential and lifecycle protocols.
+            if updated["command_args"] != defaults["command_args"] or updated["arguments"]:
+                raise ValueError("Tunnel / MCP 只允许编辑执行程序和工作目录，启动协议固定")
+            if updated["port"] is not None:
+                raise ValueError("Tunnel / MCP 没有通用监听端口")
+        if key == "mcp":
+            if not updated["program"].lower().endswith(("powershell.exe", "pwsh.exe")):
+                raise ValueError("MCP Manager 必须由 PowerShell 运行")
+            if not updated["script_path"].lower().endswith(".ps1"):
+                raise ValueError("MCP Manager 脚本必须是 .ps1 文件")
+        elif updated["script_path"]:
+            raise ValueError("只有 MCP Manager 有单独脚本路径")
+        return updated
 
     def update_launch_settings(self, key: str, value: dict) -> dict:
         if key not in CONFIGURABLE_SERVICES:
-            raise ValueError("此服务使用固定启动命令，不能在网页修改")
-        if not isinstance(value, dict) or set(value) != {"port", "arguments"}:
-            raise ValueError("只能配置端口和附加参数")
-        port, arguments = value["port"], value["arguments"]
-        if type(port) is not int or not (1024 <= port <= 65535):
-            raise ValueError("端口必须是 1024–65535 的整数")
-        if not isinstance(arguments, str) or len(arguments) > 500:
-            raise ValueError("启动参数长度不得超过 500 字符")
-        try:
-            tokens = shlex.split(arguments, posix=True)
-        except ValueError as exc:
-            raise ValueError("启动参数的引号不完整") from exc
-        if len(tokens) > 30 or any(
-            token.split("=", 1)[0].lower() in FORBIDDEN_FLAGS for token in tokens
-        ):
-            raise ValueError("附加参数不可覆盖端口、监听地址或认证参数")
+            raise ValueError("未知服务")
         with self.lock:
-            if process_for(self.owned.get(key)):
+            if process_for(self.owned.get(key)) or (key == "mcp" and self._mcp_process()):
                 raise ValueError("请先停止控制台管理的服务，再修改启动配置")
-            self.launch_options[key] = {"port": port, "arguments": arguments}
+            updated = self._validate_settings(key, value)
+            self.launch_options[key] = {field: updated[field] for field in
+                ("program", "command_args", "working_directory", "initialization",
+                 "distro", "port", "arguments", "script_path")}
             temp = self.launch_file.with_suffix(".tmp")
             temp.write_text(json.dumps(self.launch_options, ensure_ascii=False, indent=2),
                             encoding="utf-8")
             temp.replace(self.launch_file)
-        return self.launch_settings(key)
+            return self.launch_settings(key)
+
+    def reset_launch_settings(self, key: str) -> dict:
+        with self.lock:
+            if process_for(self.owned.get(key)) or (key == "mcp" and self._mcp_process()):
+                raise ValueError("请先停止控制台管理的服务，再恢复默认配置")
+            self.launch_options.pop(key, None)
+            temp = self.launch_file.with_suffix(".tmp")
+            temp.write_text(json.dumps(self.launch_options, ensure_ascii=False, indent=2),
+                            encoding="utf-8")
+            temp.replace(self.launch_file)
+            return self.launch_settings(key)
 
     def _port(self, key: str) -> int | None:
         return self.launch_settings(key)["port"]
@@ -174,7 +271,8 @@ class Supervisor:
             pid = int(pid_file.read_text(encoding="utf-8-sig").strip())
             process = psutil.Process(pid)
             args = " ".join(process.cmdline()).lower()
-            if "mcp-manager.ps1" in args and "watch" in args and process.is_running():
+            expected_script = Path(self.launch_settings("mcp")["script_path"]).name.lower()
+            if expected_script and expected_script in args and "watch" in args and process.is_running():
                 return process
         except (ValueError, OSError, psutil.Error):
             pass
@@ -192,7 +290,7 @@ class Supervisor:
         else:
             reachable = port_open(self._port(key))
             if owned:
-                state = "running" if (reachable or service.port is None) else "starting"
+                state = "running" if (reachable or self._port(key) is None) else "starting"
             else:
                 state = "external" if reachable else "stopped"
             pid = owned.pid if owned else None
@@ -203,53 +301,48 @@ class Supervisor:
         }
 
     def _build_command(self, key: str, run_id: str) -> list[str]:
-        cfg = self.config
-        if key in WSL_COMMANDS:
-            project = shlex.quote(cfg["wsl_project"])
-            pidfile = "$HOME/.cache/poeticus-service-console/" + key + ".pid"
-            port = self._port(key)
-            extra = " ".join(shlex.quote(arg) for arg in self._args(key))
-            # Login-style non-interactive WSL shells do not load .bashrc / NVM by default.
-            # Ensure node/npm are Linux binaries rather than Windows npm on the inherited PATH.
-            node_init = (
-                'if [ -s "$HOME/.nvm/nvm.sh" ]; then '
-                '. "$HOME/.nvm/nvm.sh" && nvm use --silent default >/dev/null; fi; '
-            )
-            if key == "frontend":
-                node_init += (
+        settings = self.launch_settings(key)
+        program = settings["program"]
+        params = shlex.split(settings["command_args"])
+        extra = self._args(key)
+        if key in WSL_SERVICE_IDS:
+            pidfile = "$HOME/.cache/poeticus-service-console/" + key + "-" + run_id + ".pid"
+            initialization = {
+                "venv": "",
+                "venv-nvm": (
+                    'test -s "$HOME/.nvm/nvm.sh" || { echo "WSL NVM missing" >&2; exit 127; }; '
+                    '. "$HOME/.nvm/nvm.sh"; nvm use --silent default >/dev/null; '
                     'case "$(command -v node || true):$(command -v npm || true)" in '
-                    '/mnt/*|*:/mnt/*|:* ) echo "Linux Node/npm not found; configure WSL NVM" >&2; exit 127;; esac; '
-                )
-            command = WSL_COMMANDS[key] + " --port " + str(port)
-            if extra:
-                command += " " + extra
+                    '/mnt/*|*:/mnt/*|:* ) echo "Linux Node/npm not found" >&2; exit 127;; esac; '
+                ),
+                "venv-retrieval": "source ~/.config/poeticus/retrieval.env; ",
+            }[settings["initialization"]]
+            command = shlex.join([program, *params, "--port", str(settings["port"]), *extra])
             worker = (
                 "set -e; export POETICUS_CONSOLE_RUN_ID=" + shlex.quote(run_id) +
                 "; printf '%s %s\\n' \"$$\" \"$POETICUS_CONSOLE_RUN_ID\" > \"" + pidfile + "\""
-                "; cd " + project + " && source .venv/bin/activate && "
-                "export PYTHONUNBUFFERED=1; " + node_init + command
+                "; cd " + shlex.quote(settings["working_directory"]) +
+                " && source .venv/bin/activate && export PYTHONUNBUFFERED=1; " +
+                initialization + "exec " + command
             )
-            script = "mkdir -p \"$HOME/.cache/poeticus-service-console\"; exec setsid -w bash -lc " + shlex.quote(worker)
-            return ["wsl.exe", "-d", cfg["wsl_distro"], "--exec", "bash", "-lc", script]
+            script = 'mkdir -p "$HOME/.cache/poeticus-service-console"; exec setsid -w bash -lc ' + shlex.quote(worker)
+            return ["wsl.exe", "-d", settings["distro"], "--exec", "bash", "-lc", script]
         if key == "reranker":
-            exe, model = cfg["reranker_exe"], cfg["reranker_model"]
-            if not (Path(exe).is_file() and model):
-                raise ValueError("请先在 settings.local.json 配置 reranker_exe 和 reranker_model")
-            return [exe, "-m", model, "--reranking", "--pooling", "rank", "--embedding",
-                    "-ngl", "99", "--host", "127.0.0.1", "--port", str(self._port(key)), "-c", "2048",
-                    *self._args(key)]
+            if not Path(program).is_file():
+                raise ValueError("找不到 Reranker 可执行文件")
+            if not any(name in params for name in ("-m", "--model")):
+                raise ValueError("请配置 Reranker 模型路径 (-m)")
+            return [program, *params, "--port", str(settings["port"]), *extra]
         if key == "tunnel":
-            exe = cfg["cloudflared_exe"] or shutil.which("cloudflared")
             token_file = Path(os.environ["LOCALAPPDATA"]) / "Poeticus" / "secrets" / "cloudflare-tunnel.token"
-            if not (exe and Path(exe).is_file() and token_file.is_file()):
-                raise ValueError("找不到 cloudflared.exe 或私有 tunnel token 文件")
-            return [str(exe), "tunnel", "run", "--token-file", str(token_file)]
+            if not (Path(program).is_file() and token_file.is_file()):
+                raise ValueError("找不到 cloudflared.exe 或私有 Tunnel Token 文件")
+            return [program, "tunnel", "run", "--token-file", str(token_file)]
         if key == "mcp":
-            path = cfg["mcp_manager_script"]
-            if not path or not Path(path).is_file():
-                raise ValueError("请先配置 mcp_manager_script")
-            return ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                    "-File", path, "-Action", "Start"]
+            script = settings["script_path"]
+            if not script or not Path(script).is_file():
+                raise ValueError("找不到 Local MCP Manager 脚本")
+            return [program, *params, "-File", script, "-Action", "Start"]
         raise ValueError("未知服务")
 
     def start(self, key: str) -> str:
@@ -259,6 +352,9 @@ class Supervisor:
                 return "已运行或端口被占用；没有重复启动"
             run_id = uuid.uuid4().hex
             args = self._build_command(key, run_id)
+            settings_cwd = self.launch_settings(key)["working_directory"]
+            if key not in WSL_SERVICE_IDS and not Path(settings_cwd).is_dir():
+                raise ValueError("Windows 工作目录不存在：" + settings_cwd)
             log_path = self.directory / (key + ".log")
             with log_path.open("ab", buffering=0) as logfile:
                 logfile.write(("\n=== start " + time.strftime("%Y-%m-%d %H:%M:%S") + " ===\n").encode())
@@ -275,12 +371,22 @@ class Supervisor:
                     cwd=str(Path(os.environ.get("SystemRoot", "C:\\Windows")) / "System32") if os.name == "nt" else None,
                     creationflags=flags)
             self.handles[key] = proc
-            self.owned[key] = {"pid": proc.pid, "created": psutil.Process(proc.pid).create_time(), "run_id": run_id}
+            record = {"pid": proc.pid, "created": psutil.Process(proc.pid).create_time(), "run_id": run_id}
+            if key in WSL_SERVICE_IDS:
+                record["pidfile"] = key + "-" + run_id + ".pid"
+            self.owned[key] = record
             self._save()
             return "已发送启动命令"
 
-    def _signal_wsl(self, key: str, run_id: str, signal: str) -> None:
-        pidfile = "$HOME/.cache/poeticus-service-console/" + key + ".pid"
+    def _signal_wsl(self, key: str, run_id: str, signal: str,
+                    pidfile_name: str | None = None) -> None:
+        # Preserve the older pidfile name for processes launched by the original version.
+        expected = key + "-" + run_id + ".pid"
+        if pidfile_name is not None and pidfile_name != expected:
+            raise ValueError("WSL PID 文件归属不匹配")
+        pidfile = "$HOME/.cache/poeticus-service-console/" + (
+            pidfile_name if pidfile_name else key + ".pid"
+        )
         # A stale pidfile or reused Linux PID must not kill someone else's process.
         script = (
             "read -r pid token < \"" + pidfile + "\" || exit 11; "
@@ -290,7 +396,7 @@ class Supervisor:
             shlex.quote("POETICUS_CONSOLE_RUN_ID=" + run_id) + " || exit 14; "
             "kill -" + signal + " -- \"-$pid\""
         )
-        completed = subprocess.run(["wsl.exe", "-d", self.config["wsl_distro"], "--exec",
+        completed = subprocess.run(["wsl.exe", "-d", self.launch_settings(key)["distro"], "--exec",
                         "bash", "-lc", script], timeout=12, check=False,
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if completed.returncode != 0:
@@ -330,13 +436,13 @@ class Supervisor:
                 self.owned.pop(key, None)
                 self._save()
                 return "没有可确认归属的运行进程；未终止外部程序"
-            if key in WSL_COMMANDS:
-                self._signal_wsl(key, record["run_id"], "TERM")
+            if key in WSL_SERVICE_IDS:
+                self._signal_wsl(key, record["run_id"], "TERM", record.get("pidfile"))
                 try:
                     process.wait(timeout=4)
                 except psutil.TimeoutExpired:
                     # A service can ignore TERM; validate ownership again before KILL.
-                    self._signal_wsl(key, record["run_id"], "KILL")
+                    self._signal_wsl(key, record["run_id"], "KILL", record.get("pidfile"))
                     try:
                         process.wait(timeout=3)
                     except psutil.TimeoutExpired:

@@ -46,15 +46,17 @@ class ProcessTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "win32", "Requires Windows WSL bridge")
     def test_wsl_group_start_stop(self):
         from unittest.mock import patch
-        from supervisor import WSL_COMMANDS
-        original = WSL_COMMANDS["frontend"]
-        WSL_COMMANDS["frontend"] = (
-            "exec python -u -c 'import time;print(\"wsl-probe-ready\",flush=True);time.sleep(60)'"
-        )
+        from supervisor import port_open
+        if port_open(15318):
+            self.skipTest("Probe port occupied")
         with tempfile.TemporaryDirectory() as path:
             mgr = Supervisor(state_dir=Path(path))
+            mgr.update_launch_settings("frontend", {
+                "port": 15318, "initialization": "venv", "program": "python",
+                "command_args": "-u -c 'import time;print(\"wsl-probe-ready\",flush=True);time.sleep(60)'"
+            })
             try:
-                # A separate Vite may occupy :5173; this probe never binds that port.
+                # Short-lived managed WSL smoke: it never binds the configured port.
                 with patch("supervisor.port_open", return_value=False):
                     mgr.start("frontend")
                 for _ in range(100):
@@ -66,7 +68,6 @@ class ProcessTests(unittest.TestCase):
                 self.assertIn("已停止", mgr.stop("frontend"))
                 self.assertFalse(mgr.status("frontend")["managed"])
             finally:
-                WSL_COMMANDS["frontend"] = original
                 if mgr.owned.get("frontend"):
                     mgr.stop("frontend")
 
@@ -91,6 +92,49 @@ class ProcessTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 mgr.update_launch_settings("mcp", {"port": 8080, "arguments": ""})
             self.assertEqual(mgr._port("frontend"), 15317)
+
+    def test_command_profile_and_reset(self):
+        with tempfile.TemporaryDirectory() as folder:
+            mgr = Supervisor(state_dir=Path(folder))
+            original = mgr.launch_settings("frontend")
+            self.assertEqual(original["program"], "npm")
+            self.assertEqual(original["initialization"], "venv-nvm")
+            new = mgr.update_launch_settings("frontend", {
+                "program": "python", "command_args": "-m http.server",
+                "working_directory": "/tmp", "initialization": "venv",
+                "distro": "Ubuntu", "port": 17770, "arguments": ""
+            })
+            self.assertEqual(new["program"], "python")
+            with self.assertRaises(ValueError):
+                mgr._signal_wsl("frontend", "probe", "TERM", "wrong.pid")
+            self.assertIn("exec python -m http.server --port 17770", mgr._build_command("frontend", "a")[-1])
+            self.assertEqual(Supervisor(state_dir=Path(folder)).launch_settings("frontend")["working_directory"], "/tmp")
+            self.assertEqual(mgr.reset_launch_settings("frontend")["program"], "npm")
+            self.assertEqual(mgr._port("frontend"), 5173)
+            for bad in (
+                {"working_directory": "relative/path"},
+                {"program": ""},
+                {"command_args": "--bad '"},
+                {"initialization": "raw-shell"},
+                {"port": None},
+                {"port": True},
+                {"program": "python\\nrm -rf /"},
+            ):
+                with self.assertRaises(ValueError, msg=str(bad)):
+                    mgr.update_launch_settings("frontend", bad)
+            # Delegate protocol is fixed while trusted script location can be changed.
+            mcp = mgr.launch_settings("mcp")
+            self.assertIsNone(mcp["port"])
+            from unittest.mock import patch
+            with patch.object(mgr, "_mcp_process", return_value=None):
+                self.assertEqual(mgr.update_launch_settings("mcp", {
+                    "script_path": r"C:\\Scripts\\MCP-Manager.ps1"
+                })["script_path"], r"C:\\Scripts\\MCP-Manager.ps1")
+                with self.assertRaises(ValueError):
+                    mgr.update_launch_settings("tunnel", {"command_args": "tunnel delete"})
+                with self.assertRaises(ValueError):
+                    mgr.update_launch_settings("mcp", {"program": "python.exe"})
+                self.assertEqual(mgr.reset_launch_settings("mcp")["script_path"], mcp["script_path"])
 
     def test_recover_owned_pid_after_manager_restart(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -197,6 +241,13 @@ class ApiTests(unittest.TestCase):
                     saved = json.load(response)
                 self.assertEqual(saved["settings"]["port"], 15517)
                 self.assertEqual(server.SUPERVISOR._port("frontend"), 15517)
+                reset = urllib.request.Request(
+                    self.url + "/api/config/frontend/reset", method="POST", headers=headers)
+                with urllib.request.urlopen(reset, timeout=5) as response:
+                    default = json.load(response)["settings"]
+                self.assertEqual(default["port"], 5173)
+                self.assertEqual(default["program"], "npm")
+
                 bad = urllib.request.Request(
                     self.url + "/api/config/frontend", method="POST",
                     data=json.dumps({"port": 15517, "arguments": "--port 55"}).encode(),
