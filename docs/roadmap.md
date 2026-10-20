@@ -1,8 +1,8 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-19
+> 更新日期：2026-10-20
 >
-> 当前状态：v0.6.0 已发布。首页入场与搜索过渡、桌面 / iPad 竖排居中、原文引用下划线和统一中国红已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持既有线上链路。Document Corpus 四书 916 节、PostgreSQL/pgvector 和本地 `search_documents` 已进入**开发分支实验**，尚未公开部署。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
+> 当前状态：v0.6.0 已发布。首页入场与搜索过渡、桌面 / iPad 竖排居中、原文引用下划线和统一中国红已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持既有线上链路。Document Corpus 已在本地使用 PostgreSQL/pgvector 和可选 `search_documents`；**2026-10-20 私有数据增至六书、1152 节/向量**，但正式四书导入 CLI 尚未支持这次增量，也未公开部署。LangGraph 新增的 CNKGraph 研究、DeepSeek Search/Fetch、萌典/维基文库研究工具**代码已入 main，均默认关闭**，不能当作线上已验收功能。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
 
 Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog 和 ADR；具体任务继续进入 GitHub Issues。
 
@@ -124,7 +124,7 @@ Retrieval 已经可以作为一个完成度较高的求职能力面。下一阶�
 - 历代评论；
 - 可靠作者生平 / 编年资料。
 
-已在本地用四本高价值词话构建结构化 Document Corpus 与 Hybrid/Agentic 查询实验。下一步按 [#343](https://github.com/montricwang/poeticus/issues/343) 扩充到 10、20、40 部并比较规模效应；按 [#344](https://github.com/montricwang/poeticus/issues/344) 建立约 100 题、含独立 holdout 的证据评测集。逐步验证：
+已在本地用六部词学文献构建结构化 Document Corpus 与 Hybrid/Agentic 查询实验；其中首批四书可由仓库 CLI 重建，新增两书是私有专项导入。下一步按 [#343](https://github.com/montricwang/poeticus/issues/343) 修复《蕙風詞話》缺字和《介存齋論詞雜著》正文边界，完成六书可复现性，再根据实际收益考虑 10、20、40 部的规模实验；按 [#344](https://github.com/montricwang/poeticus/issues/344) 建立约 100 题、含独立 holdout 的证据评测集。逐步验证：
 
 ```text
 问题类型
@@ -139,7 +139,7 @@ Document Corpus 与实时业务数据继续分开。订单、库存、余额一�
 
 ### Search / Web fallback
 
-如果 curated Corpus 证明覆盖不足，再研究开放 Search Tool 的路由和证据权重。
+2026-10-20 已把 **DeepSeek Search/Fetch** 以默认关闭的本地研究工具合入 `main`，另提供维基文库官方搜索/单页读取、CNKGraph 古籍短查询等专门工具；**不意味着已启用公众联网问答**。下一步依 [#364](https://github.com/montricwang/poeticus/issues/364)、[#355](https://github.com/montricwang/poeticus/issues/355) 检查权限、成本、来源安全、Tool routing、真实 Agent 答案与退化；只在这些来源对具体问题有可验证增益时考虑开启。
 
 ### Multi-span evidence
 
@@ -152,6 +152,12 @@ Document Corpus 与实时业务数据继续分开。订单、库存、余额一�
 ```
 
 这项工作等真实全文 Case 提供明确增量再开。
+
+### Critic 的人格、知识与记忆（研究阶段；不阻塞当前发布）
+
+- **已存在**：Persona / Skills / Library / Notebook 的边界设计 [#148](https://github.com/montricwang/poeticus/issues/148)，Critic 独立判断/文风优先级 [#311](https://github.com/montricwang/poeticus/issues/311)，有据可查的批评方法提炼研究 [#354](https://github.com/montricwang/poeticus/issues/354)。
+- **已做但仅限原型**：[PR #348](https://github.com/montricwang/poeticus/pull/348) 的追加式 SQLite 观点事件原型（未合并、未接在线 Agent）；[#347](https://github.com/montricwang/poeticus/issues/347) 计划对比 LangMem / Mem0 / Hindsight 等成熟方案。它们**不能被标成已上线长期记忆**。
+- **下一步需要讨论，而非已确定实现**：三轴知识模型（保存的内容/数据结构/运行时调用）、从私有访谈材料抽取的创始人审美种子、可选 MAGI 式考据/审美/反证三视角。优先 3–5 段真实文献的提炼质量 [#341](https://github.com/montricwang/poeticus/issues/341)，再做隔离 Bootstrap [#312](https://github.com/montricwang/poeticus/issues/312) 和独立 Eval [#314](https://github.com/montricwang/poeticus/issues/314)；不预设三 Agent、模型微调、图数据库或自动修改 Persona。
 
 ## 4. Retrieval 当前停止线
 

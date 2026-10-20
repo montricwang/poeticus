@@ -20,12 +20,12 @@ Poeticus 的目标是帮助用户阅读中国古典诗词，必要时查阅**可
 
 | 能力领域 | 典型用户任务 | 现有 Poeticus 能力 | 当前待验证的缺口 / 责任 |
 | --- | --- | --- | --- |
-| **字词训诂** | “绸缪在这首词里作何解释？” | LLM 可以直接解释；`/api/analyze` 由模型输出 `glosses` | **部分具备**：缺独立、可追溯的古汉语义项证据；先由 [#24](https://github.com/montricwang/poeticus/issues/24) 验证词典增益，不预先接多个 Provider |
+| **字词训诂** | “绸缪在这首词里作何解释？” | LLM 可以直接解释；`/api/analyze` 由模型输出 `glosses`；本地可选萌典单词义项查询，另有私有《詩詞曲語辭匯釋》离线 CLI（尚未接 Agent） | **部分具备**：可选萌典及离线词典尚需验证在语境中的义项命中、释义准确与来源授权；先由 [#24](https://github.com/montricwang/poeticus/issues/24) 验证词典增益，不预先接多个 Provider |
 | **典故考证** | “‘前度刘郎’是什么故事、有哪些典源？” | `lookup_allusion` → CNKGraph；模型结合当前作品判断 | **已实现查询，质量待评估**：歧义、变体、未命中、实际典源及授权；相关 [#24](https://github.com/montricwang/poeticus/issues/24)、[#32](https://github.com/montricwang/poeticus/issues/32) |
 | **文本互文** | “‘片片轻鸥落晚沙’与杜甫有什么关系？” | `lookup_reference`；另有条件开放的 `search_predecessor_texts` → 自建 Poem Retrieval（已启用 Werneror 拼接去重，[PR #286](https://github.com/montricwang/poeticus/pull/286)） | **检索与去重已验收，解释证据仍有缺口**：候选全文上下文、年代标签与“相似≠化用”；[#174](https://github.com/montricwang/poeticus/issues/174)、[#175](https://github.com/montricwang/poeticus/issues/175) |
-| **古籍原文查证** | “这句话在《庄子》哪一篇？前后文是什么？” | CNKGraph 部分典故/成句可提供线索；没有统一的通用古籍全文查证 Tool | **待验证**：是否存在具备稳定定位、合法使用条件的外部搜索 API；归 [#184](https://github.com/montricwang/poeticus/issues/184)，不先复制整库 |
-| **文学史事实** | “苏轼写这首词时在何处？相关人物是谁？” | 主要依赖 LLM 既有知识和作品上下文 | **待验证**：高风险年代、人物关系需有出处；Web Search、CBDB 等只是候选，见 [#154](https://github.com/montricwang/poeticus/issues/154)、[#184](https://github.com/montricwang/poeticus/issues/184) |
-| **历代评论对读** | “张炎与王国维怎样分别评价姜夔？” | 本地开发环境已有 `search_documents` → PostgreSQL/pgvector + BM25 Hybrid；附卷则与 EPUB 位置 | **仅本地实验**：四书 916 节，跨书比较仍有 Gold 召回／证据覆盖缺口；尚无公开文献阅读入口、正式部署及许可核验；[#133](https://github.com/montricwang/poeticus/issues/133)、[#343](https://github.com/montricwang/poeticus/issues/343)、[#344](https://github.com/montricwang/poeticus/issues/344) |
+| **古籍原文查证** | “这句话在《庄子》哪一篇？前后文是什么？” | 新增可选 CNKGraph 古籍短句查询及维基文库搜索/单页读取；仅本地研究、默认关闭，并非通用全文书库 | **待验证**：候选结果能否回读可靠上下文、定位原文并满足来源许可；归 [#184](https://github.com/montricwang/poeticus/issues/184)，不先复制整库 |
+| **文学史事实** | “苏轼写这首词时在何处？相关人物是谁？” | 主要依赖 LLM 既有知识和作品上下文；本地可选 DeepSeek Search/Fetch 辅助查证，尚未作为公共服务启用 | **待验证**：高风险年代、人物关系需出处和交叉核验；联网工具仍需真实 Agent 质量与成本验证，CBDB 等仍为候选，见 [#154](https://github.com/montricwang/poeticus/issues/154)、[#184](https://github.com/montricwang/poeticus/issues/184) |
+| **历代评论对读** | “张炎与王国维怎样分别评价姜夔？” | 本地开发环境已有 `search_documents` → PostgreSQL/pgvector + BM25 Hybrid；附卷则与 EPUB 位置 | **仅本地实验**：2026-10-20 私有库已扩为六书、1152 节/向量，跨书比较及扩容效果仍无成套 Gold 评测；尚无公开文献阅读入口、正式部署及许可核验；[#133](https://github.com/montricwang/poeticus/issues/133)、[#343](https://github.com/montricwang/poeticus/issues/343)、[#344](https://github.com/montricwang/poeticus/issues/344) |
 | **文学分析与对话** | “这首词的句法、意象、声情如何？另一种解释是否成立？” | Agent Prompt + LLM；有短期历史、当前作品/选区及按需工具查询；整首赏析是独立模型调用 | **基本可用，仍需评估**：解释是否忠实于证据、能否比较冲突观点、是否受用户暗示；[#148](https://github.com/montricwang/poeticus/issues/148) |
 
 **分类规则**：上表按用户任务分组，而不是一行对应一个工具、一个数据库或一个独立 Agent；一个 Corpus 可服务多类任务，某类能力也可以组合多种来源。
@@ -33,7 +33,7 @@ Poeticus 的目标是帮助用户阅读中国古典诗词，必要时查阅**可
 ## 3. 已实现的 Agent 边界
 
 - `backend/ai/graph.py` 采用单 Agent ReAct 流程：`agent → tools → agent`，模型也可以不调用工具直接回答。
-- 四项 Tool **定义**：`lookup_allusion`、`lookup_reference`、`search_predecessor_texts`、`search_documents`。后两者分别由 Poem Retrieval URL 和本地 Document Corpus 配置启用；`search_documents` 仅本地 opt-in，不在公开 Railway Agent 暴露。
+- 原有四项 Tool **定义**：`lookup_allusion`、`lookup_reference`、`search_predecessor_texts`、`search_documents`；后两者分别由 Poem Retrieval URL 和本地 Document Corpus 配置启用。2026-10-20 `main` 新增三组默认关闭工具：**CNKGraph 词谱/韵书/古籍/实体研究（5 项）**、**DeepSeek Search/Fetch（2 项）**、**萌典及维基文库（3 项）**。开关、出处核查和限制见 [LangGraph](langgraph.md)、[开发指南](../development.md)。**代码有工具 ≠ 公开部署可用**；部分来源受非商业研究许可约束。
 - `backend/config.py` 的 `AGENT_MAX_TOOL_CALLS = 2` 是**单次用户请求累计真实工具调用次数**，不是固定两轮推理；预算耗尽后仍应给出回答。
 - `backend/evidence/provider.py` 已有最小 `EvidenceProvider` 接口；不能因为候选变多就提前扩展成所有外部资源的万能 Provider。
 - `backend/ai/model.py::analyze_poem` 的整首赏析目前单独调用模型，**并不自动经过上述 Agent 工具循环**。

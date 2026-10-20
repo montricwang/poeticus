@@ -1,4 +1,10 @@
-# Document Corpus：本地 PostgreSQL 文献库（2026-10-19）
+# Document Corpus：本地 PostgreSQL 文献库
+
+> **现状注记（2026-10-20，私人开发环境）**：首批四书的正式 CLI/校验仍按下文执行；另通过**私有专项转换和导入脚本**新增刘熙载《詞概》115 节、陈洵《海綃說詞》121 节。当天事务提交及查询实测为 **6 部文献、1152 retrieval chunks / 1152 embeddings**，首批四书的 916 条未变。两部新书的 EPUB、哈希、定位及向量缓存保存在私人 `poeticus-data/document-corpus/`；不在 Git 中，**不能靠下文四书 CLI 自动重建全部六书**。已用两条实际 Agent 查询确认两部新书可命中，但尚无扩容前后 Gold/延迟对照；未公开部署。记录见 [#343](https://github.com/montricwang/poeticus/issues/343)。
+>
+> 本次同时下载、预检《蕙風詞話》（11 处 `□` 占位待核）及《介存齋論詞雜著》（正文与其他序文/附录需分离）；二者**均未导入**。这不是正式入库失败，也不能按目前原始 EPUB 直接无损按则检索。增量《詞概》采用私有段落编号、非维基文库原生段落锚点；公开段落跳转前须再做定位验证。
+
+以下“本轮已实现”和四书命令主要记录 **2026-10-19 首批基线**，不将一次性私有六书导入冒充已通用化的代码能力。
 
 关联 [#133](https://github.com/montricwang/poeticus/issues/133)、[词话检索实验](../../scripts/experiments/README-document-rag.md)。
 
