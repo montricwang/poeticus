@@ -142,6 +142,20 @@ class _ToolQuery:
     extra_queries: tuple[str, ...] = ()
 
 
+def _validate_registered_tool(call: ToolCall) -> None:
+    """Only tools advertised to the model can be executed."""
+    registered = {
+        tool["function"]["name"]
+        for tool in available_tools(
+            text_retrieval_client.enabled,
+            document_retrieval.enabled,
+            CNKGRAPH_RESEARCH_TOOLS_ENABLED,
+        )
+    }
+    if call["name"] not in registered:
+        raise ValueError(f"本轮未开放工具：{call['name']}")
+
+
 def _parse_tool_query(call: ToolCall) -> _ToolQuery:
     """解析工具名称和 JSON 参数，生成已校验的查询及结果数量上限。"""
 
@@ -681,6 +695,7 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                 count += 1
 
                 try:
+                    _validate_registered_tool(call)
                     validated = _parse_tool_query(call)
                     query = validated.text
                     evidence_type = validated.evidence_type

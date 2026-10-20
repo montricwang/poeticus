@@ -13,7 +13,7 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
                 "查询中国古典诗词中的人物故事、掌故、神话传说和典故性短语的出处或含义。"
                 "适合回答‘这个典故是什么故事/什么意思’；"
                 "如果用户明确问‘借了谁哪一句诗、化用了哪段前代文本’，"
-                "不要用本工具，应优先使用 search_predecessor_texts。"
+                "不要当作典故事义查，应优先使用本轮实际提供的前代诗句检索工具。"
                 "不要用于整句诗文的全文相似检索、作品创作年代、作者生平、"
                 "诗中人物身份或普通文学赏析。"
             ),
@@ -44,7 +44,7 @@ TOOLS: list[ChatCompletionFunctionToolParam] = [
                 "返回结果只是候选，可能包含当前作品或后代作品，"
                 "必须结合作者年代和文本关系判断。"
                 "不适合解释人物故事型典故，也不能保证识别高度压缩或反用。"
-                "若 search_predecessor_texts 可用，同一个文本来源问题不要先用本工具重复试探；"
+                "若本地前代诗句检索工具可用，同一个文本来源问题不要先用本工具重复试探；"
                 "只有本地 Corpus Tool 不可用，或已有明确理由需要外部 reference evidence 时再使用。"
             ),
             "parameters": {
@@ -109,7 +109,7 @@ DOCUMENT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
             "检索人物本名可能漏掉字、号（如周邦彦/美成、姜夔/白石）；"
             "请在 queries 中提供一到两条包含可能别称或关键评语的扩展查询，原始用户问题会自动保留。"
             "文献只是候选材料，不等于它已经充分支持结论。"
-            "普通典故故事查询使用 lookup_allusion；查前代诗句化用使用 search_predecessor_texts，"
+            "普通典故故事查询使用 lookup_allusion；查前代诗句化用优先用实际提供的诗文来源工具，"
             "不要混淆词话评论和诗句相似性。"
         ),
         "parameters": {
@@ -169,7 +169,7 @@ CNKGRAPH_RESEARCH_TOOLS: list[ChatCompletionFunctionToolParam] = [
                 "适合查‘哪本古书记过这句话、某个词学概念见于何书’。"
                 "提供候选的书卷与可回查 ID，不能据字面命中断定原始出处或学术结论。"
                 "要找本地已导入的词话研究评论优先用 search_documents；"
-                "典故故事优先用 lookup_allusion；诗句化用优先用 search_predecessor_texts。"
+                "典故故事优先用 lookup_allusion；诗句化用优先用本轮提供的前代诗句检索工具。"
             ),
             "parameters": {
                 "type": "object",

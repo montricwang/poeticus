@@ -430,3 +430,60 @@ def test_first_batch_tools_reject_unsafe_parameters_when_disabled(monkeypatch):
                 "id": "1", "name": name,
                 "arguments": json.dumps(payload),
             })
+
+
+def test_book_search_cnkg_known_404_empty_is_no_hit(monkeypatch):
+    client = fake_client(
+        monkeypatch,
+        lambda _: response({"Message": "没找到"}, status=404),
+    )
+    result = asyncio.run(client.search_books("怎敵他晚來風急"))
+    assert result["status"] == "no_hit"
+    assert result["total_matches_reported"] == 0
+    assert result["hits"] == []
+
+
+@pytest.mark.parametrize("payload", [
+    {"Message": "页面不存在"},
+    {"Message": "没找到", "Code": "InvalidRequest"},
+    {"error": "not found"},
+])
+def test_book_search_other_404_never_silent_no_hit(monkeypatch, payload):
+    client = fake_client(monkeypatch, lambda _: response(payload, status=404))
+    with pytest.raises(CNKGraphResearchError, match="HTTP 404"):
+        asyncio.run(client.search_books("查查"))
+
+
+def test_unregistered_tool_rejected_by_parser_and_execution(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
+    from backend.ai import graph as agent
+
+    class DisabledTextRetrieval:
+        enabled = False
+
+    monkeypatch.setattr(agent, "text_retrieval_client", DisabledTextRetrieval())
+    call = {
+        "id": "missing-text-service",
+        "name": "search_predecessor_texts",
+        "arguments": '{"text":"落花人独立"}',
+    }
+    with pytest.raises(ValueError, match="未开放工具"):
+        agent._validate_registered_tool(call)
+
+    response = agent.execute_tools({
+        "poem": "落花人独立", "question": "从哪来？",
+        "messages": [], "tool_calls": [call],
+    })
+    result = json.loads(response["tool_results"][0]["content"])
+    assert result["status"] == "error"
+    assert "未开放工具" in result["message"]
+
+
+def test_prompt_does_not_invite_unavailable_tool_hallucination():
+    from backend.ai.prompt_loader import load_prompt
+
+    prompt = load_prompt("agent_decide")
+    assert "search_predecessor_texts" not in prompt
+    assert "本轮实际开放的工具" in prompt
+    assert "模型已有知识" in prompt
+    assert "没有核对原典" in prompt

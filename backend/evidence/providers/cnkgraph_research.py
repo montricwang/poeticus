@@ -32,11 +32,17 @@ class CNKGraphResearchClient:
     async def _get(self, path: str) -> object:
         return await self._request_json("GET", path)
 
-    async def _post(self, path: str, payload: dict[str, object]) -> object:
-        return await self._request_json("POST", path, payload)
+    async def _post(
+        self, path: str, payload: dict[str, object],
+        *, allow_book_no_hit: bool = False,
+    ) -> object:
+        return await self._request_json(
+            "POST", path, payload, allow_book_no_hit=allow_book_no_hit,
+        )
 
     async def _request_json(
         self, method: str, path: str, payload: dict[str, object] | None = None,
+        *, allow_book_no_hit: bool = False,
     ) -> object:
         try:
             async with httpx.AsyncClient(
@@ -45,6 +51,25 @@ class CNKGraphResearchClient:
                 follow_redirects=False,
             ) as client:
                 async with client.stream(method, path, json=payload) as response:
+                    if (
+                        allow_book_no_hit
+                        and method == "POST"
+                        and path == "/Api/Book/Find"
+                        and response.status_code == 404
+                    ):
+                        # Live observation: Book/Find uses a JSON 404 {"Message":"没找到"}
+                        # for a valid query with no matches. Other 404s remain errors.
+                        raw_error = bytearray()
+                        async for piece in response.aiter_bytes():
+                            if len(raw_error) + len(piece) > 1024:
+                                break
+                            raw_error.extend(piece)
+                        try:
+                            details = json.loads(raw_error)
+                        except (ValueError, UnicodeDecodeError):
+                            details = None
+                        if details == {"Message": "没找到"}:
+                            return {"Count": 0, "Result": []}
                     response.raise_for_status()
                     if "json" not in response.headers.get("content-type", "").lower():
                         raise CNKGraphResearchError("CNKGraph 返回非 JSON 数据")
@@ -153,7 +178,10 @@ class CNKGraphResearchClient:
     async def search_books(self, query: str) -> dict[str, object]:
         """在古籍中按短关键词检索，保留书卷 ID 与短命中片段。"""
         # 实测可用的 Postman 路由是 /Api/Book/Find，大小写与 Swagger 不同。
-        raw = await self._post("/Api/Book/Find", {"key": query, "pageNo": 1})
+        raw = await self._post(
+            "/Api/Book/Find", {"key": query, "pageNo": 1},
+            allow_book_no_hit=True,
+        )
         if not isinstance(raw, dict):
             raise CNKGraphResearchError("CNKGraph 古籍检索响应结构异常")
         error = raw.get("Error")

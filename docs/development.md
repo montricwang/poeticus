@@ -109,9 +109,9 @@ POETICUS_CNKGRAPH_RESEARCH_TOOLS_ENABLED=true
 - `lookup_rhyme`：按韵书查询韵部目录，传入韵部 ID 后获取该部字表概要，也可以在已知韵部内判断指定单字是否收录。由于原厂的单字综合接口可能返回数 MB，目前**不支持仅凭一个字直接判定完整韵书中的唯一韵部**；需先定位韵部。
 - `resolve_entities`：对当前选区或短诗文做候选实体标注，返回人物、地点、词汇等的类型、外部 ID、原文位置和少量属性；外部标注不直接写回主库。
 
-五者仅在开关打开时向模型注册；开关关闭时即使模型构造工具调用也会拒绝。原有典故、出处、作品检索和词话 RAG 不受影响。工具失败与成功无命中分别返回，单次请求 12 秒超时、每次响应最多读取 96 KiB；模型与资料来源仍需核验结果。**不支持批量导出与长期缓存**。
+五者仅在开关打开时向模型注册；开关关闭时即使模型构造工具调用也会拒绝。 Agent 在执行模型提出的工具调用前，还会检查**本轮真实注册的工具名**；即使提示词、旧对话或模型自行输出了未开放的名称，也不会进入网络适配器。原有典故、出处、作品检索和词话 RAG 不受影响。古籍 `/Api/Book/Find` 仅在 404 JSON **恰为** `{"Message":"没找到"}` 时按成功零命中处理，其他 HTTP 404 仍为错误。单次请求 12 秒超时、每次响应最多读取 96 KiB；模型与资料来源仍需核验结果。**不支持批量导出与长期缓存**。
 
-入口：`backend/ai/tools.py` 工具声明；`backend/ai/graph.py` 参数校验及回传；`backend/evidence/providers/cnkgraph_research.py` 外部 HTTP。离线回归：`.venv/bin/python -m pytest -q tests/test_cnkgraph_research_tools.py tests/test_agent.py`。具体模型自主工具选择需要统一进行本地真实对话验收。完整公开端点探测资产见 [CNKGraph 普查 PR #353](https://github.com/montricwang/poeticus/pull/353)，接入任务为 [#355](https://github.com/montricwang/poeticus/issues/355)。
+入口：`backend/ai/tools.py` 工具声明；`backend/ai/graph.py` 参数校验及回传；`backend/evidence/providers/cnkgraph_research.py` 外部 HTTP。离线回归：`.venv/bin/python -m pytest -q tests/test_cnkgraph_research_tools.py tests/test_agent.py`。2026-10-20 真实模型针对 reader_016、057、077、084 的小规模回归：016/057 改用已开放的 `lookup_reference`；077/084 的明确无命中不再是 404 错误。研究型回答 Prompt 增加「本次检得证据」与「已有知识／待核推断」区分；这只能降低误引风险，不能代替真实答案核查。完整研究型 Tool Trace（词律细节、书卷命中摘要）见题库 PR #358 的运行脚本。具体模型自主工具选择需要统一进行本地真实对话验收。完整公开端点探测资产见 [CNKGraph 普查 PR #353](https://github.com/montricwang/poeticus/pull/353)，接入任务为 [#355](https://github.com/montricwang/poeticus/issues/355)。
 
 只有 schema、没有作品数据时，目录为空是正常现象。
 
