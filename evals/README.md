@@ -16,6 +16,8 @@ Eval 用来回答**哪一类问题改善了、改善是否真的来自工具证�
 
 注意两种对照**不是同一个控制组**：Seed 的 `control_no_tools` 仍使用当前 Agent Prompt / Tool Schema、只禁用执行；Retrieval Increment 的 `standalone_llm` 则不注入 Poeticus Agent Prompt 或 Tool Schema，才能观察更接近模型自身参数知识的表现。
 
+已合并主线的全工具首轮小样本实测：[2026-10-20 20 题冒烟报告](reader_100_full_tools_20261020.md)，请注意这是运行连通性而非文学事实质量评分。
+
 ## Reader 100：综合读者题库（2026-10-20 草案）
 
 新题库独立于 [#344 Document RAG 专项 100 题](https://github.com/montricwang/poeticus/issues/344)；它讨论的是文学阅读与研究型 Agent 的**综合对话能力**，不是只检查 Document Hybrid 召回率。
