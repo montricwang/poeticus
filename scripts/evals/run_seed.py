@@ -158,6 +158,139 @@ def _evidence_preview(item: dict[str, object]) -> dict[str, object]:
     return preview
 
 
+def _structured_tool_preview(payload: dict[str, object]) -> dict[str, object]:
+    """Small, source-addressable traces for non-Evidence research tools.
+
+    Keep identifiers and decision-relevant snippets, not whole texts or raw
+    third-party responses. These are audit aids rather than verified Gold.
+    """
+    preview: dict[str, object] = {}
+    provider = payload.get("provider")
+    if provider in ("deepseek_web", "wikisource", "moedict"):
+        preview["provider"] = provider
+        for key in ("url", "title", "headword", "query", "source", "timestamp"):
+            value = payload.get(key)
+            if isinstance(value, str):
+                preview[key] = value[:220]
+        for key in ("revision_id", "pageid"):
+            value = payload.get(key)
+            if type(value) is int:
+                preview[key] = value
+        for key in ("content_excerpt", "wikitext_excerpt"):
+            value = payload.get(key)
+            if isinstance(value, str):
+                preview[key] = value[:240]
+
+        results = payload.get("results")
+        if isinstance(results, list):
+            preview["results"] = [
+                {
+                    "title": str(item.get("title") or "")[:110],
+                    "url": str(item.get("url") or "")[:220],
+                    "pageid": item.get("pageid"),
+                    "snippet": str(item.get("snippet") or "")[:130],
+                }
+                for item in results[:5] if isinstance(item, dict)
+            ]
+        entries = payload.get("entries")
+        if isinstance(entries, list):
+            preview["entries"] = [
+                {
+                    "bopomofo": str(item.get("bopomofo") or "")[:55],
+                    "pinyin": str(item.get("pinyin") or "")[:55],
+                    "definitions": [
+                        {
+                            "definition_original":
+                                str(d.get("definition_original") or "")[:160],
+                            "examples_original": [
+                                str(ex)[:120] for ex in (d.get("examples_original") or [])[:1]
+                                if isinstance(ex, str)
+                            ],
+                        }
+                        for d in (item.get("definitions") or [])[:3]
+                        if isinstance(d, dict)
+                    ],
+                }
+                for item in entries[:2] if isinstance(item, dict)
+            ]
+        return preview
+
+    if provider != "cnkgraph":
+        return preview
+
+    preview["provider"] = "cnkgraph"
+    if isinstance(payload.get("total_matches_reported"), int):
+        preview["total_matches_reported"] = payload["total_matches_reported"]
+
+    hits = payload.get("hits")
+    if isinstance(hits, list):
+        preview["hits"] = [
+            {
+                "book": str(hit.get("book") or "")[:130],
+                "book_id": str(hit.get("book_id") or "")[:65],
+                "volume": str(hit.get("volume") or "")[:100],
+                "volume_id": str(hit.get("volume_id") or "")[:90],
+                "matched_text": str(hit.get("matched_text") or "")[:100],
+                "before": str(hit.get("before") or "")[-65:],
+                "after": str(hit.get("after") or "")[:65],
+            }
+            for hit in hits[:5] if isinstance(hit, dict)
+        ]
+
+    analyses = payload.get("analyses")
+    if isinstance(analyses, list):
+        preview["analyses"] = [
+            {
+                "standard": str(a.get("standard") or "")[:32],
+                "tune_id": a.get("tune_id"),
+                "format_index": a.get("format_index"),
+                "format_description": str(a.get("format_description") or "")[:180],
+                "wrong_rhymes": [
+                    {
+                        "rhyme_category": str(group.get("rhyme_category") or "")[:95],
+                        "rhyme_chars": str(group.get("rhyme_chars") or "")[:95],
+                        "wrong_characters": [
+                            str(char.get("character") or "")[:3]
+                            for char in (group.get("wrong_characters") or [])[:10]
+                            if isinstance(char, dict)
+                        ],
+                    }
+                    for group in (a.get("invalid_rhymes") or [])[:3]
+                    if isinstance(group, dict)
+                ],
+                "clause_errors": (a.get("clause_errors") or [])[:5],
+            }
+            for a in analyses[:2] if isinstance(a, dict)
+        ]
+
+    candidates = payload.get("candidates")
+    if isinstance(candidates, list):
+        preview["candidates"] = [
+            {
+                "id": str(entry.get("id") or "")[:65],
+                "name": str(entry.get("name") or "")[:70],
+            }
+            for entry in candidates[:7] if isinstance(entry, dict)
+        ]
+    for key in ("id", "name", "format_count", "book", "category_id"):
+        value = payload.get(key)
+        if isinstance(value, (str, int)):
+            preview[key] = str(value)[:100]
+
+    labels = payload.get("labels")
+    if isinstance(labels, list):
+        preview["labels"] = [
+            {
+                "type": str(item.get("type") or "")[:35],
+                "id": str(item.get("id") or "")[:75],
+                "text": str(item.get("text") or "")[:70],
+            }
+            for item in labels[:10] if isinstance(item, dict)
+        ]
+
+    return preview
+
+
 def _tool_trace(messages: list[dict[str, object]]) -> AgentTrace:
     calls: list[dict[str, object]] = []
     results: list[dict[str, object]] = []
@@ -207,6 +340,7 @@ def _tool_trace(messages: list[dict[str, object]]) -> AgentTrace:
                 )
                 if payload.get("message"):
                     result["message"] = payload.get("message")
+                result.update(_structured_tool_preview(payload))
             else:
                 result["raw_content"] = payload
 

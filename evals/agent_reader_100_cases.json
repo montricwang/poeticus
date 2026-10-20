@@ -1,0 +1,1375 @@
+{
+  "schema_version": "1",
+  "dataset_id": "poeticus_agent_reader_100",
+  "dataset_version": 1,
+  "status": "draft",
+  "created_on": "2026-10-20",
+  "description": "面向初中高阶真实读者的开放式文学问答题库；不按 API 出题，不预设工具调用或生成标准答案。",
+  "source_note": "公共领域古典诗词文字候选；现有 Seed 复用源与新增文字仍待独立版本校核。",
+  "fixtures": {
+    "su_water": {
+      "title": "水调歌头·明月几时有",
+      "author": "苏轼",
+      "dynasty": "宋",
+      "poem": "明月几时有？把酒问青天。不知天上宫阙，今夕是何年。我欲乘风归去，又恐琼楼玉宇，高处不胜寒。起舞弄清影，何似在人间。\n转朱阁，低绮户，照无眠。不应有恨，何事长向别时圆？人有悲欢离合，月有阴晴圆缺，此事古难全。但愿人长久，千里共婵娟。",
+      "text_scope": "full_from_existing_seed",
+      "provenance": "evals/seed_cases.json:direct_hesi_renjian",
+      "text_review_status": "pending_independent_collation"
+    },
+    "su_nian": {
+      "title": "念奴娇·赤壁怀古",
+      "author": "苏轼",
+      "dynasty": "宋",
+      "poem": "大江东去，浪淘尽，千古风流人物。故垒西边，人道是，三国周郎赤壁。乱石穿空，惊涛拍岸，卷起千堆雪。江山如画，一时多少豪杰。\n遥想公瑾当年，小乔初嫁了，雄姿英发。羽扇纶巾，谈笑间，樯橹灰飞烟灭。故国神游，多情应笑我，早生华发。人生如梦，一尊还酹江月。",
+      "text_scope": "full_from_existing_seed",
+      "provenance": "evals/seed_cases.json:direct_gongjin_identity",
+      "text_review_status": "pending_independent_collation"
+    },
+    "xin_yong": {
+      "title": "永遇乐·京口北固亭怀古",
+      "author": "辛弃疾",
+      "dynasty": "宋",
+      "poem": "千古江山，英雄无觅，孙仲谋处。舞榭歌台，风流总被，雨打风吹去。斜阳草树，寻常巷陌，人道寄奴曾住。想当年，金戈铁马，气吞万里如虎。\n元嘉草草，封狼居胥，赢得仓皇北顾。四十三年，望中犹记，烽火扬州路。可堪回首，佛狸祠下，一片神鸦社鼓。凭谁问：廉颇老矣，尚能饭否？",
+      "text_scope": "full_from_existing_seed",
+      "provenance": "evals/seed_cases.json:allusion_foli_identity",
+      "text_review_status": "pending_independent_collation"
+    },
+    "yan_lin": {
+      "title": "临江仙·梦后楼台高锁",
+      "author": "晏几道",
+      "dynasty": "宋",
+      "poem": "梦后楼台高锁，酒醒帘幕低垂。去年春恨却来时。落花人独立，微雨燕双飞。\n记得小苹初见，两重心字罗衣。琵琶弦上说相思。当时明月在，曾照彩云归。",
+      "text_scope": "full_from_existing_seed",
+      "provenance": "evals/seed_cases.json:reference_luohua_yandu",
+      "text_review_status": "pending_independent_collation"
+    },
+    "jiang_yang": {
+      "title": "扬州慢·淮左名都",
+      "author": "姜夔",
+      "dynasty": "宋",
+      "poem": "淮左名都，竹西佳处，解鞍少驻初程。过春风十里，尽荠麦青青。自胡马窥江去后，废池乔木，犹厌言兵。渐黄昏，清角吹寒，都在空城。\n杜郎俊赏，算而今，重到须惊。纵豆蔻词工，青楼梦好，难赋深情。二十四桥仍在，波心荡，冷月无声。念桥边红药，年年知为谁生？",
+      "text_scope": "full_from_existing_seed",
+      "provenance": "evals/seed_cases.json:reference_dulang",
+      "text_review_status": "pending_independent_collation"
+    },
+    "he_qing": {
+      "title": "青玉案·凌波不过横塘路",
+      "author": "贺铸",
+      "dynasty": "宋",
+      "poem": "凌波不过横塘路，但目送、芳尘去。锦瑟华年谁与度？月桥花院，琐窗朱户，只有春知处。\n飞云冉冉蘅皋暮，彩笔新题断肠句。若问闲情都几许？一川烟草，满城风絮，梅子黄时雨。",
+      "text_scope": "full_from_existing_seed",
+      "provenance": "evals/seed_cases.json:direct_three_images",
+      "text_review_status": "pending_independent_collation"
+    },
+    "li_sheng": {
+      "title": "声声慢·寻寻觅觅",
+      "author": "李清照",
+      "dynasty": "宋",
+      "poem": "寻寻觅觅，冷冷清清，凄凄惨惨戚戚。乍暖还寒时候，最难将息。三杯两盏淡酒，怎敌他、晚来风急！雁过也，正伤心，却是旧时相识。\n满地黄花堆积，憔悴损，如今有谁堪摘？守着窗儿，独自怎生得黑！梧桐更兼细雨，到黄昏、点点滴滴。这次第，怎一个愁字了得！",
+      "text_scope": "full_from_existing_seed",
+      "provenance": "evals/seed_cases.json:dictionary_jiangxi",
+      "text_review_status": "pending_independent_collation"
+    },
+    "zhou_su": {
+      "title": "苏幕遮·燎沉香",
+      "author": "周邦彦",
+      "dynasty": "宋",
+      "poem": "燎沉香，消溽暑。鸟雀呼晴，侵晓窥檐语。叶上初阳干宿雨，水面清圆，一一风荷举。\n故乡遥，何日去？家住吴门，久作长安旅。五月渔郎相忆否？小楫轻舟，梦入芙蓉浦。",
+      "text_scope": "full_from_existing_seed",
+      "provenance": "evals/seed_cases.json:ambiguity_yulang",
+      "text_review_status": "pending_independent_collation"
+    },
+    "li_ru": {
+      "title": "如梦令·昨夜雨疏风骤",
+      "author": "李清照",
+      "dynasty": "宋",
+      "poem": "昨夜雨疏风骤，浓睡不消残酒。试问卷帘人，却道海棠依旧。知否，知否？应是绿肥红瘦。",
+      "text_scope": "full_candidate",
+      "provenance": "traditional_public_domain_text_candidate",
+      "text_review_status": "pending_independent_collation"
+    },
+    "qin_que": {
+      "title": "鹊桥仙·纤云弄巧",
+      "author": "秦观",
+      "dynasty": "宋",
+      "poem": "纤云弄巧，飞星传恨，银汉迢迢暗度。",
+      "text_scope": "excerpt",
+      "provenance": "traditional_public_domain_text_candidate",
+      "text_review_status": "pending_independent_collation"
+    },
+    "liu_yu": {
+      "title": "雨霖铃·寒蝉凄切",
+      "author": "柳永",
+      "dynasty": "宋",
+      "poem": "寒蝉凄切，对长亭晚，骤雨初歇。都门帐饮无绪，留恋处、兰舟催发。",
+      "text_scope": "excerpt",
+      "provenance": "traditional_public_domain_text_candidate",
+      "text_review_status": "pending_independent_collation"
+    },
+    "li_yu": {
+      "title": "虞美人·春花秋月何时了",
+      "author": "李煜",
+      "dynasty": "五代",
+      "poem": "春花秋月何时了？往事知多少。小楼昨夜又东风，故国不堪回首月明中。",
+      "text_scope": "excerpt",
+      "provenance": "traditional_public_domain_text_candidate",
+      "text_review_status": "pending_independent_collation"
+    },
+    "xin_yuan": {
+      "title": "青玉案·元夕",
+      "author": "辛弃疾",
+      "dynasty": "宋",
+      "poem": "东风夜放花千树。更吹落、星如雨。宝马雕车香满路。",
+      "text_scope": "excerpt",
+      "provenance": "traditional_public_domain_text_candidate",
+      "text_review_status": "pending_independent_collation"
+    },
+    "su_ding": {
+      "title": "定风波·莫听穿林打叶声",
+      "author": "苏轼",
+      "dynasty": "宋",
+      "poem": "莫听穿林打叶声，何妨吟啸且徐行。竹杖芒鞋轻胜马，谁怕？一蓑烟雨任平生。料峭春风吹酒醒，微冷，山头斜照却相迎。回首向来萧瑟处，归去，也无风雨也无晴。",
+      "text_scope": "full_candidate",
+      "provenance": "traditional_public_domain_text_candidate",
+      "text_review_status": "pending_independent_collation"
+    },
+    "wen_pu": {
+      "title": "菩萨蛮·小山重叠金明灭",
+      "author": "温庭筠",
+      "dynasty": "唐",
+      "poem": "小山重叠金明灭，鬓云欲度香腮雪。",
+      "text_scope": "excerpt",
+      "provenance": "traditional_public_domain_text_candidate",
+      "text_review_status": "pending_independent_collation"
+    },
+    "liu_gan": {
+      "title": "八声甘州·对潇潇暮雨洒江天",
+      "author": "柳永",
+      "dynasty": "宋",
+      "poem": "对潇潇暮雨洒江天，一番洗清秋。",
+      "text_scope": "excerpt",
+      "provenance": "traditional_public_domain_text_candidate",
+      "text_review_status": "pending_independent_collation"
+    },
+    "wang_wei": {
+      "title": "送元二使安西",
+      "author": "王维",
+      "dynasty": "唐",
+      "poem": "渭城朝雨浥轻尘，客舍青青柳色新。",
+      "text_scope": "excerpt",
+      "provenance": "traditional_public_domain_text_candidate",
+      "text_review_status": "pending_independent_collation"
+    }
+  },
+  "cases": [
+    {
+      "id": "reader_001",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“宫阙”是宫殿吗？这里指哪儿？",
+        "fixture_id": "su_water",
+        "selection": "宫阙"
+      },
+      "review_focus": "结合语境说明字面义和天上想象。"
+    },
+    {
+      "id": "reader_002",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“低绮户”的“绮户”是什么样的窗户？",
+        "fixture_id": "su_water",
+        "selection": "绮户"
+      },
+      "review_focus": "说明词义及画面，不脱离原句。"
+    },
+    {
+      "id": "reader_003",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“最难将息”里的“将息”是什么意思？",
+        "fixture_id": "li_sheng",
+        "selection": "将息"
+      },
+      "review_focus": "说明旧白话中的休养调理义。"
+    },
+    {
+      "id": "reader_004",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“这次第”中的“次第”和我们今天说的次序一样吗？",
+        "fixture_id": "li_sheng",
+        "selection": "次第"
+      },
+      "review_focus": "解释此处指眼前情状。"
+    },
+    {
+      "id": "reader_005",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“消溽暑”具体是在说什么天气？",
+        "fixture_id": "zhou_su",
+        "selection": "溽暑"
+      },
+      "review_focus": "说明潮湿闷热及上下文。"
+    },
+    {
+      "id": "reader_006",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“胡马窥江”为什么用“窥”字？",
+        "fixture_id": "jiang_yang",
+        "selection": "胡马窥江"
+      },
+      "review_focus": "说明动词效果和历史战争语境。"
+    },
+    {
+      "id": "reader_007",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“芳尘去”是说地上真的有香味吗？",
+        "fixture_id": "he_qing",
+        "selection": "芳尘"
+      },
+      "review_focus": "区分字面画面与人物踪迹。"
+    },
+    {
+      "id": "reader_008",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "词末的“酹”应该怎么读，是什么意思？",
+        "fixture_id": "su_nian",
+        "selection": "酹江月"
+      },
+      "review_focus": "兼顾读音、动作与祭酒情境。"
+    },
+    {
+      "id": "reader_009",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“兰舟催发”的“兰舟”是什么？",
+        "fixture_id": "liu_yu",
+        "selection": "兰舟"
+      },
+      "review_focus": "说明修辞性称呼与送别场景。"
+    },
+    {
+      "id": "reader_010",
+      "level": "beginner",
+      "topic": "字词训诂",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“鬓云欲度香腮雪”怎么理解？",
+        "fixture_id": "wen_pu",
+        "selection": "鬓云"
+      },
+      "review_focus": "先解释鬓发与肤色意象，避免过度阐释。"
+    },
+    {
+      "id": "reader_011",
+      "level": "beginner",
+      "topic": "典故故事",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "辛弃疾说的“寄奴”是谁？为什么不写正式名字？",
+        "fixture_id": "xin_yong",
+        "selection": "寄奴"
+      },
+      "review_focus": "识别人名及历史称呼与词中作用。"
+    },
+    {
+      "id": "reader_012",
+      "level": "beginner",
+      "topic": "典故故事",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“佛狸祠”里的“佛狸”真是佛教人物吗？",
+        "fixture_id": "xin_yong",
+        "selection": "佛狸祠"
+      },
+      "review_focus": "分清历史人物称号与宗教名称。"
+    },
+    {
+      "id": "reader_013",
+      "level": "beginner",
+      "topic": "典故故事",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“封狼居胥”讲的是谁的故事？",
+        "fixture_id": "xin_yong",
+        "selection": "封狼居胥"
+      },
+      "review_focus": "交代历史事件并联系辛词反用。"
+    },
+    {
+      "id": "reader_014",
+      "level": "beginner",
+      "topic": "典故故事",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“廉颇老矣，尚能饭否”为什么问吃不吃得下饭？",
+        "fixture_id": "xin_yong",
+        "selection": "廉颇老矣"
+      },
+      "review_focus": "解释典故故事和自况。"
+    },
+    {
+      "id": "reader_015",
+      "level": "beginner",
+      "topic": "典故故事",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "姜夔词里的“杜郎”是哪位诗人？",
+        "fixture_id": "jiang_yang",
+        "selection": "杜郎"
+      },
+      "review_focus": "人物与扬州诗歌关联。"
+    },
+    {
+      "id": "reader_016",
+      "level": "beginner",
+      "topic": "典故故事",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“锦瑟华年”是不是在引用另一首诗？",
+        "fixture_id": "he_qing",
+        "selection": "锦瑟华年"
+      },
+      "review_focus": "指出可能文本联系及原句出处待核。"
+    },
+    {
+      "id": "reader_017",
+      "level": "beginner",
+      "topic": "典故故事",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“公瑾”和“小乔”是怎样的关系？",
+        "fixture_id": "su_nian",
+        "selection": "公瑾"
+      },
+      "review_focus": "核人物及词中形象，勿演绎小说细节为史实。"
+    },
+    {
+      "id": "reader_018",
+      "level": "beginner",
+      "topic": "典故故事",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "七夕的牛郎织女故事和秦观这首词有什么关系？",
+        "fixture_id": "qin_que",
+        "selection": "飞星传恨"
+      },
+      "review_focus": "说明神话背景，不要求列尽异文。"
+    },
+    {
+      "id": "reader_019",
+      "level": "beginner",
+      "topic": "典故故事",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“小苹”到底是什么人？我们知道她的真实经历吗？",
+        "fixture_id": "yan_lin",
+        "selection": "小苹"
+      },
+      "review_focus": "分清词中指称与可靠生平资料。"
+    },
+    {
+      "id": "reader_020",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“何似在人间”是舍不得天上，还是更喜欢人间？",
+        "fixture_id": "su_water",
+        "selection": "何似在人间"
+      },
+      "review_focus": "联系前后句分析转折，允许解释层次。"
+    },
+    {
+      "id": "reader_021",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“卷起千堆雪”写的是下雪吗？",
+        "fixture_id": "su_nian",
+        "selection": "千堆雪"
+      },
+      "review_focus": "识别浪花比喻与动态。"
+    },
+    {
+      "id": "reader_022",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“一川烟草”为什么可以写愁？",
+        "fixture_id": "he_qing",
+        "selection": "一川烟草"
+      },
+      "review_focus": "解释景物与情绪联结。"
+    },
+    {
+      "id": "reader_023",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“一一风荷举”好在哪里？",
+        "fixture_id": "zhou_su",
+        "selection": "一一风荷举"
+      },
+      "review_focus": "关注动词、荷叶形态和节奏。"
+    },
+    {
+      "id": "reader_024",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "开头一连用了那么多叠字，读起来有什么效果？",
+        "fixture_id": "li_sheng",
+        "selection": "寻寻觅觅"
+      },
+      "review_focus": "声韵节奏和心理递进。"
+    },
+    {
+      "id": "reader_025",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“绿肥红瘦”说的是哪两种颜色？为什么用肥瘦？",
+        "fixture_id": "li_ru",
+        "selection": "绿肥红瘦"
+      },
+      "review_focus": "解释叶花与拟人词语。"
+    },
+    {
+      "id": "reader_026",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "柳永为什么要先写蝉声和雨？",
+        "fixture_id": "liu_yu",
+        "selection": "寒蝉凄切"
+      },
+      "review_focus": "铺垫离情的听觉天气场景。"
+    },
+    {
+      "id": "reader_027",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“故国不堪回首”到底是什么心情？",
+        "fixture_id": "li_yu",
+        "selection": "故国不堪回首"
+      },
+      "review_focus": "联系亡国处境但不过度心理诊断。"
+    },
+    {
+      "id": "reader_028",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“一蓑烟雨任平生”里的“任”是什么语气？",
+        "fixture_id": "su_ding",
+        "selection": "一蓑烟雨任平生"
+      },
+      "review_focus": "理解选择与自处，避免鸡汤化。"
+    },
+    {
+      "id": "reader_029",
+      "level": "beginner",
+      "topic": "诗句理解",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "元夕的“花千树”指真花吗？",
+        "fixture_id": "xin_yuan",
+        "selection": "花千树"
+      },
+      "review_focus": "灯火意象与节日场景。"
+    },
+    {
+      "id": "reader_030",
+      "level": "beginner",
+      "topic": "人物关系",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“周郎”是谁？和三国故事里我们熟悉的周瑜一样吗？",
+        "fixture_id": "su_nian",
+        "selection": "周郎"
+      },
+      "review_focus": "历史人物同一性及艺术化。"
+    },
+    {
+      "id": "reader_031",
+      "level": "beginner",
+      "topic": "人物关系",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "苏轼生活在北宋还是南宋？",
+        "fixture_id": "su_water"
+      },
+      "review_focus": "基本时代事实，说明时间位置。"
+    },
+    {
+      "id": "reader_032",
+      "level": "beginner",
+      "topic": "人物关系",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "李清照写词时只有“婉约”一种风格吗？",
+        "fixture_id": "li_sheng"
+      },
+      "review_focus": "避免流派标签概括全部作品。"
+    },
+    {
+      "id": "reader_033",
+      "level": "beginner",
+      "topic": "地理景物",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“二十四桥”是扬州的哪座桥？现在还在吗？",
+        "fixture_id": "jiang_yang",
+        "selection": "二十四桥"
+      },
+      "review_focus": "分清名称传统、今址和史地不确定性。"
+    },
+    {
+      "id": "reader_034",
+      "level": "beginner",
+      "topic": "地理景物",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "周邦彦写的“吴门”大概在今天哪里？",
+        "fixture_id": "zhou_su",
+        "selection": "吴门"
+      },
+      "review_focus": "古今地理名称对应。"
+    },
+    {
+      "id": "reader_035",
+      "level": "beginner",
+      "topic": "地理景物",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "王维的“渭城”和今天的西安是什么关系？",
+        "fixture_id": "wang_wei",
+        "selection": "渭城"
+      },
+      "review_focus": "避免把唐代地理直接等同现代行政区。"
+    },
+    {
+      "id": "reader_036",
+      "level": "beginner",
+      "topic": "词体声律",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“如梦令”是这首词的题目吗？为什么别的词人也用这个名字？",
+        "fixture_id": "li_ru"
+      },
+      "review_focus": "区分词牌与具体作品。"
+    },
+    {
+      "id": "reader_037",
+      "level": "beginner",
+      "topic": "词体声律",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "词和一般的七言绝句有什么不一样？",
+        "fixture_id": "su_water"
+      },
+      "review_focus": "句长、分片、曲调渊源的基本解释。"
+    },
+    {
+      "id": "reader_038",
+      "level": "beginner",
+      "topic": "词体声律",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "为什么《声声慢》的句子有长有短？",
+        "fixture_id": "li_sheng"
+      },
+      "review_focus": "长短句、词牌与音乐背景。"
+    },
+    {
+      "id": "reader_039",
+      "level": "beginner",
+      "topic": "词体声律",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“上片”“下片”是什么意思？读《鹊桥仙》也要分片吗？",
+        "fixture_id": "qin_que"
+      },
+      "review_focus": "分片基本概念，当前上下文仅节选需说明。"
+    },
+    {
+      "id": "reader_040",
+      "level": "beginner",
+      "topic": "词体声律",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "古人写词时也会像今天写诗一样随便换韵吗？",
+        "fixture_id": "su_nian"
+      },
+      "review_focus": "解释不同词牌格式与非一刀切。"
+    },
+    {
+      "id": "reader_041",
+      "level": "intermediate",
+      "topic": "历代评论",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "为什么人们常把苏轼叫作“豪放派”，这种分法有什么不足？"
+      },
+      "review_focus": "提供典型例子，区分后世归类和作品实际。"
+    },
+    {
+      "id": "reader_042",
+      "level": "intermediate",
+      "topic": "历代评论",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "历代评论家是怎样看李清照《声声慢》开头叠字的？",
+        "fixture_id": "li_sheng"
+      },
+      "review_focus": "区分可核原文与通俗复述。"
+    },
+    {
+      "id": "reader_043",
+      "level": "intermediate",
+      "topic": "历代评论",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "有没有前人评论姜夔《扬州慢》最动人的地方？",
+        "fixture_id": "jiang_yang"
+      },
+      "review_focus": "提示须给出评论者和出处，勿编造引文。"
+    },
+    {
+      "id": "reader_044",
+      "level": "intermediate",
+      "topic": "历代评论",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "贺铸“一川烟草，满城风絮，梅子黄时雨”在词评里为什么出名？",
+        "fixture_id": "he_qing"
+      },
+      "review_focus": "找具体评论及其对象。"
+    },
+    {
+      "id": "reader_045",
+      "level": "intermediate",
+      "topic": "历代评论",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "王国维所谓“境界”和我们平常说的“意境”完全一样吗？"
+      },
+      "review_focus": "定位原论述，说明语义差别。"
+    },
+    {
+      "id": "reader_046",
+      "level": "intermediate",
+      "topic": "历代评论",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "陈廷焯评价词的标准是什么？能举一个具体词评来说明吗？"
+      },
+      "review_focus": "从《白雨斋词话》找原文及例子。"
+    },
+    {
+      "id": "reader_047",
+      "level": "intermediate",
+      "topic": "历代评论",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "张炎《词源》讨论的“清空”具体指什么？"
+      },
+      "review_focus": "以文献原句为基础解释，避免仅现代抽象形容。"
+    },
+    {
+      "id": "reader_048",
+      "level": "intermediate",
+      "topic": "历代评论",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "李清照的“词别是一家”主要是在反对谁、反对什么？"
+      },
+      "review_focus": "以《词论》为依据，避免单纯归为不押韵。"
+    },
+    {
+      "id": "reader_049",
+      "level": "intermediate",
+      "topic": "作品比较",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "苏轼这首《念奴娇》和辛弃疾的怀古词，写英雄有什么不同？",
+        "fixture_id": "su_nian"
+      },
+      "review_focus": "比较有代表性的两词，不把风格当先验标签。"
+    },
+    {
+      "id": "reader_050",
+      "level": "intermediate",
+      "topic": "作品比较",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "晏几道的“当时明月在”和苏轼的“但愿人长久”，同写月亮却有什么不同？",
+        "fixture_id": "yan_lin"
+      },
+      "review_focus": "比较两种时间/情感语境。"
+    },
+    {
+      "id": "reader_051",
+      "level": "intermediate",
+      "topic": "作品比较",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "李清照两首《如梦令》给人的感觉有什么区别？",
+        "fixture_id": "li_ru"
+      },
+      "review_focus": "先确定比较的是哪两首，避免把同词牌当同作品。"
+    },
+    {
+      "id": "reader_052",
+      "level": "intermediate",
+      "topic": "作品比较",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "李煜前后期的词真的能简单分为享乐和悲痛两类吗？",
+        "fixture_id": "li_yu"
+      },
+      "review_focus": "避免二分法，要求举有出处的例作。"
+    },
+    {
+      "id": "reader_053",
+      "level": "intermediate",
+      "topic": "作品比较",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "柳永和周邦彦写都市生活、声音和行旅，有什么不一样？"
+      },
+      "review_focus": "以具体词作对比，不空泛贴风格。"
+    },
+    {
+      "id": "reader_054",
+      "level": "intermediate",
+      "topic": "作品比较",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "秦观和柳永都写离别，为什么读起来气质不同？",
+        "fixture_id": "qin_que"
+      },
+      "review_focus": "以至少两首可核作品为证。"
+    },
+    {
+      "id": "reader_055",
+      "level": "intermediate",
+      "topic": "作品比较",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "温庭筠和韦庄的《菩萨蛮》有没有不同的抒情方式？"
+      },
+      "review_focus": "谨慎选作品，避免单凭词人印象。"
+    },
+    {
+      "id": "reader_056",
+      "level": "intermediate",
+      "topic": "出处互文",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“落花人独立，微雨燕双飞”是晏几道最早写出来的吗？",
+        "fixture_id": "yan_lin",
+        "selection": "落花人独立，微雨燕双飞"
+      },
+      "review_focus": "定位更早文本并核时间，区分引用与原创。"
+    },
+    {
+      "id": "reader_057",
+      "level": "intermediate",
+      "topic": "出处互文",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "苏轼问“明月几时有”，能找到更早的相近写法吗？",
+        "fixture_id": "su_water",
+        "selection": "明月几时有"
+      },
+      "review_focus": "比较前人原句与化用而非简单同词。"
+    },
+    {
+      "id": "reader_058",
+      "level": "intermediate",
+      "topic": "出处互文",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "姜夔写“春风十里”，为什么会让人想到杜牧？",
+        "fixture_id": "jiang_yang",
+        "selection": "春风十里"
+      },
+      "review_focus": "核对杜牧原诗和扬州语境。"
+    },
+    {
+      "id": "reader_059",
+      "level": "intermediate",
+      "topic": "出处互文",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“豆蔻词工”和“青楼梦好”分别指杜牧的哪些诗？",
+        "fixture_id": "jiang_yang",
+        "selection": "豆蔻词工"
+      },
+      "review_focus": "两条原文分别核对并说明结构关系。"
+    },
+    {
+      "id": "reader_060",
+      "level": "intermediate",
+      "topic": "出处互文",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "贺铸“锦瑟华年”是直接引用李商隐，还是用了一个常见词语？",
+        "fixture_id": "he_qing",
+        "selection": "锦瑟华年"
+      },
+      "review_focus": "按原句、时代和用例分层判断。"
+    },
+    {
+      "id": "reader_061",
+      "level": "intermediate",
+      "topic": "出处互文",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "辛弃疾为什么把“元嘉草草”和“封狼居胥”连在一起？",
+        "fixture_id": "xin_yong",
+        "selection": "元嘉草草"
+      },
+      "review_focus": "说明典故并置与历史对照，不只列人名。"
+    },
+    {
+      "id": "reader_062",
+      "level": "intermediate",
+      "topic": "创作背景",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《定风波》里的风雨能确定是哪一次出游吗？有什么文献依据？",
+        "fixture_id": "su_ding"
+      },
+      "review_focus": "区分词序/编年与文学象征解释。"
+    },
+    {
+      "id": "reader_063",
+      "level": "intermediate",
+      "topic": "创作背景",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《扬州慢》所写的扬州为何显得这么荒凉？",
+        "fixture_id": "jiang_yang"
+      },
+      "review_focus": "结合历史背景与作品措辞，注明史料和创作年代。"
+    },
+    {
+      "id": "reader_064",
+      "level": "intermediate",
+      "topic": "史地纪年",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《念奴娇·赤壁怀古》说的赤壁，就是三国赤壁大战的战场吗？",
+        "fixture_id": "su_nian"
+      },
+      "review_focus": "辨认黄州赤壁与三国战场位置争议。"
+    },
+    {
+      "id": "reader_065",
+      "level": "intermediate",
+      "topic": "史地纪年",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“绍兴五年七月丁酉”怎么换算成我们熟悉的时间？"
+      },
+      "review_focus": "解释年号/干支与历法换算边界；未核确公历日不臆报。"
+    },
+    {
+      "id": "reader_066",
+      "level": "intermediate",
+      "topic": "史地纪年",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "周邦彦说自己“久作长安旅”，是在今天的西安吗？",
+        "fixture_id": "zhou_su",
+        "selection": "长安旅"
+      },
+      "review_focus": "解释长安作为京城的借称和政治地理。"
+    },
+    {
+      "id": "reader_067",
+      "level": "intermediate",
+      "topic": "史地纪年",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "读词人的年谱时，为什么同一件事会有两个年份？"
+      },
+      "review_focus": "说明虚岁、农历/公历、编年证据与误差。"
+    },
+    {
+      "id": "reader_068",
+      "level": "intermediate",
+      "topic": "词体声律",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《如梦令·昨夜雨疏风骤》有哪些韵脚？能看出词牌的特点吗？",
+        "fixture_id": "li_ru"
+      },
+      "review_focus": "以完整作品核韵位，明确依据的词谱。"
+    },
+    {
+      "id": "reader_069",
+      "level": "intermediate",
+      "topic": "词体声律",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《念奴娇》有不同词谱格式，能拿苏轼这首和标准谱比较吗？",
+        "fixture_id": "su_nian"
+      },
+      "review_focus": "注意变格，要求列具体字位而非武断不合律。"
+    },
+    {
+      "id": "reader_070",
+      "level": "intermediate",
+      "topic": "词体声律",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《声声慢》开头的叠字与整首词的声调节奏有什么关系？",
+        "fixture_id": "li_sheng"
+      },
+      "review_focus": "分析叠音与词律是不同层次。"
+    },
+    {
+      "id": "reader_071",
+      "level": "intermediate",
+      "topic": "词体声律",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“入声”在宋词里为什么重要？用今天普通话读还能听出来吗？"
+      },
+      "review_focus": "区分历史声调与现代方言/普通话。"
+    },
+    {
+      "id": "reader_072",
+      "level": "intermediate",
+      "topic": "词体声律",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《词林正韵》和《平水韵》有什么区别？查苏词押韵应该选哪种？"
+      },
+      "review_focus": "说明编纂时代、适用对象与不确定性。"
+    },
+    {
+      "id": "reader_073",
+      "level": "intermediate",
+      "topic": "古籍材料",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "我想找“清空”一词在词学古书里出现过的原句，应该从哪里查起？"
+      },
+      "review_focus": "开放性查证任务，有出处即可，不强制当前工具。"
+    },
+    {
+      "id": "reader_074",
+      "level": "intermediate",
+      "topic": "类书专题",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "如果想知道宋人眼里的“黄州”有哪些旧称和风物，古代类书能帮什么忙？"
+      },
+      "review_focus": "鼓励专题材料与史地辨析，不把类书等同原典。"
+    },
+    {
+      "id": "reader_075",
+      "level": "intermediate",
+      "topic": "人物关系",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "苏轼和黄庭坚的关系，除了“苏门四学士”这个标签还可以怎么理解？"
+      },
+      "review_focus": "具体交往、诗文材料与概念区别。"
+    },
+    {
+      "id": "reader_076",
+      "level": "advanced",
+      "topic": "版本校勘",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "这首词“樯橹”和“强虏”的异文会如何影响理解？怎样选择底本？",
+        "fixture_id": "su_nian",
+        "selection": "樯橹灰飞烟灭"
+      },
+      "review_focus": "确认真实异文见于何版本，再讨论修辞与校勘。"
+    },
+    {
+      "id": "reader_077",
+      "level": "advanced",
+      "topic": "版本校勘",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《声声慢》这里有没有“晚来风急”的不同异文或断句？哪些版本能作为证据？",
+        "fixture_id": "li_sheng",
+        "selection": "晚来风急"
+      },
+      "review_focus": "不凭记忆制造异文，区分现代标点与原文版本。"
+    },
+    {
+      "id": "reader_078",
+      "level": "advanced",
+      "topic": "版本校勘",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "有些古籍网页全文互相抄录，我们怎么判断哪一个版本更值得信任？"
+      },
+      "review_focus": "提出底本、影印、校勘记、来源独立性等标准。"
+    },
+    {
+      "id": "reader_079",
+      "level": "advanced",
+      "topic": "版本校勘",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《忆秦娥·箫声咽》究竟能不能确定是李白写的？"
+      },
+      "review_focus": "介绍作者归属争议及文献年代，不草率判真伪。"
+    },
+    {
+      "id": "reader_080",
+      "level": "advanced",
+      "topic": "版本校勘",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "一首词收在《全宋词》里，就能证明作者和写作年代都确定吗？"
+      },
+      "review_focus": "区分总集收录、编者订正与原始证据。"
+    },
+    {
+      "id": "reader_081",
+      "level": "advanced",
+      "topic": "版本校勘",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "同一首宋词在别集、选本、类书中措辞不同，怎样判断哪一种异文更早？"
+      },
+      "review_focus": "版本谱系与证据权重，不以文本出现次数投票。"
+    },
+    {
+      "id": "reader_082",
+      "level": "advanced",
+      "topic": "版本校勘",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“梅子黄时雨”在后世被大量引用，怎样排除后来的引用被误当成原作证据？",
+        "fixture_id": "he_qing",
+        "selection": "梅子黄时雨"
+      },
+      "review_focus": "区分作品源头、接受史和文本重复。"
+    },
+    {
+      "id": "reader_083",
+      "level": "advanced",
+      "topic": "版本校勘",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "如果《词谱》写的韵位和我们手中的词作断句冲突，能直接按词谱改原文吗？"
+      },
+      "review_focus": "保留原文与多版本，列证据和不确定性。"
+    },
+    {
+      "id": "reader_084",
+      "level": "advanced",
+      "topic": "文学史争议",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "李清照批评苏轼“不协音律”，具体依据是什么？现代词谱能检验到什么程度？"
+      },
+      "review_focus": "核《词论》原文、后世词谱形成时代与实际宋乐不可直接推断。"
+    },
+    {
+      "id": "reader_085",
+      "level": "advanced",
+      "topic": "文学史争议",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "苏轼“以诗为词”是同时代人的说法，还是后来文学史的概括？"
+      },
+      "review_focus": "追溯最早可考表述与历代解释。"
+    },
+    {
+      "id": "reader_086",
+      "level": "advanced",
+      "topic": "文学史争议",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "词究竟是先有曲调还是先有文字？到宋代情况有没有变化？"
+      },
+      "review_focus": "历史发展分阶段，不把单一模式通用于所有词。"
+    },
+    {
+      "id": "reader_087",
+      "level": "advanced",
+      "topic": "文学史争议",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "“豪放派”和“婉约派”这套二分法是在什么时候形成的？它真的适用于所有宋词吗？"
+      },
+      "review_focus": "从分类概念史追查，提供反例。"
+    },
+    {
+      "id": "reader_088",
+      "level": "advanced",
+      "topic": "文学史争议",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "王国维谈“隔”与“不隔”，和张炎说的“清空”能放在同一标准下比较吗？"
+      },
+      "review_focus": "各自原典与概念区别，避免跨时代硬套。"
+    },
+    {
+      "id": "reader_089",
+      "level": "advanced",
+      "topic": "文学史争议",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "姜夔为什么被后世一些评论家推崇、另一些评论家批评？争论焦点有什么变化？"
+      },
+      "review_focus": "多个批评原文对照，区分审美体系。"
+    },
+    {
+      "id": "reader_090",
+      "level": "advanced",
+      "topic": "文学史争议",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "《花间集》中的女性声音，能直接视作作者本人的真实情感吗？"
+      },
+      "review_focus": "讨论抒情角色、文类惯例、性别与证据限制。"
+    },
+    {
+      "id": "reader_091",
+      "level": "advanced",
+      "topic": "史地纪年",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "如果一首苏轼词有词序和后世年谱记载不一致，应怎样判断作年？",
+        "fixture_id": "su_ding"
+      },
+      "review_focus": "比较同代记载、文本、地理、编年而非固定优先顺序。"
+    },
+    {
+      "id": "reader_092",
+      "level": "advanced",
+      "topic": "史地纪年",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "苏轼贬黄州期间的活动地点，哪些有当时文献记录，哪些只是现代景点附会？"
+      },
+      "review_focus": "要求来源锚点和史地辨析，勿把今地图当古址证明。"
+    },
+    {
+      "id": "reader_093",
+      "level": "advanced",
+      "topic": "史地纪年",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "姜夔《扬州慢》写的战后城市景象，哪些可以由地方志或南宋史料旁证？",
+        "fixture_id": "jiang_yang"
+      },
+      "review_focus": "区分文学画面、历史事实与不同年代材料。"
+    },
+    {
+      "id": "reader_094",
+      "level": "advanced",
+      "topic": "史地纪年",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "同一位宋代词人在两部年谱中的行迹冲突，怎样追查是年号换算、地名歧义还是史料来源问题？"
+      },
+      "review_focus": "跨纪年、图谱、古籍的研究方案，不预设真有冲突的具体案例。"
+    },
+    {
+      "id": "reader_095",
+      "level": "advanced",
+      "topic": "文献考证",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "古代类书说某个故事出自《世说新语》，但现存《世说新语》找不到，应怎么处理？"
+      },
+      "review_focus": "解释类书转引、异本、佚文与误引，不能凭空补原文。"
+    },
+    {
+      "id": "reader_096",
+      "level": "advanced",
+      "topic": "文献考证",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "如果词典标注一个典故出自唐诗，如何判断宋词是在化用它，还是只是碰巧用了同一个词？"
+      },
+      "review_focus": "引文特异性、年代、语义、替代来源与负例。"
+    },
+    {
+      "id": "reader_097",
+      "level": "advanced",
+      "topic": "研究方法",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "我想研究“雁”在李清照词中是否常与离别相连，怎样制定一个可检验而不过度解释的办法？"
+      },
+      "review_focus": "全作品检索、语境标注、样本分母、反例与版本。"
+    },
+    {
+      "id": "reader_098",
+      "level": "advanced",
+      "topic": "研究方法",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "假如一条人物知识图谱把“东坡”连到另一个同名人物，AI 应怎样识别这种错误？"
+      },
+      "review_focus": "跨证据消歧与说明不确定性，不把自动实体当真。"
+    },
+    {
+      "id": "reader_099",
+      "level": "advanced",
+      "topic": "研究方法",
+      "split": "development",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "怎样判断一段关于“词有音乐性”的说法引用的是宋人一手材料，还是清代词谱的后出总结？"
+      },
+      "review_focus": "梳理原典时代、文献类型和引文链。"
+    },
+    {
+      "id": "reader_100",
+      "level": "advanced",
+      "topic": "研究方法",
+      "split": "reserved_for_review",
+      "review_status": "draft_unverified",
+      "input": {
+        "question": "如果找遍现有词话和古籍库仍找不到某首词的作年证据，AI 应怎样回答读者？"
+      },
+      "review_focus": "区分“未检得证据”和“历史上不存在”，保留可继续追查路线。"
+    }
+  ]
+}
