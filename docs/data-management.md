@@ -21,6 +21,7 @@ workspace/
     │   ├── lexical/              # BM25 / SQLite 索引
     │   ├── serving/              # Retrieval metadata SQLite 及 manifest
     │   └── relationships/         # 组诗去重快照 v3：SQLite、CSV、manifest
+    ├── lexicon/                  # 私人历史语汇书库：源修订、清单、离线 SQLite 索引
     ├── models/                   # Embedding / GGUF 本地推理模型权重
     ├── tools/                    # 私人模型运行时与实验日志（若安装）
     └── reports/
@@ -65,6 +66,8 @@ Qwen3.5-4B 与 DeepSeek 8B 的 GGUF 从 ModelScope 的 `unsloth/Qwen3.5-4B-GGUF`
 | `retrieval/embeddings/` | 原始数千万 float16 向量，重建成本高 | **重点保护** |
 | `retrieval/faiss/`、`lexical/`、`serving/` | 线上可用的检索索引与元数据 | **必须保留可用 Serving 版本** |
 | `retrieval/relationships/v3/` | 组诗重复过滤的 SQLite 快照、导入 CSV 与来源指纹 manifest；不是原始语料，也不是 Railway PostgreSQL 表 | **与当前 Serving 一起保留／备份**，避免启动时缺失或版本不匹配 |
+| `lexicon/shi-ci-qu-yu-ci-hui-shi/sources/` 与 `manifest.json` | 张相《詩詞曲語辭匯釋》2026-10-20 私人源修订 906 页，含原始 Wikitext、revision ID、来源、时间、SHA-256 | **保留与备份**，不进入 Git / Railway；详见[本地词典说明](../scripts/corpus/README-local-lexicon.md) |
+| `lexicon/shi-ci-qu-yu-ci-hui-shi/lexicon.sqlite` | 537 个词头的 FTS5 派生查询索引 | 可从原始源文件离线重建，不必优先备份 |
 | `models/` | Embedding 权重及离线 LLM GGUF 试验权重、校验指纹；后者已在本机验证，不是线上模型服务依赖 | 保留当前所需版本与校验值；大文件不入 Git，按重下成本决定是否备份 |
 | `tools/`（若存在） | 隔离的本地推理运行时、实验脚本与日志，不属于产品虚拟环境 | 正式化前按实验价值保留；勿因清理 Git worktree 误删私人资产 |
 | `reports/` | 诊断、Benchmark、历史研究记录 | 按证据价值归档；不要求永久保留每次运行 |
@@ -115,6 +118,17 @@ python -m scripts.retrieval.inspect_serving_bundle
 ```
 
 正式启动时还需确认 `retrieval/relationships/v3/work_compositions.sqlite3` 与相邻 `work_compositions_manifest.json` 同时存在，并与当前 Werneror Corpus 指纹相符。完整的合集关系表可由 `scripts/corpus/export_work_compositions.py` 根据已有审计报告重新导出（归一化补漏需传 `--normalized-audit`），但是**首次缺失快照时不要直接重跑向量或索引**。正常加载后，再运行 Retrieval E2E 和 benchmark；**文件存在不等于索引能加载或召回正确**。完整模型与向量构建需要额外 `requirements-retrieval.txt` 依赖。
+
+### 《詩詞曲語辭匯釋》离线恢复（2026-10-20）
+
+私人源修订和索引位于项目同级 `poeticus-data/lexicon/shi-ci-qu-yu-ci-hui-shi/`。已保存 `sources/`、`manifest.json` 时不需要网络、模型或 PostgreSQL，即可重建、查询：
+
+```bash
+.venv/bin/python -m scripts.corpus.local_lexicon build
+.venv/bin/python -m scripts.corpus.local_lexicon lookup 怎生
+```
+
+采集器可通过 `--data-root` / `POETICUS_LEXICON_DATA_ROOT` 单独指定私人数据路径；它尚未复用其它语料工具的 `POETICUS_DATA_ROOT` 环境变量。详见[词典采集、版本与验收说明](../scripts/corpus/README-local-lexicon.md)。这只是本地候选证据，并未更改生产诗词库或公开 Agent；后续 AI 识词与多义项展示归 [#335](https://github.com/montricwang/poeticus/issues/335)。
 
 ## 5. 脚本和报告的保留约定
 
