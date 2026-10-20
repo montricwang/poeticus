@@ -64,7 +64,7 @@ Issue 以**单个可交付／可验证问题**为单位。下面是「新问题�
 ### 2.1 阅读交互与 iOS 选区
 
 - [#86](https://github.com/montricwang/poeticus/issues/86)：iPhone 原文长按及拖柄调整选区时，引用卡片与阅读区红色下划线应及时同步到最终选区；结合 Safari 真机事件时序排查。
-- [#294](https://github.com/montricwang/poeticus/issues/294)：继续收集极端手机尺寸、横屏及系统键盘场景的排版反馈；日常字号与竖排规则以[现行设计规范](design/frontend-visual-conventions.md)为准。
+- **历史记录**：[#294](https://github.com/montricwang/poeticus/issues/294) 已关闭；其旧记录仍提到极端尺寸、横屏、软键盘的验收限制。后续出现新问题应记录真机复现案例，再归到 #113 或建立独立 Bug；日常排版以[现行设计规范](design/frontend-visual-conventions.md)为准。
 
 ### 2.2 Production hygiene
 
@@ -124,7 +124,7 @@ Issue 以**单个可交付／可验证问题**为单位。下面是「新问题�
 - 目录与阅读区细节；
 - 赏析和对话之间的切换。
 
-10 月 15 日已合并桌面阅读版心与目录改进（PR #291）、手机／桌面布局外壳拆分（PR #292）及首页推荐和馆藏搜索（PR #293）；10 月 16 日合并 Safari 竖排修复（PR #295）与每日一词（PR #297）。iPhone Safari 在不同视口下的断行差异仍由 [#294](https://github.com/montricwang/poeticus/issues/294) 跟进。首页信息架构 [#113](https://github.com/montricwang/poeticus/issues/113) 还有作者入口、导航与阅读进度等待设计和实现。
+10 月 15 日已合并桌面阅读版心与目录改进（PR #291）、手机／桌面布局外壳拆分（PR #292）及首页推荐和馆藏搜索（PR #293）；10 月 16 日合并 Safari 竖排修复（PR #295）与每日一词（PR #297）。iPhone Safari 的历史断行问题记录见已关闭的 [#294](https://github.com/montricwang/poeticus/issues/294)；如再现新问题按真实设备复现单独追踪，不将它当作开放待办。首页信息架构 [#113](https://github.com/montricwang/poeticus/issues/113) 还有作者入口、导航与阅读进度等待设计和实现。
 
 ### 2.7 诗学画像与推荐（研究阶段）
 
@@ -160,7 +160,7 @@ Document Corpus 与实时业务数据继续分开。订单、库存、余额一�
 
 ### Search / Web fallback
 
-2026-10-20 已把 **DeepSeek Search/Fetch** 以默认关闭的本地研究工具合入 `main`，另提供维基文库官方搜索/单页读取、CNKGraph 古籍短查询等专门工具；**不意味着已启用公众联网问答**。下一步依 [#364](https://github.com/montricwang/poeticus/issues/364)、[#355](https://github.com/montricwang/poeticus/issues/355) 检查权限、成本、来源安全、Tool routing、真实 Agent 答案与退化；只在这些来源对具体问题有可验证增益时考虑开启。
+2026-10-20 已把 **DeepSeek Search/Fetch** 以默认关闭的本地研究工具合入 `main`，另提供维基文库官方搜索/单页读取、CNKGraph 古籍短查询等专门工具；**不意味着已启用公众联网问答**。本地 Search/Fetch 接入 [#364](https://github.com/montricwang/poeticus/issues/364) 已收口；后续由 [#153](https://github.com/montricwang/poeticus/issues/153)、[#154](https://github.com/montricwang/poeticus/issues/154)、[#155](https://github.com/montricwang/poeticus/issues/155) 与 [#355](https://github.com/montricwang/poeticus/issues/355) 核查权限、成本、来源安全、工具路由、真实回答及退化；只在这些来源对具体问题有可验证增益时考虑开启。
 
 ### Multi-span evidence
 
@@ -176,7 +176,7 @@ Document Corpus 与实时业务数据继续分开。订单、库存、余额一�
 
 ### Critic 的人格、知识与记忆（研究阶段；不阻塞当前发布）
 
-- **已存在**：Persona / Skills / Library / Notebook 的边界设计 [#148](https://github.com/montricwang/poeticus/issues/148)，Critic 独立判断/文风优先级 [#311](https://github.com/montricwang/poeticus/issues/311)，有据可查的批评方法提炼研究 [#354](https://github.com/montricwang/poeticus/issues/354)。
+- **已存在**：Persona / Skills / Library / Notebook 的边界设计 [#148](https://github.com/montricwang/poeticus/issues/148)，Critic 独立判断/文风优先级 [#311](https://github.com/montricwang/poeticus/issues/311)，已完成首轮 1505 篇方法卡提炼 [#354](https://github.com/montricwang/poeticus/issues/354)，质量审计与迁移验证仍待 [#372](https://github.com/montricwang/poeticus/issues/372)。
 - **已做但仅限原型**：[PR #348](https://github.com/montricwang/poeticus/pull/348) 的追加式 SQLite 观点事件原型（未合并、未接在线 Agent）；[#347](https://github.com/montricwang/poeticus/issues/347) 计划对比 LangMem / Mem0 / Hindsight 等成熟方案。它们**不能被标成已上线长期记忆**。
 - **下一步需要讨论，而非已确定实现**：三轴知识模型（保存的内容/数据结构/运行时调用）、从私有访谈材料抽取的创始人审美种子、可选 MAGI 式考据/审美/反证三视角。优先 3–5 段真实文献的提炼质量 [#341](https://github.com/montricwang/poeticus/issues/341)，再做隔离 Bootstrap [#312](https://github.com/montricwang/poeticus/issues/312) 和独立 Eval [#314](https://github.com/montricwang/poeticus/issues/314)；不预设三 Agent、模型微调、图数据库或自动修改 Persona。
 
