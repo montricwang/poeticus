@@ -129,9 +129,68 @@ DOCUMENT_RETRIEVAL_TOOL: ChatCompletionFunctionToolParam = {
 }
 
 
+# CNKGraph external capabilities are experimental non-commercial research tools.
+# Do not register them for anonymous production visitors without separate permission.
+CNKGRAPH_RESEARCH_TOOLS: list[ChatCompletionFunctionToolParam] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "analyze_ci_meter",
+            "description": (
+                "按 CNKGraph 钦谱与龙谱检查一首词的词牌体式、平仄和押韵疑点。"
+                "适合用户问‘这首词押韵吗、是否合词谱、有何变格’时使用。"
+                "默认直接使用当前阅读作品正文，不要机械重复提交原诗。"
+                "后世词谱形式符合与宋代实际合乐是不同概念，"
+                "此工具不能单独证明词在宋代是否可唱，也不能代替词学文献。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "tune_name": {
+                        "type": "string",
+                        "description": "作品所属词牌名称，如‘醉花间’或‘念奴娇’，不能填作品副题。",
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "可选：只有分析非当前阅读作品时才提供完整词正文；默认使用当前作品。",
+                    },
+                },
+                "required": ["tune_name"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_classical_books",
+            "description": (
+                "从外部古籍库中检索含指定关键词的书、卷和短原文上下文；"
+                "适合查‘哪本古书记过这句话、某个词学概念见于何书’。"
+                "提供候选的书卷与可回查 ID，不能据字面命中断定原始出处或学术结论。"
+                "要找本地已导入的词话研究评论优先用 search_documents；"
+                "典故故事优先用 lookup_allusion；诗句化用优先用 search_predecessor_texts。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "准确且有区分度的古文短语或关键词，不要提交整篇文章。",
+                    },
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+        },
+    },
+]
+
+
 def available_tools(
     retrieval_enabled: bool,
     document_enabled: bool = False,
+    cnkgraph_research_enabled: bool = False,
 ) -> list[ChatCompletionFunctionToolParam]:
     """根据检索服务的启用状态，返回本轮可向模型提供的工具。"""
 
@@ -140,4 +199,6 @@ def available_tools(
         tools.append(TEXT_RETRIEVAL_TOOL)
     if document_enabled:
         tools.append(DOCUMENT_RETRIEVAL_TOOL)
+    if cnkgraph_research_enabled:
+        tools.extend(CNKGRAPH_RESEARCH_TOOLS)
     return tools

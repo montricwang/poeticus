@@ -41,6 +41,11 @@ LLM_MAX_RETRIES = 0
 # 单次用户请求最多执行这么多次真实工具调用。
 AGENT_MAX_TOOL_CALLS = 2
 
+# Third-party CNKGraph public API is non-commercial research only.
+# This is an explicit local research opt-in, NEVER enabled by default on Web.
+CNKGRAPH_RESEARCH_TOOLS_ENABLED = (
+    os.getenv("POETICUS_CNKGRAPH_RESEARCH_TOOLS_ENABLED", "").lower() == "true"
+)
 
 # Text Retrieval Service 独立于 Railway Web 进程部署，
 # 因为 FAISS、BM25 索引及 Query 编码模型远大于 Web 应用本身。
