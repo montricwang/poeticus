@@ -136,6 +136,28 @@ POETICUS_DEEPSEEK_WEB_TOOLS_ENABLED=true
 
 实现入口 `backend/research/deepseek_web.py`、`backend/ai/tools.py`、`backend/ai/graph.py`；离线测试 `.venv/bin/python -m pytest -q tests/test_deepseek_web_tools.py`。研究任务见 [#364](https://github.com/montricwang/poeticus/issues/364)，当前实现为叠加在 [PR #356](https://github.com/montricwang/poeticus/pull/356) 之上的研究分支，仍需真实交互验收和预算评估。
 
+### 经典字词与公开文献来源（2026-10-20 试验）
+
+利用已存在的 ReAct Tool Calling，新增按需只读、**默认关闭**的三项专用工具。开启个人本地实验环境后，Agent 可自主选用：
+
+```dotenv
+POETICUS_CLASSIC_REFERENCE_TOOLS_ENABLED=true
+# 站点专项搜索还须配置：
+POETICUS_DEEPSEEK_WEB_TOOLS_ENABLED=true
+```
+
+- `lookup_moedict`：萌典公开 JSON API，按词检索台湾教育部《重编国语辞典修订本》的读音、词条义项和少量古籍书证，带来源链接；保留原文标记与原有字形，遵守辞典内容 **CC BY-ND 3.0 TW**（平台代码是 CC0，不代表数据也属于 CC0）。仅是候选释义，未替读者选择具体上下文的义项。
+- `search_wikisource`：中文维基文库官方 MediaWiki Action API，5 条以内文献页面搜索结果，带 pageid、标题和来源链接。
+- `read_wikisource_page`：只允许按**当前这轮**已搜索出的 pageid，通过官方 Action API 读取最多 3500 字 wikitext 与 revision ID/永久链接；不把 wikitext 模板当成内容指令或已校定底本，不自动抓整部古籍。
+
+原有 DeepSeek `web_search` 可选 `source`：`all`（默认）、`zdic`（汉典）、`shidian`（识典，仅搜索与人工跳转）、`ctext`（中国哲学书电子化计划）、`souyun`（搜韵）、`wikimedia`（中文维基文库等 Wikisource）。内部使用 `site:` 限定并再次按实际域名过滤，避免混入假装该网站的搜索结果。因没有可靠的汉典官方 JSON API，本轮**不逆向其内部接口**；该来源的词条通过 Search/Fetch 查找，仍受第三方资料授权约束。识典网页抓取继续由 DeepSeek Web Client 屏蔽，站内内部 API 没有接入。
+
+注意网络调用可能超时、404/403/429，Wikisource 搜索命中不等于历史权威底本，萌典现代辞典不自动给出词中的最佳古义。**真实小样本连通性（10 月 20 日）**：萌典 `將息` 1 次 API 成功、`綢繆` 出现超时；维基文库 Action API 之前已成功检索《人間詞話》并读到带 revision 的页面，本轮 Agent 两次检索均网络超时；DeepSeek 定站搜索已成功返回汉典、CTP、识典的真实域名候选。Agent 实际使用 `lookup_moedict`（首次超时后重试成功）、`web_search`（汉典站内搜索成功），`search_wikisource` 连续两次超时后明确承认未检得结果。维基文库失败时可尝试改用 `web_search(source=wikimedia)`，但这不是官方 API 成功的替代证据。**目前不可声称维基文库链路稳定或新增工具普遍提高回答正确率。**
+
+所有工具有响应字节上限、不保存整站内容、不修改私有语料库。Chat SSE / 正常 Graph 共用相同工具声明；继续沿用单题 **2 次**预算，长链查证仍待专门测量。
+
+实现：`backend/research/classic_references.py`、`backend/research/deepseek_web.py`、`backend/ai/tools.py` 与 `backend/ai/graph.py`。来源调查和异文问题见 #234（汉典）/ #237（识典、CTP、维基文库），最新增量另以 PR 单独记录。自动测试：`pytest -q tests/test_classic_reference_tools.py`。
+
 只有 schema、没有作品数据时，目录为空是正常现象。
 
 前端排版与样式施工前，请先读 [前端视觉与排版规范](design/frontend-visual-conventions.md)：该文件区分行为契约、编辑设计、光学校正，并标明参数的权威入口。

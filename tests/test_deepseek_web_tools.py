@@ -149,7 +149,8 @@ def test_agent_dispatch_search_then_fetch_with_result_whitelist(monkeypatch):
     monkeypatch.setattr(agent, "CNKGRAPH_RESEARCH_TOOLS_ENABLED", False)
     actions = []
 
-    async def fake_search(q):
+    async def fake_search(q, source="all"):
+        assert source == "all"
         actions.append(("search", q))
         return {
             "status": "ok", "provider": "deepseek_web", "query": q,
