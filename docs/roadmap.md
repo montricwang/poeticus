@@ -2,7 +2,7 @@
 
 > 更新日期：2026-10-20
 >
-> 当前状态：v0.6.0 已发布。首页入场与搜索过渡、桌面 / iPad 竖排居中、原文引用下划线和统一中国红已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持既有线上链路。Document Corpus 已在本地使用 PostgreSQL/pgvector 和可选 `search_documents`；**2026-10-20 私有数据增至六书、1152 节/向量**，但正式四书导入 CLI 尚未支持这次增量，也未公开部署。LangGraph 新增的 CNKGraph 研究、DeepSeek Search/Fetch、萌典/维基文库研究工具**代码已入 main，均默认关闭**，不能当作线上已验收功能。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
+> 当前状态：v0.7.0 已发布。首页入场与搜索过渡、桌面 / iPad 竖排居中、原文引用下划线和统一中国红已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持既有线上链路。Document Corpus 已在本地使用 PostgreSQL/pgvector 和可选 `search_documents`；**2026-10-20 私有数据增至六书、1152 节/向量**，但正式四书导入 CLI 尚未支持这次增量，也未公开部署。LangGraph 新增的 CNKGraph 研究、DeepSeek Search/Fetch、萌典/维基文库研究工具**代码已入 main，均默认关闭**，不能当作线上已验收功能。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
 
 Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog 和 ADR；具体任务继续进入 GitHub Issues。
 
