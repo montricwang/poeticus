@@ -7,7 +7,8 @@
 | 你想知道 | 去哪里 | 维护粒度 |
 | --- | --- | --- |
 | Poeticus 做什么、公开体验、项目全局组成 | [根 README](../README.md) | 面向读者/新开发者的简要入口 |
-| 首页／书库／阅读室／书房各自承担什么，未来怎样进入文学提问 | [阅读信息架构](design/reading-information-architecture.md) | 当前产品入口与规划分开记录；阶段任务见 #113 |\n| 已确认的前端视觉规则、首页竖排、颜色/字距和光学修正到哪里改 | [前端视觉与排版规范](design/frontend-visual-conventions.md) | 行为约束与编辑选择分开写；调参以实际 CSS / TSX 为准 |
+| 首页／书库／阅读室／书房各自承担什么，未来怎样进入文学提问 | [阅读信息架构](design/reading-information-architecture.md) | 当前产品入口与规划分开记录；阶段任务见 #113 |
+| 已确认的前端视觉规则、首页竖排、颜色/字距和光学修正到哪里改 | [前端视觉与排版规范](design/frontend-visual-conventions.md) | 行为约束与编辑选择分开写；调参以实际 CSS / TSX 为准 |
 | **现在**代码和服务怎样组织、数据怎样流动 | [Architecture](architecture/) | 一子系统一份当前说明；变更架构时更新 |
 | 某项重要技术方案**为什么**这样选 | [ADR](adr/README.md) | 一个跨阶段的长期决策一篇；证据/Origin/代价/复审条件 |
 | 如何安装、启动、测试、提交变更 | [开发者指南](development.md) | 仅当前有效的开发操作 |
@@ -29,7 +30,8 @@
 
 - [Agent / LangGraph](architecture/langgraph.md)：工具调用、Graph State、流式回答；
 - [Conversation State](architecture/conversation-state.md)：作品/会话生命周期与浏览器存储；
-- [Reading IA](design/reading-information-architecture.md)：首页、书库、阅读室和书房的入口分工；\n- [Homepage](architecture/home-screen.md)：首页每日推荐、搜索与入场动效、手机竖排、五列上限及节选规则；
+- [Reading IA](design/reading-information-architecture.md)：首页、书库、阅读室和书房的入口分工；
+- [Homepage](architecture/home-screen.md)：首页每日推荐、搜索与入场动效、手机竖排、五列上限及节选规则；
 - [Corpus Database](architecture/corpus-database.md)：私人导入、公开白名单、数据身份；
 - [Poem Retrieval](architecture/text-retrieval.md)：Work/Chunk、Qwen/FAISS/BM25、RRF、Eligibility、Werneror 拼接去重与 Serving。
 - [Document Corpus](architecture/document-corpus.md)：本地首批四书的可复现导入与 2026-10-20 **两书私有增量**（共六书）、候选证据、实验 Reranker、尚未通用化的导入器及权利边界；实验方法见 [Document RAG 实验记录](../scripts/experiments/README-document-rag.md)。

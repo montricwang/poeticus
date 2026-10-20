@@ -41,7 +41,9 @@ Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、
 
 ### 1.1 六条工作主线与责任归属（2026-10-20 清淤）
 
-**长期领域由本 Roadmap 与权威文档维护，父 Issue 仅负责当前有限阶段；不为保存领域历史而永久打开父 Issue。** 读者入口与书库结构见 [阅读信息架构](design/reading-information-architecture.md)，Critic 长期方案见 [自主研究设计](research/critic-self-evolution.md)。\n\nIssue 以**单个可交付／可验证问题**为单位。下面是「新问题首先归哪里」的责任地图，不是额外的任务状态表；开放／关闭及真实验收以各 Issue、PR 和测试为准。一个跨领域任务只能有一个主要验收归属，其他领域通过关联和依赖参与。
+**长期领域由本 Roadmap 与权威文档维护，父 Issue 仅负责当前有限阶段；不为保存领域历史而永久打开父 Issue。** 读者入口与书库结构见 [阅读信息架构](design/reading-information-architecture.md)，Critic 长期方案见 [自主研究设计](research/critic-self-evolution.md)。
+
+Issue 以**单个可交付／可验证问题**为单位。下面是「新问题首先归哪里」的责任地图，不是额外的任务状态表；开放／关闭及真实验收以各 Issue、PR 和测试为准。一个跨领域任务只能有一个主要验收归属，其他领域通过关联和依赖参与。
 
 | 主线 | 主要责任 | 现有入口与边界 |
 | --- | --- | --- |
