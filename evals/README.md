@@ -165,3 +165,6 @@ data/reports/eval_candidates_10061542.md
 断点续跑脚本：scripts/evals/run_agent_reader_100.py。它会按 Case ID 跳过已完成的题目，记录工具明细与每题延迟；不会自动判断文学回答正确性。应先确认运行的后端代码包含 CNKGraph 研究工具，并仅在**个人本地非商业环境**开启；私有模型配置可通过 --env-file 指定。用 --offset 和 --count 分批执行，变更题集或工具配置时使用新的输出文件。
 
 本轮结果后续复核、任务与失败案例见 Issue #357；相关 API 功能实现见 PR #356。
+
+
+2026-10-20 证据追踪增强：`scripts/evals/run_seed.py` 现在对 CNKGraph 非 Evidence 格式的工具结果保留受限的书名/BookId/VolumeId/短命中片段，以及钦谱/龙谱具体韵字、错韵和词体的摘要。这样可以事后区分**工具实际报告**与模型推论；不保存第三方整卷全文、完整 HTML 或冗长实体属性。修复前的首轮日志不能自动补出当时被丢弃的证据字段；新的 Trace 格式需要重新运行题目才能产生。
