@@ -757,9 +757,12 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     # 本地文本检索使用 Retrieval Client，典故与出处查询使用证据服务。
                     if evidence_type == "web_search":
                         result = await deepseek_web_client.search(query)
+                        search_rows = result.get("results")
+                        if not isinstance(search_rows, list):
+                            raise DeepSeekWebError("联网搜索结果缺少列表")
                         permitted_urls.update(
                             entry["url"]
-                            for entry in result["results"]
+                            for entry in search_rows
                             if isinstance(entry, dict) and isinstance(entry.get("url"), str)
                         )
                     elif evidence_type == "web_fetch":

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 import json
 
 import httpx
@@ -59,7 +60,7 @@ def test_search_calls_official_endpoint_without_page_content(monkeypatch):
         ]})
 
     c = make_client(monkeypatch, handler)
-    response = asyncio.run(c.search("李清照 词别是一家 原文"))
+    response: Any = asyncio.run(c.search("李清照 词别是一家 原文"))
     assert calls == [(
         "/v1/tools/search",
         {"query": "李清照 词别是一家 原文", "count": 5, "need_content": False},
@@ -73,7 +74,7 @@ def test_search_calls_official_endpoint_without_page_content(monkeypatch):
 
 def test_search_no_results_is_no_hit(monkeypatch):
     c = make_client(monkeypatch, lambda _: json_response({"results": []}))
-    response = asyncio.run(c.search("不存在的词"))
+    response: Any = asyncio.run(c.search("不存在的词"))
     assert response["status"] == "no_hit"
     assert response["results"] == []
 
@@ -111,7 +112,7 @@ def test_fetch_provides_bounded_markdown_from_whitelisted_url(monkeypatch):
         })
 
     c = make_client(monkeypatch, handler)
-    response = asyncio.run(c.fetch("https://example.org/source", {"https://example.org/source"}))
+    response: Any = asyncio.run(c.fetch("https://example.org/source", {"https://example.org/source"}))
     assert seen == [("/v1/tools/fetch", {"url": "https://example.org/source"})]
     assert response["url"] == "https://example.org/source"
     assert response["truncated"] is True
@@ -162,14 +163,14 @@ def test_agent_dispatch_search_then_fetch_with_result_whitelist(monkeypatch):
     monkeypatch.setattr(agent.deepseek_web_client, "search", fake_search)
     monkeypatch.setattr(agent.deepseek_web_client, "fetch", fake_fetch)
 
-    state = {
+    state: Any = {
         "poem": "", "question": "原文是什么？", "messages": [],
         "tool_calls": [
             {"id": "search-call", "name": "web_search", "arguments": '{"query":"李清照 词论"}'},
             {"id": "fetch-call", "name": "web_fetch", "arguments": '{"url":"https://example.org/source"}'},
         ],
     }
-    output = agent.execute_tools(state)
+    output: Any = agent.execute_tools(state)
     assert actions == [
         ("search", "李清照 词论"),
         ("fetch", "https://example.org/source", ["https://example.org/source"]),
@@ -182,7 +183,7 @@ def test_agent_dispatch_search_then_fetch_with_result_whitelist(monkeypatch):
                             "arguments": '{"url":"https://example.org/source"}'}]
     state["tool_results"] = output["tool_results"]
     state["tool_count"] = 1
-    output2 = agent.execute_tools(state)
+    output2: Any = agent.execute_tools(state)
     assert json.loads(output2["tool_results"][-1]["content"])["status"] == "ok"
 
 
@@ -193,7 +194,7 @@ def test_agent_fetch_without_search_is_error_not_network(monkeypatch):
     async def must_not_fetch(*args):
         raise AssertionError("Untrusted URL must not be fetched")
     monkeypatch.setattr(agent.deepseek_web_client, "fetch", must_not_fetch)
-    result = agent.execute_tools({
+    result: Any = agent.execute_tools({
         "poem": "", "question": "获取页面", "messages": [],
         "tool_calls": [{"id": "missing", "name": "web_fetch",
                         "arguments": '{"url":"https://example.org/source"}'}],
