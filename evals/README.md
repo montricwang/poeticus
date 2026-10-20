@@ -1,6 +1,6 @@
 # Poeticus AI Eval
 
-> 当前基线：v0.3.0（2026-10-08）。本目录同时包含 Seed Eval、Retrieval Increment Eval 的小规模可重复 Case；完整线上 E2E 验收记录另见 [v0.3.0 Release](../docs/releases/v0.3.0.md) 与 [开发日志](../docs/devlog/2026-10-08.md)。
+> Seed Eval 最初基线：v0.3.0（2026-10-08），Reader 100 首轮真实运行于 2026-10-20。本目录同时包含 Seed Eval、Retrieval Increment Eval 的小规模可重复 Case；完整线上 E2E 验收记录另见 [v0.3.0 Release](../docs/releases/v0.3.0.md) 与 [开发日志](../docs/devlog/2026-10-08.md)。
 
 Eval 用来回答**哪一类问题改善了、改善是否真的来自工具证据、哪里仍会失败**。当前不搭通用评测平台，不将小样本 Case 得分包装成全站准确率，也不默认引入 LLM-as-a-Judge / RAGAS。
 
@@ -12,7 +12,7 @@ Eval 用来回答**哪一类问题改善了、改善是否真的来自工具证�
 | Seed AI Eval | `seed_cases.json`、`scripts.evals.run_seed` | 当前 Agent 使用 Tool / Evidence 的选择和回答表现 |
 | Retrieval Increment Eval | `retrieval_increment_cases.json`、`scripts.evals.run_retrieval_increment` | 独立 LLM 与一次 Retrieval Tool 增强的增量、目标候选是否确实由工具提供 |
 | 真实 Agent / 生产 E2E | Tool routing、必要时二次 Query、Railway → Retrieval → 最终回答 | 真实服务链能否工作；与离线 Eval 不相互替代 |
-| **Reader 100 综合候选题** | `agent_reader_100_cases.json` + [100 题审阅表](agent_reader_100_review.md) | 初中高级读者的真实问题覆盖、Agent 自主工具选用与回答质量（**题库阶段，尚未跑模型/人工 Gold**） |
+| **Reader 100 综合候选题** | `agent_reader_100_cases.json` + [100 题审阅表](agent_reader_100_review.md) | 首轮 100 题真实模型执行完成；工具选用/回答质量待人工 Gold 校勘和增量对照 |
 
 注意两种对照**不是同一个控制组**：Seed 的 `control_no_tools` 仍使用当前 Agent Prompt / Tool Schema、只禁用执行；Retrieval Increment 的 `standalone_llm` 则不注入 Poeticus Agent Prompt 或 Tool Schema，才能观察更接近模型自身参数知识的表现。
 
@@ -26,9 +26,34 @@ Eval 用来回答**哪一类问题改善了、改善是否真的来自工具证�
 - `fixtures` 保留公共领域古典词作的**候选原文**，包含来源为旧 Seed 的关联与新增片段，均标记待独立核查准确版本；`text_scope=excerpt` 代表节选，不能假装给词律工具提供了完整作品。
 - 80 题标记为开发整理，20 题标记为预留人工复查。**预留不等于正式 held-out**；只有经人工审核、固定源版本和实验隔离后才可称为验证集。
 - 部分题可能需要尚未接入的类书、词人行迹、年历及更强古籍查证能力，这是**发现覆盖缺口**，不要求为每个问题写固定路线。
-- 尚无为此题库执行 100 道 LLM 问答的 Runner，也未完成 Gold 史料核对和文学质量评分。未来复用现有 Agent 环路及可观测性，先记录工具选择与回答，再做增量对照；不要根据当前 Topic 标签硬编码工具调用。
+- 2026-10-20 已通过 `scripts/evals/run_agent_reader_100.py` 完成首轮 100 题真实回答（当时仅有 8 项工具注册）：19 题调用工具，32 次调用中 23 次成功、9 次失败。这里的 `100/100` 表示非空回答，**不是正确率**；仍未建立全部题的 Gold 和独立文学质量评分。下一轮需同时检验工具实际命中与回答证据，不根据 Topic 标签强制调用。
 
 检查：`python -m pytest -q tests/evals/test_agent_reader_100_cases.py`。进度见 [#357](https://github.com/montricwang/poeticus/issues/357)，CNKGraph 实验关联 [#355](https://github.com/montricwang/poeticus/issues/355)。
+
+### Reader 100：全工具回归预检与执行
+
+**先合并工具相关 PR，再从最新 main 开独立测试分支。** 现在 Agent 具备 14 项候选工具：原有典故/出处/诗文检索/Document RAG 4 项、CNKGraph 5 项、DeepSeek Search/Fetch 2 项、萌典/Wikisource 3 项；但**只有启动进程实际注册的**才可用。
+
+每轮记录真实工具清单，避免重演首轮「诗文 Retrieval 服务已运行，但 Agent 缺少 `POETICUS_RETRIEVAL_URL` / `POETICUS_RETRIEVAL_TOKEN`」的环境缺口。单独的 `/health` HTTP 200 不能证明认证请求成功。评测在进程启动前读取**主工作树私有 .env**，不向测试 worktree 复制或提交 Token；先对检索接口做一次有 Bearer 的真实查询，确认返回结构符合客户端契约。CNKGraph 只限隔离本地非商业实验；Web 搜索是计费服务，公众环境仍默认关闭。
+
+在 WSL 下，先做只检查工具的零题预检（不会发起模型问题、不会重算首轮 100 题）；以下两项新来源开关**只在当前命令进程启用**：
+
+```bash
+POETICUS_DEEPSEEK_WEB_TOOLS_ENABLED=true \
+POETICUS_CLASSIC_REFERENCE_TOOLS_ENABLED=true \
+python -m scripts.evals.run_agent_reader_100 \
+  --env-file /home/montric/projects/poeticus/.env \
+  --enable-cnkgraph --count 0 \
+  --output data/reports/reader_100_all_tools_run.json \
+  --require-tools lookup_allusion lookup_reference search_predecessor_texts search_documents \
+    analyze_ci_meter lookup_ci_tune lookup_rhyme resolve_entities search_classical_books \
+    web_search web_fetch lookup_moedict search_wikisource read_wikisource_page
+```
+
+**预检失败就不要开始收费评测。** 应检查 .env 路径、token 与真实服务、全部开关、当前 Git 分支；Runner 会报出缺失工具，不会默默以旧 schema 记录 14 个工具。通过后用同样命令更换 `--count 20` 试跑基础/进阶/研究分层题（必要时指定 `--offset`），核查 URL 证据、超时/404、无命中与未检索自述，然后使用相同输出文件 `--count 100` 断点续跑。不同开关或模型不可复用已有输出：Runner 会拒绝不一致的配置。不要把「调用次数更多」当成质量提升。
+
+Trace 现在保留有界的 CNKGraph 书卷与格律判定信息，以及 DeepSeek/Wikisource/MoeDict 的 URL、pageid/revision 与短片段；**不保存第三方整页正文，不将摘要冒充已核原典。** 成绩需要人工抽查和针对性的工具开关对照，不由已回答题数直接计算。
+
 
 ## Dataset
 

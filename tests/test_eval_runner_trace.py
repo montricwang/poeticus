@@ -126,3 +126,37 @@ def test_structured_tool_trace_keeps_cnkgraph_book_and_ci_provenance(monkeypatch
     assert records[1]["analyses"][0]["wrong_rhymes"][0]["wrong_characters"] == ["壁"]
     assert long_text not in json.dumps(records, ensure_ascii=False)
     assert len(records[0]["hits"][0]["before"]) <= 65
+
+def test_bounded_source_provenance_for_web_dictionary_and_wikisource():
+    from scripts.evals.run_seed import _structured_tool_preview
+
+    long_text = "甲" * 6000
+    search = _structured_tool_preview({
+        "provider": "deepseek_web", "source": "ctext",
+        "results": [{"title": "词源", "url": "https://ctext.org/wiki.pl?chapter=123",
+                     "snippet": long_text}],
+    })
+    assert search["source"] == "ctext"
+    assert search["results"][0]["url"].startswith("https://ctext.org/")
+    assert len(search["results"][0]["snippet"]) <= 130
+
+    page = _structured_tool_preview({
+        "provider": "wikisource", "pageid": 7216,
+        "revision_id": 2599003,
+        "url": "https://zh.wikisource.org/w/index.php?oldid=2599003",
+        "wikitext_excerpt": long_text,
+    })
+    assert page["revision_id"] == 2599003
+    assert len(page["wikitext_excerpt"]) <= 240
+
+    dictionary = _structured_tool_preview({
+        "provider": "moedict", "headword": "將息",
+        "url": "https://www.moedict.tw/a/%E5%B0%87%E6%81%AF",
+        "entries": [{"bopomofo": "ㄐㄧㄤ ㄒㄧˊ", "definitions": [
+            {"definition_original": "調養、休息。", "examples_original": [long_text]},
+        ]}],
+    })
+    assert dictionary["headword"] == "將息"
+    assert dictionary["entries"][0]["definitions"][0]["definition_original"] == "調養、休息。"
+    assert len(dictionary["entries"][0]["definitions"][0]["examples_original"][0]) <= 120
+    assert long_text not in str(search) + str(page) + str(dictionary)

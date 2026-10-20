@@ -52,6 +52,10 @@ def main() -> None:
     ap.add_argument("--offset", type=int, default=0)
     ap.add_argument("--count", type=int, default=100)
     ap.add_argument("--enable-cnkgraph", action="store_true")
+    ap.add_argument(
+        "--require-tools", nargs="*", default=[],
+        help="预检必须向模型注册的 Tool 名；任一缺失即停止，不计入实验题数",
+    )
     ap.add_argument("--env-file", type=Path, help="本地私有配置文件路径（不提交仓库）")
     args = ap.parse_args()
 
@@ -79,10 +83,31 @@ def main() -> None:
     dataset = json.loads(raw_dataset)
     cases = dataset["cases"]
     assert len(cases) == 100
-    tool_args = (text_retrieval_client.enabled, document_retrieval.enabled)
-    if has_research_flag:
-        tool_args += (research_enabled,)
-    enabled_tools = [t["function"]["name"] for t in available_tools(*tool_args)]
+    # The registry grew after the initial Reader 100 runner (web/dictionary/
+    # Wikisource). Pass every *supported* toggle and record the true set,
+    # rather than accidentally logging a smaller legacy tool list.
+    tool_flags = {
+        "retrieval_enabled": text_retrieval_client.enabled,
+        "document_enabled": document_retrieval.enabled,
+        "cnkgraph_research_enabled": research_enabled,
+        "deepseek_web_enabled": bool(
+            getattr(agent_graph, "DEEPSEEK_WEB_TOOLS_ENABLED", False)
+        ),
+        "classic_references_enabled": bool(
+            getattr(agent_graph, "CLASSIC_REFERENCE_TOOLS_ENABLED", False)
+        ),
+    }
+    registered_params = inspect.signature(available_tools).parameters
+    active_flags = {k: v for k, v in tool_flags.items() if k in registered_params}
+    enabled_tools = [
+        t["function"]["name"] for t in available_tools(**active_flags)
+    ]
+    absent = sorted(set(args.require_tools) - set(enabled_tools))
+    if absent:
+        raise SystemExit(
+            "缺少预期的 Agent 工具: " + ", ".join(absent)
+            + "；请检查 .env、测试分支和后端实际服务连接"
+        )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.output.exists():
         run = json.loads(args.output.read_text(encoding="utf-8"))

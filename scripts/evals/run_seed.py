@@ -165,7 +165,57 @@ def _structured_tool_preview(payload: dict[str, object]) -> dict[str, object]:
     third-party responses. These are audit aids rather than verified Gold.
     """
     preview: dict[str, object] = {}
-    if payload.get("provider") != "cnkgraph":
+    provider = payload.get("provider")
+    if provider in ("deepseek_web", "wikisource", "moedict"):
+        preview["provider"] = provider
+        for key in ("url", "title", "headword", "query", "source", "timestamp"):
+            value = payload.get(key)
+            if isinstance(value, str):
+                preview[key] = value[:220]
+        for key in ("revision_id", "pageid"):
+            value = payload.get(key)
+            if type(value) is int:
+                preview[key] = value
+        for key in ("content_excerpt", "wikitext_excerpt"):
+            value = payload.get(key)
+            if isinstance(value, str):
+                preview[key] = value[:240]
+
+        results = payload.get("results")
+        if isinstance(results, list):
+            preview["results"] = [
+                {
+                    "title": str(item.get("title") or "")[:110],
+                    "url": str(item.get("url") or "")[:220],
+                    "pageid": item.get("pageid"),
+                    "snippet": str(item.get("snippet") or "")[:130],
+                }
+                for item in results[:5] if isinstance(item, dict)
+            ]
+        entries = payload.get("entries")
+        if isinstance(entries, list):
+            preview["entries"] = [
+                {
+                    "bopomofo": str(item.get("bopomofo") or "")[:55],
+                    "pinyin": str(item.get("pinyin") or "")[:55],
+                    "definitions": [
+                        {
+                            "definition_original":
+                                str(d.get("definition_original") or "")[:160],
+                            "examples_original": [
+                                str(ex)[:120] for ex in (d.get("examples_original") or [])[:1]
+                                if isinstance(ex, str)
+                            ],
+                        }
+                        for d in (item.get("definitions") or [])[:3]
+                        if isinstance(d, dict)
+                    ],
+                }
+                for item in entries[:2] if isinstance(item, dict)
+            ]
+        return preview
+
+    if provider != "cnkgraph":
         return preview
 
     preview["provider"] = "cnkgraph"
