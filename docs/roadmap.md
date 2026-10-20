@@ -38,6 +38,25 @@ Poeticus 已经走通：
 
 Retrieval 的阶段性目标已经达到。后续不继续围绕 FAISS 参数、更多 Chunk、更多 sparse ranking 变体做惯性扩张。
 
+
+### 1.1 六条工作主线与责任归属（2026-10-20 清淤）
+
+Issue 以**单个可交付／可验证问题**为单位。下面是「新问题首先归哪里」的责任地图，不是额外的任务状态表；开放／关闭及真实验收以各 Issue、PR 和测试为准。一个跨领域任务只能有一个主要验收归属，其他领域通过关联和依赖参与。
+
+| 主线 | 主要责任 | 现有入口与边界 |
+| --- | --- | --- |
+| **阅读体验** | 首页、阅读室、响应式排版、选区、可见导航 | [#113](https://github.com/montricwang/poeticus/issues/113) 信息架构；[#74](https://github.com/montricwang/poeticus/issues/74) 阅读排版历史与剩余契约；[#86](https://github.com/montricwang/poeticus/issues/86) iOS 选区 Bug。不得因视觉微调顺带改变作品数据。 |
+| **个人书房与会话** | 读者身份、私人 Conversation 生命周期、收藏／札记、个人长期记忆 | [#349](https://github.com/montricwang/poeticus/issues/349) 身份隔离；[#44](https://github.com/montricwang/poeticus/issues/44) 会话管理；[#350](https://github.com/montricwang/poeticus/issues/350) 书房；[#45](https://github.com/montricwang/poeticus/issues/45) 用户 Memory。用户私有数据不能写入共享 Critic Notebook。 |
+| **知识与证据** | Curated Document Corpus、证据来源、工具路由、检索质量与来源核验 | [#133](https://github.com/montricwang/poeticus/issues/133) 文献库与来源定位；[#154](https://github.com/montricwang/poeticus/issues/154) 工具路由；[#343](https://github.com/montricwang/poeticus/issues/343) 扩容；[#344](https://github.com/montricwang/poeticus/issues/344) Document RAG Eval。资源复用在 #184，产品工具试验在 #233，不再维护第二个供应商总账。 |
+| **文学评论者 Critic** | 独立判断、Persona/Skills、研究方法与共享 Notebook | [#311](https://github.com/montricwang/poeticus/issues/311) 排序与阶段目标；[#148](https://github.com/montricwang/poeticus/issues/148) 四层设计；[#354](https://github.com/montricwang/poeticus/issues/354) 方法研究及 [#372](https://github.com/montricwang/poeticus/issues/372) 审计迁移；[#347](https://github.com/montricwang/poeticus/issues/347) 记忆候选。远期自主研究不自动进入当前开发。 |
+| **作品与语料** | 诗词作品的来源、抽取、字段、校勘与版本 | [#36](https://github.com/montricwang/poeticus/issues/36) 作品语料策略及 #60/#62/#67 的实际质量案例。与词话等 Document Corpus 分开，禁止因显示问题静默改底本。 |
+| **工程与质量** | 运行稳定性、观测、测试、评测基础与研发规范 | [#196](https://github.com/montricwang/poeticus/issues/196) Trace；[#357](https://github.com/montricwang/poeticus/issues/357) Agent 读者综合评测；部署与测试参见开发者指南。[#336](https://github.com/montricwang/poeticus/issues/336) 仅为一次限期审计，不是永久工程 Epic。 |
+
+**新增问题先归位再立项**：先搜索本领域开放／关闭 Issue 和最新 PR；属于已有验收的反例或补充就更新原单，只有独立交付才另建 Issue。研究假设留研究入口，具体实现留单项任务，历史事实留文档/ADR/Dev Log。Open 代表可追踪未完成工作，不等于全部准备施工；没有当前启动条件的历史方案可按 `not planned` 关闭并保留重开条件。
+
+**优先级每阶段重审**：真实、可复现的核心交互缺陷（例如 #86）高于未触发的视觉实验；旧标签 P1 不自动代表现在急迫。已合并 PR 要与原验收逐项比对：真实 iPhone、运行环境及模型答案质量不能仅由 CI 绿灯宣告完成。最近工作顺序继续以本页「近期事项」与 [#311](https://github.com/montricwang/poeticus/issues/311) 已冻结的 Critic 阶段优先级为准，不在本表重复维护动态状态。
+
+
 ## 2. 近期事项
 
 ### 2.1 阅读交互与 iOS 选区
