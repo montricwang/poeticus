@@ -113,7 +113,7 @@ POETICUS_CNKGRAPH_RESEARCH_TOOLS_ENABLED=true
 
 五者仅在开关打开时向模型注册；开关关闭时即使模型构造工具调用也会拒绝。 Agent 在执行模型提出的工具调用前，还会检查**本轮真实注册的工具名**；即使提示词、旧对话或模型自行输出了未开放的名称，也不会进入网络适配器。原有典故、出处、作品检索和词话 RAG 不受影响。古籍 `/Api/Book/Find` 仅在 404 JSON **恰为** `{"Message":"没找到"}` 时按成功零命中处理，其他 HTTP 404 仍为错误。单次请求 12 秒超时、每次响应最多读取 96 KiB；模型与资料来源仍需核验结果。**不支持批量导出与长期缓存**。
 
-入口：`backend/ai/tools.py` 工具声明；`backend/ai/graph.py` 参数校验及回传；`backend/evidence/providers/cnkgraph_research.py` 外部 HTTP。离线回归：`.venv/bin/python -m pytest -q tests/test_cnkgraph_research_tools.py tests/test_agent.py`。2026-10-20 真实模型针对 reader_016、057、077、084 的小规模回归：016/057 改用已开放的 `lookup_reference`；077/084 的明确无命中不再是 404 错误。研究型回答 Prompt 增加「本次检得证据」与「已有知识／待核推断」区分；这只能降低误引风险，不能代替真实答案核查。完整研究型 Tool Trace（词律细节、书卷命中摘要）见题库 PR #358 的运行脚本。具体模型自主工具选择需要统一进行本地真实对话验收。完整公开端点探测资产见 [CNKGraph 普查 PR #353](https://github.com/montricwang/poeticus/pull/353)，接入任务为 [#355](https://github.com/montricwang/poeticus/issues/355)。
+入口：`backend/ai/tools.py` 工具声明；`backend/ai/graph.py` 参数校验及回传；`backend/evidence/providers/cnkgraph_research.py` 外部 HTTP。离线回归：`.venv/bin/python -m pytest -q tests/test_cnkgraph_research_tools.py tests/test_agent.py`。2026-10-20 真实模型针对 reader_016、057、077、084 的小规模回归：016/057 改用已开放的 `lookup_reference`；077/084 的明确无命中不再是 404 错误。研究型回答 Prompt 增加「本次检得证据」与「已有知识／待核推断」区分；这只能降低误引风险，不能代替真实答案核查。[PR #358](https://github.com/montricwang/poeticus/pull/358) 提供 100 题题库与校验；真实工具调用和首批 20 题对照见已合并的 [PR #370](https://github.com/montricwang/poeticus/pull/370)，不能把题集当作完整 Tool Trace。具体模型自主工具选择需要统一进行本地真实对话验收。[CNKGraph 普查 PR #353](https://github.com/montricwang/poeticus/pull/353) **已关闭但未合并 main**；其全域探测与离线报告仍是独立研究资产，由 [#346](https://github.com/montricwang/poeticus/issues/346) 跟进。已合并的五项工具接入见 [PR #356](https://github.com/montricwang/poeticus/pull/356)，效果验收归 [#355](https://github.com/montricwang/poeticus/issues/355)。
 
 ### DeepSeek Search / Fetch 联网研究（独立付费 API，默认关闭）
 
@@ -134,7 +134,7 @@ POETICUS_DEEPSEEK_WEB_TOOLS_ENABLED=true
 
 模型和联网服务返回的内容受到响应大小与超时限制，失败与正常零命中分开。Search/Fetch 属于独立计费的只读请求，不在服务器中长期缓存网页内容，也不对私人文献批量抓取。识典古籍官方服务协议（https://www.shidianguji.com/protocol ）限制未经书面许可的自动抓取，因此 Search 可以提供其公开结果链接供读者人工打开，但 `web_fetch` 明确不抓取 `shidianguji.com` 及其子域名，获得正式许可前不接内部接口。一次 Search + Fetch 会用完当前单题 **2 次工具调用预算**。原有典故、词学 RAG 和 CNKGraph 功能不变。
 
-实现入口 `backend/research/deepseek_web.py`、`backend/ai/tools.py`、`backend/ai/graph.py`；离线测试 `.venv/bin/python -m pytest -q tests/test_deepseek_web_tools.py`。研究任务见 [#364](https://github.com/montricwang/poeticus/issues/364)，当前实现为叠加在 [PR #356](https://github.com/montricwang/poeticus/pull/356) 之上的研究分支，仍需真实交互验收和预算评估。
+实现入口 `backend/research/deepseek_web.py`、`backend/ai/tools.py`、`backend/ai/graph.py`；离线测试 `.venv/bin/python -m pytest -q tests/test_deepseek_web_tools.py`。本地 Search/Fetch 接入 [PR #365](https://github.com/montricwang/poeticus/pull/365) **已合并 main**，实施任务 [#364](https://github.com/montricwang/poeticus/issues/364) 已收口；工具仍默认关闭，真实回答增量、路由与预算评估见 [#153](https://github.com/montricwang/poeticus/issues/153)、[#154](https://github.com/montricwang/poeticus/issues/154)、[#155](https://github.com/montricwang/poeticus/issues/155)。
 
 ### 经典字词与公开文献来源（2026-10-20 试验）
 
