@@ -87,6 +87,8 @@ python -m scripts.corpus.db_import --import
 
 详见 [Document Corpus 文献数据库](architecture/document-corpus.md)。向量表需 PostgreSQL 服务端支持 pgvector，使用单独的 `--migrate-vectors` / `--import-vectors`，不可仅凭 Python 安装 pgvector 包当作已就绪。
 
+另有**独立于 Document Corpus 和诗词数据库的私人历史语汇工具**：张相《詩詞曲語辭匯釋》的 `.venv/bin/python -m scripts.corpus.local_lexicon lookup 怎生`。源修订、索引存放于仓库同级 `poeticus-data/lexicon/`；使用与恢复方法见[词典采集和查询说明](../scripts/corpus/README-local-lexicon.md)。暂不向网页或 Agent 公开词典全文。
+
 本地词话检索工具接入 Agent 时，需要安装可选的 Qwen3 Embedding 推理依赖（`.venv/bin/python -m pip install -r requirements-retrieval.txt`），并在私人 `.env` 中增加 `POETICUS_DOCUMENT_RAG_ENABLED=true`，然后重启后端。它按需加载本机 Qwen3-Embedding-0.6B，首次检索可能较慢；本地 PostgreSQL 须预先导入文献和向量。未配置/未启用时不会向 Agent 注册 `search_documents`，不会阻止普通 Web 服务启动。可选 `POETICUS_DOCUMENT_RERANK_ENABLED=true` 仅在本机有 Qwen3-Reranker 模型且手动启用时尝试精排；默认关闭，异常回退到原 Hybrid。当前 16 题的 Recall/延迟结果不支持默认开启；详情见 [实验报告](../scripts/experiments/README-document-rag.md)。这两个开关目前**只用于本地实验**，线上部署须先核对词话版本版权、再分发权限与模型资源预算。
 
 只有 schema、没有作品数据时，目录为空是正常现象。

@@ -31,20 +31,22 @@
 
 ## 使用
 
-从含 `scripts/corpus/local_lexicon.py` 的工作树运行。当前代码位于 `~/projects/poeticus-lexicon`，仍使用主项目的 Python 虚拟环境：
+合并后，从 Poeticus 主仓库运行；继续使用已有 Python 虚拟环境：
 
 ```bash
-cd ~/projects/poeticus-lexicon
-~/projects/poeticus/.venv/bin/python -m scripts.corpus.local_lexicon lookup 怎生
-~/projects/poeticus/.venv/bin/python -m scripts.corpus.local_lexicon lookup 遮莫
+cd ~/projects/poeticus
+./.venv/bin/python -m scripts.corpus.local_lexicon lookup 怎生
+./.venv/bin/python -m scripts.corpus.local_lexicon lookup 遮莫
 
 # 完全离线重建检索索引
-~/projects/poeticus/.venv/bin/python -m scripts.corpus.local_lexicon build
+./.venv/bin/python -m scripts.corpus.local_lexicon build
 
 # 从 MediaWiki API 断点续采，不覆盖已经保存的源修订
-~/projects/poeticus/.venv/bin/python -m scripts.corpus.local_lexicon fetch \
+./.venv/bin/python -m scripts.corpus.local_lexicon fetch \
   --batch-size 15 --max-batches 12 --delay 0.7
 ```
+
+数据目录可用 `--data-root` 或环境变量 `POETICUS_LEXICON_DATA_ROOT` 覆盖；暂不读取 `POETICUS_DATA_ROOT`。
 
 2026-10-20 因 WSL TLS 网络连接间歇性断开，实际先使用浏览器在原站执行 MediaWiki Action API 的前缀分页读取，再经 Windows Downloads 临时中转到 WSL 私有目录。已逐一按统一的源页面结构保存，并完成完整度验证。普通 `fetch` 使用同一套源记录格式；它只补缺，**不会默默覆盖这批历史版本**。刷新内容时需设计明确的新快照及差异复核策略。
 
@@ -53,13 +55,13 @@ cd ~/projects/poeticus-lexicon
 - 保留繁体、原书用字、异形词、源引文与修订记录，不能把“出现一个词”解释为它在当前作品里的唯一词义。
 - 词头、目录别名用于确定性查找；短词全文检索可能返回提及该词的其他条目，需查看出处。
 - 网站数字化过程中可能存在字形规范化及转录错字；词典里的说明应以来源和上下文复核。
-- 这是候选证据库，不在本轮批量标注 3491 首作品，也不自动注释用户界面；后续见 Issue #335。
+- 这是候选证据库，不在本轮批量标注 3491 首作品，也不自动注释用户界面；后续见 Issue #335。后续拟由 AI 主动识别值得注释的词，查询词典后向读者展示**全部有来源的义项**供自行判断，AI 新增解释需与原书分开标明；这一设计尚未实现，也不要求模型强行选唯一解释。
 - 可公开浏览不代表许可全量转录再发布。公开产品使用前必须另行核对原书版本、数字底稿的版权与网站条款。
 
 ## 验收
 
 ```bash
-~/projects/poeticus/.venv/bin/python -m pytest tests/test_local_lexicon.py -q
+./.venv/bin/python -m pytest tests/test_local_lexicon.py -q
 ```
 
 测试覆盖词头/别名、嵌套义项及排序、原文 SHA 变化报警、脱标记纯文本和 SQLite 索引重建。
