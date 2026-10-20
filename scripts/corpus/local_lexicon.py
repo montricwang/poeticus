@@ -192,7 +192,10 @@ def collect(root: Path, *, batch_size: int, max_batches: int, delay: float) -> N
         pages = fetch_api([TITLE])
         if not any(save_page(root, p) for p in pages):
             raise RuntimeError("未能读取目录页")
-    catalog = catalog_from_index(load_page(root, TITLE)["wikitext"])
+    index_page = load_page(root, TITLE)
+    if index_page is None:
+        raise RuntimeError("目录源页面在采集后缺失")
+    catalog = catalog_from_index(index_page["wikitext"])
     if len(catalog) < 100:
         raise RuntimeError(f"目录仅解析出 {len(catalog)} 个词条，停止以避免错误快照")
     failures = {}

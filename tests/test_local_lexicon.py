@@ -48,8 +48,11 @@ def test_transclusion_follows_original_order_and_keeps_source(tmp_path: Path) ->
             "<noinclude>{{header|private}}</noinclude>")
     _source(tmp_path, part1, "===[[白話詞彙/遮莫|遮莫]]===\n\n'''遮莫'''，儘教之義。")
     _source(tmp_path, part2, "==遮莫（二）==\n\n第二義：無妨。")
-    assert children_from_text(load_page(tmp_path, word)["wikitext"]) == [part1, part2]
-    assert all_needed(tmp_path, catalog_from_index(load_page(tmp_path, TITLE)["wikitext"])) == [
+    word_page = load_page(tmp_path, word)
+    main_page = load_page(tmp_path, TITLE)
+    assert word_page is not None and main_page is not None
+    assert children_from_text(word_page["wikitext"]) == [part1, part2]
+    assert all_needed(tmp_path, catalog_from_index(main_page["wikitext"])) == [
         TITLE, word, part1, part2
     ]
     text, ok = render_entry(tmp_path, word)
@@ -58,8 +61,10 @@ def test_transclusion_follows_original_order_and_keeps_source(tmp_path: Path) ->
     assert "第二義：無妨。" in text
     assert text.index("儘教之義") < text.index("第二義") < text.index("p.135")
     assert "header|private" not in text
-    assert load_page(tmp_path, part1)["revision_id"] == 123
-    assert len(load_page(tmp_path, part1)["sha256"]) == 64
+    part_page = load_page(tmp_path, part1)
+    assert part_page is not None
+    assert part_page["revision_id"] == 123
+    assert len(part_page["sha256"]) == 64
     rebuild(tmp_path)
     import sqlite3
 
