@@ -1,6 +1,6 @@
 param(
   [string]$LlamaExe = 'D:\Poeticus\poeticus-data\tools\local-llm\llama-b11723-win-vulkan-x64\llama-server.exe',
-  [string]$ModelPath = '\\wsl.localhost\Ubuntu\home\montric\projects\poeticus-data\models\Qwen3.5-4B\Qwen3.5-4B-Q4_K_M.gguf',
+  [string]$ModelPath = 'D:\Poeticus\poeticus-data\tools\local-llm\models\Qwen3.5-4B-Q4_K_M.gguf',
   [int]$Port = 8091,
   [int]$Context = 8192
 )
@@ -10,7 +10,7 @@ if (-not (Test-Path -LiteralPath $LlamaExe -PathType Leaf)) {
   throw "llama-server.exe not found: $LlamaExe"
 }
 if (-not (Test-Path -LiteralPath $ModelPath -PathType Leaf)) {
-  throw "GGUF not found: $ModelPath. Check your WSL distro name and model path."
+  throw "GGUF not found: $ModelPath. Check that the local model copy completed."
 }
 
 Write-Host 'Local-only llama.cpp / Intel Iris Xe Vulkan'
