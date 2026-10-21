@@ -4,10 +4,10 @@
 
 ## 一、启动 Windows 本地 GPU 模型
 
-在 Windows PowerShell 中执行（工作树路径请按实际位置调整）：
+在 Windows PowerShell 中执行（启动脚本已复制到 D 盘，避免 PowerShell 访问 WSL UNC 路径失败）：
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "\\wsl.localhost\Ubuntu\home\montric\projects\poeticus-intertext-pilot\scripts\research\start_local_critic_model.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "D:\Poeticus\poeticus-data\tools\local-llm\start_local_critic_model.ps1"
 ```
 
 脚本启动已安装的 Windows Vulkan `llama-server.exe`，加载已复制到 `D:\Poeticus\poeticus-data\tools\local-llm\models\` 的 Qwen3.5-4B GGUF，监听 **127.0.0.1:8091**。保持此终端打开。当前机器 WSL2 已配置 `networkingMode=mirrored`，WSL 可以使用同一环回地址连接该服务。WSL 里的原模型仍然保留，复制是因为 Windows 无法直接读取原来的 WSL 模型路径。
