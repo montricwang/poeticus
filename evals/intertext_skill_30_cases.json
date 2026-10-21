@@ -1,0 +1,493 @@
+{
+  "schema_version": 1,
+  "dataset_id": "poeticus_intertext_skill_ab_30",
+  "dataset_version": 1,
+  "status": "draft_pending_source_review",
+  "created_on": "2026-10-21",
+  "description": "互文 Skill D/A/B/C 离线评测候选；问题按读者语气写，不提供方法提示。评审线索绝不进入 Agent 输入。",
+  "fixture_source": "evals/agent_reader_100_cases.json",
+  "fixture_status": "reuse_existing_unverified_classical_text_candidates",
+  "experiment_note": "Five preselected pilot questions, remainder for full evaluation. No claim of unseen pretraining examples or verified gold. Do not use draft review notes as model input.",
+  "cases": [
+    {
+      "id": "itx_001",
+      "category": "source",
+      "split": "pilot",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "yan_lin",
+        "question": "“落花人独立，微雨燕双飞”是否有前人的成句？如果有，晏几道用在这里和原来的情境有什么变化？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "核对翁宏《春残》对应句；解释前后语境与人物位置",
+        "common_failure": "只凭相同句子忽略语境改变",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_002",
+      "category": "source",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "jiang_yang",
+        "question": "姜夔写“过春风十里，尽荠麦青青”，这里的“春风十里”来自哪里？他怎样改变了那句诗的意味？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "查杜牧《赠别》及姜词扬州历史情境；勿混成唯一来源",
+        "common_failure": "出处与解释不分",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_003",
+      "category": "source",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "he_qing",
+        "question": "“凌波不过横塘路”的“凌波”只是形容走路好看吗？它是否让你想到更早的作品？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "核对《洛神赋》凌波微步；比较人物和距离感",
+        "common_failure": "从典故直接认定现实人物",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_004",
+      "category": "source",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "xin_yong",
+        "question": "“廉颇老矣，尚能饭否”在这首词里为什么出现？典故本来的故事与词人的用法有哪些不同？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "核对《史记·廉颇蔺相如列传》；人物用典与现实语境分层",
+        "common_failure": "将词人自比等同史实",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_005",
+      "category": "source",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "su_water",
+        "question": "“把酒问青天”和李白《把酒问月》有多接近？能据此认定苏轼直接化用了李白吗？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "比较语句、结构与问月传统；证据不足时不定直接影响",
+        "common_failure": "知名相似句即唯一来源",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_006",
+      "category": "adaptation",
+      "split": "pilot",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "jiang_yang",
+        "question": "姜夔为什么在《扬州慢》里一再提到杜牧？这些杜牧诗句在词里被重新安排后起了什么作用？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "对照杜牧扬州相关诗与姜词废墟现实；具体说明反差",
+        "common_failure": "把所有杜牧诗句归入同一作品",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_007",
+      "category": "adaptation",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "he_qing",
+        "question": "贺铸写“锦瑟华年谁与度”，如果联想到李商隐《锦瑟》，这四个字在两篇里表达的重点相同吗？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "比较《锦瑟》语境和贺词设问对象；避免断言唯一灵感",
+        "common_failure": "只说继承伤感",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_008",
+      "category": "adaptation",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "xin_yong",
+        "question": "“元嘉草草，封狼居胥，赢得仓皇北顾”把几段历史放在一起，词人如何借这种安排表达态度？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "区分刘义隆北伐、霍去病封狼居胥和词中警戒；核对史实",
+        "common_failure": "把不同历史人物混为一谈",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_009",
+      "category": "adaptation",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "su_nian",
+        "question": "《念奴娇·赤壁怀古》写周瑜时，哪些是历史人物形象，哪些是苏轼自己创造的艺术画面？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "区分正史、后世叙事、词的修辞；不要把每个细节当实录",
+        "common_failure": "艺术形象直接替代史料",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_010",
+      "category": "adaptation",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "yan_lin",
+        "question": "《临江仙》为什么在“落花人独立”之后还要写“微雨燕双飞”？若这是一组从前人那里借来的句子，它在新词中承担了什么作用？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "联系两句和回忆小苹的下片结构，解释独与双对照",
+        "common_failure": "停留在字面出处不解释作品",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_011",
+      "category": "comparison",
+      "split": "pilot",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "su_water",
+        "question": "苏轼《水调歌头》与苏辙写徐州中秋的《水调歌头》，都谈离别，它们说话的角度有什么差别？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "核对苏辙该词与兄弟唱和关系；观察各自叙述视角",
+        "common_failure": "只因同调就假定同义",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_012",
+      "category": "comparison",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "xin_yuan",
+        "question": "欧阳修《生查子·元夕》和辛弃疾《青玉案·元夕》都写元夜。两首词里热闹的灯市分别衬托了什么？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "核对两篇完整文本；分析叙述者与人物追寻",
+        "common_failure": "把同题误判为直接唱和",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_013",
+      "category": "comparison",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "li_ru",
+        "question": "把李清照《如梦令》里的海棠和苏轼《海棠》放在一起读，两人的观察角度和情感重点一样吗？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "核对苏轼《海棠》原诗；比较主体与语气",
+        "common_failure": "把共同题材误说成直接借用",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_014",
+      "category": "comparison",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "liu_yu",
+        "question": "王维《送元二使安西》与柳永《雨霖铃》都写送别，为什么读起来节奏和感情浓度很不一样？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "比较诗体、展开时间、细节密度与告别场景",
+        "common_failure": "只用唐诗含蓄宋词直白贴标签",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_015",
+      "category": "comparison",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "li_sheng",
+        "question": "同样写雨，李清照《声声慢》和苏轼《定风波》的“雨”有什么不同？你能从具体句子说明吗？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "对照雨的叙述位置与主体反应；无需假设直接影响",
+        "common_failure": "无来源证据强行建立化用链",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_016",
+      "category": "motif",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "zhou_su",
+        "question": "周邦彦“水面清圆，一一风荷举”与杨万里“接天莲叶无穷碧”都是写荷叶，所见景象和写法有什么差别？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "核对杨万里原诗；比较观看距离、动静与修辞",
+        "common_failure": "见荷叶就推断直接化用",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_017",
+      "category": "motif",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "yan_lin",
+        "question": "《临江仙》的落花、微雨和燕子是普通春景，还是带着前代文学赋予的感情色彩？哪一种解释更能读通这首词？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "结合本词语境与传统用例，区分共用意象和特定出处",
+        "common_failure": "堆砌意象典故不回答问题",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_018",
+      "category": "motif",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "li_sheng",
+        "question": "“梧桐更兼细雨”为什么能加重《声声慢》的情绪？这里一定是在用某一首唐诗的典故吗？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "说明梧桐夜雨传统及本词递进；不强定唯一出处",
+        "common_failure": "把常见语汇钉死一个来源",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_019",
+      "category": "motif",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "li_yu",
+        "question": "李煜《虞美人》和苏轼《水调歌头》都望月，同一个月亮为什么在两首词里有不同的时间感？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "核对所引作品中的月与往事/离别逻辑",
+        "common_failure": "以相同月意象强行建立师承",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_020",
+      "category": "motif",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "wen_pu",
+        "question": "温庭筠《菩萨蛮》中的“小山重叠”应当只按眼前景物理解，还是要考虑晚唐词常用的闺阁语汇？怎样判断更稳妥？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "多义解释须回语法和文本，避免唯一断言",
+        "common_failure": "借流行学说代替文本细读",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_021",
+      "category": "same_author",
+      "split": "pilot",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "su_ding",
+        "question": "将苏轼《定风波》和《水调歌头》放在一起读，能发现怎样相似或不同的面对困境的方式？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "比较各篇语气和表达情境；谨慎使用生平材料",
+        "common_failure": "把艺术姿态当同一经历",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_022",
+      "category": "same_author",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "su_nian",
+        "question": "《念奴娇·赤壁怀古》和《定风波》都是苏轼词，是否都可以笼统说成“旷达”？具体区别在哪里？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "以文本结构和说话姿态支持比较",
+        "common_failure": "统一性格标签压平差异",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_023",
+      "category": "same_author",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "xin_yong",
+        "question": "辛弃疾《永遇乐·京口北固亭怀古》和《青玉案·元夕》好像很不一样。能用这两首词证明他生活中有两种截然相反的性格吗？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "指出词体/题材多样性及传记推断边界",
+        "common_failure": "从作品抒情角色推断人格诊断",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_024",
+      "category": "same_author",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "li_ru",
+        "question": "李清照《如梦令》和《声声慢》写愁的方式有何不同？只凭这些文字能确定两首词各写于哪一年吗？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "比较对话与叠字布局；作年须另找证据",
+        "common_failure": "以快乐悲伤直接断作年",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_025",
+      "category": "same_author",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "liu_gan",
+        "question": "柳永《八声甘州》和《雨霖铃》都涉及离愁，哪一篇更强调眼前分别，哪一篇更强调长期漂泊？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "对照两首完整作品和时空展开；避免虚构具体相别对象",
+        "common_failure": "将词中人视为确切生平人物",
+        "expected_intertext": true
+      }
+    },
+    {
+      "id": "itx_026",
+      "category": "negative",
+      "split": "pilot",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "li_ru",
+        "question": "“绿肥红瘦”四个字为什么能同时写出花和叶的变化？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "词法和前后问答即可回答",
+        "common_failure": "为展示Skill强行找外部典故",
+        "expected_intertext": false
+      }
+    },
+    {
+      "id": "itx_027",
+      "category": "negative",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "zhou_su",
+        "question": "“叶上初阳干宿雨，水面清圆，一一风荷举”里的画面是怎样一步步出现的？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "解释镜头顺序、声音视觉与动态",
+        "common_failure": "忽略篇内铺叙转找唐诗",
+        "expected_intertext": false
+      }
+    },
+    {
+      "id": "itx_028",
+      "category": "negative",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "su_ding",
+        "question": "“也无风雨也无晴”只是说天气放晴了吗？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "结合上下阕言志与眼前雨景",
+        "common_failure": "无关互文分散回答",
+        "expected_intertext": false
+      }
+    },
+    {
+      "id": "itx_029",
+      "category": "negative",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "liu_gan",
+        "question": "《八声甘州》开头为什么先写“潇潇暮雨”，而不是马上说思乡？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "从铺景转情与长调结构回答",
+        "common_failure": "为了证明方法强行扯前代作品",
+        "expected_intertext": false
+      }
+    },
+    {
+      "id": "itx_030",
+      "category": "negative",
+      "split": "main",
+      "review_status": "draft_fact_check_pending",
+      "input": {
+        "fixture_id": "he_qing",
+        "question": "“一川烟草，满城风絮，梅子黄时雨”三个比喻为什么要连用？",
+        "selection": null
+      },
+      "review": {
+        "evidence_checks": "分析三比喻的空间、形态和时间叠加",
+        "common_failure": "先讲典故却不回答连用作用",
+        "expected_intertext": false
+      }
+    }
+  ]
+}
