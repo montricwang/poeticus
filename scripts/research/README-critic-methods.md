@@ -74,18 +74,18 @@ EPUB 全量短引及哈希比对完成：1505/1505 无定位错误。7 处旧分
 
 ## 2026-10-21：六篇方法标签复查
 
-36 篇抽审发现的六处疑点已记录在 `critic_method_reviews_2026-10-21.json`：
+36 篇抽审发现的六处标签疑点，已在 `critic_method_reviews_2026-10-21.json` 单独记录决定与依据：
 
-- 确认修正：`0013` 和 `1065` 的 `COUNTERFACTUAL → IMAGE`；`1135` 的 `COUNTERFACTUAL → INTERTEXT`。
-- 尚待商定：`0154` 的 `HISTORY`（候选 `AESTHETICS`）、`0161` 的 `PROSODY`（候选 `STRUCTURE`）、`0434` 的 `ALLEGORY`（候选 `IMAGE`）。候选分类尚未应用，不计入已修正数。
+- 改正五处：`0013`、`1065` 的 `COUNTERFACTUAL → IMAGE`；`1135` 的 `COUNTERFACTUAL → INTERTEXT`；`0154` 的 `HISTORY → AESTHETICS`；`0434` 的 `ALLEGORY → IMAGE`。
+- 保留一处：`0161` 的 `PROSODY`。它讨论小词与套曲的体制容量，仍可归入现有形式分析类别；不将其说成具体的平仄声律分析。
 
-私有修订结果单独生成，原始卡片、合并 JSONL 和统一 JSONL 都不改：
+修订后的私有分析另存新文件，原始单篇记录、合并 JSONL、统一 JSONL，以及首轮三处修订的 `critic_methods_reviewed_v1_1505.jsonl` 都保持原样：
 
 ```bash
 .venv/bin/python -m scripts.research.apply_critic_method_reviews \
   --input ../poeticus-data/critic-methods/results/critic_methods_uniform_v2_1505.jsonl \
-  --output ../poeticus-data/critic-methods/results/critic_methods_reviewed_v1_1505.jsonl
+  --output ../poeticus-data/critic-methods/results/critic_methods_reviewed_v2_1505.jsonl
 python -m unittest tests.test_apply_critic_method_reviews -v
 ```
 
-脚本核对篇号、方法序号、原标签和论证文字哈希；只应用明确确认的更正，对其余三项保留原标签。输出必须是尚不存在的新文件，以免覆盖旧记录。首次生成 1505 篇，实际替换 3 个标签；私有输出 SHA-256：`e4ad7e9a7790f4bf0c2324b8f7267f3b08866a7594f2b2ea300b25403bd8a49f`。之后修订待议标签时须使用新的输出文件名。
+脚本验证篇号、方法位置、原标签及分析文字哈希，并拒绝覆盖已有输出。2026-10-21 验证：1505 篇、五处标签变化，其余文字与引文均不变；私有修订文件 SHA-256：`f70c8b1e66a27fe5c2d2d4339e12865983577316783a700e98944853a692ca02`。这只完成首轮抽审发现的六处分类问题，不代表全库已完成语义质量复核。
