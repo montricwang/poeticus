@@ -10,7 +10,7 @@
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "\\wsl.localhost\Ubuntu\home\montric\projects\poeticus-intertext-pilot\scripts\research\start_local_critic_model.ps1"
 ```
 
-脚本启动已安装的 Windows Vulkan `llama-server.exe`，加载 WSL 中的 `Qwen3.5-4B-Q4_K_M.gguf`，监听 **127.0.0.1:8091**。保持此终端打开。当前机器 WSL2 已配置 `networkingMode=mirrored`，WSL 可尝试用同一个环回地址访问该服务。若模型文件不能通过 `\\wsl.localhost` 打开，需要检查 WSL 发行版名或给 `-ModelPath` 指定 Windows 能读取的 GGUF 路径。
+脚本启动已安装的 Windows Vulkan `llama-server.exe`，加载已复制到 `D:\Poeticus\poeticus-data\tools\local-llm\models\` 的 Qwen3.5-4B GGUF，监听 **127.0.0.1:8091**。保持此终端打开。当前机器 WSL2 已配置 `networkingMode=mirrored`，WSL 可以使用同一环回地址连接该服务。WSL 里的原模型仍然保留，复制是因为 Windows 无法直接读取原来的 WSL 模型路径。
 
 服务器日志需显示 Vulkan/GPU 层卸载成功，才算启用了显卡。否则不要以 GPU 速度估算任务。
 
