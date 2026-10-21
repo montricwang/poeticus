@@ -29,6 +29,16 @@ class CriticExportTest(unittest.TestCase):
             self.assertEqual(result["evidence_count"], 2)
             self.assertEqual(json.loads((records / "0001_one.json").read_text()), pilot)
 
+    def test_real_pilot_quote_counts_as_one_index(self):
+        with tempfile.TemporaryDirectory() as directory:
+            records = Path(directory)
+            pilot = {"essay_no": 1, "essay_id": "one", "moves": [{
+                "exact_quote": "引文甲"}, {"exact_quote": "引文乙"}]}
+            (records / "0001_one.json").write_text(json.dumps(pilot))
+            _, meta = collect_records(records, 1)
+            self.assertEqual(meta["method_count"], 2)
+            self.assertEqual(meta["evidence_count"], 2)
+
     def test_rejects_wrong_count_and_duplicate_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             records = Path(directory)

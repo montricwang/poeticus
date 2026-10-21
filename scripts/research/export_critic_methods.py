@@ -56,7 +56,13 @@ def collect_records(records_dir: Path, expected_count: int | None) -> tuple[list
         elif isinstance(original.get("moves"), list) and original["moves"]:
             schema = "pilot_v1"
             methods_count += len(original["moves"])
-            evidence_count += sum(len(m.get("evidence", [])) for m in original["moves"])
+            # Pilot moves store a single direct exact_quote, not an evidence list.
+            # Also accept older synthetic/list-shaped fixtures for compatibility.
+            evidence_count += sum(
+                len(m["evidence"]) if isinstance(m.get("evidence"), list)
+                else int(bool(m.get("exact_quote")))
+                for m in original["moves"]
+            )
         else:
             raise ValueError(f"Neither supported research card schema: {path.name}")
         schemas[schema] += 1
