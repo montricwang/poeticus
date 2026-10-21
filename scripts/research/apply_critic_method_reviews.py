@@ -49,7 +49,7 @@ def apply_reviews(rows: list[dict], decisions: list[dict]) -> tuple[list[dict], 
             if not isinstance(new_code, str) or not new_code or new_code == method["code"]:
                 raise ValueError(f"Invalid replacement: {number}/{index}")
             method["code"] = new_code
-        elif status != "needs_review":
+        elif status not in ("needs_review", "retained"):
             raise ValueError(f"Unknown review status: {status}")
         totals[status] += 1
 

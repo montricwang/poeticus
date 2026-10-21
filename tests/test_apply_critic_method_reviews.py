@@ -40,6 +40,13 @@ class ApplyCriticMethodReviewsTest(unittest.TestCase):
         self.assertEqual(result[1], before[1])
         self.assertEqual(source, before)
 
+    def test_retained_label_is_verified_but_not_changed(self):
+        original = _row()
+        decision = _decision(status="retained")
+        result, stats = apply_reviews([original], [decision])
+        self.assertEqual(result, [original])
+        self.assertEqual(stats, {"retained": 1})
+
     def test_review_checks_fingerprint_and_identity(self):
         for key, value in (("essay_id", "wrong"), ("path_sha256", "bad"), ("old_code", "IMAGE")):
             with self.subTest(key=key):
