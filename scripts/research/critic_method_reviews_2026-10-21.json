@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "issue": 372,
+  "decisions": [
+    {
+      "essay_no": 13,
+      "essay_id": "tcjd-2016-text00217-bw1",
+      "method_index": 3,
+      "old_code": "COUNTERFACTUAL",
+      "new_code": "IMAGE",
+      "path_sha256": "ac5e8b32efe49cc60710b1678f9975f6ca50aa858ea3a182ba297588776d32ca",
+      "status": "approved",
+      "reason": "分析人物观景的动静关系，不是反事实替换。"
+    },
+    {
+      "essay_no": 1065,
+      "essay_id": "tcjd-2016-text00410-bw1",
+      "method_index": 3,
+      "old_code": "COUNTERFACTUAL",
+      "new_code": "IMAGE",
+      "path_sha256": "dd946517b0342652ca544305d3d2bfbfa11ca9f288ee03ad1805c49bb5715263",
+      "status": "approved",
+      "reason": "考察愁情由抽象数量变成空间形象的比喻与夸张。"
+    },
+    {
+      "essay_no": 1135,
+      "essay_id": "tcjd-2016-text00424-bw1",
+      "method_index": 4,
+      "old_code": "COUNTERFACTUAL",
+      "new_code": "INTERTEXT",
+      "path_sha256": "cc41bbf3909eb6473e2d5bc632fb5eb3820d826853fe7b55dc55beff6bc94b02",
+      "status": "approved",
+      "reason": "对照典故原来的比喻方向与词作中的反转用法。"
+    },
+    {
+      "essay_no": 154,
+      "essay_id": "tcjd-2016-text00235-bw21",
+      "method_index": 1,
+      "old_code": "HISTORY",
+      "proposed_code": "AESTHETICS",
+      "path_sha256": "38646bd67a12e5f8f6bc5bc3e7fd827b36504cffbc424f7e838996ebf28a390f",
+      "status": "needs_review",
+      "reason": "主要区分两种诗人气质，未直接用史实论证；需界定文学批评史与风格比较的边界。"
+    },
+    {
+      "essay_no": 161,
+      "essay_id": "tcjd-2016-text00238-bw3",
+      "method_index": 1,
+      "old_code": "PROSODY",
+      "proposed_code": "STRUCTURE",
+      "path_sha256": "ccc5a80abde6eba9f99b407afe6916f87bae5d536f9bfc8c48535d2e3382e503",
+      "status": "needs_review",
+      "reason": "比较小词与套曲的篇幅容量，说明表达压缩；需明确声律是否包含体制容量。"
+    },
+    {
+      "essay_no": 434,
+      "essay_id": "tcjd-2016-text00288-bw4",
+      "method_index": 2,
+      "old_code": "ALLEGORY",
+      "proposed_code": "IMAGE",
+      "path_sha256": "5fbaa7821d59ebe4dd87559fe25417e2dd0bab3913101cc1888d92f097cef128",
+      "status": "needs_review",
+      "reason": "这里是长江拟人和高士形象塑造，尚无持续寓托结构；需界定象征与寓托。"
+    }
+  ]
+}
