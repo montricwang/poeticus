@@ -259,7 +259,7 @@ git config --local core.hooksPath .githooks
 
 **Squash 合并须显式设置英文 `type: subject` 或 `type(scope): subject`**，不能让 GitHub 自动把中文 PR 标题变成合并提交信息。例如：`gh pr merge <PR编号> --squash --subject "feat(retrieval): improve poem search" --body "Improve search scoring and tests."`。AI 调用 GitHub API 合并时也必须显式传入英文 `commit_title` 和 `commit_message`。只有 GitHub Ruleset 的 commit metadata 限制能在合并前约束最终提交标题；仅凭 PR 检查不能保证 Squash 时不会填错。
 
-这项约定的跨项目来源是 [《教学与开发协作手册》Git 协作章节](https://github.com/montricwang/gpt-finishing-school/blob/main/审校与工作流/教学与开发协作手册.md)，项目执行入口以本节为准；无需让其他项目继承 Poeticus 的特例。
+这项约定的跨项目来源是 [《教学与开发协作手册》Git 协作章节](https://github.com/montricwang/chatgpt-vault/blob/main/GPT%20%E7%BA%A6%E6%9D%9F/%E6%95%99%E5%AD%A6%E4%B8%8E%E5%BC%80%E5%8F%91%E5%8D%8F%E4%BD%9C%E6%89%8B%E5%86%8C.md)，项目执行入口以本节为准；无需让其他项目继承 Poeticus 的特例。
 
 ## 7. 工程决策的记录边界
 
@@ -356,4 +356,4 @@ python -m scripts.retrieval.run_serving --device cpu \
 - **父任务不是永久目录**：Roadmap/文档持续保存「阅读、语料、Critic」等长期领域；父 Issue 只承担可结束的阶段目标。收尾时先把稳定结论迁移到现有权威文档，再清理 Issue 的过时方案；已完成的子任务立即打钩/关闭，验收完成就检查是否连父任务一同关闭。不要让历史研究提案靠长期 Open 状态充当知识库。
 - **结束后的清理**：对过期部署、重复提案和已被实施的旧实验选择合适关闭原因，正文保留简短结论及新入口；无明确近期实施条件的灵感可以折叠进相关 Issue 的「未来复查」而非永远保持开放。清理不是追求最低 Issue 数量：真正独立的缺陷和实验应继续单独跟踪。
 
-AI 协作、教学节奏和阶段复盘方式统一维护在 [GPT Finishing School《教学与开发协作手册》](https://github.com/montricwang/gpt-finishing-school/blob/main/审校与工作流/教学与开发协作手册.md)。
+AI 协作、教学节奏和阶段复盘方式统一维护在 [Vault《教学与开发协作手册》](https://github.com/montricwang/chatgpt-vault/blob/main/GPT%20%E7%BA%A6%E6%9D%9F/%E6%95%99%E5%AD%A6%E4%B8%8E%E5%BC%80%E5%8F%91%E5%8D%8F%E4%BD%9C%E6%89%8B%E5%86%8C.md)。
