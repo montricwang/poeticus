@@ -1,6 +1,6 @@
 # Poeticus Agent Capability Map
 
-> 初版：2026-10-09。基于 `main` 的代码及已有架构文档建立的**能力基线**，不是工具目录、项目愿望清单或实时部署状态。
+> 初版：2026-10-09；状态复核：2026-10-21。本页只谈 Agent 查询与证据能力；跨阅读、数据、会话的全平台关系见[架构总览](overview.md)。
 >
 > 首次核查：[Issue #202](https://github.com/montricwang/poeticus/issues/202)；真实来源与授权状态：[数字人文资源地图](../digital-humanities-resources.md)、[Issue #184](https://github.com/montricwang/poeticus/issues/184)。
 
@@ -37,7 +37,7 @@ Poeticus 的目标是帮助用户阅读中国古典诗词，必要时查阅**可
 - `backend/config.py` 的 `AGENT_MAX_TOOL_CALLS = 2` 是**单次用户请求累计真实工具调用次数**，不是固定两轮推理；预算耗尽后仍应给出回答。
 - `backend/evidence/provider.py` 已有最小 `EvidenceProvider` 接口；不能因为候选变多就提前扩展成所有外部资源的万能 Provider。
 - `backend/ai/model.py::analyze_poem` 的整首赏析目前单独调用模型，**并不自动经过上述 Agent 工具循环**。
-- 2026-10-14 已在 WSL 真实 HTTP、Cloudflare Tunnel 公网健康与 `poeticus.app` 正式 Agent 问答中验收陆游→杜甫检索及重复合集排除（[#151](https://github.com/montricwang/poeticus/issues/151) 已关闭）。**运行环境仍依赖当前 WSL 与 Tunnel 进程**，未来连通性与故障降级继续按 [#180](https://github.com/montricwang/poeticus/issues/180) 核对。数据流见 [LangGraph 架构](langgraph.md) 与 [Poem Retrieval 架构](text-retrieval.md)。
+- 2026-10-14 已在 WSL 真实 HTTP、Cloudflare Tunnel 公网健康与 `poeticus.app` 正式 Agent 问答中验收陆游→杜甫检索及重复合集排除（[#151](https://github.com/montricwang/poeticus/issues/151) 已关闭）。**运行环境仍依赖当前 WSL 与 Tunnel 进程**；[#180](https://github.com/montricwang/poeticus/issues/180) 是已结案的恢复/降级记录，后续新故障按[部署文档](../deployment.md)排查。数据流见 [LangGraph 架构](langgraph.md) 与 [Poem Retrieval 架构](text-retrieval.md)。
 
 ## 4. 自建、复用与选型判断
 
@@ -55,7 +55,7 @@ Poeticus 的目标是帮助用户阅读中国古典诗词，必要时查阅**可
 
 **当前仅作初始候选，不是已经通过比较的实施排序**：
 
-- **先完成已实现链路的可用性与证据核查**：[#180](https://github.com/montricwang/poeticus/issues/180) Retrieval 环境验收、[#174](https://github.com/montricwang/poeticus/issues/174) 候选上下文与来源忠实度。
+- **先复核已实现链路的证据**：[#180](https://github.com/montricwang/poeticus/issues/180) 的环境恢复任务已结案；新的连通问题按[部署文档](../deployment.md)处理。候选上下文与来源忠实度继续参考 [#174](https://github.com/montricwang/poeticus/issues/174)。
 - **然后补真实高频缺口**：[#24](https://github.com/montricwang/poeticus/issues/24) 字词义项/典故证据，或 [#133](https://github.com/montricwang/poeticus/issues/133) 历代评论；以用户 Case 与实际错误选择其一，不因最近听说某 API 就插队。
 - **多个证据域已同时出现时再优化路由**：[#154](https://github.com/montricwang/poeticus/issues/154)。先用 Tool description、Prompt、有限预算和回归评测，不预设独立 Planner 或多 Agent。
 
