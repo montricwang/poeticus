@@ -37,30 +37,29 @@
       "essay_id": "tcjd-2016-text00235-bw21",
       "method_index": 1,
       "old_code": "HISTORY",
-      "proposed_code": "AESTHETICS",
       "path_sha256": "38646bd67a12e5f8f6bc5bc3e7fd827b36504cffbc424f7e838996ebf28a390f",
-      "status": "needs_review",
-      "reason": "主要区分两种诗人气质，未直接用史实论证；需界定文学批评史与风格比较的边界。"
+      "status": "approved",
+      "reason": "比较诗人气质和作品审美风格，不以史实或历史背景为论证中心。",
+      "new_code": "AESTHETICS"
     },
     {
       "essay_no": 161,
       "essay_id": "tcjd-2016-text00238-bw3",
       "method_index": 1,
       "old_code": "PROSODY",
-      "proposed_code": "STRUCTURE",
       "path_sha256": "ccc5a80abde6eba9f99b407afe6916f87bae5d536f9bfc8c48535d2e3382e503",
-      "status": "needs_review",
-      "reason": "比较小词与套曲的篇幅容量，说明表达压缩；需明确声律是否包含体制容量。"
+      "status": "retained",
+      "reason": "小词腔短与套曲声繁涉及体制容量，现有分类下保留 PROSODY，不将篇幅限制误认成具体声律分析。"
     },
     {
       "essay_no": 434,
       "essay_id": "tcjd-2016-text00288-bw4",
       "method_index": 2,
       "old_code": "ALLEGORY",
-      "proposed_code": "IMAGE",
       "path_sha256": "5fbaa7821d59ebe4dd87559fe25417e2dd0bab3913101cc1888d92f097cef128",
-      "status": "needs_review",
-      "reason": "这里是长江拟人和高士形象塑造，尚无持续寓托结构；需界定象征与寓托。"
+      "status": "approved",
+      "reason": "长江拟人与高士形象属于意象修辞，缺少贯穿全篇的寓托结构。",
+      "new_code": "IMAGE"
     }
   ]
 }
