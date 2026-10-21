@@ -23,7 +23,7 @@
 | **Critic 人格、方法、材料与札记的研究设计** | [Critic 研究架构](research/critic-self-evolution.md) / [#311 阶段验收](https://github.com/montricwang/poeticus/issues/311) | 文档保存研究原则与已产材料；Issue 只跟踪未完成的可验收实验 |
 | 本地开源模型的离线推理、性能边界与文献 Refine 质量实验 | [推理可行性 #339](https://github.com/montricwang/poeticus/issues/339) / [文献 Refine #341](https://github.com/montricwang/poeticus/issues/341) | Issue 维护实验进度与验收；私人模型权重、路径和日志不入仓库 |
 | **已有数字人文资源**：古籍、典故、词话、API、论文与授权 | [数字人文资源地图](digital-humanities-resources.md) / [复用验证 #184](https://github.com/montricwang/poeticus/issues/184) | 资源地图保存现有外部成果与核实状态；Issue 记录实际实验 |
-| 某天怎么做、哪些假设被推翻 | [开发日志](devlog/) | 按日期冻结，不追着现行代码改 |
+| **2026-10-21 已缩写 Issue 的研究历史怎么找回** | [Issue 原文恢复索引](archive/issue-bodies-2026-10-21/README.md) / [七类词学候选文献](research/ci-bibliography-recovered-2026-10.md) / [《词源》异文案例](research/classical-source-variants-2026-10.md) / [七词词典实验](research/lexical-resources-probes-2026-10.md) | 一次性事故恢复，非当前任务权威，旧稿不当新规格 |\n| 某天怎么做、哪些假设被推翻 | [开发日志](devlog/) | 按日期冻结，不追着现行代码改 |
 | 某个版本发布时包含什么 | [Releases](releases/) | 按版本冻结，不追着现行代码改 |
 
 ## 当前架构
@@ -52,7 +52,7 @@
 5. **实验脚本与旧文档退出当前树之前**：将独有的可重复验证能力留下（代码/测试），将可靠结论与未解决问题写入权威说明/ADR/Issue。历史稿可通过 Git 版本找到，不另造永久 `archive/`。
 6. **文档更新顺序**：先改代码/配置并验收，再更新唯一权威文档；其他文件只保留链接，避免拷贝同一批参数或步骤。
 
-### 历史文件怎样查
+**2026-10-21 特殊说明**：本次针对「先压缩 Issue、后发现研究资料尚未迁移」做了一次例外的[原文恢复快照](archive/issue-bodies-2026-10-21/README.md)，以免 GitHub 编辑历史成为唯一找回途径。以后不能把 archive 当作另一套需要同步维护的规范；长期有用的结论优先落到唯一领域文档。\n\n### 历史文件怎样查
 
 2026-10-08 的知识沉淀整理前，`docs/decisions/` 是按日期保存的决策审计快照，`docs/corpus/` 有独立 DOM、审计、语义旧稿和来源定位工具说明，`docs/deployment/retrieval-linux-spike.md` 记录了首次 Linux 实验。独有知识已迁移到 ADR、EPUB 维护地图与 SOP；完整旧版本仍在 [Git 快照 `4e44f3e`](https://github.com/montricwang/poeticus/tree/4e44f3e96873d1bff885e83faa0f1ae8d7a73c4c/docs)，不要拿旧稿作为当前执行依据。
 
