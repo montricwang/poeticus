@@ -1,10 +1,10 @@
 # Poeticus Roadmap
 
-> 更新日期：2026-10-20
+> 更新日期：2026-10-21
 >
 > 当前状态：v0.7.0 已发布。首页入场与搜索过渡、桌面 / iPad 竖排居中、原文引用下划线和统一中国红已进入主线；公开阅读、Agent、AI Eval 和 Poem Retrieval 保持既有线上链路。Document Corpus 已在本地使用 PostgreSQL/pgvector 和可选 `search_documents`；**2026-10-20 私有数据增至六书、1152 节/向量**，但正式四书导入 CLI 尚未支持这次增量，也未公开部署。LangGraph 新增的 CNKGraph 研究、DeepSeek Search/Fetch、萌典/维基文库研究工具**代码已入 main，均默认关闭**，不能当作线上已验收功能。检索服务仍依赖按需运行的 WSL / Cloudflare Tunnel。
 
-Roadmap 只记录下一阶段方向。已经完成的实现过程留在 Release、devlog 和 ADR；具体任务继续进入 GitHub Issues。
+Roadmap 只记录下一阶段方向。当前系统及职责分工见[架构总览](architecture/overview.md)；已经完成的实现过程留在 Release、devlog 和 ADR，具体任务继续进入 GitHub Issues。
 
 ## 1. 当前基线
 
@@ -52,7 +52,7 @@ Issue 以**单个可交付／可验证问题**为单位。下面是「新问题�
 | **知识与证据** | Curated Document Corpus、证据来源、工具路由、检索质量与来源核验 | [#133](https://github.com/montricwang/poeticus/issues/133) 文献库与来源定位；[#154](https://github.com/montricwang/poeticus/issues/154) 工具路由；[#343](https://github.com/montricwang/poeticus/issues/343) 扩容；[#344](https://github.com/montricwang/poeticus/issues/344) Document RAG Eval。资源复用在 #184，产品工具试验在 #233，不再维护第二个供应商总账。 |
 | **文学评论者 Critic** | 独立判断、Persona/Skills、研究方法与共享 Notebook | [#311](https://github.com/montricwang/poeticus/issues/311) 排序与阶段目标；[#148](https://github.com/montricwang/poeticus/issues/148) 四层设计；[#354](https://github.com/montricwang/poeticus/issues/354) 方法研究及 [#372](https://github.com/montricwang/poeticus/issues/372) 审计迁移；[#347](https://github.com/montricwang/poeticus/issues/347) 记忆候选。远期自主研究不自动进入当前开发。 |
 | **作品与语料** | 诗词作品的来源、抽取、字段、校勘与版本 | [#36](https://github.com/montricwang/poeticus/issues/36) 作品语料策略及 #60/#62/#67 的实际质量案例。与词话等 Document Corpus 分开，禁止因显示问题静默改底本。 |
-| **工程与质量** | 运行稳定性、观测、测试、评测基础与研发规范 | [#196](https://github.com/montricwang/poeticus/issues/196) Trace；[#357](https://github.com/montricwang/poeticus/issues/357) Agent 读者综合评测；部署与测试参见开发者指南。[#336](https://github.com/montricwang/poeticus/issues/336) 仅为一次限期审计，不是永久工程 Epic。 |
+| **工程与质量** | 运行稳定性、观测、测试、评测基础与研发规范 | [#196](https://github.com/montricwang/poeticus/issues/196) Trace；[#357](https://github.com/montricwang/poeticus/issues/357) Agent 读者综合评测；部署与测试参见开发者指南。已完成的 [#336](https://github.com/montricwang/poeticus/issues/336) 是一次性架构检查，不是永久工程 Epic。 |
 
 **新增问题先归位再立项**：先搜索本领域开放／关闭 Issue 和最新 PR；属于已有验收的反例或补充就更新原单，只有独立交付才另建 Issue。研究假设留研究入口，具体实现留单项任务，历史事实留文档/ADR/Dev Log。Open 代表可追踪未完成工作，不等于全部准备施工；没有当前启动条件的历史方案可按 `not planned` 关闭并保留重开条件。
 
@@ -71,23 +71,12 @@ Issue 以**单个可交付／可验证问题**为单位。下面是「新问题�
 当前部署是 Railway Web/Agent + Cloudflare 命名 Tunnel + WSL Retrieval，不再维护已销毁腾讯云节点的公网 IP 证书、Nginx 或 2C8G 扩容规划。
 
 - [#151](https://github.com/montricwang/poeticus/issues/151) 已完成：Werneror 的完整拼接自我重复由关系表过滤，并在正式页面验收；少量异文和不完整拼接依约留待真实 Case。
-- 当前运维重点是 WSL CPU Serving 和 Windows `cloudflared` 的重启恢复、Bearer 鉴权、Railway ↔ Tunnel 的真实可用性及错误降级（[#180](https://github.com/montricwang/poeticus/issues/180)）。
+- [#180](https://github.com/montricwang/poeticus/issues/180) 已于 10 月 11 日结案，是当时服务恢复与降级的记录，不再作为开放待办。当前 WSL CPU Serving、Windows `cloudflared`、Bearer 鉴权和 Railway ↔ Tunnel 出现新故障时，按[部署文档](deployment.md)记录复现并单独处理。
 - 未来确有长期可用性或流量需求，再考虑独立云主机、性能基线、容量及必要的 Retrieval CI/CD。
 
-### 2.3 工程基础补课
+### 2.3 工程基础：历史学习记录
 
-#166 单独安排一堂简短课程，用本次生产数据讲：
-
-- database / artifact / index；
-- CPU / RAM / disk；
-- FAISS 大小和资源影响；
-- cold / warm；
-- process / port / health；
-- reverse proxy / HTTPS / token；
-- service-to-service communication；
-- 服务器规格判断。
-
-这一轮的目标是把最近几天大量局部判断重新整理成稳定系统图。
+服务器资源、FAISS 文件与内存、冷热启动、进程通信和 502 排查等学习内容，保留在 [#168](https://github.com/montricwang/poeticus/issues/168)。重复的 [#166](https://github.com/montricwang/poeticus/issues/166) 已于 10 月 14 日关闭，**不再另排同一堂课程**；新问题结合具体部署故障处理。
 
 ### 2.4 AI Evaluation
 
