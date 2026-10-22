@@ -75,16 +75,20 @@ export function AssistantMessage({
 
   if (!turn.answer) return null
 
+  // The previous answer remains available for recovery, while incoming tokens
+  // replace its visible content in the same message area.
+  const visibleAnswer = turn.regenerating && turn.streamDraft ? turn.streamDraft : turn.answer
+
   return (
     <div className="min-w-0 space-y-2" aria-label="Poeticus回复">
       <div className="text-xs font-medium tracking-wide text-muted-foreground">Poeticus</div>
       <div className="group min-w-0 select-text">
-        <AssistantMarkdown content={turn.answer} />
+        <AssistantMarkdown content={visibleAnswer} />
 
-        {turn.status === 'streaming' && (
+        {(turn.status === 'streaming' || (turn.regenerating && !!turn.streamDraft)) && (
           <div role="status" className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <LoaderCircle className="size-3 animate-spin" />
-            正在生成……
+            {turn.regenerating ? '正在重新生成……' : '正在生成……'}
           </div>
         )}
 
