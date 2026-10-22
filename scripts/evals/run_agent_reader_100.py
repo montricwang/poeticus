@@ -131,8 +131,8 @@ def main() -> None:
             raise SystemExit("Tool configuration changed; choose a new output file")
         if run["model"] != LLM_MODEL:
             raise SystemExit("LLM model changed; choose a new output file")
-        if run.get("max_tool_calls", AGENT_MAX_TOOL_CALLS) != max_tool_calls:
-            raise SystemExit("Tool budget changed; choose a new output file")
+        if run.get("max_tool_calls") != max_tool_calls:
+            raise SystemExit("Tool budget changed or missing; choose a new output file")
         run["dataset_sha256"] = dataset_digest
     else:
         run = {

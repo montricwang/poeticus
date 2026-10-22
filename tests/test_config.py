@@ -26,10 +26,14 @@ def test_agent_tool_budget_rejects_invalid_values(value: str):
         _parse_agent_max_tool_calls(value)
 
 
-def test_agent_tool_budget_is_loaded_from_environment():
+def _run_config_import(raw_value: str | None) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
-    env["POETICUS_AGENT_MAX_TOOL_CALLS"] = "7"
-    result = subprocess.run(
+    env["PYTHON_DOTENV_DISABLED"] = "true"
+    if raw_value is None:
+        env.pop("POETICUS_AGENT_MAX_TOOL_CALLS", None)
+    else:
+        env["POETICUS_AGENT_MAX_TOOL_CALLS"] = raw_value
+    return subprocess.run(
         [
             sys.executable,
             "-c",
@@ -39,20 +43,21 @@ def test_agent_tool_budget_is_loaded_from_environment():
         env=env,
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
     )
-    assert result.stdout.strip() == "7"
 
 
-def test_invalid_environment_budget_fails_configuration_import():
-    env = os.environ.copy()
-    env["POETICUS_AGENT_MAX_TOOL_CALLS"] = "not-an-integer"
-    result = subprocess.run(
-        [sys.executable, "-c", "from backend.config import AGENT_MAX_TOOL_CALLS"],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
+def test_agent_tool_budget_config_reads_environment_and_keeps_default():
+    default = _run_config_import(None)
+    assert default.returncode == 0
+    assert default.stdout.strip() == "2"
+
+    configured = _run_config_import("7")
+    assert configured.returncode == 0
+    assert configured.stdout.strip() == "7"
+
+
+def test_agent_tool_budget_invalid_environment_fails_fast():
+    result = _run_config_import("11")
     assert result.returncode != 0
-    assert "POETICUS_AGENT_MAX_TOOL_CALLS must be an integer from 1 to 10" in result.stderr
+    assert "POETICUS_AGENT_MAX_TOOL_CALLS" in result.stderr

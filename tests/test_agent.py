@@ -346,9 +346,20 @@ def test_request_budget_override_limits_tool_execution_and_next_model_call(
     def fake_create(**kwargs):
         create_calls.append(kwargs)
         if len(create_calls) == 1:
-            return _tool_call_response(
+            response = _tool_call_response(
                 "budget-1", "lookup_allusion", '{"term":"片片轻鸥"}'
             )
+            response.choices[0].message.tool_calls.append(
+                SimpleNamespace(
+                    id="budget-2",
+                    type="function",
+                    function=SimpleNamespace(
+                        name="lookup_allusion",
+                        arguments='{"term":"轻鸥"}',
+                    ),
+                )
+            )
+            return response
         return _text_response("依据已有检索结果作答。")
 
     async def fake_search(query, *, provider_name, evidence_type=None):
@@ -367,6 +378,7 @@ def test_request_budget_override_limits_tool_execution_and_next_model_call(
 
     assert search_calls == ["片片轻鸥"]
     assert result["tool_count"] == 1
+    assert json.loads(result["tool_results"][1]["content"])["status"] == "budget_exceeded"
     assert result["reply"] == "依据已有检索结果作答。"
     assert len(create_calls) == 2
     assert "tools" not in create_calls[1]
