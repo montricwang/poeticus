@@ -83,7 +83,11 @@ export function AssistantMessage({
     <div className="min-w-0 space-y-2" aria-label="Poeticus回复">
       <div className="text-xs font-medium tracking-wide text-muted-foreground">Poeticus</div>
       <div className="group min-w-0 select-text">
-        <AssistantMarkdown content={visibleAnswer} />
+        <AssistantMarkdown
+          key={turn.regenerating && turn.streamDraft ? 'regeneration' : 'answer'}
+          content={visibleAnswer}
+          animateNewCharacters={turn.status === 'streaming' || turn.regenerating}
+        />
 
         {turn.status === 'streaming' && (
           <div role="status" className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">

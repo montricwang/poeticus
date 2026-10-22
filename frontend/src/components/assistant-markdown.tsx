@@ -1,13 +1,19 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
+import { rehypeCharacterFade } from '@/lib/character-fade'
 
 type AssistantMarkdownProps = {
   content: string
   variant?: 'assistant' | 'user'
+  animateNewCharacters?: boolean
 }
 
-export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantMarkdownProps) {
+export function AssistantMarkdown({
+  content,
+  variant = 'assistant',
+  animateNewCharacters = false,
+}: AssistantMarkdownProps) {
   const isUser = variant === 'user'
 
   return (
@@ -15,6 +21,7 @@ export function AssistantMarkdown({ content, variant = 'assistant' }: AssistantM
       <ReactMarkdown
         remarkPlugins={isUser ? [remarkGfm, remarkBreaks] : [remarkGfm]}
         skipHtml
+        rehypePlugins={animateNewCharacters ? [rehypeCharacterFade] : []}
         components={{
           p: ({ children }) => (
             <p className={isUser ? 'my-1 first:mt-0 last:mb-0' : 'my-3 first:mt-0 last:mb-0'}>
