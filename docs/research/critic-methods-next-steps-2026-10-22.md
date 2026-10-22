@@ -33,9 +33,10 @@
 
 - 标为“尚待核验”：TEXT_WORD 641 条、HISTORY 79 条、PROSODY 32 条。
 - 标为“存在争议”：DEBATE 203 条、ALLEGORY 73 条、COUNTERFACTUAL 51 条、STRUCTURE 181 条。
-- 其他待核记录：NARRATIVE 57 条、ALLUSION 24 条、AESTHETICS 11 条。
+- 标为“存在争议”：TEXT_WORD 5 条、HISTORY 2 条、PROSODY 7 条、DEBATE 203 条、ALLEGORY 73 条、COUNTERFACTUAL 51 条、STRUCTURE 181 条、NARRATIVE 57 条、ALLUSION 24 条、AESTHETICS 11 条。
 - TIME_SPACE 的 401 条记录均注明尚未独立核读原赏析段落；ALLUSION 尚未完成独立原始来源核验；IMAGE 有 91 条案例的原赏析仍待进一步复核。
 - CONTEXT 已对 110 条做过结构化二次分析，TIME_SPACE 已重新考虑 42 条记录；这不等于全类逐篇核验。
+- **状态口径校正**：各类 JSONL 的状态字段名称与语义并不完全一致；此前汇总把 ALLUSION、AESTHETICS、NARRATIVE 的上述记录写作“待核验”，与当前文件实际状态不符，现以各类别文件中的状态字段为准。计数代表待处理状态，不是已确认错误数。
 - **处理原则**：统一状态词表后，按批次回看已标记记录对应的原赏析、证据和推理链。每条最终应有接受、修订、改类、暂缓或仍未解决的状态与理由；抽样可用于验证批量规则，但不能代替对已标争议记录的处置。以上数字是现有状态标签，不是已确认错误数。
 
 - **审计材料覆盖不均**：HISTORY、INTERTEXT、PROSODY、TEXT_WORD 有 `citation-audit.json`；NARRATIVE、STRUCTURE 有证据定位审计；CONTEXT、IMAGE、TIME_SPACE 有 validation report；AESTHETICS、ALLEGORY、ALLUSION、COUNTERFACTUAL、DEBATE 当前未发现同口径的专门引文/验证报告。各报告检查范围不同，不能把“结构校验通过”视为“原赏析和方法归纳已通过”。
