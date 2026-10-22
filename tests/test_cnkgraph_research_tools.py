@@ -21,9 +21,9 @@ def tool_names(**kwargs):
 
 
 def test_research_tools_disabled_by_default():
-    assert tool_names() == ["lookup_allusion", "lookup_reference"]
+    assert tool_names() == ["lookup_allusion", "lookup_reference", "load_critic_skills"]
     assert tool_names(cnkgraph_research_enabled=True) == [
-        "lookup_allusion", "lookup_reference", "analyze_ci_meter",
+        "lookup_allusion", "lookup_reference", "load_critic_skills", "analyze_ci_meter",
         "search_classical_books", "lookup_ci_tune", "lookup_rhyme", "resolve_entities",
     ]
 
@@ -358,7 +358,7 @@ def test_first_batch_registered_and_dispatched_through_existing_agent(monkeypatc
 
     enabled = tool_names(cnkgraph_research_enabled=True)
     assert enabled == [
-        "lookup_allusion", "lookup_reference",
+        "lookup_allusion", "lookup_reference", "load_critic_skills",
         "analyze_ci_meter", "search_classical_books",
         "lookup_ci_tune", "lookup_rhyme", "resolve_entities",
     ]
