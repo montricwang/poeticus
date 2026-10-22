@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Check, Copy, LoaderCircle, RotateCcw } from 'lucide-react'
 
 import { AssistantMarkdown } from '@/components/assistant-markdown'
@@ -27,6 +28,15 @@ export function AssistantMessage({
   onRetry,
   onRegenerate,
 }: AssistantMessageProps) {
+  // One stable Markdown tree per generation, including after its final SSE event.
+  const [generation, setGeneration] = useState({ regenerating: false, version: 0 })
+  if (generation.regenerating !== turn.regenerating) {
+    setGeneration({
+      regenerating: turn.regenerating,
+      version: generation.version + (turn.regenerating ? 1 : 0),
+    })
+  }
+
   const copyKey = `${turn.id}:assistant`
   const copySucceeded = copyStatus?.key === copyKey && copyStatus.status === 'success'
   const copyFailed = copyStatus?.key === copyKey && copyStatus.status === 'error'
@@ -83,7 +93,11 @@ export function AssistantMessage({
     <div className="min-w-0 space-y-2" aria-label="Poeticus回复">
       <div className="text-xs font-medium tracking-wide text-muted-foreground">Poeticus</div>
       <div className="group min-w-0 select-text">
-        <AssistantMarkdown content={visibleAnswer} />
+        <AssistantMarkdown
+          key={generation.version}
+          content={visibleAnswer}
+          animateNewCharacters={turn.status === 'streaming' || turn.regenerating}
+        />
 
         {turn.status === 'streaming' && (
           <div role="status" className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">

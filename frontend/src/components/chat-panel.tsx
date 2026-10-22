@@ -216,6 +216,7 @@ export function ChatPanel({
       <ChatMessageList
         fillAvailableHeight={fillAvailableHeight}
         hasMessages={turns.length > 0}
+        streaming={loading}
         height={historyHeight}
         scrollRef={chatListRef}
         contentRef={historyContentRef}

@@ -984,3 +984,23 @@ html.theme-transition #root * {
     }
   }
 }
+
+/* SSE tokens arrive at full speed; only the presentation fades in. */
+@keyframes stream-character-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.stream-character-fade {
+  animation: stream-character-reveal var(--motion-stream-character-fade, 2000ms) ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stream-character-fade {
+    animation: none;
+  }
+}
