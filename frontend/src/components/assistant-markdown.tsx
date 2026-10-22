@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
@@ -16,6 +16,9 @@ export function AssistantMarkdown({
   animateNewCharacters = false,
 }: AssistantMarkdownProps) {
   const isUser = variant === 'user'
+  // Keep existing glyph spans mounted after the final SSE event so their fades finish.
+  const [hasAnimated, setHasAnimated] = useState(animateNewCharacters)
+  if (animateNewCharacters && !hasAnimated) setHasAnimated(true)
   // Keep Markdown element component identities stable between SSE updates.
   // Otherwise React remounts every paragraph and restarts old glyph animations.
   const components = useMemo<Components>(
@@ -128,7 +131,7 @@ export function AssistantMarkdown({
       <ReactMarkdown
         remarkPlugins={isUser ? [remarkGfm, remarkBreaks] : [remarkGfm]}
         skipHtml
-        rehypePlugins={animateNewCharacters ? [rehypeCharacterFade] : []}
+        rehypePlugins={hasAnimated ? [rehypeCharacterFade] : []}
         components={components}
       >
         {content}

@@ -8,6 +8,7 @@ type ChatMessageListProps = {
   children: ReactNode
   fillAvailableHeight: boolean
   hasMessages: boolean
+  streaming: boolean
   height: number
   scrollRef: RefObject<HTMLDivElement | null>
   contentRef: RefObject<HTMLDivElement | null>
@@ -24,6 +25,7 @@ export function ChatMessageList({
   children,
   fillAvailableHeight,
   hasMessages,
+  streaming,
   height,
   scrollRef,
   contentRef,
@@ -38,9 +40,10 @@ export function ChatMessageList({
     <div
       className={cn(
         'relative min-h-0',
-        fillAvailableHeight
-          ? 'flex flex-1'
-          : 'shrink-0 overflow-hidden transition-[height] duration-[var(--motion-chat-history-resize)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none',
+        fillAvailableHeight ? 'flex flex-1' : 'shrink-0 overflow-hidden',
+        !fillAvailableHeight &&
+          !streaming &&
+          'transition-[height] duration-[var(--motion-chat-history-resize)] ease-[var(--motion-ease-settle)] motion-reduce:transition-none',
       )}
       style={fillAvailableHeight ? undefined : { height }}
     >
