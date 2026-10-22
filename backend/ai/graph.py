@@ -22,6 +22,7 @@ from openai.types.chat.completion_create_params import (
 
 from backend.ai.model import client
 from backend.ai.tools import available_tools
+from backend.ai.critic_skills import load_critic_skills, validate_skill_names
 from backend.config import (
     AGENT_MAX_TOOL_CALLS,
     CNKGRAPH_RESEARCH_TOOLS_ENABLED,
@@ -148,7 +149,7 @@ class _ToolQuery:
         "allusion", "reference", "text_retrieval", "commentary",
         "ci_meter", "classical_books", "ci_tune", "rhyme", "entities",
         "web_search", "web_fetch",
-        "moedict", "wikisource_search", "wikisource_page",
+        "moedict", "wikisource_search", "wikisource_page", "critic_skill",
     ]
     max_items: int
     tune_name: str | None = None
@@ -160,6 +161,7 @@ class _ToolQuery:
     source: str = "all"
     pageid: int = 0
     extra_queries: tuple[str, ...] = ()
+    skill_names: tuple[str, ...] = ()
 
 
 def _validate_registered_tool(call: ToolCall) -> None:
@@ -206,6 +208,12 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
         and not CNKGRAPH_RESEARCH_TOOLS_ENABLED
     ):
         raise ValueError("CNKGraph 研究工具未启用")
+
+    if call["name"] == "load_critic_skills":
+        return _ToolQuery(
+            text="", evidence_type="critic_skill", max_items=0,
+            skill_names=validate_skill_names(arguments.get("skills")),
+        )
 
     if call["name"] == "analyze_ci_meter":
         tune_name = arguments.get("tune_name")
@@ -359,6 +367,7 @@ class AgentState(TypedDict):
     history: NotRequired[list[HistoryMessage]]
     messages: NotRequired[list[ChatCompletionMessageParam]]
     tool_count: NotRequired[int]
+    loaded_skills: NotRequired[list[str]]
     max_tool_calls: NotRequired[int]
     reply: NotRequired[str]
     evidences: NotRequired[list[dict[str, object]]]
@@ -372,6 +381,7 @@ class AgentStateUpdate(TypedDict, total=False):
 
     messages: list[ChatCompletionMessageParam]
     tool_count: int
+    loaded_skills: list[str]
     reply: str
     evidences: list[dict[str, object]]
     tool_calls: list[ToolCall]
@@ -747,6 +757,7 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
     messages = list(state.get("messages") or [])
     tool_count = state.get("tool_count", 0)
     max_tool_calls = _max_tool_calls_for_state(state)
+    loaded_skills = set(state.get("loaded_skills") or [])
 
     # 防止重复 ID 使工具结果无法正确对应。
     ids = [call["id"] for call in calls]
@@ -801,14 +812,17 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
 
         for call in calls:
             result: dict[str, object]
-            if count >= max_tool_calls:
+            if count >= max_tool_calls and call["name"] != "load_critic_skills":
                 result = {
                     "status": "budget_exceeded",
                     "message": "本次请求的工具调用预算已用完",
                     "evidences": [],
                 }
             else:
-                count += 1
+                # Valid first-time local Skill loads do not consume the evidence-tool budget.
+                # Invalid calls and repeated loads still count, preventing a useless loop.
+                if call["name"] != "load_critic_skills":
+                    count += 1
 
                 try:
                     _validate_registered_tool(call)
@@ -818,7 +832,21 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     max_items = validated.max_items
 
                     # 本地文本检索使用 Retrieval Client，典故与出处查询使用证据服务。
-                    if evidence_type == "web_search":
+                    if evidence_type == "critic_skill":
+                        new_names = tuple(
+                            name for name in validated.skill_names if name not in loaded_skills
+                        )
+                        if new_names:
+                            result = load_critic_skills(new_names)
+                            loaded_skills.update(new_names)
+                        else:
+                            result = {
+                                "status": "already_loaded",
+                                "message": "这些 Skill 已在本轮提供，请直接使用已有内容",
+                                "skills": [],
+                            }
+                            count += 1
+                    elif evidence_type == "web_search":
                         result = await deepseek_web_client.search(
                             query, source=validated.source
                         )
@@ -955,6 +983,8 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     RetrievalClientError,
                     DocumentRetrievalError,
                 ) as exc:
+                    if call["name"] == "load_critic_skills":
+                        count += 1
                     logger.warning(
                         "工具执行失败：%s",
                         exc,
@@ -1000,6 +1030,7 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
             *results,
         ],
         "tool_count": new_count,
+        "loaded_skills": sorted(loaded_skills),
         "evidences": [
             *(state.get("evidences") or []),
             *evidences,

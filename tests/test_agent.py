@@ -507,7 +507,7 @@ def test_available_tools_matches_retrieval_configuration(retrieval_enabled):
         for item in available_tools(retrieval_enabled=retrieval_enabled)
     ]
 
-    expected_names = ["lookup_allusion", "lookup_reference"]
+    expected_names = ["lookup_allusion", "lookup_reference", "load_critic_skills"]
     if retrieval_enabled:
         expected_names.append("search_predecessor_texts")
 
@@ -703,3 +703,49 @@ def test_tool_query_rejects_invalid_model_arguments(agent, tool_name, arguments,
         agent._parse_tool_query(
             {"id": "call-1", "name": tool_name, "arguments": arguments}
         )
+
+
+def test_skill_load_is_free_against_retrieval_budget_and_duplicate_is_blocked(agent):
+    import json
+
+    first = {"id": "skill-1", "name": "load_critic_skills",
+             "arguments": json.dumps({"skills": ["IMAGE", "STRUCTURE"]})}
+    start = {"poem": POEM, "question": "章法怎样传情？",
+             "messages": [], "tool_count": 0, "max_tool_calls": 2,
+             "tool_calls": [first]}
+    a = agent.execute_tools(start)
+    assert a["tool_count"] == 0
+    assert a["loaded_skills"] == ["IMAGE", "STRUCTURE"]
+    assert json.loads(a["tool_results"][-1]["content"])["status"] == "ok"
+
+    second = {"id": "skill-2", "name": "load_critic_skills",
+              "arguments": json.dumps({"skills": ["IMAGE", "AESTHETICS"]})}
+    b = agent.execute_tools({**start, **a, "tool_calls": [second]})
+    assert b["tool_count"] == 0
+    assert b["loaded_skills"] == ["AESTHETICS", "IMAGE", "STRUCTURE"]
+    payload = json.loads(b["tool_results"][-1]["content"])
+    assert [item["name"] for item in payload["skills"]] == ["AESTHETICS"]
+
+    repeat = {"id": "skill-3", "name": "load_critic_skills",
+              "arguments": json.dumps({"skills": ["IMAGE"]})}
+    c = agent.execute_tools({**start, **b, "tool_calls": [repeat]})
+    assert c["tool_count"] == 1  # Unproductive repeat consumes protection budget.
+    assert json.loads(c["tool_results"][-1]["content"])["status"] == "already_loaded"
+
+
+def test_skill_can_load_after_evidence_budget_is_spent_within_same_tool_batch(agent):
+    import json
+
+    response = agent.execute_tools({
+        "poem": POEM, "question": "分析篇章", "messages": [],
+        "tool_count": 1, "max_tool_calls": 1,
+        "tool_calls": [
+            {"id": "skill", "name": "load_critic_skills", "arguments": json.dumps({"skills": ["STRUCTURE"]})},
+            {"id": "evidence", "name": "lookup_allusion", "arguments": json.dumps({"term": "某典故"})},
+        ],
+    })
+    assert response["tool_count"] == 1
+    assert response["loaded_skills"] == ["STRUCTURE"]
+    assert [json.loads(x["content"])["status"] for x in response["tool_results"]] == [
+        "ok", "budget_exceeded"
+    ]

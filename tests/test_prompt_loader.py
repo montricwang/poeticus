@@ -48,3 +48,13 @@ def test_output_style_contains_quote_rules():
 
     assert "「」" in prompt
     assert "『』" in prompt
+
+
+def test_agent_system_prompt_includes_full_skill_catalog_from_single_registry():
+    from backend.ai.critic_skills import SKILL_CATALOG, SKILL_TOOL
+
+    prompt = compose_prompt("agent_decide", "output_style")
+    assert all(f"- {key}：{description}" in prompt for key, description in SKILL_CATALOG.items())
+    assert "优先" in prompt and "简单事实" in prompt
+    assert SKILL_TOOL["function"]["parameters"]["properties"]["skills"]["items"]["enum"] == list(SKILL_CATALOG)
+    assert "可选方法：" not in SKILL_TOOL["function"]["description"]

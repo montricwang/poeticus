@@ -51,7 +51,7 @@ def sample_evidence() -> EvidenceItem:
 def test_tool_registration_respects_local_capability() -> None:
     names_disabled = [tool["function"]["name"] for tool in available_tools(False)]
     names_enabled = [tool["function"]["name"] for tool in available_tools(False, True)]
-    assert names_disabled == ["lookup_allusion", "lookup_reference"]
+    assert names_disabled == ["lookup_allusion", "lookup_reference", "load_critic_skills"]
     assert names_enabled == [*names_disabled, "search_documents"]
     parameters = DOCUMENT_RETRIEVAL_TOOL["function"].get("parameters")
     assert isinstance(parameters, dict) and parameters["required"] == ["queries"]
