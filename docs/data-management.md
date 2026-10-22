@@ -76,6 +76,32 @@ Qwen3.5-4B 与 DeepSeek 8B 的 GGUF 从 ModelScope 的 `unsloth/Qwen3.5-4B-GGUF`
 
 历史 `corpus_quality_report.json` 仅涉及温庭筠、韦庄旧流程；`epub_coverage_all_10021601.md` 是旧版 15 册候选抽取审计，不代表现行最终质量结论。若仍有未关闭的审计问题，先保留对应记录。
 
+### E 盘移动硬盘备份（Restic，2026-10-22）
+
+当前开发机的工作数据在 WSL `/home/montric/projects/poeticus-data/`；移动硬盘中的 Restic 仓库位于 Windows `E:\PoeticusBackup`，WSL 挂载路径为 `/mnt/e/PoeticusBackup`。前者是持续读写的**工作目录**，后者才是**备份仓库**。这是当前电脑的实际路径，不是写入程序的数据目录约定；换电脑或盘符后需重新确认挂载位置。
+
+Restic 使用加密、去重和增量快照，备份仓库不是可以直接浏览的普通文件副本。需要备份时，先确认 E 盘已挂载且有足够空间，再从 WSL 执行：
+
+```bash
+restic -r /mnt/e/PoeticusBackup backup /home/montric/projects/poeticus-data
+```
+
+该命令只覆盖 `poeticus-data/`，**不包括** Git 仓库、PostgreSQL 数据库、Railway 服务配置或 Vault。重要资料发生变化后可以手动再次执行；目前没有确认自动定时任务。备份过程中不要拔出移动硬盘。对于正在写入的 SQLite 等文件，需避免在写入中途取得不一致副本，必要时先暂停相关写入或另行制作数据库一致性备份。
+
+完成后再检查快照与仓库，随后将少量重要文件恢复到**与工作目录不同的位置**，实际核对是否可读：
+
+```bash
+restic -r /mnt/e/PoeticusBackup snapshots
+restic -r /mnt/e/PoeticusBackup check
+restic -r /mnt/e/PoeticusBackup ls latest
+# 按上一步列出的路径选择小范围文件，以 --include 限定恢复内容：
+restic -r /mnt/e/PoeticusBackup restore latest --target /tmp/poeticus-restore-check --include '/home/montric/projects/poeticus-data/reading-corpus/raw/glyph_maps/**'
+```
+
+恢复演练前应确认目标目录有足够空间，不能直接覆盖正在使用的私人数据。Restic 仓库中的 `keys/` 文件用于解锁加密主密钥，仍需要独立的仓库密码；**备份密码须单独妥善保存，不写入 Git、文档或公开日志**。丢失密码可能导致备份无法恢复。原文件精简或删除后，新快照可以变小，但旧快照仍保留历史数据；只有明确核对保留范围后才考虑 `forget` / `prune`，不得将清理操作当作日常备份的默认步骤。
+
+**本次状态**：截至 2026-10-22 本文更新时，首次 `restic backup` 仍在运行，仓库尚无已完成的快照，未执行密码验证或恢复演练。不能仅根据仓库占用空间认定备份成功；待命令正常结束后按上面步骤复核，并更新此状态。
+
 ## 3. 旧数据迁移映射（**先检查和备份，再手动移动**）
 
 以下路径都**相对于原 `poeticus-data/` 根目录**。迁移只涉及本地目录，不能用 `git pull` 自动搬动你的私有数据。
@@ -134,8 +160,8 @@ python -m scripts.retrieval.inspect_serving_bundle
 
 - **保留正式入口**：EPUB 全量预检、字形复核/导入、Werneror 语料转换、Embedding/索引构建、DB 恢复、Retrieval Serving。
 - **保留可复用诊断能力**：`scripts/corpus/epub_import/diagnostics/` 和 Retrieval Eval 中有实际复现价值的工具。
-- **实验和一次性 Probe**：按功能、正式调用、测试与知识沉淀逐个评估；已经退役的入口可从 Git 历史找回。其余九个专项脚本的验收见 #177。
+- **实验和一次性 Probe**：按功能、正式调用、测试与知识沉淀逐个评估；已经退役的入口可从 Git 历史找回。九个遗留诊断／评测脚本已于 2026-10-22 核对调用关系、独有用途及测试，均有保留理由，本轮不删除；详见已关闭的 [#177](https://github.com/montricwang/poeticus/issues/177)。
 - **报告与脚本分开决定**：可重建报告不必全部永久放在活跃目录，但作为选型证据或含人工结论的历史报告可归档。脚本不常运行也不等于无价值。
 - 若脚本输出私人 EPUB 原文、glyph 上下文或私有证据，一律不能写入公开仓库或 `VITE_*` 等前端配置。
 
-本文件为当前目录契约。EPUB 相关报告的标准子目录拼写是 `reports/epub-import/`（连字符），不是 `reports/epub_import/`。旧布局中的具体文件应先盘点，再分批迁移；脚本整理工作跟踪 [#177](https://github.com/montricwang/poeticus/issues/177)。
+本文件为当前目录契约。EPUB 相关报告的标准子目录拼写是 `reports/epub-import/`（连字符），不是 `reports/epub_import/`。旧布局中的具体文件应先盘点，再分批迁移；九个遗留脚本的本轮验收已在 [#177](https://github.com/montricwang/poeticus/issues/177) 收口，后续是否调整须根据新的使用情况判断。
