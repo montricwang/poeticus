@@ -36,6 +36,8 @@
 - TIME_SPACE 的 401 条记录均注明尚未独立核读原赏析段落；ALLUSION 尚未完成独立原始来源核验；IMAGE 有 91 条案例的原赏析仍待进一步复核。
 - CONTEXT 已对 110 条做过结构化二次分析，TIME_SPACE 已重新考虑 42 条记录；这不等于全类逐篇核验。
 
+- **审计材料覆盖不均**：HISTORY、INTERTEXT、PROSODY、TEXT_WORD 有 `citation-audit.json`；NARRATIVE、STRUCTURE 有证据定位审计；CONTEXT、IMAGE、TIME_SPACE 有 validation report；AESTHETICS、ALLEGORY、ALLUSION、COUNTERFACTUAL、DEBATE 当前未发现同口径的专门引文/验证报告。各报告检查范围不同，不能把“结构校验通过”视为“原赏析和方法归纳已通过”。
+
 上述状态不代表相关记录必然错误。必须区分“结构有效”“引文定位通过”“方法归纳可信”与“文学解释成立”。
 
 ### 4. 十四类之间可能存在重叠
