@@ -22,6 +22,7 @@ from openai.types.chat.completion_create_params import (
 
 from backend.ai.model import client
 from backend.ai.tools import available_tools
+from backend.ai.critic_skills import load_critic_skills, validate_skill_names
 from backend.config import (
     AGENT_MAX_TOOL_CALLS,
     CNKGRAPH_RESEARCH_TOOLS_ENABLED,
@@ -148,7 +149,7 @@ class _ToolQuery:
         "allusion", "reference", "text_retrieval", "commentary",
         "ci_meter", "classical_books", "ci_tune", "rhyme", "entities",
         "web_search", "web_fetch",
-        "moedict", "wikisource_search", "wikisource_page",
+        "moedict", "wikisource_search", "wikisource_page", "critic_skill",
     ]
     max_items: int
     tune_name: str | None = None
@@ -160,6 +161,7 @@ class _ToolQuery:
     source: str = "all"
     pageid: int = 0
     extra_queries: tuple[str, ...] = ()
+    skill_names: tuple[str, ...] = ()
 
 
 def _validate_registered_tool(call: ToolCall) -> None:
@@ -206,6 +208,12 @@ def _parse_tool_query(call: ToolCall) -> _ToolQuery:
         and not CNKGRAPH_RESEARCH_TOOLS_ENABLED
     ):
         raise ValueError("CNKGraph 研究工具未启用")
+
+    if call["name"] == "load_critic_skills":
+        return _ToolQuery(
+            text="", evidence_type="critic_skill", max_items=0,
+            skill_names=validate_skill_names(arguments.get("skills")),
+        )
 
     if call["name"] == "analyze_ci_meter":
         tune_name = arguments.get("tune_name")
@@ -818,7 +826,9 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
                     max_items = validated.max_items
 
                     # 本地文本检索使用 Retrieval Client，典故与出处查询使用证据服务。
-                    if evidence_type == "web_search":
+                    if evidence_type == "critic_skill":
+                        result = load_critic_skills(validated.skill_names)
+                    elif evidence_type == "web_search":
                         result = await deepseek_web_client.search(
                             query, source=validated.source
                         )

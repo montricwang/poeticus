@@ -2,6 +2,8 @@
 
 from openai.types.chat import ChatCompletionFunctionToolParam
 
+from backend.ai.critic_skills import SKILL_TOOL
+
 
 # 定义向模型公开的证据查询工具及其参数格式。
 TOOLS: list[ChatCompletionFunctionToolParam] = [
@@ -396,7 +398,7 @@ def available_tools(
 ) -> list[ChatCompletionFunctionToolParam]:
     """根据检索服务的启用状态，返回本轮可向模型提供的工具。"""
 
-    tools = list(TOOLS)
+    tools = [*TOOLS, SKILL_TOOL]
     if retrieval_enabled:
         tools.append(TEXT_RETRIEVAL_TOOL)
     if document_enabled:
