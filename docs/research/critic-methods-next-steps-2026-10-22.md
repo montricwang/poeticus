@@ -103,7 +103,7 @@
 - 不再要求第 3 项所有带风险标签的记录先全部结案。当前已完成的 945 条 `revise` 候选逐条对照、102 条改类候选的主控裁定，以及现有 14 类 Skill 候选，足以启动第一版边界方案；后续复核发现新反例时再增量修订。
 - 945 条 `revise` 候选虽均已有裁定，但其中 200 条暂缓外证、1 条需地理资料佐证、3 条需独立来源佐证；102 条改类裁定尚未整体写回方法库；另有 557 条仍处于条件接受／高风险接受／未解决／暂缓状态。此状态不能描述为所有风险记录已结案。
 - 形成十四类职责、适用问题、主要分析动作、相邻类别和边界案例对照表。
-- 比较简洁版／标准版／详细版，提出统一的 Skill 目录与按需加载方案；方案见 [`critic-method-boundaries-and-skill-organization.md`](./critic-method-boundaries-and-skill-organization.md)。
+- 比较简洁版／标准版／详细版，提出统一的 Skill 目录与按需加载方案；方案见 [`critic-method-boundaries-and-skill-organization.md`](./critic-method-boundaries-and-skill-organization.md)；离线路由索引见 [`critic-skill-routing-index.md`](./critic-skill-routing-index.md)。
 - 验收：主要重叠有明确处理建议；每类职责清楚；未决项保留理由和来源 ID；不因追求分类整齐而强行合并。
 
 ### 5. 审查 Skill 对工具选择的影响及潜在工具缺口
