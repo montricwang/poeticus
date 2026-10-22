@@ -25,15 +25,29 @@ SKILL_CATALOG: dict[str, str] = {
     "DEBATE": "辨析真实存在的异说，比较证据、前提与结论强度。",
 }
 
+def skill_catalog_prompt() -> str:
+    """向 Agent 提供简短方法索引，始终与加载工具共享一份目录。"""
+
+    entries = "\n".join(f"- {name}：{description}" for name, description in SKILL_CATALOG.items())
+    return (
+        "你有以下文学批评 Skill 可按需使用；这是分析方法目录，而非事实资料来源：\n"
+        f"{entries}\n\n"
+        "处理需要具体文学分析方法的问题时，优先判断哪一两类方法可以改善论证；"
+        "若适合且本轮开放 load_critic_skills，可按需读取完整方法指导，随后结合诗文和查证工具进行分析。"
+        "已经能够可靠解决的简单事实、直接释义和一般问答无需加载。"
+        "不要机械覆盖全部类别，不要反复加载已读方法；如果需要原典、系年或版本证据，"
+        "仍须使用适合的检索工具，不能把 Skill 当成史料。"
+    )
+
+
 SKILL_TOOL: ChatCompletionFunctionToolParam = {
     "type": "function",
     "function": {
         "name": "load_critic_skills",
         "description": (
-            "按需读取 Poeticus 的文学批评分析方法。仅在方法指导能帮助解决当前具体问题时调用；"
-            "可一次选多个互补方法，避免重复加载；它提供分析步骤而非文献证据。"
-            "可选方法："
-            + "；".join(f"{name}：{description}" for name, description in SKILL_CATALOG.items())
+            "读取 Poeticus 已公开目录中的文学批评方法全文。"
+            "仅选择确实有助于当前问题的 Skill，可组合互补方法；"
+            "不要重复加载已读方法。这是分析指导，而非文献证据。"
         ),
         "parameters": {
             "type": "object",

@@ -3,6 +3,8 @@
 from functools import lru_cache
 from pathlib import Path
 
+from backend.ai.critic_skills import skill_catalog_prompt
+
 
 PROMPT_ROOT = Path(__file__).resolve().parents[2] / "prompts"
 PROMPT_FILES = {
@@ -26,4 +28,7 @@ def load_prompt(name: str) -> str:
 
 def compose_prompt(*names: str) -> str:
     """按顺序组合任务提示词与公共规则。"""
-    return "\n\n".join(load_prompt(name) for name in names)
+    parts = [load_prompt(name) for name in names]
+    if "agent_decide" in names:
+        parts.insert(names.index("agent_decide") + 1, skill_catalog_prompt())
+    return "\n\n".join(parts)
