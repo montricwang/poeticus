@@ -85,10 +85,10 @@ export function AssistantMessage({
       <div className="group min-w-0 select-text">
         <AssistantMarkdown content={visibleAnswer} />
 
-        {(turn.status === 'streaming' || (turn.regenerating && !!turn.streamDraft)) && (
+        {turn.status === 'streaming' && (
           <div role="status" className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <LoaderCircle className="size-3 animate-spin" />
-            {turn.regenerating ? '正在重新生成……' : '正在生成……'}
+            正在生成……
           </div>
         )}
 
