@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from backend.ai.context import PoemContext
 from backend.ai.model import PoemAnalysis
-from backend.config import CHAT_MAX_HISTORY_TURNS
+from backend.config import AI_MAX_POEM_CHARS, CHAT_MAX_HISTORY_TURNS
 
 SAMPLE_CONTEXT = {
     "id": "su-shi-huan-xi-sha-feng-juan-zhu-lian",
@@ -395,3 +395,31 @@ def test_chat_rejects_history_over_total_char_limit(
 
     assert response.status_code == 422
     assert response.json() == {"detail": "历史消息总长度过长"}
+
+
+@pytest.mark.parametrize("poem", ["", " \t\n", "诗" * (AI_MAX_POEM_CHARS + 1)])
+def test_analyze_rejects_invalid_poem_before_model(monkeypatch, client, poem):
+    def must_not_call_model(*args, **kwargs):
+        raise AssertionError("invalid poem must not invoke the model")
+
+    monkeypatch.setattr("backend.api.analysis.analyze_poem", must_not_call_model)
+    response = client.post("/api/analyze", json={"poem": poem})
+
+    assert response.status_code == 422
+    assert response.json()["detail"]
+
+
+@pytest.mark.parametrize("error_type", [ValueError, RuntimeError])
+def test_analyze_hides_upstream_errors(monkeypatch, client, caplog, error_type):
+    secret = "private-poem-and-upstream-secret"
+
+    def fake_failure(poem, context):
+        raise error_type(secret)
+
+    monkeypatch.setattr("backend.api.analysis.analyze_poem", fake_failure)
+    response = client.post("/api/analyze", json={"poem": "春风吹。"})
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "AI 生成暂时失败，请稍后再试"}
+    assert secret not in response.text
+    assert secret not in caplog.text

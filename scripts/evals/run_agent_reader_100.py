@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def build_state(case: dict, fixtures: dict):
+def build_state(case: dict, fixtures: dict, max_tool_calls: int | None = None):
     from backend.ai.context import PoemContext
 
     source = fixtures.get(case["input"].get("fixture_id"))
@@ -43,15 +43,23 @@ def build_state(case: dict, fixtures: dict):
         "selection": case["input"].get("selection"),
         "question": case["input"]["question"],
         "history": [],
+        **({"max_tool_calls": max_tool_calls} if max_tool_calls is not None else {}),
     }
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", type=Path, default=ROOT / "evals" / "agent_reader_100_cases.json")
-    ap.add_argument("--output", type=Path, default=ROOT / "data/reports/agent_reader_100_first_pass.json")
+    ap.add_argument(
+        "--output", type=Path,
+        default=ROOT / "data/reports/agent_reader_100_first_pass.json",
+    )
     ap.add_argument("--offset", type=int, default=0)
     ap.add_argument("--count", type=int, default=100)
+    ap.add_argument(
+        "--max-tool-calls", type=int, choices=range(1, 11),
+        help="覆盖本次评测的单题工具调用上限（1–10），不修改服务配置",
+    )
     ap.add_argument("--enable-cnkgraph", action="store_true")
     ap.add_argument(
         "--require-tools", nargs="*", default=[],
@@ -77,6 +85,9 @@ def main() -> None:
     if args.enable_cnkgraph and (not has_research_flag or not research_enabled):
         raise SystemExit("当前 Agent 代码没有启用 CNKGraph 研究工具，请检查分支与开关")
     from backend.config import LLM_MODEL, AGENT_MAX_TOOL_CALLS
+    max_tool_calls = (
+        args.max_tool_calls if args.max_tool_calls is not None else AGENT_MAX_TOOL_CALLS
+    )
     from scripts.evals.run_seed import _tool_names, _tool_trace, git_sha, prompt_sha256
 
     raw_dataset = args.dataset.read_bytes()
@@ -120,6 +131,8 @@ def main() -> None:
             raise SystemExit("Tool configuration changed; choose a new output file")
         if run["model"] != LLM_MODEL:
             raise SystemExit("LLM model changed; choose a new output file")
+        if run.get("max_tool_calls") != max_tool_calls:
+            raise SystemExit("Tool budget changed or missing; choose a new output file")
         run["dataset_sha256"] = dataset_digest
     else:
         run = {
@@ -130,14 +143,14 @@ def main() -> None:
             "created_at": datetime.now(timezone.utc).isoformat(),
             "git_sha": git_sha(),
             "prompt_sha256": prompt_sha256(),
-            "max_tool_calls": AGENT_MAX_TOOL_CALLS,
+            "max_tool_calls": max_tool_calls,
             "enabled_tools": enabled_tools,
             "note": "Unreviewed questions and no verified Gold. All Agent answers are provisional.",
             "results": [],
         }
     completed = {x["case_id"] for x in run["results"]}
     print("CONFIG model=", LLM_MODEL, "tools=", enabled_tools,
-          "budget=", AGENT_MAX_TOOL_CALLS, "completed=", len(completed), flush=True)
+          "budget=", max_tool_calls, "completed=", len(completed), flush=True)
 
     for case in cases[args.offset: args.offset + args.count]:
         if case["id"] in completed:
@@ -148,9 +161,12 @@ def main() -> None:
             "level": case["level"],
             "topic": case["topic"],
             "started_at": datetime.now(timezone.utc).isoformat(),
+            "max_tool_calls": max_tool_calls,
         }
         try:
-            response = graph.invoke(cast(AgentState, build_state(case, dataset["fixtures"])))
+            response = graph.invoke(
+                cast(AgentState, build_state(case, dataset["fixtures"], max_tool_calls))
+            )
             answer = response.get("reply", "")
             messages = [dict(x) for x in response.get("messages", [])]
             trace = _tool_trace(messages)

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Check, Copy, LoaderCircle, RotateCcw } from 'lucide-react'
 
 import { AssistantMarkdown } from '@/components/assistant-markdown'
@@ -27,6 +28,15 @@ export function AssistantMessage({
   onRetry,
   onRegenerate,
 }: AssistantMessageProps) {
+  // One stable Markdown tree per generation, including after its final SSE event.
+  const [generation, setGeneration] = useState({ regenerating: false, version: 0 })
+  if (generation.regenerating !== turn.regenerating) {
+    setGeneration({
+      regenerating: turn.regenerating,
+      version: generation.version + (turn.regenerating ? 1 : 0),
+    })
+  }
+
   const copyKey = `${turn.id}:assistant`
   const copySucceeded = copyStatus?.key === copyKey && copyStatus.status === 'success'
   const copyFailed = copyStatus?.key === copyKey && copyStatus.status === 'error'
@@ -75,11 +85,19 @@ export function AssistantMessage({
 
   if (!turn.answer) return null
 
+  // The previous answer remains available for recovery, while incoming tokens
+  // replace its visible content in the same message area.
+  const visibleAnswer = turn.regenerating && turn.streamDraft ? turn.streamDraft : turn.answer
+
   return (
     <div className="min-w-0 space-y-2" aria-label="Poeticus回复">
       <div className="text-xs font-medium tracking-wide text-muted-foreground">Poeticus</div>
       <div className="group min-w-0 select-text">
-        <AssistantMarkdown content={turn.answer} />
+        <AssistantMarkdown
+          key={generation.version}
+          content={visibleAnswer}
+          animateNewCharacters={turn.status === 'streaming' || turn.regenerating}
+        />
 
         {turn.status === 'streaming' && (
           <div role="status" className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
@@ -90,7 +108,9 @@ export function AssistantMessage({
 
         {/* 完整回答才允许复制和重新生成；生成中仍可手动选择正文。 */}
         {turn.status === 'done' && (
-          <div className="mt-2 flex items-center gap-2 opacity-0 transition-opacity duration-[var(--motion-message-actions)] group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+          <div
+            className={`mt-2 flex items-center gap-2 transition-opacity duration-[var(--motion-message-actions)] group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100 ${turn.regenerating ? 'opacity-100' : 'opacity-0'}`}
+          >
             <ActionTooltip label="复制回复">
               <Button
                 type="button"
@@ -103,7 +123,7 @@ export function AssistantMessage({
                 {copySucceeded ? <Check className="size-4" /> : <Copy className="size-4" />}
               </Button>
             </ActionTooltip>
-            <ActionTooltip label="重新生成">
+            <ActionTooltip label={turn.regenerating ? '正在重新生成' : '重新生成'}>
               <Button
                 type="button"
                 variant="ghost"
@@ -111,7 +131,7 @@ export function AssistantMessage({
                 className="size-8 text-muted-foreground/60 hover:text-foreground"
                 onClick={onRegenerate}
                 disabled={loading || turn.regenerating}
-                aria-label="重新生成 AI 回答"
+                aria-label={turn.regenerating ? '正在重新生成 AI 回答' : '重新生成 AI 回答'}
               >
                 {turn.regenerating ? (
                   <LoaderCircle className="size-4 animate-spin" />
@@ -125,20 +145,6 @@ export function AssistantMessage({
                 复制失败，请手动选择文字复制
               </span>
             )}
-          </div>
-        )}
-
-        {/* 重生成时，旧答案仍在上方；新版本逐步出现。 */}
-        {turn.regenerating && (
-          <div className="mt-3 rounded-xl border border-border/60 bg-muted/30 p-3">
-            <div
-              role="status"
-              className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"
-            >
-              <LoaderCircle className="size-3 animate-spin" />
-              正在重新生成……
-            </div>
-            {turn.streamDraft && <AssistantMarkdown content={turn.streamDraft} />}
           </div>
         )}
 

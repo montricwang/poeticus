@@ -9,6 +9,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+import pytest
+
 from evals.schema import EvalInput
 from scripts.evals.render_agent_reader_questions import render
 
@@ -95,6 +97,67 @@ def test_question_bank_preserves_simple_prompts_and_exploratory_coverage():
 
 def test_human_review_sheet_exactly_matches_source_json():
     assert REVIEW_PATH.read_text(encoding="utf-8") == render(bank())
+
+
+def test_runner_budget_override_is_passed_to_agent_and_saved_to_result(
+    monkeypatch, tmp_path,
+):
+    import sys
+    from types import SimpleNamespace
+
+    import backend.ai.graph as agent_graph
+    from scripts.evals import run_agent_reader_100
+
+    monkeypatch.setenv("LLM_API_KEY", "test-only-placeholder")
+    monkeypatch.setenv("LANGSMITH_TRACING", "false")
+    observed = []
+
+    def invoke(state):
+        observed.append(state)
+        return {"reply": "test answer", "messages": [], "tool_count": 0}
+
+    configured_budget = agent_graph.AGENT_MAX_TOOL_CALLS
+    monkeypatch.setattr(agent_graph, "graph", SimpleNamespace(invoke=invoke))
+    output = tmp_path / "reader-run.json"
+    monkeypatch.setattr(sys, "argv", [
+        "run_agent_reader_100.py", "--output", str(output), "--count", "1",
+        "--max-tool-calls", "4",
+    ])
+    run_agent_reader_100.main()
+
+    saved = json.loads(output.read_text(encoding="utf-8"))
+    assert saved["max_tool_calls"] == 4
+    assert saved["results"][0]["max_tool_calls"] == 4
+    assert observed[0]["max_tool_calls"] == 4
+    assert agent_graph.AGENT_MAX_TOOL_CALLS == configured_budget
+
+    # A resumed output is tied to the original budget.
+    monkeypatch.setattr(sys, "argv", [
+        "run_agent_reader_100.py", "--output", str(output), "--count", "0",
+        "--max-tool-calls", "5",
+    ])
+    with pytest.raises(SystemExit, match="Tool budget changed"):
+        run_agent_reader_100.main()
+
+    # A missing run-level budget is not a trustworthy resume signature either.
+    saved.pop("max_tool_calls")
+    output.write_text(json.dumps(saved, ensure_ascii=False, indent=2), encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", [
+        "run_agent_reader_100.py", "--output", str(output), "--count", "0",
+        "--max-tool-calls", "2",
+    ])
+    with pytest.raises(SystemExit, match="Tool budget changed or missing"):
+        run_agent_reader_100.main()
+
+
+def test_runner_rejects_out_of_range_budget_before_loading_agent(monkeypatch):
+    import sys
+    from scripts.evals import run_agent_reader_100
+
+    monkeypatch.setattr(sys, "argv", ["run_agent_reader_100.py", "--max-tool-calls", "11"])
+    with pytest.raises(SystemExit) as exc_info:
+        run_agent_reader_100.main()
+    assert exc_info.value.code == 2
 
 
 def test_runner_uses_real_fixture_or_explicitly_empty_standalone_context():

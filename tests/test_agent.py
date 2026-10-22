@@ -337,6 +337,54 @@ def test_tool_budget_exhaustion_disables_tools_and_hides_protocol(
         create_calls[2]["messages"][0]["content"]
     )
 
+def test_request_budget_override_limits_tool_execution_and_next_model_call(
+    monkeypatch, agent,
+):
+    create_calls = []
+    search_calls = []
+
+    def fake_create(**kwargs):
+        create_calls.append(kwargs)
+        if len(create_calls) == 1:
+            response = _tool_call_response(
+                "budget-1", "lookup_allusion", '{"term":"片片轻鸥"}'
+            )
+            response.choices[0].message.tool_calls.append(
+                SimpleNamespace(
+                    id="budget-2",
+                    type="function",
+                    function=SimpleNamespace(
+                        name="lookup_allusion",
+                        arguments='{"term":"轻鸥"}',
+                    ),
+                )
+            )
+            return response
+        return _text_response("依据已有检索结果作答。")
+
+    async def fake_search(query, *, provider_name, evidence_type=None):
+        search_calls.append(query)
+        return []
+
+    monkeypatch.setattr(agent, "client", _fake_client(fake_create))
+    monkeypatch.setattr(agent.evidence_service, "search", fake_search)
+
+    result = agent.graph.invoke({
+        "poem": "片片轻鸥落晚沙。",
+        "question": "这句改用了谁的诗？",
+        "selection": None,
+        "max_tool_calls": 1,
+    })
+
+    assert search_calls == ["片片轻鸥"]
+    assert result["tool_count"] == 1
+    assert json.loads(result["tool_results"][1]["content"])["status"] == "budget_exceeded"
+    assert result["reply"] == "依据已有检索结果作答。"
+    assert len(create_calls) == 2
+    assert "tools" not in create_calls[1]
+    assert "tool_choice" not in create_calls[1]
+
+
 def test_tool_contracts_separate_allusion_and_reference_search():
     """检查模型工具 Schema 中实际存在的说明与查询字段。"""
 
