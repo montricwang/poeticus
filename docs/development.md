@@ -42,9 +42,12 @@ cd ..
 LLM_API_KEY=替换为个人密钥
 POETICUS_DATABASE_URL=postgresql://用户名:密码@localhost:5432/poeticus
 LANGSMITH_TRACING=false
+POETICUS_AGENT_MAX_TOOL_CALLS=2
 ```
 
-默认模型服务地址为 DeepSeek；如需兼容服务可设置 `LLM_BASE_URL`。模型名可通过 `POETICUS_LLM_MODEL` 覆盖，输出预算可通过 `POETICUS_LLM_MAX_OUTPUT_TOKENS` 调整。
+`POETICUS_AGENT_MAX_TOOL_CALLS` 控制每个用户请求可执行的真实工具调用次数，默认值为 `2`，仅接受 `1–10` 的整数；非法值会使后端启动时报错。省略该项即使用默认值。模型服务地址可由 `LLM_BASE_URL` 覆盖；模型名可通过 `POETICUS_LLM_MODEL` 覆盖，输出预算可通过 `POETICUS_LLM_MAX_OUTPUT_TOKENS` 调整。
+
+Railway 部署在 Web 服务的 **Variables** 中设置同名变量，保存后按 Railway 提示重新部署；新实例启动时读取新值。评测脚本的 `--max-tool-calls N` 只覆盖该评测进程，不会修改本地 `.env` 或 Railway 服务变量。
 
 不要把密钥、数据库 URL 或私人语料放入前端 `VITE_*` 变量、源码或提交记录。
 

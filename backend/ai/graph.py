@@ -62,6 +62,14 @@ _TOOL_PROTOCOL_FALLBACK = (
 )
 
 
+def _max_tool_calls_for_state(state: "AgentState") -> int:
+    """Return the validated per-request budget, defaulting to deployment config."""
+    value = state.get("max_tool_calls", AGENT_MAX_TOOL_CALLS)
+    if type(value) is not int or not 1 <= value <= 10:
+        raise ValueError("max_tool_calls must be an integer from 1 to 10")
+    return value
+
+
 def _looks_like_tool_protocol(text: str) -> bool:
     """拦截模型把内部工具协议当普通正文吐出的情况。"""
 
@@ -351,6 +359,7 @@ class AgentState(TypedDict):
     history: NotRequired[list[HistoryMessage]]
     messages: NotRequired[list[ChatCompletionMessageParam]]
     tool_count: NotRequired[int]
+    max_tool_calls: NotRequired[int]
     reply: NotRequired[str]
     evidences: NotRequired[list[dict[str, object]]]
     tool_calls: NotRequired[list[ToolCall]]
@@ -569,7 +578,7 @@ def agent_decide(state: AgentState) -> AgentStateUpdate:
 
     # --- 4.2 根据工具预算及响应模式选择模型调用方式 ---
 
-    tools_enabled = state.get("tool_count", 0) < AGENT_MAX_TOOL_CALLS
+    tools_enabled = state.get("tool_count", 0) < _max_tool_calls_for_state(state)
 
     stream_reply = state.get("stream_reply", False)
     tool_calls: list[ToolCall]
@@ -737,6 +746,7 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
 
     messages = list(state.get("messages") or [])
     tool_count = state.get("tool_count", 0)
+    max_tool_calls = _max_tool_calls_for_state(state)
 
     # 防止重复 ID 使工具结果无法正确对应。
     ids = [call["id"] for call in calls]
@@ -791,7 +801,7 @@ def execute_tools(state: AgentState) -> AgentStateUpdate:
 
         for call in calls:
             result: dict[str, object]
-            if count >= AGENT_MAX_TOOL_CALLS:
+            if count >= max_tool_calls:
                 result = {
                     "status": "budget_exceeded",
                     "message": "本次请求的工具调用预算已用完",

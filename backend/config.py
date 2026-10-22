@@ -15,6 +15,26 @@ def _bounded_int(name: str, default: int, minimum: int, maximum: int) -> int:
     return min(max(value, minimum), maximum)
 
 
+DEFAULT_AGENT_MAX_TOOL_CALLS = 2
+
+
+def _parse_agent_max_tool_calls(raw_value: str | None) -> int:
+    """Parse the Agent tool budget and reject invalid deployment settings."""
+    if raw_value is None:
+        return DEFAULT_AGENT_MAX_TOOL_CALLS
+    try:
+        value = int(raw_value)
+    except ValueError as exc:
+        raise ValueError(
+            "POETICUS_AGENT_MAX_TOOL_CALLS must be an integer from 1 to 10"
+        ) from exc
+    if not 1 <= value <= 10:
+        raise ValueError(
+            "POETICUS_AGENT_MAX_TOOL_CALLS must be an integer from 1 to 10"
+        )
+    return value
+
+
 # 公开聊天契约：后端校验是最终权威；前端只通过 /api/capabilities
 # 读取浏览器真正需要知道的那一小部分，不再保存重复常量。
 AI_MAX_POEM_CHARS = 12000
@@ -38,8 +58,10 @@ LLM_MAX_OUTPUT_TOKENS = _bounded_int(
 LLM_TIMEOUT_SECONDS = 30.0
 LLM_MAX_RETRIES = 0
 
-# 单次用户请求最多执行这么多次真实工具调用。
-AGENT_MAX_TOOL_CALLS = 2
+# 单次用户请求最多执行这么多次真实工具调用；默认保持现行值 2。
+AGENT_MAX_TOOL_CALLS = _parse_agent_max_tool_calls(
+    os.getenv("POETICUS_AGENT_MAX_TOOL_CALLS")
+)
 
 # Third-party CNKGraph public API is non-commercial research only.
 # This is an explicit local research opt-in, NEVER enabled by default on Web.
