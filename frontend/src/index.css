@@ -996,7 +996,7 @@ html.theme-transition #root * {
 }
 
 .stream-character-fade {
-  animation: stream-character-reveal var(--motion-stream-character-fade, 1100ms) ease-out both;
+  animation: stream-character-reveal var(--motion-stream-character-fade, 2000ms) ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
