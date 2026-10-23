@@ -2,7 +2,8 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
+from pydantic import BaseModel, Field
 
 from backend.auth.clerk import AuthenticatedClerkUser
 from backend.users.repository import get_or_create_user
@@ -34,21 +35,24 @@ def delete_private_conversation(
     clerk_id: AuthenticatedClerkUser, conversation_id: UUID
 ) -> None:
     user_id = get_or_create_user(clerk_id)
-    ensure_owns_conversation(user_id, conversation_id)
-    # Fail closed if private-memory cleanup fails; do not leave orphaned memories.
-    from backend.memory.user_memory import remove_conversation_memories
+    # Keep the SQL source and memory cleanup in one in-process mutation
+    # interval, so a delayed background write cannot resurrect erased facts.
+    from backend.memory.user_memory import memory_mutation_lock, remove_conversation_memories
 
-    remove_conversation_memories(str(user_id), str(conversation_id))
-    delete_conversation(user_id, conversation_id)
+    with memory_mutation_lock():
+        ensure_owns_conversation(user_id, conversation_id)
+        remove_conversation_memories(str(user_id), str(conversation_id))
+        delete_conversation(user_id, conversation_id)
 
 
 
 @router.get("/api/memories")
-def memories(clerk_id: AuthenticatedClerkUser) -> dict:
+def memories(clerk_id: AuthenticatedClerkUser, response: Response) -> dict:
     """The memory list is private, even when extraction is disabled."""
     from backend.memory.user_memory import list_private_memories
 
     user_id = get_or_create_user(clerk_id)
+    response.headers["Cache-Control"] = "no-store"
     try:
         return {"memories": list_private_memories(str(user_id))}
     except Exception as exc:
@@ -56,11 +60,76 @@ def memories(clerk_id: AuthenticatedClerkUser) -> dict:
 
 
 @router.delete("/api/memories")
-def clear_memories(clerk_id: AuthenticatedClerkUser) -> dict:
-    from backend.memory.user_memory import delete_all_private_memories
+def clear_memories(clerk_id: AuthenticatedClerkUser, response: Response) -> dict:
+    from backend.memory.user_memory import delete_all_private_memories, memory_mutation_lock
+    from backend.users.private_data import set_memory_opt_in
+
+    user_id = get_or_create_user(clerk_id)
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        with memory_mutation_lock():
+            # Clear also revokes consent. Even queued extraction cannot
+            # recreate deleted memories, and re-enabling requires user action.
+            set_memory_opt_in(user_id, False, reset=True)
+            deleted = delete_all_private_memories(str(user_id))
+        return {"deleted": deleted, "memory_opt_in": False}
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="记忆删除未全部完成，请重试") from exc
+
+
+class MemoryCorrection(BaseModel):
+    text: str = Field(min_length=1, max_length=300)
+
+
+@router.patch("/api/memories/{memory_id}")
+def revise_memory(
+    memory_id: str, correction: MemoryCorrection, clerk_id: AuthenticatedClerkUser,
+    response: Response,
+) -> dict:
+    from backend.memory.user_memory import (
+        correct_memory, memory_mutation_lock, owns_private_memory,
+    )
+    from backend.users.private_data import invalidate_pending_memory
+
+    if not correction.text.strip():
+        raise HTTPException(status_code=422, detail="记忆内容不能为空")
+    user_id = get_or_create_user(clerk_id)
+    response.headers["Cache-Control"] = "no-store"
+    try:
+        with memory_mutation_lock():
+            if not owns_private_memory(str(user_id), memory_id):
+                raise HTTPException(status_code=404, detail="记忆不存在")
+            # Newer explicit corrections take precedence over queued LLM text.
+            invalidate_pending_memory(user_id)
+            result = correct_memory(str(user_id), memory_id, correction.text)
+        if result is None:
+            raise HTTPException(status_code=404, detail="记忆不存在")
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="记忆更正失败，请重试") from exc
+
+
+@router.delete("/api/memories/{memory_id}", status_code=204)
+def remove_memory(
+    memory_id: str, clerk_id: AuthenticatedClerkUser,
+) -> None:
+    from backend.memory.user_memory import (
+        delete_memory, memory_mutation_lock, owns_private_memory,
+    )
+    from backend.users.private_data import invalidate_pending_memory
 
     user_id = get_or_create_user(clerk_id)
     try:
-        return {"deleted": delete_all_private_memories(str(user_id))}
+        with memory_mutation_lock():
+            if not owns_private_memory(str(user_id), memory_id):
+                raise HTTPException(status_code=404, detail="记忆不存在")
+            invalidate_pending_memory(user_id)
+            owned = delete_memory(str(user_id), memory_id)
+        if not owned:
+            raise HTTPException(status_code=404, detail="记忆不存在")
+    except HTTPException:
+        raise
     except Exception as exc:
-        raise HTTPException(status_code=503, detail="记忆删除未全部完成，请重试") from exc
+        raise HTTPException(status_code=503, detail="记忆删除失败，请重试") from exc

@@ -7,6 +7,7 @@ from backend import config
 from backend.auth.clerk import AuthenticatedClerkUser
 from backend.users.repository import get_or_create_user
 from backend.users.private_data import get_memory_opt_in, set_memory_opt_in
+from backend.memory.user_memory import memory_mutation_lock
 
 router = APIRouter()
 
@@ -47,4 +48,5 @@ def update_memory_preference(
     """Never let a client set memory consent for another user."""
     response.headers["Cache-Control"] = "no-store"
     user_id = get_or_create_user(clerk_id)
-    return {"memory_opt_in": set_memory_opt_in(user_id, preference.enabled)}
+    with memory_mutation_lock():
+        return {"memory_opt_in": set_memory_opt_in(user_id, preference.enabled)}

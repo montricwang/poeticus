@@ -8,6 +8,8 @@ import atexit
 import logging
 import os
 import threading
+from contextlib import contextmanager
+from uuid import UUID
 from functools import lru_cache
 from pathlib import Path
 
@@ -19,6 +21,7 @@ _DATA_ROOT = Path(__file__).resolve().parents[3] / "poeticus-data"
 _DEFAULT_MODEL = _DATA_ROOT / "models/Qwen3-Embedding-0.6B-7c0e29cfcdf2"
 _DEFAULT_STORAGE = _DATA_ROOT / "user-memory-local"
 _INIT_LOCK = threading.Lock()
+_MUTATION_LOCK = threading.RLock()
 
 # Qwen3-Embedding yields 1024-dimensional document and query vectors.
 _QWEN_DIMS = 1024
@@ -112,6 +115,20 @@ def _memory():
         return _create_memory()
 
 
+@contextmanager
+def memory_mutation_lock():
+    """Serialize in-process writes, corrections and erasure of private memory."""
+    with _MUTATION_LOCK:
+        yield
+
+
+def _owned_memory(user_id: str, memory_id: str) -> dict | None:
+    record = _memory().get(memory_id)
+    if not isinstance(record, dict) or record.get("user_id") != user_id:
+        return None
+    return record
+
+
 def recall(user_id: str, question: str) -> list[str]:
     """Retrieve only this authenticated user's relevant memories."""
     response = _memory().search(
@@ -147,21 +164,61 @@ def remember(
     )
 
 
+def owns_private_memory(user_id: str, memory_id: str) -> bool:
+    """Check ownership before changing other persisted state."""
+    with _MUTATION_LOCK:
+        return _owned_memory(user_id, memory_id) is not None
+
+
 def delete_memory(user_id: str, memory_id: str) -> bool:
-    """Delete only a memory already shown to belong to the given user."""
-    response = _memory().get_all(filters={"user_id": user_id}, top_k=1000)
-    owned = {item["id"] for item in response.get("results", [])}
-    if memory_id not in owned:
-        return False
-    _memory().delete(memory_id)
-    return True
+    """Only the verified owner may delete a memory by its untrusted UUID."""
+    with _MUTATION_LOCK:
+        if _owned_memory(user_id, memory_id) is None:
+            return False
+        _memory().delete(memory_id)
+        return True
+
+
+def correct_memory(user_id: str, memory_id: str, text: str) -> dict | None:
+    """A user correction is an explicit assertion, no longer a chat-derived guess."""
+    content = text.strip()
+    if not content or len(content) > 300:
+        raise ValueError("Invalid corrected memory length")
+    with _MUTATION_LOCK:
+        previous = _owned_memory(user_id, memory_id)
+        if previous is None:
+            return None
+
+        # Keep the original locator as audit metadata, but sever automatic
+        # deletion linkage: the user has now explicitly asserted this memory.
+        metadata = previous.get("metadata") or {}
+        original = metadata.get("conversation_id") or metadata.get("original_conversation_id")
+        _memory().update(
+            memory_id,
+            text=content,
+            metadata={
+                "source": "user_correction",
+                "corrected_by_user": True,
+                "original_conversation_id": original,
+                "conversation_id": None,
+                "source_message_id": None,
+            },
+        )
+        return {"id": memory_id, "memory": content, "source": "user_correction"}
 
 
 def safe_recall(user_id: str | None, question: str) -> list[str]:
     if not (config.USER_MEMORY_ENABLED and user_id):
         return []
     try:
-        return recall(user_id, question)
+        from backend.users.private_data import get_memory_opt_in
+
+        # An active SSE request can outlive a consent toggle. Recheck at
+        # actual retrieval time, not only when the HTTP request begins.
+        with _MUTATION_LOCK:
+            if not get_memory_opt_in(UUID(user_id)):
+                return []
+            return recall(user_id, question)
     except Exception as exc:
         logger.warning("User memory lookup failed: %s", type(exc).__name__)
         return []
@@ -182,45 +239,71 @@ def safe_remember(
     ):
         return
     try:
-        remember(
-            user_id,
-            user_text,
-            conversation_id=conversation_id,
-            source_message_id=source_message_id,
-        )
+        from backend.users.private_data import source_allows_memory
+
+        # Work may be queued after the reply. Recheck both source existence
+        # and the persisted consent/cutoff immediately before writing.
+        with _MUTATION_LOCK:
+            if not source_allows_memory(
+                UUID(user_id), UUID(conversation_id), UUID(source_message_id), user_text
+            ):
+                return
+            remember(
+                user_id,
+                user_text,
+                conversation_id=conversation_id,
+                source_message_id=source_message_id,
+            )
     except Exception as exc:
         logger.warning("User memory save failed: %s", type(exc).__name__)
 
-def remove_conversation_memories(user_id: str, conversation_id: str) -> None:
-    """Purge conversation-derived memories before deleting its message source.
 
-    If the memory store was used previously, disabling new extraction must not
-    silently skip cleanup. A retrieval limit refuses ambiguous partial deletion.
+def remove_conversation_memories(user_id: str, conversation_id: str) -> None:
+    """Purge this conversation's derived memories, preserving user corrections.
+
+    The deletion caller holds memory_mutation_lock through SQL source removal.
     """
     storage = Path(
         os.getenv("POETICUS_USER_MEMORY_STORAGE_DIR", str(_DEFAULT_STORAGE))
     ).expanduser() / "qdrant"
     if not config.USER_MEMORY_ENABLED and not storage.exists():
-        return  # No local memory collection has ever been configured.
+        return
 
-    memory = _memory()
-    entries = memory.get_all(filters={"user_id": user_id}, top_k=1000).get("results", [])
-    if len(entries) >= 1000:
-        raise RuntimeError("Memory scan limit reached; refusing partial deletion")
-    for entry in entries:
-        if not isinstance(entry, dict):
-            continue
-        metadata = entry.get("metadata") or {}
-        if metadata.get("conversation_id") == conversation_id:
-            memory.delete(entry["id"])
+    with _MUTATION_LOCK:
+        memory = _memory()
+        entries = memory.get_all(filters={"user_id": user_id}, top_k=1000).get("results", [])
+        if len(entries) >= 1000:
+            raise RuntimeError("Memory scan limit reached; refusing partial deletion")
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            metadata = entry.get("metadata") or {}
+            if metadata.get("conversation_id") == conversation_id:
+                memory.delete(entry["id"])
+
+
+def _has_memory_storage() -> bool:
+    storage = Path(
+        os.getenv("POETICUS_USER_MEMORY_STORAGE_DIR", str(_DEFAULT_STORAGE))
+    ).expanduser() / "qdrant"
+    return storage.is_dir()
 
 
 def list_private_memories(user_id: str) -> list[dict]:
-    """Return bounded records for this user to inspect or delete."""
-    response = _memory().get_all(filters={"user_id": user_id}, top_k=100)
+    """List only this user's memory content and coarse provenance."""
+    with _MUTATION_LOCK:
+        if not _has_memory_storage():
+            return []
+        response = _memory().get_all(filters={"user_id": user_id}, top_k=100)
     entries = response.get("results", [])
     return [
-        {"id": item["id"], "memory": item["memory"]}
+        {
+            "id": item["id"],
+            "memory": item["memory"],
+            "source": (item.get("metadata") or {}).get("source", "unknown"),
+            "conversation_id": (item.get("metadata") or {}).get("conversation_id"),
+            "source_message_id": (item.get("metadata") or {}).get("source_message_id"),
+        }
         for item in entries
         if isinstance(item, dict)
         and isinstance(item.get("id"), str)
@@ -229,20 +312,23 @@ def list_private_memories(user_id: str) -> list[dict]:
 
 
 def delete_all_private_memories(user_id: str) -> int:
-    """Delete the entire user's Mem0 history in bounded batches."""
-    memory = _memory()
-    deleted = 0
-    for _ in range(100):
-        entries = memory.get_all(filters={"user_id": user_id}, top_k=1000).get("results", [])
-        if not entries:
-            return deleted
-        ids = [
-            entry["id"] for entry in entries
-            if isinstance(entry, dict) and isinstance(entry.get("id"), str)
-        ]
-        if not ids:
-            raise RuntimeError("Memory records have no valid identifiers")
-        for memory_id in ids:
-            memory.delete(memory_id)
-        deleted += len(ids)
-    raise RuntimeError("Memory cleanup exceeded its safety limit")
+    """Delete only the user's Mem0 records, in bounded batches."""
+    with _MUTATION_LOCK:
+        if not _has_memory_storage():
+            return 0
+        memory = _memory()
+        deleted = 0
+        for _ in range(100):
+            entries = memory.get_all(filters={"user_id": user_id}, top_k=1000).get("results", [])
+            if not entries:
+                return deleted
+            ids = [
+                entry["id"] for entry in entries
+                if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+            ]
+            if not ids:
+                raise RuntimeError("Memory records have no valid identifiers")
+            for memory_id in ids:
+                memory.delete(memory_id)
+            deleted += len(ids)
+        raise RuntimeError("Memory cleanup exceeded its safety limit")

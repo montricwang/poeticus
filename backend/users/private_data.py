@@ -48,15 +48,61 @@ def get_memory_opt_in(user_id: UUID) -> bool:
     return row["memory_opt_in"] is True
 
 
-def set_memory_opt_in(user_id: UUID, enabled: bool) -> bool:
+def set_memory_opt_in(user_id: UUID, enabled: bool, *, reset: bool = False) -> bool:
+    """A preference transition invalidates any older pending memory extraction."""
     with _db() as conn:
         row = conn.execute(
-            "UPDATE app_users SET memory_opt_in=%s WHERE id=%s RETURNING memory_opt_in",
-            (enabled, user_id),
+            """
+            UPDATE app_users
+            SET memory_opt_in=%s,
+                memory_reset_at=CASE
+                  WHEN memory_opt_in IS DISTINCT FROM %s OR %s
+                  THEN clock_timestamp()
+                  ELSE memory_reset_at
+                END
+            WHERE id=%s RETURNING memory_opt_in
+            """,
+            (enabled, enabled, reset, user_id),
         ).fetchone()
     if row is None:
         raise HTTPException(status_code=401, detail="账户不存在")
     return row["memory_opt_in"] is True
+
+
+def invalidate_pending_memory(user_id: UUID) -> None:
+    """Manual correction/deletion wins over queued extraction from old messages."""
+    with _db() as conn:
+        row = conn.execute(
+            "UPDATE app_users SET memory_reset_at=clock_timestamp() WHERE id=%s RETURNING id",
+            (user_id,),
+        ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=401, detail="账户不存在")
+
+
+def source_allows_memory(
+    user_id: UUID,
+    conversation_id: UUID,
+    source_message_id: UUID,
+    user_text: str,
+) -> bool:
+    """Recheck consent, ownership, source presence and cutoff at write time."""
+    with _db() as conn:
+        row = conn.execute(
+            """
+            SELECT EXISTS (
+              SELECT 1 FROM app_users u
+              JOIN app_conversations c ON c.user_id = u.id
+              JOIN app_messages m ON m.conversation_id = c.id
+              WHERE u.id=%s AND u.memory_opt_in IS TRUE
+                AND c.id=%s AND m.id=%s
+                AND m.role='user' AND m.content=%s
+                AND (u.memory_reset_at IS NULL OR m.created_at > u.memory_reset_at)
+            ) AS allowed
+            """,
+            (user_id, conversation_id, source_message_id, user_text),
+        ).fetchone()
+    return bool(row and row["allowed"])
 
 
 def begin_turn(
@@ -90,8 +136,9 @@ def begin_turn(
             return previous["id"]
         message_id = uuid4()
         conn.execute(
-            """INSERT INTO app_messages (id, conversation_id, turn_number, role, content)
-               VALUES (%s, %s, %s, 'user', %s)""",
+            """INSERT INTO app_messages
+               (id, conversation_id, turn_number, role, content, created_at)
+               VALUES (%s, %s, %s, 'user', %s, clock_timestamp())""",
             (message_id, conversation_id, turn_number, question),
         )
         conn.execute(

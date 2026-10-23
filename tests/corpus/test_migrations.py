@@ -22,7 +22,7 @@ class FakeMigrationConnection:
         return SimpleNamespace(fetchall=lambda: [])
 
 
-ALL = {"0001_corpus", "0002_cipai", "0003_yusheng_title", "0004_ai_daily_quotas", "0005_ai_ip_daily_quotas", "0006_app_users", "0007_private_conversations"}
+ALL = {"0001_corpus", "0002_cipai", "0003_yusheng_title", "0004_ai_daily_quotas", "0005_ai_ip_daily_quotas", "0006_app_users", "0007_private_conversations", "0008_memory_cutoff"}
 
 
 def _ddl(conn):
@@ -82,7 +82,7 @@ def test_existing_0004_database_adds_only_ip_quota_table():
 
 
 def test_existing_0005_database_only_adds_user_identity():
-    conn = FakeMigrationConnection(ALL - {"0006_app_users", "0007_private_conversations"})
+    conn = FakeMigrationConnection(ALL - {"0006_app_users", "0007_private_conversations", "0008_memory_cutoff"})
     db_import.migrate(conn)
     assert conn.versions == ALL
     ddl = [sql for sql, _ in conn.executed if sql.startswith("-- 迁移") or "CREATE TABLE app_users" in sql]
@@ -92,10 +92,19 @@ def test_existing_0005_database_only_adds_user_identity():
 
 
 def test_existing_0006_database_only_adds_private_conversations():
-    conn = FakeMigrationConnection(ALL - {"0007_private_conversations"})
+    conn = FakeMigrationConnection(ALL - {"0007_private_conversations", "0008_memory_cutoff"})
     db_import.migrate(conn)
     assert conn.versions == ALL
     ddl = [sql for sql, _ in conn.executed if "CREATE TABLE app_conversations" in sql]
     assert len(ddl) == 1
     assert "CREATE TABLE app_messages" in ddl[0]
+    assert "ALTER TABLE app_users" in ddl[0]
+
+
+def test_existing_0007_database_adds_memory_cutoff_only():
+    conn = FakeMigrationConnection(ALL - {"0008_memory_cutoff"})
+    db_import.migrate(conn)
+    assert conn.versions == ALL
+    ddl = [sql for sql, _ in conn.executed if "ADD COLUMN memory_reset_at" in sql]
+    assert len(ddl) == 1
     assert "ALTER TABLE app_users" in ddl[0]

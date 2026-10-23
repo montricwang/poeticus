@@ -202,3 +202,111 @@ def test_foreign_delete_does_not_even_scan_memory(private_sql, monkeypatch):
     assert client.delete(
         "/api/conversations/" + str(cid), headers={"Authorization": "Bearer B"},
     ).status_code == 404
+
+
+def test_memory_cutoff_blocks_queued_old_messages(private_sql, monkeypatch):
+    """Database consent + source record + cutoff are checked at extraction time."""
+    from backend.users.private_data import source_allows_memory, invalidate_pending_memory
+
+    client, alice, bob, conn = private_sql
+    cid = uuid4()
+    first = private_data.begin_turn(alice, cid, "poem-001", 1, "我喜欢苏轼")
+    assert not source_allows_memory(alice, cid, first, "我喜欢苏轼")
+
+    private_data.set_memory_opt_in(alice, True)
+    # Consent given after the message must not retroactively publish that message.
+    assert not source_allows_memory(alice, cid, first, "我喜欢苏轼")
+
+    second = private_data.begin_turn(alice, cid, "poem-001", 2, "我喜欢李清照")
+    assert source_allows_memory(alice, cid, second, "我喜欢李清照")
+    assert not source_allows_memory(bob, cid, second, "我喜欢李清照")
+    assert not source_allows_memory(alice, cid, second, "不一样的原文")
+
+    invalidate_pending_memory(alice)  # An explicit user correction or deletion.
+    assert not source_allows_memory(alice, cid, second, "我喜欢李清照")
+
+    third = private_data.begin_turn(alice, cid, "poem-001", 3, "现在喜欢王安石")
+    assert source_allows_memory(alice, cid, third, "现在喜欢王安石")
+    private_data.set_memory_opt_in(alice, False)
+    assert not source_allows_memory(alice, cid, third, "现在喜欢王安石")
+
+
+def test_memory_correction_and_single_delete_are_user_scoped(private_sql, monkeypatch):
+    from backend.memory import user_memory
+
+    class FakeMemory:
+        def __init__(self, owner):
+            self.data = {
+                "mine": {
+                    "id": "mine", "user_id": str(owner),
+                    "memory": "喜欢苏轼",
+                    "metadata": {
+                        "source": "conversation",
+                        "conversation_id": "some-old-conversation",
+                    },
+                },
+            }
+
+        def get(self, key):
+            return dict(self.data[key]) if key in self.data else None
+
+        def update(self, key, *, text, metadata):
+            self.data[key]["memory"] = text
+            self.data[key]["metadata"].update(metadata)
+
+        def delete(self, key):
+            del self.data[key]
+
+        def get_all(self, *, filters, top_k):
+            return {
+                "results": [
+                    dict(item) for item in self.data.values()
+                    if item["user_id"] == filters["user_id"]
+                ]
+            }
+
+    client, alice, bob, conn = private_sql
+    fake = FakeMemory(alice)
+    monkeypatch.setattr(user_memory, "_memory", lambda: fake)
+    monkeypatch.setattr(user_memory, "_has_memory_storage", lambda: True)
+
+    foreign = client.patch(
+        "/api/memories/mine", headers={"Authorization": "Bearer B"},
+        json={"text": "恶意修改"},
+    )
+    assert foreign.status_code == 404
+    assert conn.execute(
+        "SELECT memory_reset_at FROM app_users WHERE id=%s", (bob,)
+    ).fetchone()["memory_reset_at"] is None
+    assert fake.data["mine"]["memory"] == "喜欢苏轼"
+
+    corrected = client.patch(
+        "/api/memories/mine", headers={"Authorization": "Bearer A"},
+        json={"text": "现在更喜欢李清照"},
+    )
+    assert corrected.status_code == 200
+    assert corrected.json()["memory"] == "现在更喜欢李清照"
+    assert fake.data["mine"]["metadata"]["source"] == "user_correction"
+    assert fake.data["mine"]["metadata"]["conversation_id"] is None
+
+    assert client.get("/api/memories", headers={"Authorization": "Bearer B"}).json()["memories"] == []
+    assert client.delete("/api/memories/mine", headers={"Authorization": "Bearer B"}).status_code == 404
+    assert client.delete("/api/memories/mine", headers={"Authorization": "Bearer A"}).status_code == 204
+    assert fake.data == {}
+
+
+def test_clear_memories_revokes_consent_and_prevents_future_old_writes(private_sql, monkeypatch):
+    from backend.memory import user_memory
+
+    client, alice, bob, conn = private_sql
+    private_data.set_memory_opt_in(alice, True)
+    cid = uuid4()
+    mid = private_data.begin_turn(alice, cid, "poem-001", 1, "我喜欢苏轼")
+    assert private_data.source_allows_memory(alice, cid, mid, "我喜欢苏轼")
+    monkeypatch.setattr(user_memory, "_has_memory_storage", lambda: False)
+
+    response = client.delete("/api/memories", headers={"Authorization": "Bearer A"})
+    assert response.status_code == 200
+    assert response.json() == {"deleted": 0, "memory_opt_in": False}
+    assert private_data.get_memory_opt_in(alice) is False
+    assert not private_data.source_allows_memory(alice, cid, mid, "我喜欢苏轼")
