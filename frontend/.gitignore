@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright 运行时产物（失败报告、trace）
+test-results/
+playwright-report/
