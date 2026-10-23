@@ -25,8 +25,9 @@ function ConfiguredAuthControls() {
       try {
         const token = await getToken()
         if (!token) throw new Error('Missing session token')
-        const response = await fetch('/api/auth/me', {
-          method: 'GET',
+        // Authenticated POST provisions a stable Poeticus user ID.
+        const response = await fetch('/api/auth/session', {
+          method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           cache: 'no-store',
         })
@@ -36,7 +37,10 @@ function ConfiguredAuthControls() {
           typeof body === 'object' &&
           body !== null &&
           'clerk_user_id' in body &&
-          body.clerk_user_id === currentUserId
+          body.clerk_user_id === currentUserId &&
+          'user_id' in body &&
+          typeof body.user_id === 'string' &&
+          body.user_id.length > 0
         if (!valid) throw new Error('Unexpected verified user')
         if (active) setChecked({ userId: currentUserId, valid: true })
       } catch {
