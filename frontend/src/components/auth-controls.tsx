@@ -10,7 +10,13 @@ type VerifiedSession = {
   memoryOptIn: boolean
   memoryAvailable: boolean
 }
-type UserMemory = { id: string; memory: string }
+type UserMemory = {
+  id: string
+  memory: string
+  source?: string
+  conversation_id?: string | null
+  source_message_id?: string | null
+}
 
 /** Keep public reading and chat available without Clerk configuration. */
 export function AuthControls() {
@@ -23,6 +29,9 @@ function ConfiguredAuthControls() {
   const [session, setSession] = useState<VerifiedSession | null>(null)
   const [memories, setMemories] = useState<UserMemory[] | null>(null)
   const [busy, setBusy] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [sourcePreview, setSourcePreview] = useState<{ id: string; content: string } | null>(null)
+  const [editText, setEditText] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -130,14 +139,77 @@ function ConfiguredAuthControls() {
   }
 
   async function clearMemories() {
-    if (!window.confirm('确定删除你的所有长期记忆吗？对话记录不会因此删除。')) return
+    if (!window.confirm('确定删除所有长期记忆并关闭记忆提取吗？对话记录不会因此删除。')) return
     setBusy(true)
     setError('')
     try {
-      await authorizedFetch('/api/memories', 'DELETE')
+      const response = await authorizedFetch('/api/memories', 'DELETE')
+      const result: { memory_opt_in: boolean } = await response.json()
       setMemories([])
+      setSession((previous) => previous && { ...previous, memoryOptIn: result.memory_opt_in })
+      setEditingId(null)
     } catch {
       setError('记忆未能全部删除，请重试')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function saveCorrection(memoryId: string) {
+    const nextText = editText.trim()
+    if (!nextText || nextText.length > 300 || busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const response = await authorizedFetch(
+        '/api/memories/' + encodeURIComponent(memoryId),
+        'PATCH',
+        { text: nextText },
+      )
+      const corrected: UserMemory = await response.json()
+      setMemories(
+        (previous) => previous?.map((item) => (item.id === memoryId ? corrected : item)) ?? null,
+      )
+      setEditingId(null)
+    } catch {
+      setError('记忆更正失败，请重试')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function viewSource(memory: UserMemory) {
+    if (!memory.conversation_id || !memory.source_message_id) return
+    setBusy(true)
+    setError('')
+    try {
+      const response = await authorizedFetch(
+        '/api/conversations/' + encodeURIComponent(memory.conversation_id),
+        'GET',
+      )
+      const data: { messages: { id: string; content: string }[] } = await response.json()
+      const original = data.messages.find((message) => message.id === memory.source_message_id)
+      setSourcePreview({
+        id: memory.id,
+        content: original?.content ?? '来源消息已不存在',
+      })
+    } catch {
+      setError('无法查阅来源讨论')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function deleteOne(memoryId: string) {
+    if (!window.confirm('删除这条私人记忆？')) return
+    setBusy(true)
+    setError('')
+    try {
+      await authorizedFetch('/api/memories/' + encodeURIComponent(memoryId), 'DELETE')
+      setMemories((previous) => previous?.filter((item) => item.id !== memoryId) ?? null)
+      setEditingId(null)
+    } catch {
+      setError('单条记忆删除失败')
     } finally {
       setBusy(false)
     }
@@ -214,7 +286,82 @@ function ConfiguredAuthControls() {
                 {memories.length === 0 ? (
                   <li>暂无记忆</li>
                 ) : (
-                  memories.map((item) => <li key={item.id}>{item.memory}</li>)
+                  memories.map((item) => (
+                    <li key={item.id} className="space-y-1">
+                      {editingId === item.id ? (
+                        <div className="space-y-1">
+                          <textarea
+                            aria-label="更正私人记忆"
+                            className="w-full rounded border border-border bg-background p-1"
+                            rows={3}
+                            maxLength={300}
+                            value={editText}
+                            onChange={(event) => setEditText(event.target.value)}
+                          />
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              className="underline"
+                              disabled={busy || !editText.trim()}
+                              onClick={() => void saveCorrection(item.id)}
+                            >
+                              保存更正
+                            </button>
+                            <button
+                              type="button"
+                              className="underline"
+                              onClick={() => setEditingId(null)}
+                            >
+                              取消
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p>{item.memory}</p>
+                          <p className="text-muted-foreground">
+                            {item.source === 'user_correction' ? '本人修订' : '来自阅读讨论'}
+                          </p>
+                          {item.conversation_id && item.source_message_id && (
+                            <button
+                              type="button"
+                              className="underline"
+                              disabled={busy}
+                              onClick={() => void viewSource(item)}
+                            >
+                              查看来源
+                            </button>
+                          )}
+                          {sourcePreview?.id === item.id && (
+                            <p className="rounded bg-muted/40 p-2 text-foreground">
+                              原始提问：{sourcePreview.content}
+                            </p>
+                          )}
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              className="underline"
+                              onClick={() => {
+                                setEditingId(item.id)
+                                setEditText(item.memory)
+                              }}
+                            >
+                              更正
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              className="text-destructive underline"
+                              onClick={() => void deleteOne(item.id)}
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  ))
                 )}
               </ul>
             )}

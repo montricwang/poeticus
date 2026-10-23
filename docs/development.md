@@ -439,13 +439,13 @@ POETICUS_USER_MEMORY_STORAGE_DIR=/绝对路径/独立私有记忆数据目录
 
 ## 私人会话与记忆端到端试运行（#40、#45，集成分支）
 
-本地迁移 \`0007_private_conversations.sql\` 已于 2026-10-23 执行，新增 \`app_conversations\`、\`app_messages\`，在 \`app_users\` 上增加默认 \`false\` 的 \`memory_opt_in\`。前端不再将已登录用户的**聊天正文**写进浏览器 localStorage；游客继续按原方式本地保存。登录用户在不同浏览器选择同一作品时，可读取自己最近的云端讨论。既有游客历史**不会自动上传**。
+本地迁移 `0007_private_conversations.sql`、`0008_memory_cutoff.sql` 已于 2026-10-23 执行，新增 `app_conversations`、`app_messages`，在 `app_users` 上增加默认 `false` 的 `memory_opt_in` 与撤回时间戳 `memory_reset_at`。前端不再将已登录用户的**聊天正文**写进浏览器 localStorage；游客继续按原方式本地保存。登录用户在不同浏览器选择同一作品时，可读取自己最近的云端讨论。既有游客历史**不会自动上传**。
 
-用户点击右上角「记忆」开启同意后，只有同时满足 **Clerk 验证通过、服务器消息先入库、环境开关开启** 三个条件才会调用 Mem0。在成功的 AI 回复之后安排后台记忆提取（它不是同步事务，短时间内可能尚未召回）；SQL Conversation 与 Mem0 的生命周期不同。删除某段云端讨论时尽量同步删除以该段为来源的记忆，若 Mem0 可用性不足则拒绝删除 SQL 来源并返回错误。用户亦可独立查看或清空个人记忆。关闭同意开关会停止后续提取与召回，已有记录须通过「清除全部」明确删除。
+用户点击右上角「记忆」开启同意后，只有同时满足 **Clerk 验证通过、服务器消息先入库、环境开关开启** 三个条件才会调用 Mem0。在成功的 AI 回复之后安排后台记忆提取（它不是同步事务，短时间内可能尚未召回）；SQL Conversation 与 Mem0 的生命周期不同。删除某段云端讨论时尽量同步删除以该段为来源的记忆，若 Mem0 可用性不足则拒绝删除 SQL 来源并返回错误。用户可逐条查看来源提问、更正或删除记忆，也可清空全部。「清除全部」同时关闭后续记忆提取，须再次明确开启；普通关闭只阻止后续读写，不自动删除记录。人工更正后的记忆不再随旧来源对话自动删除。
 
-本地集成测试端口与已运行的旧站点隔离。依赖和私有密钥准备好后，可在独立工作树一键运行 **bash scripts/dev/private-memory-local.sh**（8012/5175，Ctrl+C 停止服务）。此前的私有认证环境文件仍沿用，绝不要打印或提交密钥。已存在的 \`node_modules\`、\`.env\`、\`frontend/.env.local\` 符号链接仅是开发机复用方式，其他开发机按 Clerk 章节单独创建。
+本地集成测试端口与已运行的旧站点隔离。依赖和私有密钥准备好后，可在独立工作树一键运行 **bash scripts/dev/private-memory-local.sh**（8012/5175，Ctrl+C 停止服务）。此前的私有认证环境文件仍沿用，绝不要打印或提交密钥。已存在的 `node_modules`、`.env`、`frontend/.env.local` 符号链接仅是开发机复用方式，其他开发机按 Clerk 章节单独创建。
 
-\`\`\`bash
+```bash
 # 首次安装；本地原有 Poeticus Python 环境已安装 mem0ai 2.2.1
 cd ~/projects/poeticus-conversations
 ~/projects/poeticus/.venv/bin/python -m pip install -r requirements-auth.txt -r requirements-memory.txt
@@ -460,19 +460,29 @@ POETICUS_USER_MEMORY_ENABLED=true \
 cd ~/projects/poeticus-conversations/frontend
 POETICUS_API_PROXY_TARGET=http://127.0.0.1:8012 \
 npm run dev -- --host 127.0.0.1 --port 5175 --strictPort
-\`\`\`
+```
 
-用浏览器打开 \`http://localhost:5175\`，依次验证登录 → 某首作品提问 → 云端会话 → 账号内开启「记忆」 → 再次提问 → 换作品问之前的阅读偏好 → 查看、清除记忆。用户关闭并重新开启另一账号时，只能看到自己的讨论和记忆。随后可使用「删除云端讨论」删除本段 Conversation；仅保存该段为来源的记忆会随之删除。
+用浏览器打开 `http://localhost:5175`，依次验证登录 → 某首作品提问 → 云端会话 → 账号内开启「记忆」 → 再次提问 → 换作品问之前的阅读偏好 → 查看、清除记忆。用户关闭并重新开启另一账号时，只能看到自己的讨论和记忆。随后可使用「删除云端讨论」删除本段 Conversation；仅保存该段为来源的记忆会随之删除。
 
 后台私有接口：
 
 | 路径 | 行为 |
 | --- | --- |
-| \`POST /api/auth/session\` | 身份校验/幂等取得内部 UUID、记忆同意和服务可用状态 |
-| \`PUT /api/auth/memory-preference\` | 仅为当前认证用户更新同意开关 |
-| \`POST /api/chat\`、\`/api/chat/stream\` | 登录时先保存问题，成功后存回答、可选地提炼记忆；游客维持旧流程 |
-| \`GET /api/conversations\`、\`GET /api/conversations/{id}\` | 当前用户最近会话和私有消息 |
-| \`DELETE /api/conversations/{id}\` | 删除自己的会话和可追溯的衍生记忆 |
-| \`GET /api/memories\`、\`DELETE /api/memories\` | 仅查看或清空自己的私人记忆 |
+| `POST /api/auth/session` | 身份校验/幂等取得内部 UUID、记忆同意和服务可用状态 |
+| `PUT /api/auth/memory-preference` | 仅为当前认证用户更新同意开关 |
+| `POST /api/chat`、`/api/chat/stream` | 登录时先保存问题，成功后存回答、可选地提炼记忆；游客维持旧流程 |
+| `GET /api/conversations`、`GET /api/conversations/{id}` | 当前用户最近会话和私有消息 |
+| `DELETE /api/conversations/{id}` | 删除自己的会话和可追溯的衍生记忆 |
+| `GET /api/memories`、`DELETE /api/memories` | 查看来源，清空并关闭提取 |
+| `PATCH /api/memories/{id}`、`DELETE /api/memories/{id}` | 人工更正或删除本人单条记忆 |
 
 **已知边界**：当前按作品恢复最近一场云端讨论，统一多场历史 UI、旧游客历史的明确授权导入、完整消息编辑/分支合并仍属于 #40/#44。已登录用户编辑既有问题会开新讨论分支，原本更早的轮次暂不复制进新分支的 SQL 存档；这不能当作完整的历史迁移。端到端单用户真实浏览器验收尚需用户亲自确认，不能以 TestClient、单元测试代替。Mem0 现用单进程本地 Qdrant 文件与 SQLite，未批准直接部署 Railway 的多实例环境。
+
+
+### 异步写入、修订与撤回
+
+- 后台 Mem0 任务真正写入前，重新检查 PostgreSQL 中**当前记忆许可、来源消息的用户归属、消息内容和撤回时间戳**；旧请求态不能替代实时授权。召回时也要再次检查当前同意状态。
+- 取消同意、手动修订、单条删除和清空都会使已排队的旧消息失效。重新开启后，只有撤回时间之后提交的新消息有资格进入记忆。
+- 单进程通过互斥锁串行化写入、修订、删除和清空，避免本地异步任务在清空后重建旧记忆。多 Worker、Railway 多实例需要额外的共享任务队列及跨进程协调，尚未实现。
+- 手动更正由用户主动确认，保留原始来源的内部审计线索，但解除原对话自动删除关联。个人更正不会被共享给 Critic Notebook。
+- 本地虚构账号的真实 Mem0 SDK 实测已覆盖更正、归属检查、来源解除、逐条删除；真实 PostgreSQL 事务测试覆盖撤回后旧消息失效。用户浏览器和生产多进程仍需另行验收。
