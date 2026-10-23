@@ -1,0 +1,3 @@
+# Offline-only experiment for Issue #46. Not a production deployment dependency.
+-r requirements.txt
+langgraph-checkpoint-sqlite>=3.1,<4
