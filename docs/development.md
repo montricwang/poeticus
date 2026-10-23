@@ -360,3 +360,21 @@ python -m scripts.retrieval.run_serving --device cpu \
 - **结束后的清理**：对过期部署、重复提案和已被实施的旧实验选择合适关闭原因，正文保留简短结论及新入口；无明确近期实施条件的灵感可以折叠进相关 Issue 的「未来复查」而非永远保持开放。清理不是追求最低 Issue 数量：真正独立的缺陷和实验应继续单独跟踪。
 
 AI 协作、教学节奏和阶段复盘方式统一维护在 [Vault《教学与开发协作手册》](https://github.com/montricwang/chatgpt-vault/blob/main/GPT%20%E7%BA%A6%E6%9D%9F/%E6%95%99%E5%AD%A6%E4%B8%8E%E5%BC%80%E5%8F%91%E5%8D%8F%E4%BD%9C%E6%89%8B%E5%86%8C.md)。
+
+## 用户记忆的可选接入（#45，试验阶段）
+
+Mem0 OSS 已通过独立实验验证中文记忆写入、磁盘召回与模拟用户区分。后端预留了 Mem0 用户记忆的读取和写入入口，**默认关闭**；不要因为装好了 `mem0ai` 就在公网启用。
+
+可选环境配置（仅具备服务端认证与消息存档能力的环境）：
+
+```dotenv
+POETICUS_USER_MEMORY_ENABLED=true
+POETICUS_USER_MEMORY_MODEL_PATH=/绝对路径/Qwen3-Embedding-0.6B-7c0e29cfcdf2
+POETICUS_USER_MEMORY_STORAGE_DIR=/绝对路径/独立私有记忆数据目录
+```
+
+依赖文件为 `requirements-memory.txt`。Embedding 使用本地 Qwen3-Embedding-0.6B（1024 维、区分 query/document）；Writer 使用现有 `LLM_API_KEY` 和 `LLM_BASE_URL` 的 DeepSeek API，`POETICUS_USER_MEMORY_LLM_MODEL` 默认 `deepseek-chat`。不新设外部记忆 API Key。
+
+现行 API 只有在服务端写入可信身份 `request.state.authenticated_user_id`，且用户已明确同意记忆（`request.state.user_memory_opt_in is True`）后，才读取其记忆；还须存在服务端**已持久化**的 `request.state.conversation_id` 与 `request.state.persisted_user_message_id`，才会在成功回复后异步安排记忆提取。前端请求体或任意身份 Header 都不能替代这些字段。当前主分支还没有 #349 与 #40 的生产级身份/会话存档实现，故对普通匿名用户完全不启用 Memory。
+
+最小存储使用独立本地 Qdrant、SQLite 历史；它适合单进程开发，不适合 Railway 多实例或公网正式部署。未来需另行验收数据库、用户删除/来源联动、幂等写入、缓存与授权检查；Mem0 OSS 当前提取路径是追加式，新旧偏好冲突尚不能当作已自动解决。后台记忆写入属于尽力而为的处理，不保证消息成功返回后一定已写入。当前功能未完成 #45 的全部生产验收。关闭开关即可回退旧聊天行为。
