@@ -58,6 +58,12 @@ LLM_MAX_OUTPUT_TOKENS = _bounded_int(
 LLM_TIMEOUT_SECONDS = 30.0
 LLM_MAX_RETRIES = 0
 
+# Experimental personal memory: requires a server-authenticated user and
+# a persisted source message. Never enable by default on public endpoints.
+USER_MEMORY_ENABLED = (
+    os.getenv("POETICUS_USER_MEMORY_ENABLED", "").lower() == "true"
+)
+
 # 单次用户请求最多执行这么多次真实工具调用；默认保持现行值 2。
 AGENT_MAX_TOOL_CALLS = _parse_agent_max_tool_calls(
     os.getenv("POETICUS_AGENT_MAX_TOOL_CALLS")

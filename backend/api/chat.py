@@ -12,12 +12,13 @@ import logging
 from collections.abc import Iterator
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from backend.ai.context import PoemContext
 from backend.ai.graph import AgentState, graph
+from backend.memory.user_memory import safe_recall, safe_remember
 from backend.config import (
     CHAT_MAX_HISTORY_MESSAGE_CHARS,
     CHAT_MAX_HISTORY_MESSAGES,
@@ -172,21 +173,61 @@ def graph_input(request: ChatRequest) -> AgentState:
     }
 
 
+def _trusted_memory_scope(http_request: Request) -> tuple[str | None, str | None, str | None]:
+    """Only server authentication and persisted-message middleware may set these.
+
+    No client request JSON, custom header or cookie is trusted as a user ID.
+    Current public routes set none of these fields, so Memory stays disabled.
+    """
+    state = http_request.state
+    if getattr(state, "user_memory_opt_in", False) is not True:
+        return None, None, None
+
+    def _identifier(name: str) -> str | None:
+        value = getattr(state, name, None)
+        return value if isinstance(value, str) and value.strip() else None
+
+    return (
+        _identifier("authenticated_user_id"),
+        _identifier("conversation_id"),
+        _identifier("persisted_user_message_id"),
+    )
+
+
+def _graph_input_with_memory(request: ChatRequest, trusted_user_id: str | None) -> AgentState:
+    state = graph_input(request)
+    if trusted_user_id:
+        memories = safe_recall(trusted_user_id, request.question)
+        if memories:
+            state["user_memory"] = memories
+    return state
+
+
 # ===== 3. 普通聊天接口 =====
 
 
 @router.post("/api/chat", response_model=ChatResponse)
-def chat(request: ChatRequest):
+def chat(request: ChatRequest, http_request: Request, background_tasks: BackgroundTasks):
     """执行一次聊天工作流，返回包含完整回答的 JSON 数据。"""
 
     validate_chat_request(request)
+    user_id, conversation_id, message_id = _trusted_memory_scope(http_request)
     try:
-        # 同步运行整个工作流，取出最终回答并包装为响应模型。
-        result = graph.invoke(graph_input(request))
+        # Retrieve only memories belonging to the authenticated user.
+        state = _graph_input_with_memory(request, user_id)
+        result = graph.invoke(state)
         answer = result.get("reply")
         if not answer:
             raise RuntimeError("工作流没有返回答案")
 
+        if user_id and conversation_id and message_id:
+            background_tasks.add_task(
+                safe_remember,
+                user_id,
+                request.question,
+                conversation_id=conversation_id,
+                source_message_id=message_id,
+            )
         return ChatResponse(answer=answer)
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(
@@ -203,7 +244,14 @@ def sse(event: str, data: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
+def stream_graph_reply(
+    request: ChatRequest,
+    *,
+    trusted_user_id: str | None = None,
+    conversation_id: str | None = None,
+    source_message_id: str | None = None,
+    background_tasks: BackgroundTasks | None = None,
+) -> Iterator[str]:
     """执行 LangGraph，并逐条产出可以交给 StreamingResponse 的 SSE 文本。
 
     custom 事件提供正文 token，updates 事件提供节点结果；核对最终
@@ -223,7 +271,7 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
     try:
         # --- 4.2 准备 Graph 的流式输入 ---
 
-        state = graph_input(request)
+        state = _graph_input_with_memory(request, trusted_user_id)
         state["stream_reply"] = True
 
         # --- 4.3 处理 Graph 逐步返回的事件 ---
@@ -283,6 +331,19 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
 
             yield sse("token", {"text": final_reply})
 
+        if (
+            trusted_user_id
+            and conversation_id
+            and source_message_id
+            and background_tasks is not None
+        ):
+            background_tasks.add_task(
+                safe_remember,
+                trusted_user_id,
+                request.question,
+                conversation_id=conversation_id,
+                source_message_id=source_message_id,
+            )
         yield sse("done", {})
 
     # 将生成过程中出现的错误转成 SSE error，供浏览器处理。
@@ -296,15 +357,23 @@ def stream_graph_reply(request: ChatRequest) -> Iterator[str]:
 
 
 @router.post("/api/chat/stream")
-def chat_stream(request: ChatRequest):
+def chat_stream(request: ChatRequest, http_request: Request, background_tasks: BackgroundTasks):
     """校验流式聊天请求，返回持续消费 SSE 事件的 HTTP 响应。"""
 
     # 在响应开始前校验，确保非法请求仍以正常 HTTP 422 返回。
     validate_chat_request(request)
+    user_id, conversation_id, message_id = _trusted_memory_scope(http_request)
 
-    # 交给 StreamingResponse 逐段发送，并关闭代理缓存与缓冲。
+    # BackgroundTasks runs after the stream completes, never before the answer.
     return StreamingResponse(
-        stream_graph_reply(request),
+        stream_graph_reply(
+            request,
+            trusted_user_id=user_id,
+            conversation_id=conversation_id,
+            source_message_id=message_id,
+            background_tasks=background_tasks,
+        ),
+        background=background_tasks,
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache, no-transform",
