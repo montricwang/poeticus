@@ -7,6 +7,7 @@ import { HorizontalEditorialDivider } from '@/components/editorial-divider'
 import { HomeSearch } from '@/components/home-search'
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
+import { AuthControls } from '@/components/auth-controls'
 import type { Poem, PoemFilters, PoemPage } from '@/data/poem-library'
 import { HOME_INITIAL_REVEAL_MS } from '@/lib/entrance-motion'
 import { whenFontsReadyOrTimeout } from '@/lib/font-readiness'
@@ -257,6 +258,7 @@ export function HomeScreen({
               阅读室 <ArrowRight className="size-4 max-[359px]:hidden" aria-hidden="true" />
             </Button>
             <ThemeSwitcher />
+            <AuthControls />
           </div>
         </div>
       </header>

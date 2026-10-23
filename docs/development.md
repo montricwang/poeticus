@@ -360,3 +360,62 @@ python -m scripts.retrieval.run_serving --device cpu \
 - **结束后的清理**：对过期部署、重复提案和已被实施的旧实验选择合适关闭原因，正文保留简短结论及新入口；无明确近期实施条件的灵感可以折叠进相关 Issue 的「未来复查」而非永远保持开放。清理不是追求最低 Issue 数量：真正独立的缺陷和实验应继续单独跟踪。
 
 AI 协作、教学节奏和阶段复盘方式统一维护在 [Vault《教学与开发协作手册》](https://github.com/montricwang/chatgpt-vault/blob/main/GPT%20%E7%BA%A6%E6%9D%9F/%E6%95%99%E5%AD%A6%E4%B8%8E%E5%BC%80%E5%8F%91%E5%8D%8F%E4%BD%9C%E6%89%8B%E5%86%8C.md)。
+
+## Clerk 邮箱登录与用户身份（#349，首轮）
+
+本阶段以 Clerk React 登录入口和 FastAPI 会话令牌校验建立可信身份，再用本地 PostgreSQL 的 `app_users` 表保存稳定的 Poeticus 内部 UUID。不迁移浏览器历史，也不修改匿名阅读与聊天接口。
+
+### 1. 开发环境密钥
+
+在 Clerk Dashboard 的 **API Keys** 找到当前**开发实例**的 Publishable Key 和 Secret Key。
+
+前端工作树 `frontend/.env.local`（git 已忽略）：
+
+```dotenv
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_从控制台复制
+```
+
+Poeticus 后端工作树的 `.env`（git 已忽略）：
+
+```dotenv
+CLERK_SECRET_KEY=sk_test_从控制台复制
+CLERK_AUTHORIZED_PARTIES=http://localhost:5174,http://127.0.0.1:5174
+```
+
+`CLERK_AUTHORIZED_PARTIES` 必须写**真实访问前端的完整 Origin**（协议、主机、端口），局域网 IP 或另一个 Vite 端口要相应补充，正式部署只允许实际线上 Origin。不配置该白名单时后端拒绝验证，不会自动信任任意客户端。不要把 `sk_test_`、`sk_live_` 放到 `VITE_*`，也不要发送给聊天助手。
+
+可选 `CLERK_JWT_KEY` 为 Clerk API Keys 页面展示的 PEM 公钥，将多行转换为转义 `\\n` 后写入后端 `.env`，可实现无需联网获取 JWKS 的签名检查；开发初期省略即可，由官方 SDK 获取并缓存公钥。
+
+请按 Clerk Dashboard 中已选择的邮箱验证码或邮箱密码方式完成注册；客户端直接使用 Clerk 表单，不实现密码保存或验证码发送逻辑。
+
+### 2. 安装与运行
+
+```bash
+# 独立工作树试运行，不停止原本运行在 8000/5173 的服务
+cd ~/projects/poeticus-auth
+~/projects/poeticus/.venv/bin/python -m pip install -r requirements-auth.txt
+cd frontend && npm ci && cd ..
+
+# 首次创建 app_users 需执行迁移；同一命令重复执行会跳过已应用版本。
+# 若本地迁移尚停留在 0003，将同时补上既有 0004/0005 额度表。
+~/projects/poeticus/.venv/bin/python -m scripts.corpus.db_import --migrate
+
+# 终端 A：后端使用现有虚拟环境
+~/projects/poeticus/.venv/bin/python -m uvicorn backend.app:app --host 127.0.0.1 --port 8011
+
+# 终端 B：在工作树 frontend/ 下运行前端
+cd ~/projects/poeticus-auth/frontend
+POETICUS_API_PROXY_TARGET=http://127.0.0.1:8011 npm run dev -- --host 127.0.0.1 --port 5174 --strictPort
+```
+
+浏览器访问 `http://localhost:5174`，点击右上角「登录」或「注册」，完成邮箱注册或登录，成功后出现 Clerk 头像，点击头像可以退出。浏览器从 Clerk SDK 获取 session token，放入 `Authorization: Bearer` 请求。
+
+- `GET /api/auth/me`：只验证令牌并返回 `{"clerk_user_id":"user_..."}`，不写数据库。
+- `POST /api/auth/session`：前端登录后自动调用，验证同一个令牌，再将 Clerk ID 登记到 `app_users`。返回 `{"clerk_user_id":"user_...","user_id":"UUID"}`。重复调用保留同一个 `user_id`，未知/无效令牌不得触发创建。
+- 未配置后端密钥或数据库返回 503，未登录/令牌无效返回 401，页面会显示「身份未验证」。此前启动的 8011 进程没有 `--reload`，改代码后须先停止该进程并重新启动，再刷新浏览器。
+
+`app_users` 仅保存本地 UUID、Clerk 账号 ID 与创建时间；没有保存邮箱、密码或令牌。本地数据库已于 2026-10-23 应用 `0004`—`0006` 迁移，真实 SQL 交易内验证了账号重复登记的稳定性与隔离性（测试写入已回滚）。其他数据库环境（如 Railway）必须单独迁移，不能认为本地建表等于线上建表。
+
+只要未配置前端 Publishable Key，Clerk 控件完全不会显示，原有界面不变。后端始终不接收/信任任意 `user_id` JSON 或自定义 Header。**本轮只完成身份映射**；私人会话的拥有权查询、消息存档、Mem0 写入许可仍需各自按 #40/#45 接入。
+
+本地 `poeticus-auth/.env` 可以做成指向 `poeticus/.env` 的符号链接（本轮已在开发机创建）；它和 `frontend/.env.local` 均受 Git 忽略。切到正式端口或公网域名时，需要相应更新 `CLERK_AUTHORIZED_PARTIES`，以及 Clerk 的生产实例凭据。

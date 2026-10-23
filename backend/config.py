@@ -58,6 +58,16 @@ LLM_MAX_OUTPUT_TOKENS = _bounded_int(
 LLM_TIMEOUT_SECONDS = 30.0
 LLM_MAX_RETRIES = 0
 
+# Clerk is optional. Anonymous reading and chat work without these variables.
+# Never accept caller-supplied user IDs as authenticated identity.
+CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "").strip()
+CLERK_JWT_KEY = os.getenv("CLERK_JWT_KEY", "").replace("\\n", "\n").strip() or None
+CLERK_AUTHORIZED_PARTIES = tuple(
+    origin.strip()
+    for origin in os.getenv("CLERK_AUTHORIZED_PARTIES", "").split(",")
+    if origin.strip()
+)
+
 # 单次用户请求最多执行这么多次真实工具调用；默认保持现行值 2。
 AGENT_MAX_TOOL_CALLS = _parse_agent_max_tool_calls(
     os.getenv("POETICUS_AGENT_MAX_TOOL_CALLS")
