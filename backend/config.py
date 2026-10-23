@@ -68,6 +68,12 @@ CLERK_AUTHORIZED_PARTIES = tuple(
     if origin.strip()
 )
 
+# Private memory is opt-in per verified user, and disabled by default.
+USER_MEMORY_ENABLED = (
+    os.getenv("POETICUS_USER_MEMORY_ENABLED", "").lower() == "true"
+)
+
+
 # 单次用户请求最多执行这么多次真实工具调用；默认保持现行值 2。
 AGENT_MAX_TOOL_CALLS = _parse_agent_max_tool_calls(
     os.getenv("POETICUS_AGENT_MAX_TOOL_CALLS")

@@ -19,7 +19,7 @@ from .adapter import ConvertedPoem, convert_corpus
 
 DEFAULT_INPUT = READING_NORMALIZED_ROOT / "all_normalized.json"
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "db/migrations"
-LATEST_VERSION = "0006_app_users"
+LATEST_VERSION = "0008_memory_cutoff"
 
 
 def read_corpus(path: Path) -> list[ConvertedPoem]:

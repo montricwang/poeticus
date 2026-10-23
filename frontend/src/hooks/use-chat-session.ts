@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
   type Dispatch,
@@ -13,6 +14,7 @@ import type { ChatTurn, ChatViewport } from '@/types/chat'
 import type { SelectedText } from '@/types/poem'
 import type { InitialChatState } from '@/lib/chat-initial-state'
 import { buildHistory } from '@/lib/chat-history'
+import { findRemoteConversation } from '@/lib/private-conversations'
 import { loadServiceCapabilities } from '@/lib/service-capabilities'
 import { createConversationId, loadPoemConversation } from '@/lib/chat-storage'
 import { readChatStream, UsageLimitNotice } from '@/lib/chat-stream'
@@ -36,6 +38,8 @@ type ChatSessionOptions = {
   initialChatState: InitialChatState
   poemId: string | null
   activePoem: Poem | null
+  accountId?: string | null
+  getAuthToken?: () => Promise<string | null>
   selected: SelectedText | null
   setSelected: Dispatch<SetStateAction<SelectedText | null>>
   switchControllerRef: RefObject<AbortController | null>
@@ -46,6 +50,8 @@ export function useChatSession({
   initialChatState,
   poemId,
   activePoem,
+  accountId = null,
+  getAuthToken,
   selected,
   setSelected,
   switchControllerRef,
@@ -60,6 +66,8 @@ export function useChatSession({
   const seenAnimationsRef = useRef(restoredAnimationIds(initialChatState.turns))
   const chatViewportRef = useRef<ChatViewport>({ scrollTop: 0, atBottom: true })
   const [hasUnreadReply, setHasUnreadReply] = useState(false)
+  const skipRemoteRestoreRef = useRef<string | null>(null)
+  const [historyError, setHistoryError] = useState('')
 
   // 保持回调稳定，避免目录筛选时让阅读器重复监听选区事件。
   const handleReaderSelect = useCallback(
@@ -73,7 +81,9 @@ export function useChatSession({
 
   /** 切换作品时恢复各自的草稿和历史，重置滚动及动画标记。 */
   function restoreForPoem(work: Poem) {
-    const storedConversation = loadPoemConversation(work.id)
+    skipRemoteRestoreRef.current = null
+    setHistoryError('')
+    const storedConversation = loadPoemConversation(work.id, accountId)
     const nextTurns = storedConversation?.turns ?? []
     setConversationId(storedConversation?.conversationId ?? createConversationId())
     setSelected(validSelectionForPoem(storedConversation?.draft.selection ?? null, poemText(work)))
@@ -85,8 +95,51 @@ export function useChatSession({
     chatViewportRef.current = { scrollTop: 0, atBottom: true }
   }
 
+  // A signed-in reader with no local discussion can restore their latest
+  // server-owned conversation for this poem on another device.
+  useEffect(() => {
+    if (
+      !accountId ||
+      !getAuthToken ||
+      !poemId ||
+      activePoem?.id !== poemId ||
+      turns.length !== 0 ||
+      inFlightRef.current ||
+      skipRemoteRestoreRef.current === poemId
+    )
+      return
+
+    let cancelled = false
+    const previousConversationId = conversationId
+    async function restoreRemote() {
+      try {
+        const token = await getAuthToken!()
+        if (!token) return
+        const snapshot = await findRemoteConversation(poemId!, token)
+        if (cancelled || inFlightRef.current || !snapshot || snapshot.turns.length === 0) return
+        // Keep a newly composed local message authoritative over a late response.
+        setConversationId((current) =>
+          current === previousConversationId ? snapshot.conversationId : current,
+        )
+        setTurns((current) => (current.length === 0 ? snapshot.turns : current))
+        nextTurnId.current = maxTurnId(snapshot.turns)
+        seenAnimationsRef.current = restoredAnimationIds(snapshot.turns)
+      } catch {
+        // Server failure must not discard the local draft or chat history.
+      }
+    }
+    void restoreRemote()
+    return () => {
+      cancelled = true
+    }
+  }, [accountId, getAuthToken, poemId, activePoem?.id, conversationId, turns.length])
+
   /** 发起一次 SSE 生成，按 token 更新对应轮次并区分正常生成和重新生成。 */
-  async function requestReply(turn: ChatTurn, regenerate = false) {
+  async function requestReply(
+    turn: ChatTurn,
+    regenerate = false,
+    requestedConversationId = conversationId,
+  ) {
     if (
       inFlightRef.current ||
       switchControllerRef.current ||
@@ -132,15 +185,23 @@ export function useChatSession({
       const capabilities = await loadServiceCapabilities()
       const history = buildHistory(turns, turn.id, capabilities.chat.maxHistoryTurns)
 
+      // A missing/expired signed-in token must never fall back to anonymous chat.
+      const token = accountId ? await getAuthToken?.() : null
+      if (accountId && !token) throw new Error('登录凭证已失效，请重新登录')
       const response = await fetch('/api/chat/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: 'Bearer ' + token } : {}),
+        },
         body: JSON.stringify({
           poem,
           question: turn.question,
           selection: selectionForPython(turn.selection, poem),
           context: poemContext(activePoem),
           history,
+          conversation_id: requestedConversationId,
+          turn_number: turn.id,
         }),
       })
 
@@ -212,6 +273,39 @@ export function useChatSession({
     } finally {
       inFlightRef.current = false
       setChatLoading(false)
+    }
+  }
+
+  /** Start a genuinely new conversation without importing anonymous or old data. */
+  function handleNewDiscussion() {
+    if (inFlightRef.current || !poemId) return
+    skipRemoteRestoreRef.current = poemId
+    setConversationId(createConversationId())
+    setTurns([])
+    setQuestion('')
+    setSelected(null)
+    setHistoryError('')
+    nextTurnId.current = 0
+    seenAnimationsRef.current = new Set()
+  }
+
+  async function handleDeleteDiscussion() {
+    if (!accountId || !getAuthToken || inFlightRef.current) return
+    if (!window.confirm('删除当前云端讨论及其来源记忆？此操作无法撤销。')) return
+    setHistoryError('')
+    try {
+      const token = await getAuthToken()
+      if (!token) throw new Error('登录已失效')
+      const response = await fetch('/api/conversations/' + encodeURIComponent(conversationId), {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer ' + token },
+      })
+      if (response.status !== 204 && response.status !== 404) {
+        throw new Error('删除未完成，请重试')
+      }
+      handleNewDiscussion()
+    } catch {
+      setHistoryError('云端讨论未能删除，请重试')
     }
   }
 
@@ -294,8 +388,13 @@ export function useChatSession({
       streamDraft: null,
     }
 
+    const nextConversationId = accountId ? createConversationId() : conversationId
+    if (accountId) {
+      skipRemoteRestoreRef.current = poemId
+      setConversationId(nextConversationId)
+    }
     setTurns([...turns.slice(0, index), editedTurn])
-    void requestReply(editedTurn)
+    void requestReply(editedTurn, false, nextConversationId)
   }
 
   return {
@@ -315,5 +414,8 @@ export function useChatSession({
     handleRetry,
     handleRegenerate,
     handleEdit,
+    handleNewDiscussion,
+    handleDeleteDiscussion,
+    historyError,
   }
 }

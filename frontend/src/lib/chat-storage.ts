@@ -3,6 +3,8 @@ import type { SelectedText } from '@/types/poem'
 
 // 浏览器本地按作品保存会话；数据经过版本与字段检查后才能恢复。
 const STORAGE_KEY = 'poeticus:chat-state'
+const storageKey = (userId: string | null) =>
+  userId ? STORAGE_KEY + ':user:' + userId : STORAGE_KEY
 const SCHEMA_VERSION = 1
 const INTERRUPTED_ERROR = '上次生成因页面刷新而中断，请重新请求。'
 
@@ -133,11 +135,11 @@ function isChatStoreV1(value: unknown): value is ChatStoreV1 {
 }
 
 /** 读取并校验当前版本数据；缺失、格式不合法或存储不可用时返回空仓库。 */
-function readStore(): ChatStoreV1 {
+function readStore(userId: string | null = null): ChatStoreV1 {
   if (typeof window === 'undefined') return emptyStore()
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(storageKey(userId))
     if (!raw) return emptyStore()
 
     const parsed: unknown = JSON.parse(raw)
@@ -147,11 +149,11 @@ function readStore(): ChatStoreV1 {
   }
 }
 
-function writeStore(store: ChatStoreV1): void {
+function writeStore(store: ChatStoreV1, userId: string | null = null): void {
   if (typeof window === 'undefined') return
 
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
+    window.localStorage.setItem(storageKey(userId), JSON.stringify(store))
   } catch {
     // localStorage 可能被禁用、配额耗尽或处于受限环境。
     // 持久化失败不应影响当前页面继续聊天。
@@ -213,25 +215,29 @@ export function createConversationId(): string {
   ].join('-')
 }
 
-export function loadLastActivePoemId(): string | null {
-  return readStore().lastActivePoemId
+export function loadLastActivePoemId(userId: string | null = null): string | null {
+  return readStore(userId).lastActivePoemId
 }
 
-export function saveLastActivePoemId(poemId: string): void {
-  const store = readStore()
+export function saveLastActivePoemId(poemId: string, userId: string | null = null): void {
+  const store = readStore(userId)
   store.lastActivePoemId = poemId
-  writeStore(store)
+  writeStore(store, userId)
 }
 
 /** 按作品 ID 恢复一份独立会话，未找到时返回 null。 */
-export function loadPoemConversation(poemId: string): ConversationSnapshot | null {
-  const stored = readStore().conversationsByPoem[poemId]
+export function loadPoemConversation(
+  poemId: string,
+  userId: string | null = null,
+): ConversationSnapshot | null {
+  const stored = readStore(userId).conversationsByPoem[poemId]
   if (!stored) return null
 
   return {
     conversationId: stored.conversationId,
     poemId: stored.poemId,
-    turns: stored.turns.map(restoreTurn),
+    // Private authenticated transcripts live on the server, not in browser storage.
+    turns: userId ? [] : stored.turns.map(restoreTurn),
     draft: {
       question: stored.draft.question,
       selection: stored.draft.selection,
@@ -241,13 +247,16 @@ export function loadPoemConversation(poemId: string): ConversationSnapshot | nul
 }
 
 /** 按作品覆盖保存历史与草稿，失败时不阻断当前页面聊天。 */
-export function savePoemConversation(conversation: ConversationToSave): void {
-  const store = readStore()
+export function savePoemConversation(
+  conversation: ConversationToSave,
+  userId: string | null = null,
+): void {
+  const store = readStore(userId)
 
   store.conversationsByPoem[conversation.poemId] = {
     conversationId: conversation.conversationId,
     poemId: conversation.poemId,
-    turns: conversation.turns.map(storeTurn),
+    turns: userId ? [] : conversation.turns.map(storeTurn),
     draft: {
       question: conversation.draft.question,
       selection: conversation.draft.selection,
@@ -255,5 +264,5 @@ export function savePoemConversation(conversation: ConversationToSave): void {
     updatedAt: new Date().toISOString(),
   }
 
-  writeStore(store)
+  writeStore(store, userId)
 }

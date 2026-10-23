@@ -11,6 +11,7 @@ type PersistenceOptions = {
   turns: ChatTurn[]
   question: string
   selected: SelectedText | null
+  accountId?: string | null
 }
 
 /** 对每首作品分别保存聊天、输入草稿和选区；页面关闭时补存最新状态。 */
@@ -21,6 +22,7 @@ export function useConversationPersistence({
   turns,
   question,
   selected,
+  accountId = null,
 }: PersistenceOptions) {
   const persistenceRef = useRef({
     conversationId,
@@ -29,6 +31,7 @@ export function useConversationPersistence({
     turns,
     question,
     selected,
+    accountId,
   })
 
   useEffect(() => {
@@ -39,44 +42,51 @@ export function useConversationPersistence({
       turns,
       question,
       selected,
+      accountId,
     }
-  }, [readyPoemId, conversationId, poemId, question, selected, turns])
+  }, [readyPoemId, conversationId, poemId, question, selected, turns, accountId])
 
   // 本地存储只是 v0.1 的 persistence adapter。
   // 轻微延迟可避免流式 token 到达时同步写 localStorage 过于频繁。
   useEffect(() => {
     if (!poemId || readyPoemId !== poemId) return
     const timer = window.setTimeout(() => {
-      saveLastActivePoemId(poemId)
-      savePoemConversation({
-        conversationId,
-        poemId,
-        turns,
-        draft: {
-          question,
-          selection: selected,
+      saveLastActivePoemId(poemId, accountId)
+      savePoemConversation(
+        {
+          conversationId,
+          poemId,
+          turns,
+          draft: {
+            question,
+            selection: selected,
+          },
         },
-      })
+        accountId,
+      )
     }, 200)
 
     return () => window.clearTimeout(timer)
-  }, [readyPoemId, conversationId, poemId, question, selected, turns])
+  }, [readyPoemId, conversationId, poemId, question, selected, turns, accountId])
 
   // 刷新/关闭页面时，把尚未等到定时写入的最新状态再保存一次。
   useEffect(() => {
     function handlePageHide() {
       const current = persistenceRef.current
       if (!current.poemId || current.readyPoemId !== current.poemId) return
-      saveLastActivePoemId(current.poemId)
-      savePoemConversation({
-        conversationId: current.conversationId,
-        poemId: current.poemId,
-        turns: current.turns,
-        draft: {
-          question: current.question,
-          selection: current.selected,
+      saveLastActivePoemId(current.poemId, current.accountId)
+      savePoemConversation(
+        {
+          conversationId: current.conversationId,
+          poemId: current.poemId,
+          turns: current.turns,
+          draft: {
+            question: current.question,
+            selection: current.selected,
+          },
         },
-      })
+        current.accountId,
+      )
     }
 
     window.addEventListener('pagehide', handlePageHide)
@@ -86,16 +96,19 @@ export function useConversationPersistence({
   /** 切换作品前同步保存当前可用会话，避免只依赖延迟写入。 */
   function persistCurrentConversation() {
     if (!poemId || readyPoemId !== poemId) return
-    saveLastActivePoemId(poemId)
-    savePoemConversation({
-      conversationId,
-      poemId,
-      turns,
-      draft: {
-        question,
-        selection: selected,
+    saveLastActivePoemId(poemId, accountId)
+    savePoemConversation(
+      {
+        conversationId,
+        poemId,
+        turns,
+        draft: {
+          question,
+          selection: selected,
+        },
       },
-    })
+      accountId,
+    )
   }
 
   return { persistCurrentConversation }

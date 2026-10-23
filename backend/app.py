@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.api.analysis import router as analysis_router
 from backend.api.auth import router as auth_router
 from backend.api.chat import router as chat_router
+from backend.api.conversations import router as conversations_router
 from backend.api.service import router as service_router
 from backend.corpus.router import router as corpus_router
 
@@ -18,6 +19,7 @@ app.include_router(corpus_router)
 app.include_router(service_router)
 app.include_router(analysis_router)
 app.include_router(auth_router)
+app.include_router(conversations_router)
 app.include_router(chat_router)
 
 # 静态站点最后挂载，避免覆盖 API 与健康检查路由。

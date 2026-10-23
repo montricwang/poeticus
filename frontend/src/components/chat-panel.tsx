@@ -27,6 +27,9 @@ type ChatPanelProps = {
   onRetry: (id: number) => void
   onRegenerate: (id: number) => void
   onEdit: (id: number, nextQuestion: string) => void
+  onNewDiscussion?: () => void
+  onDeleteDiscussion?: () => void
+  historyError?: string
   fillAvailableHeight?: boolean
   className?: string
 }
@@ -49,6 +52,9 @@ export function ChatPanel({
   onRetry,
   onRegenerate,
   onEdit,
+  onNewDiscussion,
+  onDeleteDiscussion,
+  historyError,
   fillAvailableHeight = false,
   className,
 }: ChatPanelProps) {
@@ -213,6 +219,39 @@ export function ChatPanel({
         className,
       )}
     >
+      {(turns.length > 0 || historyError) && (
+        <div className="flex shrink-0 items-center justify-end gap-3 px-2 pb-1 text-[11px] text-muted-foreground">
+          {historyError && (
+            <span role="alert" className="mr-auto text-destructive">
+              {historyError}
+            </span>
+          )}
+          {turns.length > 0 && (
+            <>
+              {onNewDiscussion && (
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={onNewDiscussion}
+                  className="hover:text-foreground"
+                >
+                  新讨论
+                </button>
+              )}
+              {onDeleteDiscussion && (
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={onDeleteDiscussion}
+                  className="hover:text-destructive"
+                >
+                  删除云端讨论
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
       <ChatMessageList
         fillAvailableHeight={fillAvailableHeight}
         hasMessages={turns.length > 0}

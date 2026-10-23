@@ -31,6 +31,7 @@ def _configured(monkeypatch):
         "get_or_create_user",
         lambda clerk_id: UUID("11111111-2222-4333-8444-555555555555"),
     )
+    monkeypatch.setattr(auth_api, "get_memory_opt_in", lambda _user_id: False)
 
 
 def test_auth_endpoint_requires_configuration(monkeypatch):
@@ -82,6 +83,8 @@ def test_auth_endpoint_returns_only_verified_clerk_subject(monkeypatch):
     assert account.json() == {
         "clerk_user_id": "user_signed_proof",
         "user_id": "11111111-2222-4333-8444-555555555555",
+        "memory_opt_in": False,
+        "memory_available": False,
     }
     assert account.headers["Cache-Control"] == "no-store"
 
