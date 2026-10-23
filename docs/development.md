@@ -416,7 +416,7 @@ POETICUS_API_PROXY_TARGET=http://127.0.0.1:8011 npm run dev -- --host 127.0.0.1 
 
 `app_users` 仅保存本地 UUID、Clerk 账号 ID 与创建时间；没有保存邮箱、密码或令牌。本地数据库已于 2026-10-23 应用 `0004`—`0006` 迁移，真实 SQL 交易内验证了账号重复登记的稳定性与隔离性（测试写入已回滚）。其他数据库环境（如 Railway）必须单独迁移，不能认为本地建表等于线上建表。
 
-只要未配置前端 Publishable Key，Clerk 控件完全不会显示，原有界面不变。后端始终不接收/信任任意 `user_id` JSON 或自定义 Header。**本轮只完成身份映射**；私人会话的拥有权查询、消息存档、Mem0 写入许可仍需各自按 #40/#45 接入。
+只要未配置前端 Publishable Key，Clerk 控件完全不会显示，原有界面不变。后端始终不接收/信任任意 `user_id` JSON 或自定义 Header。PR #405 负责身份映射；其后的会话与记忆集成位于单独的后续 PR，按 #40/#45 复核。
 
 本地 `poeticus-auth/.env` 可以做成指向 `poeticus/.env` 的符号链接（本轮已在开发机创建）；它和 `frontend/.env.local` 均受 Git 忽略。切到正式端口或公网域名时，需要相应更新 `CLERK_AUTHORIZED_PARTIES`，以及 Clerk 的生产实例凭据。
 ## 用户记忆的可选接入（#45，试验阶段）
@@ -433,6 +433,46 @@ POETICUS_USER_MEMORY_STORAGE_DIR=/绝对路径/独立私有记忆数据目录
 
 依赖文件为 `requirements-memory.txt`。Embedding 使用本地 Qwen3-Embedding-0.6B（1024 维、区分 query/document）；Writer 使用现有 `LLM_API_KEY` 和 `LLM_BASE_URL` 的 DeepSeek API，`POETICUS_USER_MEMORY_LLM_MODEL` 默认 `deepseek-chat`。不新设外部记忆 API Key。
 
-现行 API 只有在服务端写入可信身份 `request.state.authenticated_user_id`，且用户已明确同意记忆（`request.state.user_memory_opt_in is True`）后，才读取其记忆；还须存在服务端**已持久化**的 `request.state.conversation_id` 与 `request.state.persisted_user_message_id`，才会在成功回复后异步安排记忆提取。前端请求体或任意身份 Header 都不能替代这些字段。当前主分支还没有 #349 与 #40 的生产级身份/会话存档实现，故对普通匿名用户完全不启用 Memory。
+现行 API 只有在服务端写入可信身份 `request.state.authenticated_user_id`，且用户已明确同意记忆（`request.state.user_memory_opt_in is True`）后，才读取其记忆；还须存在服务端**已持久化**的 `request.state.conversation_id` 与 `request.state.persisted_user_message_id`，才会在成功回复后异步安排记忆提取。前端请求体或任意身份 Header 都不能替代这些字段。当前集成分支已将上述状态由 Clerk 验证与 PostgreSQL 会话写入提供；普通匿名用户永远不会触发私人 Memory。
 
-最小存储使用独立本地 Qdrant、SQLite 历史；它适合单进程开发，不适合 Railway 多实例或公网正式部署。未来需另行验收数据库、用户删除/来源联动、幂等写入、缓存与授权检查；Mem0 OSS 当前提取路径是追加式，新旧偏好冲突尚不能当作已自动解决。后台记忆写入属于尽力而为的处理，不保证消息成功返回后一定已写入。当前功能未完成 #45 的全部生产验收。关闭开关即可回退旧聊天行为。
+最小存储使用独立本地 Qdrant、SQLite 历史；它适合单进程开发，不适合 Railway 多实例或公网正式部署。本地已验证来源关联、记忆查看及删除，但跨线程竞态、超大规模来源分页、批量幂等补偿与正式多实例部署仍需专项验收；Mem0 OSS 当前提取路径是追加式，新旧偏好冲突尚不能当作已自动解决。后台记忆写入属于尽力而为的处理，不保证消息成功返回后一定已写入。当前功能未完成 #45 的全部生产验收。关闭开关即可回退旧聊天行为。
+
+## 私人会话与记忆端到端试运行（#40、#45，集成分支）
+
+本地迁移 \`0007_private_conversations.sql\` 已于 2026-10-23 执行，新增 \`app_conversations\`、\`app_messages\`，在 \`app_users\` 上增加默认 \`false\` 的 \`memory_opt_in\`。前端不再将已登录用户的**聊天正文**写进浏览器 localStorage；游客继续按原方式本地保存。登录用户在不同浏览器选择同一作品时，可读取自己最近的云端讨论。既有游客历史**不会自动上传**。
+
+用户点击右上角「记忆」开启同意后，只有同时满足 **Clerk 验证通过、服务器消息先入库、环境开关开启** 三个条件才会调用 Mem0。在成功的 AI 回复之后安排后台记忆提取（它不是同步事务，短时间内可能尚未召回）；SQL Conversation 与 Mem0 的生命周期不同。删除某段云端讨论时尽量同步删除以该段为来源的记忆，若 Mem0 可用性不足则拒绝删除 SQL 来源并返回错误。用户亦可独立查看或清空个人记忆。关闭同意开关会停止后续提取与召回，已有记录须通过「清除全部」明确删除。
+
+本地集成测试端口与已运行的旧站点隔离。此前的私有认证环境文件仍沿用，绝不要打印或提交密钥。已存在的 \`node_modules\`、\`.env\`、\`frontend/.env.local\` 符号链接仅是开发机复用方式，其他开发机按 Clerk 章节单独创建。
+
+\`\`\`bash
+# 首次安装；本地原有 Poeticus Python 环境已安装 mem0ai 2.2.1
+cd ~/projects/poeticus-conversations
+~/projects/poeticus/.venv/bin/python -m pip install -r requirements-auth.txt -r requirements-memory.txt
+~/projects/poeticus/.venv/bin/python -m scripts.corpus.db_import --migrate
+
+# 终端 A：独立开发后端（从当前目录启动）
+CLERK_AUTHORIZED_PARTIES=http://localhost:5175,http://127.0.0.1:5175 \
+POETICUS_USER_MEMORY_ENABLED=true \
+~/projects/poeticus/.venv/bin/python -m uvicorn backend.app:app --host 127.0.0.1 --port 8012
+
+# 终端 B：独立前端；Clerk 前端公钥位于此工作树 frontend/.env.local
+cd ~/projects/poeticus-conversations/frontend
+POETICUS_API_PROXY_TARGET=http://127.0.0.1:8012 \
+npm run dev -- --host 127.0.0.1 --port 5175 --strictPort
+\`\`\`
+
+用浏览器打开 \`http://localhost:5175\`，依次验证登录 → 某首作品提问 → 云端会话 → 账号内开启「记忆」 → 再次提问 → 换作品问之前的阅读偏好 → 查看、清除记忆。用户关闭并重新开启另一账号时，只能看到自己的讨论和记忆。随后可使用「删除云端讨论」删除本段 Conversation；仅保存该段为来源的记忆会随之删除。
+
+后台私有接口：
+
+| 路径 | 行为 |
+| --- | --- |
+| \`POST /api/auth/session\` | 身份校验/幂等取得内部 UUID、记忆同意和服务可用状态 |
+| \`PUT /api/auth/memory-preference\` | 仅为当前认证用户更新同意开关 |
+| \`POST /api/chat\`、\`/api/chat/stream\` | 登录时先保存问题，成功后存回答、可选地提炼记忆；游客维持旧流程 |
+| \`GET /api/conversations\`、\`GET /api/conversations/{id}\` | 当前用户最近会话和私有消息 |
+| \`DELETE /api/conversations/{id}\` | 删除自己的会话和可追溯的衍生记忆 |
+| \`GET /api/memories\`、\`DELETE /api/memories\` | 仅查看或清空自己的私人记忆 |
+
+**已知边界**：当前按作品恢复最近一场云端讨论，统一多场历史 UI、旧游客历史的明确授权导入、完整消息编辑/分支合并仍属于 #40/#44。已登录用户编辑既有问题会开新讨论分支，原本更早的轮次暂不复制进新分支的 SQL 存档；这不能当作完整的历史迁移。端到端单用户真实浏览器验收尚需用户亲自确认，不能以 TestClient、单元测试代替。Mem0 现用单进程本地 Qdrant 文件与 SQLite，未批准直接部署 Railway 的多实例环境。

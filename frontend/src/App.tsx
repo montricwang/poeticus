@@ -30,7 +30,12 @@ import { useFeaturedPoem } from '@/hooks/use-featured-poem'
 import type { SelectedText } from '@/types/poem'
 
 /** 组装目录、阅读器、聊天和赏析；跨作品切换由此协调。 */
-function App() {
+type AppProps = {
+  accountId?: string | null
+  getAuthToken?: () => Promise<string | null>
+}
+
+function App({ accountId = null, getAuthToken }: AppProps) {
   // --- 1. 初始化作品、目录及会话状态 ---
   const [screen, setScreen] = useState<'home' | 'reader'>(() =>
     window.location.hash === '#reader' ? 'reader' : 'home',
@@ -42,7 +47,7 @@ function App() {
       : 'done',
   )
   const { featured, loading: featuredLoading, error: featuredError } = useFeaturedPoem()
-  const [initialChatState] = useState(loadInitialChatState)
+  const [initialChatState] = useState(() => loadInitialChatState(accountId))
   const [poemId, setPoemId] = useState<string | null>(initialChatState.poemId)
 
   const {
@@ -93,10 +98,15 @@ function App() {
     handleRetry,
     handleRegenerate,
     handleEdit,
+    handleNewDiscussion,
+    handleDeleteDiscussion,
+    historyError,
   } = useChatSession({
     initialChatState,
     poemId,
     activePoem,
+    accountId,
+    getAuthToken,
     selected,
     setSelected,
     switchControllerRef,
@@ -120,6 +130,7 @@ function App() {
     turns,
     question,
     selected,
+    accountId,
   })
 
   useEffect(() => {
@@ -403,6 +414,9 @@ function App() {
             onRetry={handleRetry}
             onRegenerate={handleRegenerate}
             onEdit={handleEdit}
+            onNewDiscussion={handleNewDiscussion}
+            onDeleteDiscussion={accountId ? handleDeleteDiscussion : undefined}
+            historyError={historyError}
             seenAnimationsRef={seenAnimationsRef}
             viewportRef={chatViewportRef}
             hasUnreadReply={hasUnreadReply}
