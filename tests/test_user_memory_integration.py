@@ -207,3 +207,81 @@ def test_agent_reads_memory_as_context(monkeypatch):
     assert result["reply"] == "苏轼"
     assert any("读者最近研究苏轼" in str(m.get("content")) for m in observed)
     assert all("user_memory" not in str(m) for m in observed)
+
+
+
+def test_confirmed_memory_follows_old_history_before_current_question(monkeypatch):
+    """Old chat must not be the last personal-preference authority sent to the LLM."""
+    from backend.ai import graph as agent_module
+    from types import SimpleNamespace
+
+    observed = []
+
+    def fake_create(**kwargs):
+        observed.extend(kwargs["messages"])
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content="李清照", tool_calls=None)
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        agent_module,
+        "client",
+        SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))),
+    )
+
+    agent_module.agent_decide({
+        "poem": "明月几时有。",
+        "question": "我最喜欢哪位词人？",
+        "user_memory": ["【本人已更正的现行记忆】我最喜欢李清照"],
+        "history": [
+            {"role": "user", "content": "我最喜欢姜夔"},
+            {"role": "assistant", "content": "记住了，是姜夔"},
+        ],
+        "tool_count": agent_module.AGENT_MAX_TOOL_CALLS,
+    })
+
+    old_index = next(i for i, m in enumerate(observed) if m["content"] == "我最喜欢姜夔")
+    correction_index = next(
+        i for i, m in enumerate(observed)
+        if m["role"] == "system" and "读者已在账号的记忆管理界面明确更正" in str(m["content"])
+    )
+    assert old_index < correction_index < len(observed) - 1
+    assert "李清照" in str(observed[correction_index]["content"])
+
+
+def test_inferred_memory_does_not_forge_explicit_user_correction(monkeypatch):
+    from backend.ai import graph as agent_module
+    from types import SimpleNamespace
+
+    observed = []
+
+    def fake_create(**kwargs):
+        observed.extend(kwargs["messages"])
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content="不确定", tool_calls=None)
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        agent_module,
+        "client",
+        SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))),
+    )
+
+    agent_module.agent_decide({
+        "poem": "明月几时有。",
+        "question": "我最喜欢哪位词人？",
+        "user_memory": ["【从旧对话提取、可能过时】我喜欢姜夔"],
+        "tool_count": agent_module.AGENT_MAX_TOOL_CALLS,
+    })
+    assert not any(
+        m["role"] == "system" and "读者已在账号的记忆管理界面明确更正" in str(m["content"])
+        for m in observed
+    )

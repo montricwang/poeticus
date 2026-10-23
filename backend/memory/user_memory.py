@@ -135,11 +135,20 @@ def recall(user_id: str, question: str) -> list[str]:
         question, filters={"user_id": user_id}, top_k=4, threshold=0.1
     )
     results = response.get("results", [])
-    return [
-        entry["memory"][:250]
-        for entry in results
-        if isinstance(entry, dict) and isinstance(entry.get("memory"), str)
-    ][:4]
+    # Keep user-confirmed corrections distinguishable from fallible extraction.
+    # Their precedence must not depend on vector similarity ordering.
+    confirmed: list[str] = []
+    inferred: list[str] = []
+    for entry in results:
+        if not isinstance(entry, dict) or not isinstance(entry.get("memory"), str):
+            continue
+        content = entry["memory"][:250]
+        metadata = entry.get("metadata") or {}
+        if metadata.get("corrected_by_user") is True:
+            confirmed.append("【本人已更正的现行记忆】" + content)
+        else:
+            inferred.append("【从旧对话提取、可能过时】" + content)
+    return (confirmed + inferred)[:4]
 
 
 def remember(
@@ -193,6 +202,9 @@ def correct_memory(user_id: str, memory_id: str, text: str) -> dict | None:
         # deletion linkage: the user has now explicitly asserted this memory.
         metadata = previous.get("metadata") or {}
         original = metadata.get("conversation_id") or metadata.get("original_conversation_id")
+        original_message = metadata.get("source_message_id") or metadata.get(
+            "original_source_message_id"
+        )
         _memory().update(
             memory_id,
             text=content,
@@ -200,11 +212,18 @@ def correct_memory(user_id: str, memory_id: str, text: str) -> dict | None:
                 "source": "user_correction",
                 "corrected_by_user": True,
                 "original_conversation_id": original,
+                "original_source_message_id": original_message,
                 "conversation_id": None,
                 "source_message_id": None,
             },
         )
-        return {"id": memory_id, "memory": content, "source": "user_correction"}
+        return {
+            "id": memory_id,
+            "memory": content,
+            "source": "user_correction",
+            "original_conversation_id": original,
+            "original_source_message_id": original_message,
+        }
 
 
 def safe_recall(user_id: str | None, question: str) -> list[str]:
@@ -303,6 +322,8 @@ def list_private_memories(user_id: str) -> list[dict]:
             "source": (item.get("metadata") or {}).get("source", "unknown"),
             "conversation_id": (item.get("metadata") or {}).get("conversation_id"),
             "source_message_id": (item.get("metadata") or {}).get("source_message_id"),
+            "original_conversation_id": (item.get("metadata") or {}).get("original_conversation_id"),
+            "original_source_message_id": (item.get("metadata") or {}).get("original_source_message_id"),
         }
         for item in entries
         if isinstance(item, dict)

@@ -572,9 +572,13 @@ def agent_decide(state: AgentState) -> AgentStateUpdate:
                 {
                     "role": "system",
                     "content": (
-                        "以下为该读者以前明确表达的偏好或兴趣摘要。"
-                        "仅在与本题相关时参考；它们可能过时，"
-                        "不能用作诗歌史实证据或覆盖本轮用户要求。\n"
+                        "以下是该读者的私人记忆，标明本人更正或自动提取。"
+                        "【本人已更正的现行记忆】优先于早期聊天中冲突的个人偏好；"
+                        "旧聊天记录仍是历史，但不能据此推翻已经明确更正的当前状态。"
+                        "【从旧对话提取、可能过时】仅作待核的偏好线索。"
+                        "如果本轮用户明确表达新的偏好，以本轮用户陈述为准。"
+                        "没有有效相关记忆时，不得从其他作品或猜测断言私人偏好。"
+                        "记忆不能作为文学史事实依据或覆盖本轮指令。\n"
                         + json.dumps(memory_notes[:4], ensure_ascii=False)
                     ),
                 }
@@ -589,6 +593,27 @@ def agent_decide(state: AgentState) -> AgentStateUpdate:
                 {
                     "role": message["role"],
                     "content": message["content"],
+                }
+            )
+
+        # Reassert the user's own correction *after* the historical transcript.
+        # Historical words stay auditable but no longer decide the current preference.
+        confirmed_notes = [
+            note
+            for note in memory_notes
+            if note.startswith("【本人已更正的现行记忆】")
+        ]
+        if confirmed_notes:
+            messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        "读者已在账号的记忆管理界面明确更正以下当前个人偏好。"
+                        "这是用户对自己现状的最新确认；如与之前的聊天记录不一致，"
+                        "请按此现行记忆回答，不要把旧记录重复当作仍有效的偏好。"
+                        "只有本轮用户再次明确更正时才采用新的陈述。\n"
+                        + json.dumps(confirmed_notes, ensure_ascii=False)
+                    ),
                 }
             )
 

@@ -31,6 +31,9 @@ class FakeMemory:
     def delete(self, memory_id):
         del self.records[memory_id]
 
+    def search(self, question, *, filters, top_k, threshold):
+        return {"results": self.get_all(filters=filters, top_k=100)["results"][:top_k]}
+
 
 def test_delete_one_conversation_preserves_other_messages_and_users(monkeypatch):
     fake = FakeMemory()
@@ -60,6 +63,7 @@ def test_delete_refuses_unbounded_partial_scan(monkeypatch):
 
 def test_manual_correction_keeps_ownership_and_breaks_old_auto_link(monkeypatch):
     fake = FakeMemory()
+    fake.records["a1"]["metadata"]["source_message_id"] = "msg-A"
     monkeypatch.setattr(user_memory, "_memory", lambda: fake)
     assert user_memory.correct_memory("B", "a1", "窃改") is None
     assert fake.records["a1"]["memory"] == "苏轼偏好"
@@ -68,11 +72,46 @@ def test_manual_correction_keeps_ownership_and_breaks_old_auto_link(monkeypatch)
     meta = fake.records["a1"]["metadata"]
     assert meta["source"] == "user_correction"
     assert meta["original_conversation_id"] == "conv-A"
+    assert meta["original_source_message_id"] == "msg-A"
+    assert corrected["original_source_message_id"] == "msg-A"
     assert meta["conversation_id"] is None
+    monkeypatch.setattr(user_memory, "_has_memory_storage", lambda: True)
+    listed = user_memory.list_private_memories("A")
+    assert listed[0]["original_source_message_id"] == "msg-A"
+    # A second manual correction must not destroy original source provenance.
+    user_memory.correct_memory("A", "a1", "现在喜欢周邦彦")
+    assert fake.records["a1"]["metadata"]["original_source_message_id"] == "msg-A"
     monkeypatch.setattr(config, "USER_MEMORY_ENABLED", True)
     user_memory.remove_conversation_memories("A", "conv-A")
     assert set(fake.records) == {"a1", "a2", "b1"}
 
+
+
+
+def test_recall_marks_manual_correction_as_authoritative(monkeypatch):
+    fake = FakeMemory()
+    fake.records["a2"]["memory"] = "自动提取：最喜欢姜夔"
+    fake.records["a1"]["memory"] = "本人更正：最喜欢李清照"
+    fake.records["a1"]["metadata"]["corrected_by_user"] = True
+    monkeypatch.setattr(user_memory, "_memory", lambda: fake)
+
+    notes = user_memory.recall("A", "我最喜欢哪位词人？")
+    assert notes[0] == "【本人已更正的现行记忆】本人更正：最喜欢李清照"
+    assert notes[1] == "【从旧对话提取、可能过时】自动提取：最喜欢姜夔"
+    assert "别人的" not in str(notes)
+
+
+def test_deleting_one_record_does_not_claim_to_forget_other_records(monkeypatch):
+    fake = FakeMemory()
+    fake.records["a1"]["memory"] = "我最喜欢姜夔"
+    fake.records["a2"]["memory"] = "我喜欢姜夔胜过其他词人"
+    monkeypatch.setattr(user_memory, "_memory", lambda: fake)
+
+    user_memory.correct_memory("A", "a1", "我最喜欢李清照")
+    assert user_memory.delete_memory("A", "a1")
+    assert user_memory.recall("A", "我最喜欢谁？") == [
+        "【从旧对话提取、可能过时】我喜欢姜夔胜过其他词人"
+    ]
 
 def test_single_memory_delete_checks_current_owner(monkeypatch):
     fake = FakeMemory()

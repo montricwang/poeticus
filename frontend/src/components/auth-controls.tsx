@@ -16,6 +16,8 @@ type UserMemory = {
   source?: string
   conversation_id?: string | null
   source_message_id?: string | null
+  original_conversation_id?: string | null
+  original_source_message_id?: string | null
 }
 
 /** Keep public reading and chat available without Clerk configuration. */
@@ -179,16 +181,18 @@ function ConfiguredAuthControls() {
   }
 
   async function viewSource(memory: UserMemory) {
-    if (!memory.conversation_id || !memory.source_message_id) return
+    const conversationId = memory.conversation_id ?? memory.original_conversation_id
+    const sourceMessageId = memory.source_message_id ?? memory.original_source_message_id
+    if (!conversationId || !sourceMessageId) return
     setBusy(true)
     setError('')
     try {
       const response = await authorizedFetch(
-        '/api/conversations/' + encodeURIComponent(memory.conversation_id),
+        '/api/conversations/' + encodeURIComponent(conversationId),
         'GET',
       )
       const data: { messages: { id: string; content: string }[] } = await response.json()
-      const original = data.messages.find((message) => message.id === memory.source_message_id)
+      const original = data.messages.find((message) => message.id === sourceMessageId)
       setSourcePreview({
         id: memory.id,
         content: original?.content ?? '来源消息已不存在',
@@ -322,14 +326,15 @@ function ConfiguredAuthControls() {
                           <p className="text-muted-foreground">
                             {item.source === 'user_correction' ? '本人修订' : '来自阅读讨论'}
                           </p>
-                          {item.conversation_id && item.source_message_id && (
+                          {((item.conversation_id && item.source_message_id) ||
+                            (item.original_conversation_id && item.original_source_message_id)) && (
                             <button
                               type="button"
                               className="underline"
                               disabled={busy}
                               onClick={() => void viewSource(item)}
                             >
-                              查看来源
+                              {item.source === 'user_correction' ? '查看更正前来源' : '查看来源'}
                             </button>
                           )}
                           {sourcePreview?.id === item.id && (
