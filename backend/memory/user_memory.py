@@ -44,7 +44,10 @@ def _create_memory():
     if not os.getenv("LLM_API_KEY"):
         raise RuntimeError("No LLM API key configured for user memory")
 
-    storage_path.mkdir(parents=True, exist_ok=True)
+    storage_path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # Private chat-derived memory should not be traversable by local users.
+    if os.name == "posix":
+        storage_path.chmod(0o700)
     (storage_path / "qdrant").mkdir(exist_ok=True)
 
     # Mem0 2.2.1 selects the adapter using a factory mapping. Registering one
@@ -187,3 +190,59 @@ def safe_remember(
         )
     except Exception as exc:
         logger.warning("User memory save failed: %s", type(exc).__name__)
+
+def remove_conversation_memories(user_id: str, conversation_id: str) -> None:
+    """Purge conversation-derived memories before deleting its message source.
+
+    If the memory store was used previously, disabling new extraction must not
+    silently skip cleanup. A retrieval limit refuses ambiguous partial deletion.
+    """
+    storage = Path(
+        os.getenv("POETICUS_USER_MEMORY_STORAGE_DIR", str(_DEFAULT_STORAGE))
+    ).expanduser() / "qdrant"
+    if not config.USER_MEMORY_ENABLED and not storage.exists():
+        return  # No local memory collection has ever been configured.
+
+    memory = _memory()
+    entries = memory.get_all(filters={"user_id": user_id}, top_k=1000).get("results", [])
+    if len(entries) >= 1000:
+        raise RuntimeError("Memory scan limit reached; refusing partial deletion")
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        metadata = entry.get("metadata") or {}
+        if metadata.get("conversation_id") == conversation_id:
+            memory.delete(entry["id"])
+
+
+def list_private_memories(user_id: str) -> list[dict]:
+    """Return bounded records for this user to inspect or delete."""
+    response = _memory().get_all(filters={"user_id": user_id}, top_k=100)
+    entries = response.get("results", [])
+    return [
+        {"id": item["id"], "memory": item["memory"]}
+        for item in entries
+        if isinstance(item, dict)
+        and isinstance(item.get("id"), str)
+        and isinstance(item.get("memory"), str)
+    ]
+
+
+def delete_all_private_memories(user_id: str) -> int:
+    """Delete the entire user's Mem0 history in bounded batches."""
+    memory = _memory()
+    deleted = 0
+    for _ in range(100):
+        entries = memory.get_all(filters={"user_id": user_id}, top_k=1000).get("results", [])
+        if not entries:
+            return deleted
+        ids = [
+            entry["id"] for entry in entries
+            if isinstance(entry, dict) and isinstance(entry.get("id"), str)
+        ]
+        if not ids:
+            raise RuntimeError("Memory records have no valid identifiers")
+        for memory_id in ids:
+            memory.delete(memory_id)
+        deleted += len(ids)
+    raise RuntimeError("Memory cleanup exceeded its safety limit")

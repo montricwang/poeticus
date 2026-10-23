@@ -9,7 +9,8 @@
 
 import json
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from uuid import UUID
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
@@ -18,6 +19,9 @@ from pydantic import BaseModel, Field
 
 from backend.ai.context import PoemContext
 from backend.ai.graph import AgentState, graph
+from backend.auth.clerk import require_clerk_user
+from backend.users.repository import get_or_create_user
+from backend.users.private_data import begin_turn, finish_turn, get_memory_opt_in
 from backend.memory.user_memory import safe_recall, safe_remember
 from backend.config import (
     CHAT_MAX_HISTORY_MESSAGE_CHARS,
@@ -63,6 +67,9 @@ class ChatRequest(BaseModel):
     selection: QuoteSelection | None = None
     context: PoemContext | None = None
     history: list[HistoryMessage] = Field(default_factory=list)
+    # Only used after a verified Bearer token: never an identity credential.
+    conversation_id: UUID | None = None
+    turn_number: int | None = Field(default=None, ge=1, le=2_147_483_647)
 
 
 class ChatResponse(BaseModel):
@@ -194,6 +201,30 @@ def _trusted_memory_scope(http_request: Request) -> tuple[str | None, str | None
     )
 
 
+def _prepare_private_turn(request: ChatRequest, http_request: Request) -> tuple[UUID, UUID, int] | None:
+    """Verify the Bearer token before writing or recalling any private data."""
+    if not http_request.headers.get("authorization"):
+        return None  # Preserve existing public, anonymous chat behavior.
+
+    clerk_id = require_clerk_user(http_request)
+    if request.conversation_id is None or request.turn_number is None or request.context is None:
+        raise HTTPException(status_code=422, detail="登录聊天缺少对话、轮次或作品标识")
+
+    if not (1 <= len(request.context.id) <= 128):
+        raise HTTPException(status_code=422, detail="作品标识不合法")
+    user_id = get_or_create_user(clerk_id)
+    message_id = begin_turn(
+        user_id, request.conversation_id, request.context.id,
+        request.turn_number, request.question,
+    )
+    # Consent is owned by the DB. A client-supplied opt-in flag is ignored.
+    http_request.state.authenticated_user_id = str(user_id)
+    http_request.state.conversation_id = str(request.conversation_id)
+    http_request.state.persisted_user_message_id = str(message_id)
+    http_request.state.user_memory_opt_in = get_memory_opt_in(user_id)
+    return user_id, request.conversation_id, request.turn_number
+
+
 def _graph_input_with_memory(request: ChatRequest, trusted_user_id: str | None) -> AgentState:
     state = graph_input(request)
     if trusted_user_id:
@@ -211,6 +242,7 @@ def chat(request: ChatRequest, http_request: Request, background_tasks: Backgrou
     """执行一次聊天工作流，返回包含完整回答的 JSON 数据。"""
 
     validate_chat_request(request)
+    private_turn = _prepare_private_turn(request, http_request)
     user_id, conversation_id, message_id = _trusted_memory_scope(http_request)
     try:
         # Retrieve only memories belonging to the authenticated user.
@@ -219,6 +251,9 @@ def chat(request: ChatRequest, http_request: Request, background_tasks: Backgrou
         answer = result.get("reply")
         if not answer:
             raise RuntimeError("工作流没有返回答案")
+
+        if private_turn is not None:
+            finish_turn(*private_turn, answer)
 
         if user_id and conversation_id and message_id:
             background_tasks.add_task(
@@ -251,6 +286,7 @@ def stream_graph_reply(
     conversation_id: str | None = None,
     source_message_id: str | None = None,
     background_tasks: BackgroundTasks | None = None,
+    on_complete: Callable[[str], None] | None = None,
 ) -> Iterator[str]:
     """执行 LangGraph，并逐条产出可以交给 StreamingResponse 的 SSE 文本。
 
@@ -331,6 +367,9 @@ def stream_graph_reply(
 
             yield sse("token", {"text": final_reply})
 
+        if on_complete is not None:
+            on_complete(final_reply)
+
         if (
             trusted_user_id
             and conversation_id
@@ -362,6 +401,7 @@ def chat_stream(request: ChatRequest, http_request: Request, background_tasks: B
 
     # 在响应开始前校验，确保非法请求仍以正常 HTTP 422 返回。
     validate_chat_request(request)
+    private_turn = _prepare_private_turn(request, http_request)
     user_id, conversation_id, message_id = _trusted_memory_scope(http_request)
 
     # BackgroundTasks runs after the stream completes, never before the answer.
@@ -372,6 +412,10 @@ def chat_stream(request: ChatRequest, http_request: Request, background_tasks: B
             conversation_id=conversation_id,
             source_message_id=message_id,
             background_tasks=background_tasks,
+            on_complete=(
+                lambda reply: finish_turn(*private_turn, reply)
+                if private_turn is not None else None
+            ),
         ),
         background=background_tasks,
         media_type="text/event-stream",
