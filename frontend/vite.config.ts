@@ -24,7 +24,7 @@ export default defineConfig({
     proxy: {
       // 本地开发与生产环境统一使用 /api/*，不再维护旧的无前缀接口。
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: process.env.POETICUS_API_PROXY_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },

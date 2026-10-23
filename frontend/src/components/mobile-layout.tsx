@@ -3,6 +3,7 @@ import type { ReactNode, RefObject } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
+import { AuthControls } from '@/components/auth-controls'
 import { MobileDiscussionScreen } from '@/components/mobile-discussion-screen'
 import type { LayoutCatalog, LayoutReader } from '@/components/page-layout-props'
 
@@ -60,6 +61,7 @@ export function MobileLayout({
               </div>
               <div className="flex items-center gap-2">
                 <ThemeSwitcher />
+                <AuthControls />
               </div>
             </>
           ) : (
@@ -76,7 +78,7 @@ export function MobileLayout({
                 </Button>
                 <span className="text-base font-semibold tracking-tight">阅读讨论</span>
               </div>
-              <div className="size-9" aria-hidden="true" />
+              <AuthControls />
             </>
           )}
         </div>

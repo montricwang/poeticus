@@ -1,0 +1,2 @@
+# Optional Clerk authentication; public API and reading stay available without it.
+clerk-backend-api>=7,<8

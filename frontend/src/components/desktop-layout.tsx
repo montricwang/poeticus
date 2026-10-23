@@ -3,6 +3,7 @@ import type { ReactNode, RefObject } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { ThemeSwitcher } from '@/components/theme-switcher'
+import { AuthControls } from '@/components/auth-controls'
 import { ReaderCompanionLayout } from '@/components/reader-companion-layout'
 import { ReaderPane } from '@/components/reader-pane'
 import type { LayoutCatalog, LayoutReader } from '@/components/page-layout-props'
@@ -59,6 +60,7 @@ export function DesktopLayout({
               目录
             </Button>
             <ThemeSwitcher />
+            <AuthControls />
           </div>
         </div>
       </header>
