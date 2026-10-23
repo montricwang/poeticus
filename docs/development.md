@@ -419,3 +419,20 @@ POETICUS_API_PROXY_TARGET=http://127.0.0.1:8011 npm run dev -- --host 127.0.0.1 
 只要未配置前端 Publishable Key，Clerk 控件完全不会显示，原有界面不变。后端始终不接收/信任任意 `user_id` JSON 或自定义 Header。**本轮只完成身份映射**；私人会话的拥有权查询、消息存档、Mem0 写入许可仍需各自按 #40/#45 接入。
 
 本地 `poeticus-auth/.env` 可以做成指向 `poeticus/.env` 的符号链接（本轮已在开发机创建）；它和 `frontend/.env.local` 均受 Git 忽略。切到正式端口或公网域名时，需要相应更新 `CLERK_AUTHORIZED_PARTIES`，以及 Clerk 的生产实例凭据。
+## 用户记忆的可选接入（#45，试验阶段）
+
+Mem0 OSS 已通过独立实验验证中文记忆写入、磁盘召回与模拟用户区分。后端预留了 Mem0 用户记忆的读取和写入入口，**默认关闭**；不要因为装好了 `mem0ai` 就在公网启用。
+
+可选环境配置（仅具备服务端认证与消息存档能力的环境）：
+
+```dotenv
+POETICUS_USER_MEMORY_ENABLED=true
+POETICUS_USER_MEMORY_MODEL_PATH=/绝对路径/Qwen3-Embedding-0.6B-7c0e29cfcdf2
+POETICUS_USER_MEMORY_STORAGE_DIR=/绝对路径/独立私有记忆数据目录
+```
+
+依赖文件为 `requirements-memory.txt`。Embedding 使用本地 Qwen3-Embedding-0.6B（1024 维、区分 query/document）；Writer 使用现有 `LLM_API_KEY` 和 `LLM_BASE_URL` 的 DeepSeek API，`POETICUS_USER_MEMORY_LLM_MODEL` 默认 `deepseek-chat`。不新设外部记忆 API Key。
+
+现行 API 只有在服务端写入可信身份 `request.state.authenticated_user_id`，且用户已明确同意记忆（`request.state.user_memory_opt_in is True`）后，才读取其记忆；还须存在服务端**已持久化**的 `request.state.conversation_id` 与 `request.state.persisted_user_message_id`，才会在成功回复后异步安排记忆提取。前端请求体或任意身份 Header 都不能替代这些字段。当前主分支还没有 #349 与 #40 的生产级身份/会话存档实现，故对普通匿名用户完全不启用 Memory。
+
+最小存储使用独立本地 Qdrant、SQLite 历史；它适合单进程开发，不适合 Railway 多实例或公网正式部署。未来需另行验收数据库、用户删除/来源联动、幂等写入、缓存与授权检查；Mem0 OSS 当前提取路径是追加式，新旧偏好冲突尚不能当作已自动解决。后台记忆写入属于尽力而为的处理，不保证消息成功返回后一定已写入。当前功能未完成 #45 的全部生产验收。关闭开关即可回退旧聊天行为。
