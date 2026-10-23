@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { SignInButton, UserButton, useAuth } from '@clerk/react'
+import { SignInButton, SignUpButton, UserButton, useAuth } from '@clerk/react'
 
 import { Button } from '@/components/ui/button'
 import { clerkPublishableKey } from '@/lib/clerk-config'
@@ -53,11 +53,18 @@ function ConfiguredAuthControls() {
 
   if (!isSignedIn) {
     return (
-      <SignInButton mode="modal">
-        <Button type="button" variant="ghost" size="sm">
-          登录
-        </Button>
-      </SignInButton>
+      <div className="flex items-center gap-0.5">
+        <SignInButton mode="modal">
+          <Button type="button" variant="ghost" size="sm" className="px-2">
+            登录
+          </Button>
+        </SignInButton>
+        <SignUpButton mode="modal">
+          <Button type="button" variant="ghost" size="sm" className="px-2">
+            注册
+          </Button>
+        </SignUpButton>
+      </div>
     )
   }
 
