@@ -7,6 +7,7 @@ accepts trusted IDs only; it cannot authenticate a caller or recover raw message
 import atexit
 import logging
 import os
+import re
 import threading
 from contextlib import contextmanager
 from uuid import UUID
@@ -98,6 +99,8 @@ def _create_memory():
                 "只提取用户自己明确表达、有后续价值的个人阅读偏好、"
                 "当前研究兴趣及明确更正；保留时间、条件和不确定性。"
                 "一次性要求或引述他人观点不应写成用户永久偏好。"
+                "用户提出‘我最喜欢谁’之类疑问句不表示确认任何偏好；"
+                "不可依据助手的回答推导用户喜好，也不可猜测来源未出现的人名。"
                 "候选记忆的 text 字段必须使用简体中文，"
                 "保留原文中的人名、作品名和限定，不要自动译成英文。"
             ),
@@ -151,6 +154,41 @@ def recall(user_id: str, question: str) -> list[str]:
     return (confirmed + inferred)[:4]
 
 
+
+# Conservative first-party guard: an unanswered question is not evidence of the
+# reader's own preference. Pass only explicit first-person statements to Mem0.
+# This is intentionally narrower than general language understanding; future
+# extraction can widen coverage only with independently verified source spans.
+_PERSONAL_ASSERTION = re.compile(
+    r"我(?:自己)?(?:现在|最近|目前|一直|平时|通常|经常|已经|正在|"
+    r"最|更|很|比较|特别|不|也|只|尤其|可能|确实|仍然)*"
+    r"(?:喜欢|偏爱|讨厌|关注|研究|阅读|在读|正读|学习|在学|"
+    r"想|希望|计划|打算|偏好|倾向|认为|觉得|习惯|来自|住在|叫|是|姓)"
+)
+_QUESTION_CUES = re.compile(
+    r"[?？]|(?:谁|哪位|哪个|哪些|什么|如何|怎么|为什么|是否|能否|"
+    r"是不是|对不对|还记得|知不知道|记得吗|有没有|吗|么|呢)"
+)
+
+
+def _explicit_memory_evidence(user_text: str) -> list[str]:
+    """Conservative evidence spans suitable for *attempted* Mem0 extraction.
+
+    User questions and the assistant's answers are not personal fact assertions.
+    Comma-separated explicit statements can still be retained in a mixed prompt.
+    """
+    if not isinstance(user_text, str):
+        return []
+    spans = re.split(r"[，,。；;！？!?\n]", user_text)
+    return [
+        clause.strip()
+        for clause in spans
+        if _PERSONAL_ASSERTION.search(clause)
+        and not _QUESTION_CUES.search(clause)
+        and len(clause.strip()) >= 4
+    ]
+
+
 def remember(
     user_id: str,
     user_text: str,
@@ -161,13 +199,17 @@ def remember(
     """Write a candidate only after a server-owned message ID is persisted."""
     if not (user_id and conversation_id and source_message_id):
         raise ValueError("A verified user and persisted message source are required")
+    evidence = _explicit_memory_evidence(user_text)
+    if not evidence:
+        return
     _memory().add(
-        [{"role": "user", "content": user_text}],
+        [{"role": "user", "content": "。".join(evidence)}],
         user_id=user_id,
         metadata={
             "source": "conversation",
             "conversation_id": conversation_id,
             "source_message_id": source_message_id,
+            "extraction_gate": "explicit_user_statement_v1",
         },
         infer=True,
     )
@@ -256,6 +298,9 @@ def safe_remember(
         and conversation_id
         and source_message_id
     ):
+        return
+    # Avoid scheduling DB work or model inference for source-free questions.
+    if not _explicit_memory_evidence(user_text):
         return
     try:
         from backend.users.private_data import source_allows_memory

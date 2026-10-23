@@ -8,6 +8,7 @@ Agent 基于当前作品、用户选区、对话历史作答，必要时调用�
 import asyncio
 import logging
 import json
+import re
 from dataclasses import dataclass
 from inspect import signature
 from typing import Literal, NotRequired, TypedDict, cast
@@ -556,9 +557,12 @@ def agent_decide(state: AgentState) -> AgentStateUpdate:
         messages = [
             {
                 "role": "system",
-                "content": compose_prompt(
-                    "agent_decide",
-                    "output_style",
+                "content": (
+                    compose_prompt("agent_decide", "output_style")
+                    + "\n\n当用户问自己的喜好或个人事实时，只能以用户本人实际陈述、"
+                    "现行私人记忆或可信来源为依据；历史中 AI 自己的猜测或回答"
+                    "不能反过来当作用户事实。如果没有这样的依据，直接回答不知道，"
+                    "不要从当前诗歌作者或之前的 AI 回答猜测用户偏好。"
                 ),
             },
         ]
@@ -584,11 +588,23 @@ def agent_decide(state: AgentState) -> AgentStateUpdate:
                 }
             )
 
+        # Personal facts must come from the reader, not an assistant's previous
+        # guess. For self-preference questions, omit assistant history while
+        # retaining the reader's own statements and questions.
+        personal_preference_question = bool(
+            re.search(
+                r"(?:我|我的|本人|自己).*(?:喜欢|偏爱|偏好|兴趣|倾向|讨厌)",
+                state["question"],
+            )
+        )
+
         # 跨用户轮次的有效对话历史。
         # 这里只在 Agent 第一次启动时加入；
         # 工具执行后再次进入 Agent 时沿用 messages，
         # 避免重复插入历史。
         for message in state.get("history") or []:
+            if personal_preference_question and message["role"] == "assistant":
+                continue
             messages.append(
                 {
                     "role": message["role"],

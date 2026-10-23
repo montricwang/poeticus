@@ -285,3 +285,90 @@ def test_inferred_memory_does_not_forge_explicit_user_correction(monkeypatch):
         m["role"] == "system" and "读者已在账号的记忆管理界面明确更正" in str(m["content"])
         for m in observed
     )
+
+
+
+def test_question_only_cannot_become_personal_memory(monkeypatch):
+    """Neither question text nor an earlier assistant guess is asserted memory."""
+    from uuid import uuid4
+    from backend.memory import user_memory as memory
+    from backend.users import private_data
+
+    user_id, conversation_id, message_id = (str(uuid4()) for _ in range(3))
+    monkeypatch.setattr(memory.config, "USER_MEMORY_ENABLED", True)
+    calls = []
+    monkeypatch.setattr(
+        private_data, "source_allows_memory",
+        lambda *args: calls.append("sql") or True,
+    )
+    monkeypatch.setattr(
+        memory, "remember",
+        lambda *args, **kwargs: calls.append("write"),
+    )
+    for question in (
+        "我最喜欢的词人是谁",
+        "我最喜欢哪位词人？",
+        "我喜欢姜夔吗？",
+        "你是不是记得我喜欢谁",
+    ):
+        assert memory._explicit_memory_evidence(question) == []
+        memory.safe_remember(
+            user_id, question,
+            conversation_id=conversation_id, source_message_id=message_id,
+        )
+    assert calls == []
+
+
+def test_only_explicit_statement_spans_reach_mem0(monkeypatch):
+    from backend.memory import user_memory as memory
+
+    payloads = []
+    class DummyMemory:
+        def add(self, messages, **kwargs):
+            payloads.append((messages, kwargs))
+
+    monkeypatch.setattr(memory, "_memory", lambda: DummyMemory())
+    memory.remember(
+        "u", "我最喜欢姜夔，帮我赏析这首词。你还记得吗？",
+        conversation_id="c", source_message_id="m",
+    )
+    assert payloads[0][0] == [
+        {"role": "user", "content": "我最喜欢姜夔"}
+    ]
+    assert payloads[0][1]["metadata"]["source_message_id"] == "m"
+    assert payloads[0][1]["metadata"]["extraction_gate"] == "explicit_user_statement_v1"
+    assert payloads[0][1]["infer"] is True
+    memory.remember(
+        "u", "我最喜欢的词人是谁",
+        conversation_id="c", source_message_id="m",
+    )
+    assert len(payloads) == 1
+
+
+def test_current_personal_facts_cannot_be_inferred_from_old_assistant_guesses(monkeypatch):
+    from backend.ai import graph as agent_module
+    from types import SimpleNamespace
+
+    observed = []
+    def fake_create(**kwargs):
+        observed.extend(kwargs["messages"])
+        return SimpleNamespace(choices=[
+            SimpleNamespace(message=SimpleNamespace(content="不知道", tool_calls=None))
+        ])
+    monkeypatch.setattr(agent_module, "client", SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=fake_create))
+    ))
+    agent_module.agent_decide({
+        "poem": "瑞鹧鸪。", "question": "我最喜欢的词人是谁",
+        "history": [
+            {"role": "user", "content": "我最喜欢谁？"},
+            {"role": "assistant", "content": "你最喜欢姜夔。"},
+        ],
+        "tool_count": agent_module.AGENT_MAX_TOOL_CALLS,
+    })
+    assert "历史中 AI 自己的猜测或回答" in observed[0]["content"]
+    assert "不能反过来当作用户事实" in observed[0]["content"]
+    assert not any(
+        m["role"] == "assistant" and m["content"] == "你最喜欢姜夔。"
+        for m in observed
+    )
