@@ -140,6 +140,8 @@ def test_tool_experience_is_a_separate_reviewed_memory(tmp_path):
     assert len(experience) == 1
     assert experience[0].kind == "tool"
     assert store.recall("前代诗句", kind="literary") == []
+    assert store.recall("前代诗句") == []
+    assert "前代诗句查询" not in store.consolidate().text
     assert "前代诗句查询" in store.consolidate(kind="tool").text
 
     store.challenge("tool:前代诗句查询", "一类少见隐晦化用中检索失败")
