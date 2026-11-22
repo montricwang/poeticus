@@ -268,30 +268,30 @@ class CriticNotebook:
 
     def recall(
         self, query: str, *, include_candidates: bool = False, limit: int = 5,
-        kind: str | None = None,
+        kind: str = "literary",
     ) -> list[ClaimSnapshot]:
         """最小词面检索；默认仅使用审阅过的当前观点，不检索历史废案。"""
         if limit < 1:
             raise ValueError("limit must be positive")
-        if kind is not None and kind not in {"literary", "tool"}:
+        if kind not in {"literary", "tool"}:
             raise ValueError("unknown notebook kind")
         keyword = self._text(query, "query").casefold()
         return [
             item for item in self.snapshots()
-            if (kind is None or item.kind == kind)
+            if item.kind == kind
             and (item.state == "canonical" or
                  (include_candidates and item.state in {"candidate", "contested"}))
             and (keyword in item.content.casefold() or keyword in item.claim_id.casefold())
         ][:limit]
 
     def consolidate(self, *, include_candidates: bool = False,
-                    kind: str | None = None) -> ConsolidationDraft:
+                    kind: str = "literary") -> ConsolidationDraft:
         """从事件重建只读摘要：可喂给 LLM 起草，结果本身不写回为证据。"""
-        if kind is not None and kind not in {"literary", "tool"}:
+        if kind not in {"literary", "tool"}:
             raise ValueError("unknown notebook kind")
         selected = [
             item for item in self.snapshots()
-            if (kind is None or item.kind == kind)
+            if item.kind == kind
             and (item.state == "canonical" or (
                 include_candidates and item.state in {"candidate", "contested"}
             ))
